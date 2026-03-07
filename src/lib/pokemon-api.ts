@@ -106,11 +106,28 @@ interface TCGDexSet {
 let setsListCache: TCGDexSet[] | null = null;
 let allCardsCache: PokemonCard[] | null = null;
 
+const CACHE_VERSION = "v1";
+const SETS_CACHE_KEY = `pokevault_sets_${CACHE_VERSION}`;
+const CARDS_CACHE_KEY = `pokevault_cards_${CACHE_VERSION}`;
+
 async function loadSetsList(): Promise<TCGDexSet[]> {
   if (setsListCache) return setsListCache;
+
+  // Try localStorage first
+  try {
+    const cached = localStorage.getItem(SETS_CACHE_KEY);
+    if (cached) {
+      setsListCache = JSON.parse(cached);
+      return setsListCache!;
+    }
+  } catch { /* ignore */ }
+
   const res = await fetch("/data/sets-list.json");
   if (!res.ok) throw new Error("Failed to load sets list");
   setsListCache = await res.json();
+
+  // Cache to localStorage
+  try { localStorage.setItem(SETS_CACHE_KEY, JSON.stringify(setsListCache)); } catch { /* ignore */ }
   return setsListCache!;
 }
 
@@ -167,6 +184,15 @@ function mapSet(set: TCGDexSet): PokemonSet {
 // Load ALL cards from ALL sets (cached after first load)
 async function loadAllCards(): Promise<PokemonCard[]> {
   if (allCardsCache) return allCardsCache;
+
+  // Try localStorage first
+  try {
+    const cached = localStorage.getItem(CARDS_CACHE_KEY);
+    if (cached) {
+      allCardsCache = JSON.parse(cached);
+      return allCardsCache!;
+    }
+  } catch { /* ignore */ }
   
   const setsList = await loadSetsList();
   const allCards: PokemonCard[] = [];
@@ -190,6 +216,9 @@ async function loadAllCards(): Promise<PokemonCard[]> {
   }
 
   allCardsCache = allCards;
+
+  // Cache to localStorage (may fail if too large, that's ok)
+  try { localStorage.setItem(CARDS_CACHE_KEY, JSON.stringify(allCards)); } catch { /* ignore */ }
   return allCards;
 }
 
@@ -288,10 +317,10 @@ export async function getSets(): Promise<SetSearchResult> {
   // Sort newest first
   mapped.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
   return {
-    data: mapped.slice(0, 50),
+    data: mapped,
     page: 1,
-    pageSize: 50,
-    count: Math.min(50, mapped.length),
+    pageSize: mapped.length,
+    count: mapped.length,
     totalCount: mapped.length,
   };
 }

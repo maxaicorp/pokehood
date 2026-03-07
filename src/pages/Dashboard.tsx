@@ -1,16 +1,16 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { getCollection, getTotalValue, getCollectionBySet, CollectionCard } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
-import CardSearch from "@/components/CardSearch";
 import CollectionList from "@/components/CollectionList";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Wallet, Layers, CreditCard, Share2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Wallet, Layers, CreditCard, Share2, Search } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Dashboard() {
   const [collection, setCollection] = useState<CollectionCard[]>(getCollection());
+  const [searchQuery, setSearchQuery] = useState("");
 
   const refresh = useCallback(() => {
     setCollection(getCollection());
@@ -19,6 +19,17 @@ export default function Dashboard() {
   const totalValue = getTotalValue(collection);
   const bySet = getCollectionBySet(collection);
   const setCount = Object.keys(bySet).length;
+
+  const filteredCollection = useMemo(() => {
+    if (!searchQuery.trim()) return collection;
+    const q = searchQuery.toLowerCase();
+    return collection.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.setName.toLowerCase().includes(q) ||
+        c.rarity.toLowerCase().includes(q)
+    );
+  }, [collection, searchQuery]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -33,12 +44,17 @@ export default function Dashboard() {
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-display font-bold text-sm">PV</span>
               </div>
-              <span className="font-display font-bold text-lg text-foreground">Dashboard</span>
+              <span className="font-display font-bold text-lg text-foreground">My Collection</span>
             </div>
           </div>
-          <Button variant="accent" size="sm" asChild>
-            <Link to="/u/demo"><Share2 className="w-4 h-4 mr-1" />View Profile</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/explore">+ Add Cards</Link>
+            </Button>
+            <Button variant="accent" size="sm" asChild>
+              <Link to="/u/demo"><Share2 className="w-4 h-4 mr-1" />View Profile</Link>
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -70,21 +86,25 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="search" className="space-y-6">
-          <TabsList className="bg-secondary">
-            <TabsTrigger value="search">Search Cards</TabsTrigger>
-            <TabsTrigger value="collection">My Collection ({collection.length})</TabsTrigger>
-          </TabsList>
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search your collection..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            {filteredCollection.length} of {collection.length} cards
+            {searchQuery && ` matching "${searchQuery}"`}
+          </p>
+        </div>
 
-          <TabsContent value="search">
-            <CardSearch onCardAdded={refresh} />
-          </TabsContent>
-
-          <TabsContent value="collection">
-            <CollectionList cards={collection} onUpdate={refresh} />
-          </TabsContent>
-        </Tabs>
+        {/* Collection */}
+        <CollectionList cards={filteredCollection} onUpdate={refresh} />
       </div>
     </div>
   );
