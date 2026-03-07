@@ -227,7 +227,7 @@ async function loadAllCards(): Promise<PokemonCard[]> {
 export async function searchCards(
   query: string,
   page = 1,
-  pageSize = 20,
+  pageSize = 35,
 ): Promise<SearchResult> {
   const allCards = await loadAllCards();
   const q = query.toLowerCase();
@@ -247,9 +247,10 @@ export async function searchCardsAdvanced(
     supertype?: string;
     types?: string[];
     sortBy?: string;
+    productType?: string;
   } = {},
   page = 1,
-  pageSize = 20,
+  pageSize = 35,
 ): Promise<SearchResult> {
   const allCards = await loadAllCards();
   let filtered = [...allCards];
@@ -260,6 +261,11 @@ export async function searchCardsAdvanced(
   }
   if (filters.setId) {
     filtered = filtered.filter((c) => c.set.id === filters.setId);
+  }
+  if (filters.productType === "pocket") {
+    filtered = filtered.filter((c) => TCGP_SERIES_IDS.includes(c.set.series.toLowerCase()));
+  } else if (filters.productType === "tcg") {
+    filtered = filtered.filter((c) => !TCGP_SERIES_IDS.includes(c.set.series.toLowerCase()));
   }
   if (filters.rarity) {
     filtered = filtered.filter((c) => c.rarity === filters.rarity);
@@ -301,7 +307,7 @@ export async function searchCardsAdvanced(
 
 export async function getLatestCards(
   page = 1,
-  pageSize = 20,
+  pageSize = 35,
 ): Promise<SearchResult> {
   const allCards = await loadAllCards();
   // Sort newest first by set release date
@@ -429,3 +435,12 @@ export const SORT_OPTIONS = [
 
 export const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"] as const;
 export type CardCondition = (typeof CONDITIONS)[number];
+
+// TCG Pocket series identifiers (from TCGdex serie.id)
+export const TCGP_SERIES_IDS = ["tcgp"];
+
+export const PRODUCT_TYPES = [
+  { value: "all", label: "All Products" },
+  { value: "tcg", label: "Pokémon TCG" },
+  { value: "pocket", label: "TCG Pocket" },
+];

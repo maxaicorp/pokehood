@@ -13,6 +13,8 @@ import {
   CARD_TYPES,
   SORT_OPTIONS,
   CONDITIONS,
+  PRODUCT_TYPES,
+  TCGP_SERIES_IDS,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
@@ -44,6 +46,7 @@ export default function Explore() {
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [showFilters, setShowFilters] = useState(true);
   const [page, setPage] = useState(1);
+  const [productType, setProductType] = useState("");
 
   // Import state
   const [importOpen, setImportOpen] = useState(false);
@@ -60,18 +63,18 @@ export default function Explore() {
   });
 
   // Fetch cards
-  const hasFilters = searchTerm || selectedSet || selectedRarity || selectedTypes.length > 0;
+  const hasFilters = searchTerm || selectedSet || selectedRarity || selectedTypes.length > 0 || productType;
   const { data: cardsData, isLoading } = useQuery({
-    queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page],
+    queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page, productType],
     queryFn: () =>
       hasFilters
         ? searchCardsAdvanced(
             searchTerm,
-            { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy },
+            { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: productType || undefined },
             page,
-            20
+            35
           )
-        : getLatestCards(page, 20),
+        : getLatestCards(page, 35),
     staleTime: 60_000,
   });
 
@@ -283,6 +286,22 @@ export default function Explore() {
         <div className="flex gap-6">
           {/* Sidebar Filters */}
           <aside className={`w-64 shrink-0 space-y-6 ${showFilters ? 'block' : 'hidden'} lg:block`}>
+            {/* Product Type */}
+            <div>
+              <h3 className="font-display font-semibold text-foreground text-sm mb-2">Product</h3>
+              <p className="text-xs text-muted-foreground mb-2">Choose product line.</p>
+              <Select value={productType || "all"} onValueChange={(v) => { setProductType(v === "all" ? "" : v); setSelectedSet(""); setPage(1); }}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="All Products" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRODUCT_TYPES.map(p => (
+                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Sets */}
             <div>
               <h3 className="font-display font-semibold text-foreground text-sm mb-2">Set</h3>
@@ -293,7 +312,13 @@ export default function Explore() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sets</SelectItem>
-                  {setsData?.data?.map(s => (
+                  {setsData?.data
+                    ?.filter(s => {
+                      if (!productType) return true;
+                      const isPocket = TCGP_SERIES_IDS.includes(s.series.toLowerCase());
+                      return productType === "pocket" ? isPocket : !isPocket;
+                    })
+                    .map(s => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}
                     </SelectItem>
