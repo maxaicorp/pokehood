@@ -1,0 +1,6 @@
+{
+  "error": {
+    "message": "Invalid credentials",
+    "code": "INVALID_CREDENTIALS"
+  }
+}
