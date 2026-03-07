@@ -106,7 +106,7 @@ interface TCGDexSet {
 let setsListCache: TCGDexSet[] | null = null;
 let allCardsCache: PokemonCard[] | null = null;
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const SETS_CACHE_KEY = `pokevault_sets_${CACHE_VERSION}`;
 const CARDS_CACHE_KEY = `pokevault_cards_${CACHE_VERSION}`;
 

@@ -94,6 +94,20 @@ export default function Explore() {
     setPage(1);
   };
 
+  // Generate [1, 2, '...', 5, 6, 7, '...', 20] style page numbers
+  const getPageNumbers = (current: number, total: number): (number | string)[] => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages: (number | string)[] = [];
+    pages.push(1);
+    if (current > 3) pages.push("...");
+    for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+      pages.push(i);
+    }
+    if (current < total - 2) pages.push("...");
+    pages.push(total);
+    return pages;
+  };
+
   const handleAdd = (card: PokemonCard) => {
     addToCollection(card);
     toast.success(`${card.name} added to collection!`);
@@ -393,25 +407,39 @@ export default function Explore() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-8">
+              <div className="flex items-center justify-center gap-1 mt-8">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon"
+                  className="h-8 w-8"
                   disabled={page <= 1}
                   onClick={() => setPage(p => p - 1)}
                 >
-                  Previous
+                  ‹
                 </Button>
-                <span className="text-sm text-muted-foreground px-4">
-                  Page {page} of {totalPages}
-                </span>
+                {getPageNumbers(page, totalPages).map((p, i) =>
+                  p === "..." ? (
+                    <span key={`ellipsis-${i}`} className="px-2 text-muted-foreground text-sm">…</span>
+                  ) : (
+                    <Button
+                      key={p}
+                      variant={p === page ? "default" : "outline"}
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => setPage(p as number)}
+                    >
+                      {p}
+                    </Button>
+                  )
+                )}
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon"
+                  className="h-8 w-8"
                   disabled={page >= totalPages}
                   onClick={() => setPage(p => p + 1)}
                 >
-                  Next
+                  ›
                 </Button>
               </div>
             )}
