@@ -1,0 +1,176 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 30,
+    "reverse": 0,
+    "total": 30
+  },
+  "cards": [
+    {
+      "id": "tk-bw-e-1",
+      "localId": "1",
+      "name": "Lillipup"
+    },
+    {
+      "id": "tk-bw-e-2",
+      "localId": "2",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-3",
+      "localId": "3",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-4",
+      "localId": "4",
+      "name": "Energy Switch"
+    },
+    {
+      "id": "tk-bw-e-5",
+      "localId": "5",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-6",
+      "localId": "6",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-7",
+      "localId": "7",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-8",
+      "localId": "8",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-9",
+      "localId": "9",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-10",
+      "localId": "10",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-11",
+      "localId": "11",
+      "name": "Timburr"
+    },
+    {
+      "id": "tk-bw-e-12",
+      "localId": "12",
+      "name": "Audino"
+    },
+    {
+      "id": "tk-bw-e-13",
+      "localId": "13",
+      "name": "Drilbur"
+    },
+    {
+      "id": "tk-bw-e-14",
+      "localId": "14",
+      "name": "Gurdurr"
+    },
+    {
+      "id": "tk-bw-e-15",
+      "localId": "15",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-bw-e-16",
+      "localId": "16",
+      "name": "PlusPower"
+    },
+    {
+      "id": "tk-bw-e-17",
+      "localId": "17",
+      "name": "Excadrill"
+    },
+    {
+      "id": "tk-bw-e-18",
+      "localId": "18",
+      "name": "Audino"
+    },
+    {
+      "id": "tk-bw-e-19",
+      "localId": "19",
+      "name": "Herdier"
+    },
+    {
+      "id": "tk-bw-e-20",
+      "localId": "20",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-21",
+      "localId": "21",
+      "name": "Energy Search"
+    },
+    {
+      "id": "tk-bw-e-22",
+      "localId": "22",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-23",
+      "localId": "23",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-bw-e-24",
+      "localId": "24",
+      "name": "Pokémon Communication"
+    },
+    {
+      "id": "tk-bw-e-25",
+      "localId": "25",
+      "name": "Drilbur"
+    },
+    {
+      "id": "tk-bw-e-26",
+      "localId": "26",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-27",
+      "localId": "27",
+      "name": "Lillipup"
+    },
+    {
+      "id": "tk-bw-e-28",
+      "localId": "28",
+      "name": "Fighting Energy"
+    },
+    {
+      "id": "tk-bw-e-29",
+      "localId": "29",
+      "name": "Timburr"
+    },
+    {
+      "id": "tk-bw-e-30",
+      "localId": "30",
+      "name": "Excadrill"
+    }
+  ],
+  "id": "tk-bw-e",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "BW trainer Kit (Excadrill)",
+  "releaseDate": "2011-09-01",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "abbreviation": {
+    "official": "TK5E"
+  }
+}

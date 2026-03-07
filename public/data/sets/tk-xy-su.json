@@ -1,0 +1,177 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 30,
+    "reverse": 0,
+    "total": 30
+  },
+  "cards": [
+    {
+      "id": "tk-xy-su-1",
+      "localId": "1",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-2",
+      "localId": "2",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-3",
+      "localId": "3",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-4",
+      "localId": "4",
+      "name": "Eevee"
+    },
+    {
+      "id": "tk-xy-su-5",
+      "localId": "5",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-6",
+      "localId": "6",
+      "name": "Frogadier"
+    },
+    {
+      "id": "tk-xy-su-7",
+      "localId": "7",
+      "name": "Ducklett"
+    },
+    {
+      "id": "tk-xy-su-8",
+      "localId": "8",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-9",
+      "localId": "9",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-10",
+      "localId": "10",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-11",
+      "localId": "11",
+      "name": "Froakie"
+    },
+    {
+      "id": "tk-xy-su-12",
+      "localId": "12",
+      "name": "Seaking"
+    },
+    {
+      "id": "tk-xy-su-13",
+      "localId": "13",
+      "name": "Goldeen"
+    },
+    {
+      "id": "tk-xy-su-14",
+      "localId": "14",
+      "name": "Suicune"
+    },
+    {
+      "id": "tk-xy-su-15",
+      "localId": "15",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-xy-su-16",
+      "localId": "16",
+      "name": "Piplup"
+    },
+    {
+      "id": "tk-xy-su-17",
+      "localId": "17",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-18",
+      "localId": "18",
+      "name": "Swanna"
+    },
+    {
+      "id": "tk-xy-su-19",
+      "localId": "19",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-20",
+      "localId": "20",
+      "name": "Tierno"
+    },
+    {
+      "id": "tk-xy-su-21",
+      "localId": "21",
+      "name": "Frogadier"
+    },
+    {
+      "id": "tk-xy-su-22",
+      "localId": "22",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-23",
+      "localId": "23",
+      "name": "Froakie"
+    },
+    {
+      "id": "tk-xy-su-24",
+      "localId": "24",
+      "name": "Ducklett"
+    },
+    {
+      "id": "tk-xy-su-25",
+      "localId": "25",
+      "name": "Seaking"
+    },
+    {
+      "id": "tk-xy-su-26",
+      "localId": "26",
+      "name": "Goldeen"
+    },
+    {
+      "id": "tk-xy-su-27",
+      "localId": "27",
+      "name": "Swanna"
+    },
+    {
+      "id": "tk-xy-su-28",
+      "localId": "28",
+      "name": "Water Energy"
+    },
+    {
+      "id": "tk-xy-su-29",
+      "localId": "29",
+      "name": "Tierno"
+    },
+    {
+      "id": "tk-xy-su-30",
+      "localId": "30",
+      "name": "Suicune"
+    }
+  ],
+  "id": "tk-xy-su",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "XY trainer Kit (Suicune)",
+  "releaseDate": "2016-04-27",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-su/symbol",
+  "abbreviation": {
+    "official": "TK9S"
+  }
+}

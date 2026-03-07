@@ -1,0 +1,86 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 4,
+    "normal": 0,
+    "official": 12,
+    "reverse": 0,
+    "total": 12
+  },
+  "cards": [
+    {
+      "id": "2019sm-1",
+      "localId": "1",
+      "name": "Caterpie"
+    },
+    {
+      "id": "2019sm-2",
+      "localId": "2",
+      "name": "Alolan Exeggutor"
+    },
+    {
+      "id": "2019sm-3",
+      "localId": "3",
+      "name": "Magmar"
+    },
+    {
+      "id": "2019sm-4",
+      "localId": "4",
+      "name": "Alolan Sandshrew"
+    },
+    {
+      "id": "2019sm-5",
+      "localId": "5",
+      "name": "Lapras"
+    },
+    {
+      "id": "2019sm-6",
+      "localId": "6",
+      "name": "Pikachu"
+    },
+    {
+      "id": "2019sm-7",
+      "localId": "7",
+      "name": "Gastly"
+    },
+    {
+      "id": "2019sm-8",
+      "localId": "8",
+      "name": "Mankey"
+    },
+    {
+      "id": "2019sm-9",
+      "localId": "9",
+      "name": "Onix"
+    },
+    {
+      "id": "2019sm-10",
+      "localId": "10",
+      "name": "Alolan Meowth"
+    },
+    {
+      "id": "2019sm-11",
+      "localId": "11",
+      "name": "Alolan Dugtrio"
+    },
+    {
+      "id": "2019sm-12",
+      "localId": "12",
+      "name": "Eevee"
+    }
+  ],
+  "id": "2019sm",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Macdonald's Collection 2019",
+  "releaseDate": "2019-10-15",
+  "serie": {
+    "id": "mc",
+    "name": "McDonald's Collection"
+  },
+  "abbreviation": {
+    "official": "MCD19"
+  }
+}

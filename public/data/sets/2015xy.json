@@ -1,0 +1,86 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 9,
+    "normal": 1,
+    "official": 12,
+    "reverse": 0,
+    "total": 12
+  },
+  "cards": [
+    {
+      "id": "2015xy-1",
+      "localId": "1",
+      "name": "Treecko"
+    },
+    {
+      "id": "2015xy-2",
+      "localId": "2",
+      "name": "Lotad"
+    },
+    {
+      "id": "2015xy-3",
+      "localId": "3",
+      "name": "Torchic"
+    },
+    {
+      "id": "2015xy-4",
+      "localId": "4",
+      "name": "Staryu"
+    },
+    {
+      "id": "2015xy-5",
+      "localId": "5",
+      "name": "Mudkip"
+    },
+    {
+      "id": "2015xy-6",
+      "localId": "6",
+      "name": "Pikachu"
+    },
+    {
+      "id": "2015xy-7",
+      "localId": "7",
+      "name": "Electrike"
+    },
+    {
+      "id": "2015xy-8",
+      "localId": "8",
+      "name": "Rhyhorn"
+    },
+    {
+      "id": "2015xy-9",
+      "localId": "9",
+      "name": "Meditite"
+    },
+    {
+      "id": "2015xy-10",
+      "localId": "10",
+      "name": "Marill"
+    },
+    {
+      "id": "2015xy-11",
+      "localId": "11",
+      "name": "Zigzagoon"
+    },
+    {
+      "id": "2015xy-12",
+      "localId": "12",
+      "name": "Skitty"
+    }
+  ],
+  "id": "2015xy",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Macdonald's Collection 2015",
+  "releaseDate": "2015-11-27",
+  "serie": {
+    "id": "mc",
+    "name": "McDonald's Collection"
+  },
+  "abbreviation": {
+    "official": "MCD15"
+  }
+}

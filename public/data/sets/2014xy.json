@@ -1,0 +1,86 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 12,
+    "normal": 0,
+    "official": 12,
+    "reverse": 0,
+    "total": 12
+  },
+  "cards": [
+    {
+      "id": "2014xy-1",
+      "localId": "1",
+      "name": "Weedle"
+    },
+    {
+      "id": "2014xy-2",
+      "localId": "2",
+      "name": "Chespin"
+    },
+    {
+      "id": "2014xy-3",
+      "localId": "3",
+      "name": "Fennekin"
+    },
+    {
+      "id": "2014xy-4",
+      "localId": "4",
+      "name": "Froakie"
+    },
+    {
+      "id": "2014xy-5",
+      "localId": "5",
+      "name": "Pikachu"
+    },
+    {
+      "id": "2014xy-6",
+      "localId": "6",
+      "name": "Inkay"
+    },
+    {
+      "id": "2014xy-7",
+      "localId": "7",
+      "name": "Honedge"
+    },
+    {
+      "id": "2014xy-8",
+      "localId": "8",
+      "name": "Snubbull"
+    },
+    {
+      "id": "2014xy-9",
+      "localId": "9",
+      "name": "Swirlix"
+    },
+    {
+      "id": "2014xy-10",
+      "localId": "10",
+      "name": "Bunnelby"
+    },
+    {
+      "id": "2014xy-11",
+      "localId": "11",
+      "name": "Fletchling"
+    },
+    {
+      "id": "2014xy-12",
+      "localId": "12",
+      "name": "Furfrou"
+    }
+  ],
+  "id": "2014xy",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Macdonald's Collection 2014",
+  "releaseDate": "2014-05-23",
+  "serie": {
+    "id": "mc",
+    "name": "McDonald's Collection"
+  },
+  "abbreviation": {
+    "official": "MCD14"
+  }
+}

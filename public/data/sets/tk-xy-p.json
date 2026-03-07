@@ -1,0 +1,177 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 30,
+    "reverse": 0,
+    "total": 30
+  },
+  "cards": [
+    {
+      "id": "tk-xy-p-1",
+      "localId": "1",
+      "name": "Glameow"
+    },
+    {
+      "id": "tk-xy-p-2",
+      "localId": "2",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-3",
+      "localId": "3",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-4",
+      "localId": "4",
+      "name": "Electivire"
+    },
+    {
+      "id": "tk-xy-p-5",
+      "localId": "5",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-6",
+      "localId": "6",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-7",
+      "localId": "7",
+      "name": "Taillow"
+    },
+    {
+      "id": "tk-xy-p-8",
+      "localId": "8",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-9",
+      "localId": "9",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-10",
+      "localId": "10",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-11",
+      "localId": "11",
+      "name": "Electrike"
+    },
+    {
+      "id": "tk-xy-p-12",
+      "localId": "12",
+      "name": "Blitzle"
+    },
+    {
+      "id": "tk-xy-p-13",
+      "localId": "13",
+      "name": "Manectric"
+    },
+    {
+      "id": "tk-xy-p-14",
+      "localId": "14",
+      "name": "Pikachu Libre"
+    },
+    {
+      "id": "tk-xy-p-15",
+      "localId": "15",
+      "name": "Electabuzz"
+    },
+    {
+      "id": "tk-xy-p-16",
+      "localId": "16",
+      "name": "Fletchling"
+    },
+    {
+      "id": "tk-xy-p-17",
+      "localId": "17",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-18",
+      "localId": "18",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-19",
+      "localId": "19",
+      "name": "Purugly"
+    },
+    {
+      "id": "tk-xy-p-20",
+      "localId": "20",
+      "name": "Tierno"
+    },
+    {
+      "id": "tk-xy-p-21",
+      "localId": "21",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-xy-p-22",
+      "localId": "22",
+      "name": "Manectric"
+    },
+    {
+      "id": "tk-xy-p-23",
+      "localId": "23",
+      "name": "Electabuzz"
+    },
+    {
+      "id": "tk-xy-p-24",
+      "localId": "24",
+      "name": "Purugly"
+    },
+    {
+      "id": "tk-xy-p-25",
+      "localId": "25",
+      "name": "Electivire"
+    },
+    {
+      "id": "tk-xy-p-26",
+      "localId": "26",
+      "name": "Blitzle"
+    },
+    {
+      "id": "tk-xy-p-27",
+      "localId": "27",
+      "name": "Glameow"
+    },
+    {
+      "id": "tk-xy-p-28",
+      "localId": "28",
+      "name": "Electrike"
+    },
+    {
+      "id": "tk-xy-p-29",
+      "localId": "29",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-xy-p-30",
+      "localId": "30",
+      "name": "Pikachu Libre"
+    }
+  ],
+  "id": "tk-xy-p",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "XY trainer Kit (Pikachu Libre)",
+  "releaseDate": "2016-04-27",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-p/symbol",
+  "abbreviation": {
+    "official": "TK9P"
+  }
+}

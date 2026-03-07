@@ -1,0 +1,176 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 30,
+    "reverse": 0,
+    "total": 30
+  },
+  "cards": [
+    {
+      "id": "tk-bw-z-1",
+      "localId": "1",
+      "name": "Purrloin"
+    },
+    {
+      "id": "tk-bw-z-2",
+      "localId": "2",
+      "name": "Watchog"
+    },
+    {
+      "id": "tk-bw-z-3",
+      "localId": "3",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-4",
+      "localId": "4",
+      "name": "Minccino"
+    },
+    {
+      "id": "tk-bw-z-5",
+      "localId": "5",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-6",
+      "localId": "6",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-7",
+      "localId": "7",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-8",
+      "localId": "8",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-9",
+      "localId": "9",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-10",
+      "localId": "10",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-11",
+      "localId": "11",
+      "name": "PlusPower"
+    },
+    {
+      "id": "tk-bw-z-12",
+      "localId": "12",
+      "name": "Patrat"
+    },
+    {
+      "id": "tk-bw-z-13",
+      "localId": "13",
+      "name": "Zorua"
+    },
+    {
+      "id": "tk-bw-z-14",
+      "localId": "14",
+      "name": "Pidove"
+    },
+    {
+      "id": "tk-bw-z-15",
+      "localId": "15",
+      "name": "Tranquill"
+    },
+    {
+      "id": "tk-bw-z-16",
+      "localId": "16",
+      "name": "Energy Retrieval"
+    },
+    {
+      "id": "tk-bw-z-17",
+      "localId": "17",
+      "name": "Zoroark"
+    },
+    {
+      "id": "tk-bw-z-18",
+      "localId": "18",
+      "name": "Pokémon Communication"
+    },
+    {
+      "id": "tk-bw-z-19",
+      "localId": "19",
+      "name": "Minccino"
+    },
+    {
+      "id": "tk-bw-z-20",
+      "localId": "20",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-21",
+      "localId": "21",
+      "name": "Pidove"
+    },
+    {
+      "id": "tk-bw-z-22",
+      "localId": "22",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-23",
+      "localId": "23",
+      "name": "Zorua"
+    },
+    {
+      "id": "tk-bw-z-24",
+      "localId": "24",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-25",
+      "localId": "25",
+      "name": "Purrloin"
+    },
+    {
+      "id": "tk-bw-z-26",
+      "localId": "26",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-27",
+      "localId": "27",
+      "name": "Energy Search"
+    },
+    {
+      "id": "tk-bw-z-28",
+      "localId": "28",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-bw-z-29",
+      "localId": "29",
+      "name": "Patrat"
+    },
+    {
+      "id": "tk-bw-z-30",
+      "localId": "30",
+      "name": "Zoroark"
+    }
+  ],
+  "id": "tk-bw-z",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "BW trainer Kit (Zoroark)",
+  "releaseDate": "2011-09-01",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "abbreviation": {
+    "official": "TK5Z"
+  }
+}

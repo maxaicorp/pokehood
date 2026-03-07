@@ -1,0 +1,807 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 60,
+    "normal": 79,
+    "official": 94,
+    "reverse": 84,
+    "total": 130
+  },
+  "cards": [
+    {
+      "id": "me02-001",
+      "image": "https://assets.tcgdex.net/en/me/me02/001",
+      "localId": "001",
+      "name": "Oddish"
+    },
+    {
+      "id": "me02-002",
+      "image": "https://assets.tcgdex.net/en/me/me02/002",
+      "localId": "002",
+      "name": "Gloom"
+    },
+    {
+      "id": "me02-003",
+      "image": "https://assets.tcgdex.net/en/me/me02/003",
+      "localId": "003",
+      "name": "Vileplume"
+    },
+    {
+      "id": "me02-004",
+      "image": "https://assets.tcgdex.net/en/me/me02/004",
+      "localId": "004",
+      "name": "Mega Heracross ex"
+    },
+    {
+      "id": "me02-005",
+      "image": "https://assets.tcgdex.net/en/me/me02/005",
+      "localId": "005",
+      "name": "Lotad"
+    },
+    {
+      "id": "me02-006",
+      "image": "https://assets.tcgdex.net/en/me/me02/006",
+      "localId": "006",
+      "name": "Lombre"
+    },
+    {
+      "id": "me02-007",
+      "image": "https://assets.tcgdex.net/en/me/me02/007",
+      "localId": "007",
+      "name": "Ludicolo"
+    },
+    {
+      "id": "me02-008",
+      "image": "https://assets.tcgdex.net/en/me/me02/008",
+      "localId": "008",
+      "name": "Genesect"
+    },
+    {
+      "id": "me02-009",
+      "image": "https://assets.tcgdex.net/en/me/me02/009",
+      "localId": "009",
+      "name": "Nymble"
+    },
+    {
+      "id": "me02-010",
+      "image": "https://assets.tcgdex.net/en/me/me02/010",
+      "localId": "010",
+      "name": "Lokix"
+    },
+    {
+      "id": "me02-011",
+      "image": "https://assets.tcgdex.net/en/me/me02/011",
+      "localId": "011",
+      "name": "Charmander"
+    },
+    {
+      "id": "me02-012",
+      "image": "https://assets.tcgdex.net/en/me/me02/012",
+      "localId": "012",
+      "name": "Charmeleon"
+    },
+    {
+      "id": "me02-013",
+      "image": "https://assets.tcgdex.net/en/me/me02/013",
+      "localId": "013",
+      "name": "Mega Charizard X ex"
+    },
+    {
+      "id": "me02-014",
+      "image": "https://assets.tcgdex.net/en/me/me02/014",
+      "localId": "014",
+      "name": "Moltres"
+    },
+    {
+      "id": "me02-015",
+      "image": "https://assets.tcgdex.net/en/me/me02/015",
+      "localId": "015",
+      "name": "Darumaka"
+    },
+    {
+      "id": "me02-016",
+      "image": "https://assets.tcgdex.net/en/me/me02/016",
+      "localId": "016",
+      "name": "Darmanitan"
+    },
+    {
+      "id": "me02-017",
+      "image": "https://assets.tcgdex.net/en/me/me02/017",
+      "localId": "017",
+      "name": "Reshiram"
+    },
+    {
+      "id": "me02-018",
+      "image": "https://assets.tcgdex.net/en/me/me02/018",
+      "localId": "018",
+      "name": "Oricorio ex"
+    },
+    {
+      "id": "me02-019",
+      "image": "https://assets.tcgdex.net/en/me/me02/019",
+      "localId": "019",
+      "name": "Charcadet"
+    },
+    {
+      "id": "me02-020",
+      "image": "https://assets.tcgdex.net/en/me/me02/020",
+      "localId": "020",
+      "name": "Ceruledge"
+    },
+    {
+      "id": "me02-021",
+      "image": "https://assets.tcgdex.net/en/me/me02/021",
+      "localId": "021",
+      "name": "Seel"
+    },
+    {
+      "id": "me02-022",
+      "image": "https://assets.tcgdex.net/en/me/me02/022",
+      "localId": "022",
+      "name": "Dewgong"
+    },
+    {
+      "id": "me02-023",
+      "image": "https://assets.tcgdex.net/en/me/me02/023",
+      "localId": "023",
+      "name": "Swinub"
+    },
+    {
+      "id": "me02-024",
+      "image": "https://assets.tcgdex.net/en/me/me02/024",
+      "localId": "024",
+      "name": "Piloswine"
+    },
+    {
+      "id": "me02-025",
+      "image": "https://assets.tcgdex.net/en/me/me02/025",
+      "localId": "025",
+      "name": "Mamoswine"
+    },
+    {
+      "id": "me02-026",
+      "image": "https://assets.tcgdex.net/en/me/me02/026",
+      "localId": "026",
+      "name": "Suicune"
+    },
+    {
+      "id": "me02-027",
+      "image": "https://assets.tcgdex.net/en/me/me02/027",
+      "localId": "027",
+      "name": "Piplup"
+    },
+    {
+      "id": "me02-028",
+      "image": "https://assets.tcgdex.net/en/me/me02/028",
+      "localId": "028",
+      "name": "Prinplup"
+    },
+    {
+      "id": "me02-029",
+      "image": "https://assets.tcgdex.net/en/me/me02/029",
+      "localId": "029",
+      "name": "Rotom ex"
+    },
+    {
+      "id": "me02-030",
+      "image": "https://assets.tcgdex.net/en/me/me02/030",
+      "localId": "030",
+      "name": "Yamper"
+    },
+    {
+      "id": "me02-031",
+      "image": "https://assets.tcgdex.net/en/me/me02/031",
+      "localId": "031",
+      "name": "Boltund"
+    },
+    {
+      "id": "me02-032",
+      "image": "https://assets.tcgdex.net/en/me/me02/032",
+      "localId": "032",
+      "name": "Pawmi"
+    },
+    {
+      "id": "me02-033",
+      "image": "https://assets.tcgdex.net/en/me/me02/033",
+      "localId": "033",
+      "name": "Pawmo"
+    },
+    {
+      "id": "me02-034",
+      "image": "https://assets.tcgdex.net/en/me/me02/034",
+      "localId": "034",
+      "name": "Pawmot"
+    },
+    {
+      "id": "me02-035",
+      "image": "https://assets.tcgdex.net/en/me/me02/035",
+      "localId": "035",
+      "name": "Misdreavus"
+    },
+    {
+      "id": "me02-036",
+      "image": "https://assets.tcgdex.net/en/me/me02/036",
+      "localId": "036",
+      "name": "Mismagius ex"
+    },
+    {
+      "id": "me02-037",
+      "image": "https://assets.tcgdex.net/en/me/me02/037",
+      "localId": "037",
+      "name": "Snubbull"
+    },
+    {
+      "id": "me02-038",
+      "image": "https://assets.tcgdex.net/en/me/me02/038",
+      "localId": "038",
+      "name": "Granbull"
+    },
+    {
+      "id": "me02-039",
+      "image": "https://assets.tcgdex.net/en/me/me02/039",
+      "localId": "039",
+      "name": "Cresselia"
+    },
+    {
+      "id": "me02-040",
+      "image": "https://assets.tcgdex.net/en/me/me02/040",
+      "localId": "040",
+      "name": "Meloetta"
+    },
+    {
+      "id": "me02-041",
+      "image": "https://assets.tcgdex.net/en/me/me02/041",
+      "localId": "041",
+      "name": "Mega Diancie ex"
+    },
+    {
+      "id": "me02-042",
+      "image": "https://assets.tcgdex.net/en/me/me02/042",
+      "localId": "042",
+      "name": "Mimikyu"
+    },
+    {
+      "id": "me02-043",
+      "image": "https://assets.tcgdex.net/en/me/me02/043",
+      "localId": "043",
+      "name": "Milcery"
+    },
+    {
+      "id": "me02-044",
+      "image": "https://assets.tcgdex.net/en/me/me02/044",
+      "localId": "044",
+      "name": "Alcremie"
+    },
+    {
+      "id": "me02-045",
+      "image": "https://assets.tcgdex.net/en/me/me02/045",
+      "localId": "045",
+      "name": "Zacian"
+    },
+    {
+      "id": "me02-046",
+      "image": "https://assets.tcgdex.net/en/me/me02/046",
+      "localId": "046",
+      "name": "Bramblin"
+    },
+    {
+      "id": "me02-047",
+      "image": "https://assets.tcgdex.net/en/me/me02/047",
+      "localId": "047",
+      "name": "Brambleghast"
+    },
+    {
+      "id": "me02-048",
+      "image": "https://assets.tcgdex.net/en/me/me02/048",
+      "localId": "048",
+      "name": "Paldean Tauros"
+    },
+    {
+      "id": "me02-049",
+      "image": "https://assets.tcgdex.net/en/me/me02/049",
+      "localId": "049",
+      "name": "Gligar"
+    },
+    {
+      "id": "me02-050",
+      "image": "https://assets.tcgdex.net/en/me/me02/050",
+      "localId": "050",
+      "name": "Gliscor"
+    },
+    {
+      "id": "me02-051",
+      "image": "https://assets.tcgdex.net/en/me/me02/051",
+      "localId": "051",
+      "name": "Trapinch"
+    },
+    {
+      "id": "me02-052",
+      "image": "https://assets.tcgdex.net/en/me/me02/052",
+      "localId": "052",
+      "name": "Vibrava"
+    },
+    {
+      "id": "me02-053",
+      "image": "https://assets.tcgdex.net/en/me/me02/053",
+      "localId": "053",
+      "name": "Flygon"
+    },
+    {
+      "id": "me02-054",
+      "image": "https://assets.tcgdex.net/en/me/me02/054",
+      "localId": "054",
+      "name": "Gastly"
+    },
+    {
+      "id": "me02-055",
+      "image": "https://assets.tcgdex.net/en/me/me02/055",
+      "localId": "055",
+      "name": "Haunter"
+    },
+    {
+      "id": "me02-056",
+      "image": "https://assets.tcgdex.net/en/me/me02/056",
+      "localId": "056",
+      "name": "Mega Gengar ex"
+    },
+    {
+      "id": "me02-057",
+      "image": "https://assets.tcgdex.net/en/me/me02/057",
+      "localId": "057",
+      "name": "Murkrow"
+    },
+    {
+      "id": "me02-058",
+      "image": "https://assets.tcgdex.net/en/me/me02/058",
+      "localId": "058",
+      "name": "Honchkrow"
+    },
+    {
+      "id": "me02-059",
+      "image": "https://assets.tcgdex.net/en/me/me02/059",
+      "localId": "059",
+      "name": "Sableye"
+    },
+    {
+      "id": "me02-060",
+      "image": "https://assets.tcgdex.net/en/me/me02/060",
+      "localId": "060",
+      "name": "Carvanha"
+    },
+    {
+      "id": "me02-061",
+      "image": "https://assets.tcgdex.net/en/me/me02/061",
+      "localId": "061",
+      "name": "Mega Sharpedo ex"
+    },
+    {
+      "id": "me02-062",
+      "image": "https://assets.tcgdex.net/en/me/me02/062",
+      "localId": "062",
+      "name": "Seviper"
+    },
+    {
+      "id": "me02-063",
+      "image": "https://assets.tcgdex.net/en/me/me02/063",
+      "localId": "063",
+      "name": "Absol"
+    },
+    {
+      "id": "me02-064",
+      "image": "https://assets.tcgdex.net/en/me/me02/064",
+      "localId": "064",
+      "name": "Sandile"
+    },
+    {
+      "id": "me02-065",
+      "image": "https://assets.tcgdex.net/en/me/me02/065",
+      "localId": "065",
+      "name": "Krokorok"
+    },
+    {
+      "id": "me02-066",
+      "image": "https://assets.tcgdex.net/en/me/me02/066",
+      "localId": "066",
+      "name": "Krookodile"
+    },
+    {
+      "id": "me02-067",
+      "image": "https://assets.tcgdex.net/en/me/me02/067",
+      "localId": "067",
+      "name": "Toxel"
+    },
+    {
+      "id": "me02-068",
+      "image": "https://assets.tcgdex.net/en/me/me02/068",
+      "localId": "068",
+      "name": "Toxtricity"
+    },
+    {
+      "id": "me02-069",
+      "image": "https://assets.tcgdex.net/en/me/me02/069",
+      "localId": "069",
+      "name": "Eternatus"
+    },
+    {
+      "id": "me02-070",
+      "image": "https://assets.tcgdex.net/en/me/me02/070",
+      "localId": "070",
+      "name": "Empoleon ex"
+    },
+    {
+      "id": "me02-071",
+      "image": "https://assets.tcgdex.net/en/me/me02/071",
+      "localId": "071",
+      "name": "Bronzor"
+    },
+    {
+      "id": "me02-072",
+      "image": "https://assets.tcgdex.net/en/me/me02/072",
+      "localId": "072",
+      "name": "Bronzong"
+    },
+    {
+      "id": "me02-073",
+      "image": "https://assets.tcgdex.net/en/me/me02/073",
+      "localId": "073",
+      "name": "Togedemaru"
+    },
+    {
+      "id": "me02-074",
+      "image": "https://assets.tcgdex.net/en/me/me02/074",
+      "localId": "074",
+      "name": "Duraludon"
+    },
+    {
+      "id": "me02-075",
+      "image": "https://assets.tcgdex.net/en/me/me02/075",
+      "localId": "075",
+      "name": "Archaludon"
+    },
+    {
+      "id": "me02-076",
+      "image": "https://assets.tcgdex.net/en/me/me02/076",
+      "localId": "076",
+      "name": "Jigglypuff"
+    },
+    {
+      "id": "me02-077",
+      "image": "https://assets.tcgdex.net/en/me/me02/077",
+      "localId": "077",
+      "name": "Wigglytuff"
+    },
+    {
+      "id": "me02-078",
+      "image": "https://assets.tcgdex.net/en/me/me02/078",
+      "localId": "078",
+      "name": "Aipom"
+    },
+    {
+      "id": "me02-079",
+      "image": "https://assets.tcgdex.net/en/me/me02/079",
+      "localId": "079",
+      "name": "Ambipom"
+    },
+    {
+      "id": "me02-080",
+      "image": "https://assets.tcgdex.net/en/me/me02/080",
+      "localId": "080",
+      "name": "Smeargle"
+    },
+    {
+      "id": "me02-081",
+      "image": "https://assets.tcgdex.net/en/me/me02/081",
+      "localId": "081",
+      "name": "Zigzagoon"
+    },
+    {
+      "id": "me02-082",
+      "image": "https://assets.tcgdex.net/en/me/me02/082",
+      "localId": "082",
+      "name": "Linoone"
+    },
+    {
+      "id": "me02-083",
+      "image": "https://assets.tcgdex.net/en/me/me02/083",
+      "localId": "083",
+      "name": "Buneary"
+    },
+    {
+      "id": "me02-084",
+      "image": "https://assets.tcgdex.net/en/me/me02/084",
+      "localId": "084",
+      "name": "Mega Lopunny ex"
+    },
+    {
+      "id": "me02-085",
+      "image": "https://assets.tcgdex.net/en/me/me02/085",
+      "localId": "085",
+      "name": "Battle Cage"
+    },
+    {
+      "id": "me02-086",
+      "image": "https://assets.tcgdex.net/en/me/me02/086",
+      "localId": "086",
+      "name": "Blowtorch"
+    },
+    {
+      "id": "me02-087",
+      "image": "https://assets.tcgdex.net/en/me/me02/087",
+      "localId": "087",
+      "name": "Dawn"
+    },
+    {
+      "id": "me02-088",
+      "image": "https://assets.tcgdex.net/en/me/me02/088",
+      "localId": "088",
+      "name": "Dizzying Valley"
+    },
+    {
+      "id": "me02-089",
+      "image": "https://assets.tcgdex.net/en/me/me02/089",
+      "localId": "089",
+      "name": "Firebreather"
+    },
+    {
+      "id": "me02-090",
+      "image": "https://assets.tcgdex.net/en/me/me02/090",
+      "localId": "090",
+      "name": "Grimsley's Move"
+    },
+    {
+      "id": "me02-091",
+      "image": "https://assets.tcgdex.net/en/me/me02/091",
+      "localId": "091",
+      "name": "Jumbo Ice Cream"
+    },
+    {
+      "id": "me02-092",
+      "image": "https://assets.tcgdex.net/en/me/me02/092",
+      "localId": "092",
+      "name": "Punk Helmet"
+    },
+    {
+      "id": "me02-093",
+      "image": "https://assets.tcgdex.net/en/me/me02/093",
+      "localId": "093",
+      "name": "Sacred Charm"
+    },
+    {
+      "id": "me02-094",
+      "image": "https://assets.tcgdex.net/en/me/me02/094",
+      "localId": "094",
+      "name": "Wondrous Patch"
+    },
+    {
+      "id": "me02-095",
+      "image": "https://assets.tcgdex.net/en/me/me02/095",
+      "localId": "095",
+      "name": "Ludicolo"
+    },
+    {
+      "id": "me02-096",
+      "image": "https://assets.tcgdex.net/en/me/me02/096",
+      "localId": "096",
+      "name": "Nymble"
+    },
+    {
+      "id": "me02-097",
+      "image": "https://assets.tcgdex.net/en/me/me02/097",
+      "localId": "097",
+      "name": "Dewgong"
+    },
+    {
+      "id": "me02-098",
+      "image": "https://assets.tcgdex.net/en/me/me02/098",
+      "localId": "098",
+      "name": "Piplup"
+    },
+    {
+      "id": "me02-099",
+      "image": "https://assets.tcgdex.net/en/me/me02/099",
+      "localId": "099",
+      "name": "Yamper"
+    },
+    {
+      "id": "me02-100",
+      "image": "https://assets.tcgdex.net/en/me/me02/100",
+      "localId": "100",
+      "name": "Zacian"
+    },
+    {
+      "id": "me02-101",
+      "image": "https://assets.tcgdex.net/en/me/me02/101",
+      "localId": "101",
+      "name": "Flygon"
+    },
+    {
+      "id": "me02-102",
+      "image": "https://assets.tcgdex.net/en/me/me02/102",
+      "localId": "102",
+      "name": "Paldean Wooper"
+    },
+    {
+      "id": "me02-103",
+      "image": "https://assets.tcgdex.net/en/me/me02/103",
+      "localId": "103",
+      "name": "Toxtricity"
+    },
+    {
+      "id": "me02-104",
+      "image": "https://assets.tcgdex.net/en/me/me02/104",
+      "localId": "104",
+      "name": "Togedemaru"
+    },
+    {
+      "id": "me02-105",
+      "image": "https://assets.tcgdex.net/en/me/me02/105",
+      "localId": "105",
+      "name": "Wigglytuff"
+    },
+    {
+      "id": "me02-106",
+      "image": "https://assets.tcgdex.net/en/me/me02/106",
+      "localId": "106",
+      "name": "Meowth"
+    },
+    {
+      "id": "me02-107",
+      "image": "https://assets.tcgdex.net/en/me/me02/107",
+      "localId": "107",
+      "name": "Ambipom"
+    },
+    {
+      "id": "me02-108",
+      "image": "https://assets.tcgdex.net/en/me/me02/108",
+      "localId": "108",
+      "name": "Mega Heracross ex"
+    },
+    {
+      "id": "me02-109",
+      "image": "https://assets.tcgdex.net/en/me/me02/109",
+      "localId": "109",
+      "name": "Mega Charizard X ex"
+    },
+    {
+      "id": "me02-110",
+      "image": "https://assets.tcgdex.net/en/me/me02/110",
+      "localId": "110",
+      "name": "Oricorio ex"
+    },
+    {
+      "id": "me02-111",
+      "image": "https://assets.tcgdex.net/en/me/me02/111",
+      "localId": "111",
+      "name": "Rotom ex"
+    },
+    {
+      "id": "me02-112",
+      "image": "https://assets.tcgdex.net/en/me/me02/112",
+      "localId": "112",
+      "name": "Mismagius ex"
+    },
+    {
+      "id": "me02-113",
+      "image": "https://assets.tcgdex.net/en/me/me02/113",
+      "localId": "113",
+      "name": "Mega Sharpedo ex"
+    },
+    {
+      "id": "me02-114",
+      "image": "https://assets.tcgdex.net/en/me/me02/114",
+      "localId": "114",
+      "name": "Empoleon ex"
+    },
+    {
+      "id": "me02-115",
+      "image": "https://assets.tcgdex.net/en/me/me02/115",
+      "localId": "115",
+      "name": "Mega Lopunny ex"
+    },
+    {
+      "id": "me02-116",
+      "image": "https://assets.tcgdex.net/en/me/me02/116",
+      "localId": "116",
+      "name": "Battle Cage"
+    },
+    {
+      "id": "me02-117",
+      "image": "https://assets.tcgdex.net/en/me/me02/117",
+      "localId": "117",
+      "name": "Blowtorch"
+    },
+    {
+      "id": "me02-118",
+      "image": "https://assets.tcgdex.net/en/me/me02/118",
+      "localId": "118",
+      "name": "Dawn"
+    },
+    {
+      "id": "me02-119",
+      "image": "https://assets.tcgdex.net/en/me/me02/119",
+      "localId": "119",
+      "name": "Firebreather"
+    },
+    {
+      "id": "me02-120",
+      "image": "https://assets.tcgdex.net/en/me/me02/120",
+      "localId": "120",
+      "name": "Grimsley's Move"
+    },
+    {
+      "id": "me02-121",
+      "image": "https://assets.tcgdex.net/en/me/me02/121",
+      "localId": "121",
+      "name": "Punk Helmet"
+    },
+    {
+      "id": "me02-122",
+      "image": "https://assets.tcgdex.net/en/me/me02/122",
+      "localId": "122",
+      "name": "Sacred Charm"
+    },
+    {
+      "id": "me02-123",
+      "image": "https://assets.tcgdex.net/en/me/me02/123",
+      "localId": "123",
+      "name": "Switch"
+    },
+    {
+      "id": "me02-124",
+      "image": "https://assets.tcgdex.net/en/me/me02/124",
+      "localId": "124",
+      "name": "Ignition Energy"
+    },
+    {
+      "id": "me02-125",
+      "image": "https://assets.tcgdex.net/en/me/me02/125",
+      "localId": "125",
+      "name": "Mega Charizard X ex"
+    },
+    {
+      "id": "me02-126",
+      "image": "https://assets.tcgdex.net/en/me/me02/126",
+      "localId": "126",
+      "name": "Rotom ex"
+    },
+    {
+      "id": "me02-127",
+      "image": "https://assets.tcgdex.net/en/me/me02/127",
+      "localId": "127",
+      "name": "Mega Sharpedo ex"
+    },
+    {
+      "id": "me02-128",
+      "image": "https://assets.tcgdex.net/en/me/me02/128",
+      "localId": "128",
+      "name": "Mega Lopunny ex"
+    },
+    {
+      "id": "me02-129",
+      "image": "https://assets.tcgdex.net/en/me/me02/129",
+      "localId": "129",
+      "name": "Dawn"
+    },
+    {
+      "id": "me02-130",
+      "image": "https://assets.tcgdex.net/en/me/me02/130",
+      "localId": "130",
+      "name": "Mega Charizard X ex"
+    }
+  ],
+  "id": "me02",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "logo": "https://assets.tcgdex.net/en/me/me02/logo",
+  "name": "Phantasmal Flames",
+  "releaseDate": "2025-11-14",
+  "serie": {
+    "id": "me",
+    "name": "Mega Evolution"
+  },
+  "abbreviation": {
+    "official": "PFL"
+  }
+}

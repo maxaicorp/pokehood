@@ -1,0 +1,177 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 30,
+    "reverse": 0,
+    "total": 30
+  },
+  "cards": [
+    {
+      "id": "tk-xy-sy-1",
+      "localId": "1",
+      "name": "Fletchling"
+    },
+    {
+      "id": "tk-xy-sy-2",
+      "localId": "2",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-3",
+      "localId": "3",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-4",
+      "localId": "4",
+      "name": "Switch"
+    },
+    {
+      "id": "tk-xy-sy-5",
+      "localId": "5",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-6",
+      "localId": "6",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-7",
+      "localId": "7",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-8",
+      "localId": "8",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-9",
+      "localId": "9",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-10",
+      "localId": "10",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-11",
+      "localId": "11",
+      "name": "Snubbull"
+    },
+    {
+      "id": "tk-xy-sy-12",
+      "localId": "12",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-13",
+      "localId": "13",
+      "name": "Eevee"
+    },
+    {
+      "id": "tk-xy-sy-14",
+      "localId": "14",
+      "name": "Granbull"
+    },
+    {
+      "id": "tk-xy-sy-15",
+      "localId": "15",
+      "name": "Sylveon"
+    },
+    {
+      "id": "tk-xy-sy-16",
+      "localId": "16",
+      "name": "Furfrou"
+    },
+    {
+      "id": "tk-xy-sy-17",
+      "localId": "17",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-18",
+      "localId": "18",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-19",
+      "localId": "19",
+      "name": "Fletchling"
+    },
+    {
+      "id": "tk-xy-sy-20",
+      "localId": "20",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-xy-sy-21",
+      "localId": "21",
+      "name": "Eevee"
+    },
+    {
+      "id": "tk-xy-sy-22",
+      "localId": "22",
+      "name": "Furfrou"
+    },
+    {
+      "id": "tk-xy-sy-23",
+      "localId": "23",
+      "name": "Pokémon Catcher"
+    },
+    {
+      "id": "tk-xy-sy-24",
+      "localId": "24",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-xy-sy-25",
+      "localId": "25",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-sy-26",
+      "localId": "26",
+      "name": "Poké Ball"
+    },
+    {
+      "id": "tk-xy-sy-27",
+      "localId": "27",
+      "name": "Snubbull"
+    },
+    {
+      "id": "tk-xy-sy-28",
+      "localId": "28",
+      "name": "Professor’s Letter"
+    },
+    {
+      "id": "tk-xy-sy-29",
+      "localId": "29",
+      "name": "Granbull"
+    },
+    {
+      "id": "tk-xy-sy-30",
+      "localId": "30",
+      "name": "Sylveon"
+    }
+  ],
+  "id": "tk-xy-sy",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "XY trainer Kit (Sylveon)",
+  "releaseDate": "2014-03-12",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-sy/symbol",
+  "abbreviation": {
+    "official": "TK6S"
+  }
+}

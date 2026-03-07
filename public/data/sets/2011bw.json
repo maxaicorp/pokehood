@@ -1,0 +1,86 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 10,
+    "normal": 1,
+    "official": 12,
+    "reverse": 0,
+    "total": 12
+  },
+  "cards": [
+    {
+      "id": "2011bw-1",
+      "localId": "1",
+      "name": "Snivy"
+    },
+    {
+      "id": "2011bw-2",
+      "localId": "2",
+      "name": "Maractus"
+    },
+    {
+      "id": "2011bw-3",
+      "localId": "3",
+      "name": "Tepig"
+    },
+    {
+      "id": "2011bw-4",
+      "localId": "4",
+      "name": "Oshawott"
+    },
+    {
+      "id": "2011bw-5",
+      "localId": "5",
+      "name": "Alomomola"
+    },
+    {
+      "id": "2011bw-6",
+      "localId": "6",
+      "name": "Blitzle"
+    },
+    {
+      "id": "2011bw-7",
+      "localId": "7",
+      "name": "Munna"
+    },
+    {
+      "id": "2011bw-8",
+      "localId": "8",
+      "name": "Sandile"
+    },
+    {
+      "id": "2011bw-9",
+      "localId": "9",
+      "name": "Zorua"
+    },
+    {
+      "id": "2011bw-10",
+      "localId": "10",
+      "name": "Klink"
+    },
+    {
+      "id": "2011bw-11",
+      "localId": "11",
+      "name": "Pidove"
+    },
+    {
+      "id": "2011bw-12",
+      "localId": "12",
+      "name": "Audino"
+    }
+  ],
+  "id": "2011bw",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Macdonald's Collection 2011",
+  "releaseDate": "2011-06-17",
+  "serie": {
+    "id": "mc",
+    "name": "McDonald's Collection"
+  },
+  "abbreviation": {
+    "official": "MCD11"
+  }
+}

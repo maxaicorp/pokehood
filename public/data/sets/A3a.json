@@ -1,0 +1,647 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 69,
+    "reverse": 0,
+    "total": 103
+  },
+  "cards": [
+    {
+      "id": "A3a-001",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/001",
+      "localId": "001",
+      "name": "Petilil"
+    },
+    {
+      "id": "A3a-002",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/002",
+      "localId": "002",
+      "name": "Lilligant"
+    },
+    {
+      "id": "A3a-003",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/003",
+      "localId": "003",
+      "name": "Rowlet"
+    },
+    {
+      "id": "A3a-004",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/004",
+      "localId": "004",
+      "name": "Dartrix"
+    },
+    {
+      "id": "A3a-005",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/005",
+      "localId": "005",
+      "name": "Decidueye"
+    },
+    {
+      "id": "A3a-006",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/006",
+      "localId": "006",
+      "name": "Buzzwole ex"
+    },
+    {
+      "id": "A3a-007",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/007",
+      "localId": "007",
+      "name": "Pheromosa"
+    },
+    {
+      "id": "A3a-008",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/008",
+      "localId": "008",
+      "name": "Kartana"
+    },
+    {
+      "id": "A3a-009",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/009",
+      "localId": "009",
+      "name": "Blacephalon"
+    },
+    {
+      "id": "A3a-010",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/010",
+      "localId": "010",
+      "name": "Mantine"
+    },
+    {
+      "id": "A3a-011",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/011",
+      "localId": "011",
+      "name": "Carvanha"
+    },
+    {
+      "id": "A3a-012",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/012",
+      "localId": "012",
+      "name": "Sharpedo"
+    },
+    {
+      "id": "A3a-013",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/013",
+      "localId": "013",
+      "name": "Shinx"
+    },
+    {
+      "id": "A3a-014",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/014",
+      "localId": "014",
+      "name": "Luxio"
+    },
+    {
+      "id": "A3a-015",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/015",
+      "localId": "015",
+      "name": "Luxray"
+    },
+    {
+      "id": "A3a-016",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/016",
+      "localId": "016",
+      "name": "Blitzle"
+    },
+    {
+      "id": "A3a-017",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/017",
+      "localId": "017",
+      "name": "Zebstrika"
+    },
+    {
+      "id": "A3a-018",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/018",
+      "localId": "018",
+      "name": "Emolga"
+    },
+    {
+      "id": "A3a-019",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/019",
+      "localId": "019",
+      "name": "Tapu Koko ex"
+    },
+    {
+      "id": "A3a-020",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/020",
+      "localId": "020",
+      "name": "Xurkitree"
+    },
+    {
+      "id": "A3a-021",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/021",
+      "localId": "021",
+      "name": "Zeraora"
+    },
+    {
+      "id": "A3a-022",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/022",
+      "localId": "022",
+      "name": "Clefairy"
+    },
+    {
+      "id": "A3a-023",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/023",
+      "localId": "023",
+      "name": "Clefable"
+    },
+    {
+      "id": "A3a-024",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/024",
+      "localId": "024",
+      "name": "Phantump"
+    },
+    {
+      "id": "A3a-025",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/025",
+      "localId": "025",
+      "name": "Trevenant"
+    },
+    {
+      "id": "A3a-026",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/026",
+      "localId": "026",
+      "name": "Morelull"
+    },
+    {
+      "id": "A3a-027",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/027",
+      "localId": "027",
+      "name": "Shiinotic"
+    },
+    {
+      "id": "A3a-028",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/028",
+      "localId": "028",
+      "name": "Meditite"
+    },
+    {
+      "id": "A3a-029",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/029",
+      "localId": "029",
+      "name": "Medicham"
+    },
+    {
+      "id": "A3a-030",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/030",
+      "localId": "030",
+      "name": "Baltoy"
+    },
+    {
+      "id": "A3a-031",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/031",
+      "localId": "031",
+      "name": "Claydol"
+    },
+    {
+      "id": "A3a-032",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/032",
+      "localId": "032",
+      "name": "Rockruff"
+    },
+    {
+      "id": "A3a-033",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/033",
+      "localId": "033",
+      "name": "Lycanroc ex"
+    },
+    {
+      "id": "A3a-034",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/034",
+      "localId": "034",
+      "name": "Passimian"
+    },
+    {
+      "id": "A3a-035",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/035",
+      "localId": "035",
+      "name": "Sandygast"
+    },
+    {
+      "id": "A3a-036",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/036",
+      "localId": "036",
+      "name": "Palossand"
+    },
+    {
+      "id": "A3a-037",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/037",
+      "localId": "037",
+      "name": "Alolan Meowth"
+    },
+    {
+      "id": "A3a-038",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/038",
+      "localId": "038",
+      "name": "Alolan Persian"
+    },
+    {
+      "id": "A3a-039",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/039",
+      "localId": "039",
+      "name": "Sandile"
+    },
+    {
+      "id": "A3a-040",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/040",
+      "localId": "040",
+      "name": "Krokorok"
+    },
+    {
+      "id": "A3a-041",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/041",
+      "localId": "041",
+      "name": "Krookodile"
+    },
+    {
+      "id": "A3a-042",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/042",
+      "localId": "042",
+      "name": "Nihilego"
+    },
+    {
+      "id": "A3a-043",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/043",
+      "localId": "043",
+      "name": "Guzzlord ex"
+    },
+    {
+      "id": "A3a-044",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/044",
+      "localId": "044",
+      "name": "Poipole"
+    },
+    {
+      "id": "A3a-045",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/045",
+      "localId": "045",
+      "name": "Naganadel"
+    },
+    {
+      "id": "A3a-046",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/046",
+      "localId": "046",
+      "name": "Alolan Diglett"
+    },
+    {
+      "id": "A3a-047",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/047",
+      "localId": "047",
+      "name": "Alolan Dugtrio ex"
+    },
+    {
+      "id": "A3a-048",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/048",
+      "localId": "048",
+      "name": "Aron"
+    },
+    {
+      "id": "A3a-049",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/049",
+      "localId": "049",
+      "name": "Lairon"
+    },
+    {
+      "id": "A3a-050",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/050",
+      "localId": "050",
+      "name": "Aggron"
+    },
+    {
+      "id": "A3a-051",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/051",
+      "localId": "051",
+      "name": "Ferroseed"
+    },
+    {
+      "id": "A3a-052",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/052",
+      "localId": "052",
+      "name": "Ferrothorn"
+    },
+    {
+      "id": "A3a-053",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/053",
+      "localId": "053",
+      "name": "Stakataka"
+    },
+    {
+      "id": "A3a-054",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/054",
+      "localId": "054",
+      "name": "Lillipup"
+    },
+    {
+      "id": "A3a-055",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/055",
+      "localId": "055",
+      "name": "Herdier"
+    },
+    {
+      "id": "A3a-056",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/056",
+      "localId": "056",
+      "name": "Stoutland"
+    },
+    {
+      "id": "A3a-057",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/057",
+      "localId": "057",
+      "name": "Stufful"
+    },
+    {
+      "id": "A3a-058",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/058",
+      "localId": "058",
+      "name": "Bewear"
+    },
+    {
+      "id": "A3a-059",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/059",
+      "localId": "059",
+      "name": "Oranguru"
+    },
+    {
+      "id": "A3a-060",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/060",
+      "localId": "060",
+      "name": "Type: Null"
+    },
+    {
+      "id": "A3a-061",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/061",
+      "localId": "061",
+      "name": "Silvally"
+    },
+    {
+      "id": "A3a-062",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/062",
+      "localId": "062",
+      "name": "Celesteela"
+    },
+    {
+      "id": "A3a-063",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/063",
+      "localId": "063",
+      "name": "Beast Wall"
+    },
+    {
+      "id": "A3a-064",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/064",
+      "localId": "064",
+      "name": "Repel"
+    },
+    {
+      "id": "A3a-065",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/065",
+      "localId": "065",
+      "name": "Electrical Cord"
+    },
+    {
+      "id": "A3a-066",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/066",
+      "localId": "066",
+      "name": "Beastite"
+    },
+    {
+      "id": "A3a-067",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/067",
+      "localId": "067",
+      "name": "Gladion"
+    },
+    {
+      "id": "A3a-068",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/068",
+      "localId": "068",
+      "name": "Looker"
+    },
+    {
+      "id": "A3a-069",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/069",
+      "localId": "069",
+      "name": "Lusamine"
+    },
+    {
+      "id": "A3a-070",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/070",
+      "localId": "070",
+      "name": "Rowlet"
+    },
+    {
+      "id": "A3a-071",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/071",
+      "localId": "071",
+      "name": "Pheromosa"
+    },
+    {
+      "id": "A3a-072",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/072",
+      "localId": "072",
+      "name": "Blacephalon"
+    },
+    {
+      "id": "A3a-073",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/073",
+      "localId": "073",
+      "name": "Alolan Meowth"
+    },
+    {
+      "id": "A3a-074",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/074",
+      "localId": "074",
+      "name": "Silvally"
+    },
+    {
+      "id": "A3a-075",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/075",
+      "localId": "075",
+      "name": "Celesteela"
+    },
+    {
+      "id": "A3a-076",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/076",
+      "localId": "076",
+      "name": "Buzzwole ex"
+    },
+    {
+      "id": "A3a-077",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/077",
+      "localId": "077",
+      "name": "Tapu Koko ex"
+    },
+    {
+      "id": "A3a-078",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/078",
+      "localId": "078",
+      "name": "Lycanroc ex"
+    },
+    {
+      "id": "A3a-079",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/079",
+      "localId": "079",
+      "name": "Guzzlord ex"
+    },
+    {
+      "id": "A3a-080",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/080",
+      "localId": "080",
+      "name": "Alolan Dugtrio ex"
+    },
+    {
+      "id": "A3a-081",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/081",
+      "localId": "081",
+      "name": "Gladion"
+    },
+    {
+      "id": "A3a-082",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/082",
+      "localId": "082",
+      "name": "Looker"
+    },
+    {
+      "id": "A3a-083",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/083",
+      "localId": "083",
+      "name": "Lusamine"
+    },
+    {
+      "id": "A3a-084",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/084",
+      "localId": "084",
+      "name": "Tapu Koko ex"
+    },
+    {
+      "id": "A3a-085",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/085",
+      "localId": "085",
+      "name": "Lycanroc ex"
+    },
+    {
+      "id": "A3a-086",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/086",
+      "localId": "086",
+      "name": "Guzzlord ex"
+    },
+    {
+      "id": "A3a-087",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/087",
+      "localId": "087",
+      "name": "Alolan Dugtrio ex"
+    },
+    {
+      "id": "A3a-088",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/088",
+      "localId": "088",
+      "name": "Buzzwole ex"
+    },
+    {
+      "id": "A3a-089",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/089",
+      "localId": "089",
+      "name": "Growlithe"
+    },
+    {
+      "id": "A3a-090",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/090",
+      "localId": "090",
+      "name": "Arcanine"
+    },
+    {
+      "id": "A3a-091",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/091",
+      "localId": "091",
+      "name": "Froakie"
+    },
+    {
+      "id": "A3a-092",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/092",
+      "localId": "092",
+      "name": "Frogadier"
+    },
+    {
+      "id": "A3a-093",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/093",
+      "localId": "093",
+      "name": "Greninja"
+    },
+    {
+      "id": "A3a-094",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/094",
+      "localId": "094",
+      "name": "Jynx"
+    },
+    {
+      "id": "A3a-095",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/095",
+      "localId": "095",
+      "name": "Pidgey"
+    },
+    {
+      "id": "A3a-096",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/096",
+      "localId": "096",
+      "name": "Pidgeotto"
+    },
+    {
+      "id": "A3a-097",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/097",
+      "localId": "097",
+      "name": "Pidgeot"
+    },
+    {
+      "id": "A3a-098",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/098",
+      "localId": "098",
+      "name": "Aerodactyl"
+    },
+    {
+      "id": "A3a-099",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/099",
+      "localId": "099",
+      "name": "Celebi ex"
+    },
+    {
+      "id": "A3a-100",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/100",
+      "localId": "100",
+      "name": "Arcanine ex"
+    },
+    {
+      "id": "A3a-101",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/101",
+      "localId": "101",
+      "name": "Aerodactyl ex"
+    },
+    {
+      "id": "A3a-102",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/102",
+      "localId": "102",
+      "name": "Pidgeot ex"
+    },
+    {
+      "id": "A3a-103",
+      "image": "https://assets.tcgdex.net/en/tcgp/A3a/103",
+      "localId": "103",
+      "name": "Nihilego"
+    }
+  ],
+  "id": "A3a",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Extradimensional Crisis",
+  "releaseDate": "2025-05-29",
+  "serie": {
+    "id": "tcgp",
+    "name": "Pokémon TCG Pocket"
+  },
+  "boosters": [
+    {
+      "id": "boo_A3a-extradimensional",
+      "name": "Extradimensional"
+    }
+  ]
+}

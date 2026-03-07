@@ -1,0 +1,86 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 12,
+    "reverse": 0,
+    "total": 12
+  },
+  "cards": [
+    {
+      "id": "2016xy-1",
+      "localId": "1",
+      "name": "Vulpix"
+    },
+    {
+      "id": "2016xy-2",
+      "localId": "2",
+      "name": "Torchic"
+    },
+    {
+      "id": "2016xy-3",
+      "localId": "3",
+      "name": "Fennekin"
+    },
+    {
+      "id": "2016xy-4",
+      "localId": "4",
+      "name": "Magikarp"
+    },
+    {
+      "id": "2016xy-5",
+      "localId": "5",
+      "name": "Totodile"
+    },
+    {
+      "id": "2016xy-6",
+      "localId": "6",
+      "name": "Pikachu"
+    },
+    {
+      "id": "2016xy-7",
+      "localId": "7",
+      "name": "Scraggy"
+    },
+    {
+      "id": "2016xy-8",
+      "localId": "8",
+      "name": "Jigglypuff"
+    },
+    {
+      "id": "2016xy-9",
+      "localId": "9",
+      "name": "Togepi"
+    },
+    {
+      "id": "2016xy-10",
+      "localId": "10",
+      "name": "Dedenne"
+    },
+    {
+      "id": "2016xy-11",
+      "localId": "11",
+      "name": "Meowth"
+    },
+    {
+      "id": "2016xy-12",
+      "localId": "12",
+      "name": "Eevee"
+    }
+  ],
+  "id": "2016xy",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Macdonald's Collection 2016",
+  "releaseDate": "2016-08-20",
+  "serie": {
+    "id": "mc",
+    "name": "McDonald's Collection"
+  },
+  "abbreviation": {
+    "official": "MCD16"
+  }
+}

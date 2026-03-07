@@ -1,0 +1,177 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 30,
+    "reverse": 0,
+    "total": 30
+  },
+  "cards": [
+    {
+      "id": "tk-xy-w-1",
+      "localId": "1",
+      "name": "Swirlix"
+    },
+    {
+      "id": "tk-xy-w-2",
+      "localId": "2",
+      "name": "Pidgeotto"
+    },
+    {
+      "id": "tk-xy-w-3",
+      "localId": "3",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-4",
+      "localId": "4",
+      "name": "Sentret"
+    },
+    {
+      "id": "tk-xy-w-5",
+      "localId": "5",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-6",
+      "localId": "6",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-7",
+      "localId": "7",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-8",
+      "localId": "8",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-9",
+      "localId": "9",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-10",
+      "localId": "10",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-11",
+      "localId": "11",
+      "name": "Pidgey"
+    },
+    {
+      "id": "tk-xy-w-12",
+      "localId": "12",
+      "name": "Jigglypuff"
+    },
+    {
+      "id": "tk-xy-w-13",
+      "localId": "13",
+      "name": "Clefairy"
+    },
+    {
+      "id": "tk-xy-w-14",
+      "localId": "14",
+      "name": "Wigglytuff"
+    },
+    {
+      "id": "tk-xy-w-15",
+      "localId": "15",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-xy-w-16",
+      "localId": "16",
+      "name": "Clefable"
+    },
+    {
+      "id": "tk-xy-w-17",
+      "localId": "17",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-18",
+      "localId": "18",
+      "name": "Swirlix"
+    },
+    {
+      "id": "tk-xy-w-19",
+      "localId": "19",
+      "name": "Clefairy"
+    },
+    {
+      "id": "tk-xy-w-20",
+      "localId": "20",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-xy-w-21",
+      "localId": "21",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-22",
+      "localId": "22",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-23",
+      "localId": "23",
+      "name": "Pidgeotto"
+    },
+    {
+      "id": "tk-xy-w-24",
+      "localId": "24",
+      "name": "Trevor"
+    },
+    {
+      "id": "tk-xy-w-25",
+      "localId": "25",
+      "name": "Jigglypuff"
+    },
+    {
+      "id": "tk-xy-w-26",
+      "localId": "26",
+      "name": "Tierno"
+    },
+    {
+      "id": "tk-xy-w-27",
+      "localId": "27",
+      "name": "Fairy Energy"
+    },
+    {
+      "id": "tk-xy-w-28",
+      "localId": "28",
+      "name": "Clefable"
+    },
+    {
+      "id": "tk-xy-w-29",
+      "localId": "29",
+      "name": "Pidgey"
+    },
+    {
+      "id": "tk-xy-w-30",
+      "localId": "30",
+      "name": "Wigglytuff"
+    }
+  ],
+  "id": "tk-xy-w",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "XY trainer Kit (Wigglytuff)",
+  "releaseDate": "2014-11-01",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-w/symbol",
+  "abbreviation": {
+    "official": "TK7B"
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 12,
+    "reverse": 0,
+    "total": 12
+  },
+  "cards": [
+    {
+      "id": "tk-dp-m-1",
+      "localId": "1",
+      "name": "Buizel"
+    },
+    {
+      "id": "tk-dp-m-2",
+      "localId": "2",
+      "name": "Floatzel"
+    },
+    {
+      "id": "tk-dp-m-3",
+      "localId": "3",
+      "name": "Goldeen"
+    },
+    {
+      "id": "tk-dp-m-4",
+      "localId": "4",
+      "name": "Manaphy"
+    },
+    {
+      "id": "tk-dp-m-5",
+      "localId": "5",
+      "name": "Piplup"
+    },
+    {
+      "id": "tk-dp-m-6",
+      "localId": "6",
+      "name": "Prinplup"
+    },
+    {
+      "id": "tk-dp-m-7",
+      "localId": "7",
+      "name": "Seaking"
+    },
+    {
+      "id": "tk-dp-m-8",
+      "localId": "8",
+      "name": "Totodile"
+    },
+    {
+      "id": "tk-dp-m-9",
+      "localId": "9",
+      "name": "Dusk Ball"
+    },
+    {
+      "id": "tk-dp-m-10",
+      "localId": "10",
+      "name": "Energy Search"
+    },
+    {
+      "id": "tk-dp-m-11",
+      "localId": "11",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-dp-m-12",
+      "localId": "12",
+      "name": "Water Energy"
+    }
+  ],
+  "id": "tk-dp-m",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "DP trainer Kit (Manaphy)",
+  "releaseDate": "2007-09-01",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/tk/tk-dp-m/symbol",
+  "abbreviation": {
+    "official": "TK3M"
+  }
+}

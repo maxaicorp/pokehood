@@ -1,0 +1,86 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 12,
+    "reverse": 0,
+    "total": 12
+  },
+  "cards": [
+    {
+      "id": "tk-ex-m-1",
+      "localId": "1",
+      "name": "Arcanine"
+    },
+    {
+      "id": "tk-ex-m-2",
+      "localId": "2",
+      "name": "Charmander"
+    },
+    {
+      "id": "tk-ex-m-3",
+      "localId": "3",
+      "name": "Charmeleon"
+    },
+    {
+      "id": "tk-ex-m-4",
+      "localId": "4",
+      "name": "Growlithe"
+    },
+    {
+      "id": "tk-ex-m-5",
+      "localId": "5",
+      "name": "Mareep"
+    },
+    {
+      "id": "tk-ex-m-6",
+      "localId": "6",
+      "name": "Minun"
+    },
+    {
+      "id": "tk-ex-m-7",
+      "localId": "7",
+      "name": "Vulpix"
+    },
+    {
+      "id": "tk-ex-m-8",
+      "localId": "8",
+      "name": "Celio's Network"
+    },
+    {
+      "id": "tk-ex-m-9",
+      "localId": "9",
+      "name": "Energy Search"
+    },
+    {
+      "id": "tk-ex-m-10",
+      "localId": "10",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-ex-m-11",
+      "localId": "11",
+      "name": "Fire Energy"
+    },
+    {
+      "id": "tk-ex-m-12",
+      "localId": "12",
+      "name": "Lightning Energy"
+    }
+  ],
+  "id": "tk-ex-m",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "EX trainer Kit 2 (Minun)",
+  "releaseDate": "2006-03-01",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "abbreviation": {
+    "official": "TK2M"
+  }
+}

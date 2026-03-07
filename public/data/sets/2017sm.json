@@ -1,0 +1,86 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 6,
+    "normal": 0,
+    "official": 12,
+    "reverse": 0,
+    "total": 12
+  },
+  "cards": [
+    {
+      "id": "2017sm-1",
+      "localId": "1",
+      "name": "Rowlet"
+    },
+    {
+      "id": "2017sm-2",
+      "localId": "2",
+      "name": "Grubbin"
+    },
+    {
+      "id": "2017sm-3",
+      "localId": "3",
+      "name": "Litten"
+    },
+    {
+      "id": "2017sm-4",
+      "localId": "4",
+      "name": "Popplio"
+    },
+    {
+      "id": "2017sm-5",
+      "localId": "5",
+      "name": "Pikachu"
+    },
+    {
+      "id": "2017sm-6",
+      "localId": "6",
+      "name": "Cosmog"
+    },
+    {
+      "id": "2017sm-7",
+      "localId": "7",
+      "name": "Crabrawler"
+    },
+    {
+      "id": "2017sm-8",
+      "localId": "8",
+      "name": "Alolan Meowth"
+    },
+    {
+      "id": "2017sm-9",
+      "localId": "9",
+      "name": "Alolan Diglett"
+    },
+    {
+      "id": "2017sm-10",
+      "localId": "10",
+      "name": "Cutiefly"
+    },
+    {
+      "id": "2017sm-11",
+      "localId": "11",
+      "name": "Pikipek"
+    },
+    {
+      "id": "2017sm-12",
+      "localId": "12",
+      "name": "Yungoos"
+    }
+  ],
+  "id": "2017sm",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Macdonald's Collection 2017",
+  "releaseDate": "2017-08-03",
+  "serie": {
+    "id": "mc",
+    "name": "McDonald's Collection"
+  },
+  "abbreviation": {
+    "official": "MCD17"
+  }
+}

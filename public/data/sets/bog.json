@@ -1,0 +1,69 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 12,
+    "official": 9,
+    "reverse": 11,
+    "total": 9
+  },
+  "cards": [
+    {
+      "id": "bog-1",
+      "localId": "1",
+      "name": "Electabuzz"
+    },
+    {
+      "id": "bog-2",
+      "localId": "2",
+      "name": "Hitmonchan"
+    },
+    {
+      "id": "bog-3",
+      "localId": "3",
+      "name": "Professor Elm"
+    },
+    {
+      "id": "bog-4",
+      "localId": "4",
+      "name": "Rocket’s Scizor"
+    },
+    {
+      "id": "bog-5",
+      "localId": "5",
+      "name": "Rocket’s Sneasel"
+    },
+    {
+      "id": "bog-6",
+      "localId": "6",
+      "name": "Dark Ivysaur"
+    },
+    {
+      "id": "bog-7",
+      "localId": "7",
+      "name": "Dark Venusaur"
+    },
+    {
+      "id": "bog-8",
+      "localId": "8",
+      "name": "Rocket’s Mewtwo"
+    },
+    {
+      "id": "bog-9",
+      "localId": "9",
+      "name": "Rocket’s Hitmonchan"
+    }
+  ],
+  "id": "bog",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Best of game",
+  "releaseDate": "2002-12-01",
+  "serie": {
+    "id": "ecard",
+    "name": "E-Card"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/ecard/bog/symbol"
+}

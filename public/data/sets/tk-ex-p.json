@@ -1,0 +1,87 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 12,
+    "reverse": 0,
+    "total": 12
+  },
+  "cards": [
+    {
+      "id": "tk-ex-p-1",
+      "localId": "1",
+      "name": "Beldum"
+    },
+    {
+      "id": "tk-ex-p-2",
+      "localId": "2",
+      "name": "Electrike"
+    },
+    {
+      "id": "tk-ex-p-3",
+      "localId": "3",
+      "name": "Grumpig"
+    },
+    {
+      "id": "tk-ex-p-4",
+      "localId": "4",
+      "name": "Meowth"
+    },
+    {
+      "id": "tk-ex-p-5",
+      "localId": "5",
+      "name": "Metang"
+    },
+    {
+      "id": "tk-ex-p-6",
+      "localId": "6",
+      "name": "Plusle"
+    },
+    {
+      "id": "tk-ex-p-7",
+      "localId": "7",
+      "name": "Spoink"
+    },
+    {
+      "id": "tk-ex-p-8",
+      "localId": "8",
+      "name": "Energy Search"
+    },
+    {
+      "id": "tk-ex-p-9",
+      "localId": "9",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-ex-p-10",
+      "localId": "10",
+      "name": "Professor Cozmo's Discovery"
+    },
+    {
+      "id": "tk-ex-p-11",
+      "localId": "11",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-ex-p-12",
+      "localId": "12",
+      "name": "Psychic Energy"
+    }
+  ],
+  "id": "tk-ex-p",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "EX trainer Kit 2 (Plusle)",
+  "releaseDate": "2006-03-01",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/tk/tk-ex-p/symbol",
+  "abbreviation": {
+    "official": "TK2P"
+  }
+}

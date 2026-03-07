@@ -1,0 +1,58 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 1,
+    "normal": 0,
+    "official": 5,
+    "reverse": 0,
+    "total": 5
+  },
+  "cards": [
+    {
+      "id": "fut2020-1",
+      "image": "https://assets.tcgdex.net/en/swsh/fut2020/1",
+      "localId": "1",
+      "name": "Pikachu on the Ball"
+    },
+    {
+      "id": "fut2020-2",
+      "image": "https://assets.tcgdex.net/en/swsh/fut2020/2",
+      "localId": "2",
+      "name": "Eevee on the Ball"
+    },
+    {
+      "id": "fut2020-3",
+      "image": "https://assets.tcgdex.net/en/swsh/fut2020/3",
+      "localId": "3",
+      "name": "Grookey on the Ball"
+    },
+    {
+      "id": "fut2020-4",
+      "image": "https://assets.tcgdex.net/en/swsh/fut2020/4",
+      "localId": "4",
+      "name": "Scorbunny on the Ball"
+    },
+    {
+      "id": "fut2020-5",
+      "image": "https://assets.tcgdex.net/en/swsh/fut2020/5",
+      "localId": "5",
+      "name": "Sobble on the Ball"
+    }
+  ],
+  "id": "fut2020",
+  "legal": {
+    "expanded": true,
+    "standard": false
+  },
+  "logo": "https://assets.tcgdex.net/en/swsh/fut2020/logo",
+  "name": "Pokémon Futsal 2020",
+  "releaseDate": "2020-09-11",
+  "serie": {
+    "id": "swsh",
+    "name": "Sword & Shield"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/swsh/fut2020/symbol",
+  "abbreviation": {
+    "official": "FUT20"
+  }
+}

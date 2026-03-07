@@ -1,0 +1,122 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 30,
+    "reverse": 0,
+    "total": 30
+  },
+  "cards": [
+    {
+      "id": "tk-sm-r-2",
+      "localId": "2",
+      "name": "Lightning Energy"
+    },
+    {
+      "id": "tk-sm-r-4",
+      "localId": "4",
+      "name": "Stufful"
+    },
+    {
+      "id": "tk-sm-r-6",
+      "localId": "6",
+      "name": "Golbat"
+    },
+    {
+      "id": "tk-sm-r-11",
+      "localId": "11",
+      "name": "Zubat"
+    },
+    {
+      "id": "tk-sm-r-13",
+      "localId": "13",
+      "name": "Spearow"
+    },
+    {
+      "id": "tk-sm-r-14",
+      "localId": "14",
+      "name": "Pikachu"
+    },
+    {
+      "id": "tk-sm-r-15",
+      "localId": "15",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-sm-r-16",
+      "localId": "16",
+      "name": "Grubbin"
+    },
+    {
+      "id": "tk-sm-r-17",
+      "localId": "17",
+      "name": "Alolan Raichu"
+    },
+    {
+      "id": "tk-sm-r-18",
+      "localId": "18",
+      "name": "Bewear"
+    },
+    {
+      "id": "tk-sm-r-19",
+      "localId": "19",
+      "name": "Hau"
+    },
+    {
+      "id": "tk-sm-r-20",
+      "localId": "20",
+      "name": "Psychic Energy"
+    },
+    {
+      "id": "tk-sm-r-21",
+      "localId": "21",
+      "name": "Great Ball"
+    },
+    {
+      "id": "tk-sm-r-22",
+      "localId": "22",
+      "name": "Drowzee"
+    },
+    {
+      "id": "tk-sm-r-23",
+      "localId": "23",
+      "name": "Hau"
+    },
+    {
+      "id": "tk-sm-r-25",
+      "localId": "25",
+      "name": "Great Ball"
+    },
+    {
+      "id": "tk-sm-r-26",
+      "localId": "26",
+      "name": "Togedemaru"
+    },
+    {
+      "id": "tk-sm-r-29",
+      "localId": "29",
+      "name": "Pikachu"
+    },
+    {
+      "id": "tk-sm-r-30",
+      "localId": "30",
+      "name": "Alolan Raichu"
+    }
+  ],
+  "id": "tk-sm-r",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "SM trainer Kit (Alolan Raichu)",
+  "releaseDate": "2017-04-21",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/tk/tk-sm-r/symbol",
+  "abbreviation": {
+    "official": "TK10A"
+  }
+}

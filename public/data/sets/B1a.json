@@ -1,0 +1,640 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 69,
+    "reverse": 0,
+    "total": 103
+  },
+  "cards": [
+    {
+      "id": "B1a-001",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/001",
+      "localId": "001",
+      "name": "Bulbasaur"
+    },
+    {
+      "id": "B1a-002",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/002",
+      "localId": "002",
+      "name": "Ivysaur"
+    },
+    {
+      "id": "B1a-003",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/003",
+      "localId": "003",
+      "name": "Venusaur"
+    },
+    {
+      "id": "B1a-004",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/004",
+      "localId": "004",
+      "name": "Mega Venusaur ex"
+    },
+    {
+      "id": "B1a-005",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/005",
+      "localId": "005",
+      "name": "Spinarak"
+    },
+    {
+      "id": "B1a-006",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/006",
+      "localId": "006",
+      "name": "Ariados"
+    },
+    {
+      "id": "B1a-007",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/007",
+      "localId": "007",
+      "name": "Sunkern"
+    },
+    {
+      "id": "B1a-008",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/008",
+      "localId": "008",
+      "name": "Sunflora"
+    },
+    {
+      "id": "B1a-009",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/009",
+      "localId": "009",
+      "name": "Burmy"
+    },
+    {
+      "id": "B1a-010",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/010",
+      "localId": "010",
+      "name": "Mothim"
+    },
+    {
+      "id": "B1a-011",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/011",
+      "localId": "011",
+      "name": "Charmander"
+    },
+    {
+      "id": "B1a-012",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/012",
+      "localId": "012",
+      "name": "Charmeleon"
+    },
+    {
+      "id": "B1a-013",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/013",
+      "localId": "013",
+      "name": "Charizard"
+    },
+    {
+      "id": "B1a-014",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/014",
+      "localId": "014",
+      "name": "Mega Charizard Y ex"
+    },
+    {
+      "id": "B1a-015",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/015",
+      "localId": "015",
+      "name": "Houndour"
+    },
+    {
+      "id": "B1a-016",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/016",
+      "localId": "016",
+      "name": "Houndoom"
+    },
+    {
+      "id": "B1a-017",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/017",
+      "localId": "017",
+      "name": "Squirtle"
+    },
+    {
+      "id": "B1a-018",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/018",
+      "localId": "018",
+      "name": "Wartortle"
+    },
+    {
+      "id": "B1a-019",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/019",
+      "localId": "019",
+      "name": "Blastoise"
+    },
+    {
+      "id": "B1a-020",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/020",
+      "localId": "020",
+      "name": "Mega Blastoise ex"
+    },
+    {
+      "id": "B1a-021",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/021",
+      "localId": "021",
+      "name": "Basculin"
+    },
+    {
+      "id": "B1a-022",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/022",
+      "localId": "022",
+      "name": "Clauncher"
+    },
+    {
+      "id": "B1a-023",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/023",
+      "localId": "023",
+      "name": "Clawitzer"
+    },
+    {
+      "id": "B1a-024",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/024",
+      "localId": "024",
+      "name": "Magnemite"
+    },
+    {
+      "id": "B1a-025",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/025",
+      "localId": "025",
+      "name": "Magneton"
+    },
+    {
+      "id": "B1a-026",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/026",
+      "localId": "026",
+      "name": "Magnezone"
+    },
+    {
+      "id": "B1a-027",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/027",
+      "localId": "027",
+      "name": "Emolga"
+    },
+    {
+      "id": "B1a-028",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/028",
+      "localId": "028",
+      "name": "Helioptile"
+    },
+    {
+      "id": "B1a-029",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/029",
+      "localId": "029",
+      "name": "Heliolisk"
+    },
+    {
+      "id": "B1a-030",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/030",
+      "localId": "030",
+      "name": "Misdreavus"
+    },
+    {
+      "id": "B1a-031",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/031",
+      "localId": "031",
+      "name": "Mismagius"
+    },
+    {
+      "id": "B1a-032",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/032",
+      "localId": "032",
+      "name": "Solosis"
+    },
+    {
+      "id": "B1a-033",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/033",
+      "localId": "033",
+      "name": "Duosion"
+    },
+    {
+      "id": "B1a-034",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/034",
+      "localId": "034",
+      "name": "Reuniclus"
+    },
+    {
+      "id": "B1a-035",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/035",
+      "localId": "035",
+      "name": "Spritzee"
+    },
+    {
+      "id": "B1a-036",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/036",
+      "localId": "036",
+      "name": "Aromatisse"
+    },
+    {
+      "id": "B1a-037",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/037",
+      "localId": "037",
+      "name": "Xerneas"
+    },
+    {
+      "id": "B1a-038",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/038",
+      "localId": "038",
+      "name": "Onix"
+    },
+    {
+      "id": "B1a-039",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/039",
+      "localId": "039",
+      "name": "Makuhita"
+    },
+    {
+      "id": "B1a-040",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/040",
+      "localId": "040",
+      "name": "Hariyama"
+    },
+    {
+      "id": "B1a-041",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/041",
+      "localId": "041",
+      "name": "Nosepass"
+    },
+    {
+      "id": "B1a-042",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/042",
+      "localId": "042",
+      "name": "Mega Lopunny ex"
+    },
+    {
+      "id": "B1a-043",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/043",
+      "localId": "043",
+      "name": "Mienfoo"
+    },
+    {
+      "id": "B1a-044",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/044",
+      "localId": "044",
+      "name": "Mienshao"
+    },
+    {
+      "id": "B1a-045",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/045",
+      "localId": "045",
+      "name": "Grimer"
+    },
+    {
+      "id": "B1a-046",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/046",
+      "localId": "046",
+      "name": "Muk"
+    },
+    {
+      "id": "B1a-047",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/047",
+      "localId": "047",
+      "name": "Purrloin"
+    },
+    {
+      "id": "B1a-048",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/048",
+      "localId": "048",
+      "name": "Liepard"
+    },
+    {
+      "id": "B1a-049",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/049",
+      "localId": "049",
+      "name": "Trubbish"
+    },
+    {
+      "id": "B1a-050",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/050",
+      "localId": "050",
+      "name": "Garbodor"
+    },
+    {
+      "id": "B1a-051",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/051",
+      "localId": "051",
+      "name": "Steelix"
+    },
+    {
+      "id": "B1a-052",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/052",
+      "localId": "052",
+      "name": "Mega Steelix ex"
+    },
+    {
+      "id": "B1a-053",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/053",
+      "localId": "053",
+      "name": "Probopass"
+    },
+    {
+      "id": "B1a-054",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/054",
+      "localId": "054",
+      "name": "Genesect"
+    },
+    {
+      "id": "B1a-055",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/055",
+      "localId": "055",
+      "name": "Ditto"
+    },
+    {
+      "id": "B1a-056",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/056",
+      "localId": "056",
+      "name": "Porygon"
+    },
+    {
+      "id": "B1a-057",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/057",
+      "localId": "057",
+      "name": "Porygon2"
+    },
+    {
+      "id": "B1a-058",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/058",
+      "localId": "058",
+      "name": "Porygon-Z"
+    },
+    {
+      "id": "B1a-059",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/059",
+      "localId": "059",
+      "name": "Starly"
+    },
+    {
+      "id": "B1a-060",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/060",
+      "localId": "060",
+      "name": "Staravia"
+    },
+    {
+      "id": "B1a-061",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/061",
+      "localId": "061",
+      "name": "Staraptor"
+    },
+    {
+      "id": "B1a-062",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/062",
+      "localId": "062",
+      "name": "Buneary"
+    },
+    {
+      "id": "B1a-063",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/063",
+      "localId": "063",
+      "name": "Lopunny"
+    },
+    {
+      "id": "B1a-064",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/064",
+      "localId": "064",
+      "name": "Bouffalant"
+    },
+    {
+      "id": "B1a-065",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/065",
+      "localId": "065",
+      "name": "Furfrou"
+    },
+    {
+      "id": "B1a-066",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/066",
+      "localId": "066",
+      "name": "Clemont's Backpack"
+    },
+    {
+      "id": "B1a-067",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/067",
+      "localId": "067",
+      "name": "Quick-Grow Extract"
+    },
+    {
+      "id": "B1a-068",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/068",
+      "localId": "068",
+      "name": "Clemont"
+    },
+    {
+      "id": "B1a-069",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/069",
+      "localId": "069",
+      "name": "Serena"
+    },
+    {
+      "id": "B1a-070",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/070",
+      "localId": "070",
+      "name": "Ariados"
+    },
+    {
+      "id": "B1a-071",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/071",
+      "localId": "071",
+      "name": "Sunflora"
+    },
+    {
+      "id": "B1a-072",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/072",
+      "localId": "072",
+      "name": "Reuniclus"
+    },
+    {
+      "id": "B1a-073",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/073",
+      "localId": "073",
+      "name": "Xerneas"
+    },
+    {
+      "id": "B1a-074",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/074",
+      "localId": "074",
+      "name": "Trubbish"
+    },
+    {
+      "id": "B1a-075",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/075",
+      "localId": "075",
+      "name": "Buneary"
+    },
+    {
+      "id": "B1a-076",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/076",
+      "localId": "076",
+      "name": "Mega Venusaur ex"
+    },
+    {
+      "id": "B1a-077",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/077",
+      "localId": "077",
+      "name": "Mega Charizard Y ex"
+    },
+    {
+      "id": "B1a-078",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/078",
+      "localId": "078",
+      "name": "Mega Blastoise ex"
+    },
+    {
+      "id": "B1a-079",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/079",
+      "localId": "079",
+      "name": "Mega Lopunny ex"
+    },
+    {
+      "id": "B1a-080",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/080",
+      "localId": "080",
+      "name": "Mega Steelix ex"
+    },
+    {
+      "id": "B1a-081",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/081",
+      "localId": "081",
+      "name": "Clemont"
+    },
+    {
+      "id": "B1a-082",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/082",
+      "localId": "082",
+      "name": "Serena"
+    },
+    {
+      "id": "B1a-083",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/083",
+      "localId": "083",
+      "name": "Mega Venusaur ex"
+    },
+    {
+      "id": "B1a-084",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/084",
+      "localId": "084",
+      "name": "Mega Blastoise ex"
+    },
+    {
+      "id": "B1a-085",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/085",
+      "localId": "085",
+      "name": "Mega Lopunny ex"
+    },
+    {
+      "id": "B1a-086",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/086",
+      "localId": "086",
+      "name": "Mega Steelix ex"
+    },
+    {
+      "id": "B1a-087",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/087",
+      "localId": "087",
+      "name": "Mega Charizard Y ex"
+    },
+    {
+      "id": "B1a-088",
+      "localId": "088",
+      "name": "Oddish"
+    },
+    {
+      "id": "B1a-089",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/089",
+      "localId": "089",
+      "name": "Gloom"
+    },
+    {
+      "id": "B1a-090",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/090",
+      "localId": "090",
+      "name": "Vileplume"
+    },
+    {
+      "id": "B1a-091",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/091",
+      "localId": "091",
+      "name": "Charizard"
+    },
+    {
+      "id": "B1a-092",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/092",
+      "localId": "092",
+      "name": "Shellder"
+    },
+    {
+      "id": "B1a-093",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/093",
+      "localId": "093",
+      "name": "Cloyster"
+    },
+    {
+      "id": "B1a-094",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/094",
+      "localId": "094",
+      "name": "Sandshrew"
+    },
+    {
+      "id": "B1a-095",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/095",
+      "localId": "095",
+      "name": "Sandslash"
+    },
+    {
+      "id": "B1a-096",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/096",
+      "localId": "096",
+      "name": "Type: Null"
+    },
+    {
+      "id": "B1a-097",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/097",
+      "localId": "097",
+      "name": "Silvally"
+    },
+    {
+      "id": "B1a-098",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/098",
+      "localId": "098",
+      "name": "Buzzwole ex"
+    },
+    {
+      "id": "B1a-099",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/099",
+      "localId": "099",
+      "name": "Lunala ex"
+    },
+    {
+      "id": "B1a-100",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/100",
+      "localId": "100",
+      "name": "Guzzlord ex"
+    },
+    {
+      "id": "B1a-101",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/101",
+      "localId": "101",
+      "name": "Solgaleo ex"
+    },
+    {
+      "id": "B1a-102",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/102",
+      "localId": "102",
+      "name": "Aegislash"
+    },
+    {
+      "id": "B1a-103",
+      "image": "https://assets.tcgdex.net/en/tcgp/B1a/103",
+      "localId": "103",
+      "name": "Quick-Grow Extract"
+    }
+  ],
+  "id": "B1a",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "Crimson Blaze",
+  "releaseDate": "2025-12-17",
+  "serie": {
+    "id": "tcgp",
+    "name": "Pokémon TCG Pocket"
+  }
+}

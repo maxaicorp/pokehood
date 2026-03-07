@@ -1,0 +1,76 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 16,
+    "normal": 0,
+    "official": 0,
+    "reverse": 0,
+    "total": 10
+  },
+  "cards": [
+    {
+      "id": "mep-001",
+      "localId": "001",
+      "name": "Meganium"
+    },
+    {
+      "id": "mep-002",
+      "localId": "002",
+      "name": "Inteleon"
+    },
+    {
+      "id": "mep-003",
+      "localId": "003",
+      "name": "Alakazam"
+    },
+    {
+      "id": "mep-004",
+      "localId": "004",
+      "name": "Lunatone"
+    },
+    {
+      "id": "mep-005",
+      "localId": "005",
+      "name": "Drifloon"
+    },
+    {
+      "id": "mep-006",
+      "localId": "006",
+      "name": "Drifblim"
+    },
+    {
+      "id": "mep-007",
+      "localId": "007",
+      "name": "Psyduck"
+    },
+    {
+      "id": "mep-008",
+      "localId": "008",
+      "name": "Golduck"
+    },
+    {
+      "id": "mep-009",
+      "localId": "009",
+      "name": "Alakazam"
+    },
+    {
+      "id": "mep-010",
+      "localId": "010",
+      "name": "Riolu"
+    }
+  ],
+  "id": "mep",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "MEP Black Star Promos",
+  "releaseDate": "2025-09-26",
+  "serie": {
+    "id": "me",
+    "name": "Mega Evolution"
+  },
+  "abbreviation": {
+    "official": "MEP"
+  }
+}

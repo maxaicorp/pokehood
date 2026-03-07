@@ -1,0 +1,177 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 30,
+    "reverse": 0,
+    "total": 30
+  },
+  "cards": [
+    {
+      "id": "tk-xy-n-1",
+      "localId": "1",
+      "name": "Spoink"
+    },
+    {
+      "id": "tk-xy-n-2",
+      "localId": "2",
+      "name": "Gourgeist"
+    },
+    {
+      "id": "tk-xy-n-3",
+      "localId": "3",
+      "name": "Arbok"
+    },
+    {
+      "id": "tk-xy-n-4",
+      "localId": "4",
+      "name": "Bunnelby"
+    },
+    {
+      "id": "tk-xy-n-5",
+      "localId": "5",
+      "name": "Psychic Energy"
+    },
+    {
+      "id": "tk-xy-n-6",
+      "localId": "6",
+      "name": "Psychic Energy"
+    },
+    {
+      "id": "tk-xy-n-7",
+      "localId": "7",
+      "name": "Psychic Energy"
+    },
+    {
+      "id": "tk-xy-n-8",
+      "localId": "8",
+      "name": "Psychic Energy"
+    },
+    {
+      "id": "tk-xy-n-9",
+      "localId": "9",
+      "name": "Psychic Energy"
+    },
+    {
+      "id": "tk-xy-n-10",
+      "localId": "10",
+      "name": "Psychic Energy"
+    },
+    {
+      "id": "tk-xy-n-11",
+      "localId": "11",
+      "name": "Pumpkaboo"
+    },
+    {
+      "id": "tk-xy-n-12",
+      "localId": "12",
+      "name": "Noibat"
+    },
+    {
+      "id": "tk-xy-n-13",
+      "localId": "13",
+      "name": "Noivern"
+    },
+    {
+      "id": "tk-xy-n-14",
+      "localId": "14",
+      "name": "Pokémon Catcher"
+    },
+    {
+      "id": "tk-xy-n-15",
+      "localId": "15",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-xy-n-16",
+      "localId": "16",
+      "name": "Ekans"
+    },
+    {
+      "id": "tk-xy-n-17",
+      "localId": "17",
+      "name": "Psychic Energy"
+    },
+    {
+      "id": "tk-xy-n-18",
+      "localId": "18",
+      "name": "Pumpkaboo"
+    },
+    {
+      "id": "tk-xy-n-19",
+      "localId": "19",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-xy-n-20",
+      "localId": "20",
+      "name": "Furfrou"
+    },
+    {
+      "id": "tk-xy-n-21",
+      "localId": "21",
+      "name": "Poké Ball"
+    },
+    {
+      "id": "tk-xy-n-22",
+      "localId": "22",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-xy-n-23",
+      "localId": "23",
+      "name": "Noibat"
+    },
+    {
+      "id": "tk-xy-n-24",
+      "localId": "24",
+      "name": "Professor’s Letter"
+    },
+    {
+      "id": "tk-xy-n-25",
+      "localId": "25",
+      "name": "Psychic Energy"
+    },
+    {
+      "id": "tk-xy-n-26",
+      "localId": "26",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-xy-n-27",
+      "localId": "27",
+      "name": "Potion"
+    },
+    {
+      "id": "tk-xy-n-28",
+      "localId": "28",
+      "name": "Darkness Energy"
+    },
+    {
+      "id": "tk-xy-n-29",
+      "localId": "29",
+      "name": "Switch"
+    },
+    {
+      "id": "tk-xy-n-30",
+      "localId": "30",
+      "name": "Noivern"
+    }
+  ],
+  "id": "tk-xy-n",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "XY trainer Kit (Noivern)",
+  "releaseDate": "2014-03-12",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/tk/tk-xy-n/symbol",
+  "abbreviation": {
+    "official": "TK6N"
+  }
+}

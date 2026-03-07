@@ -1,0 +1,32 @@
+{
+  "cardCount": {
+    "firstEd": 0,
+    "holo": 0,
+    "normal": 0,
+    "official": 30,
+    "reverse": 0,
+    "total": 30
+  },
+  "cards": [
+    {
+      "id": "tk-hs-g-20",
+      "localId": "20",
+      "name": "Gyarados"
+    }
+  ],
+  "id": "tk-hs-g",
+  "legal": {
+    "expanded": false,
+    "standard": false
+  },
+  "name": "HS trainer Kit (Gyarados)",
+  "releaseDate": "2010-05-01",
+  "serie": {
+    "id": "tk",
+    "name": "Trainer kits"
+  },
+  "symbol": "https://assets.tcgdex.net/univ/tk/tk-hs-g/symbol",
+  "abbreviation": {
+    "official": "TK4G"
+  }
+}
