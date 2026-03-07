@@ -1,4 +1,8 @@
-const BASE_URL = "/api";
+// ─── Local-first data layer ───────────────────────────────────────────
+// Reads from the TCGdex JSON files we downloaded into /public/data/
+// and maps them into the PokemonCard / PokemonSet interfaces the UI expects.
+
+// ─── Interfaces (unchanged for UI compatibility) ──────────────────────
 
 export interface PokemonCard {
   id: string;
@@ -75,21 +79,135 @@ export interface SetSearchResult {
   totalCount: number;
 }
 
+// ─── Local data cache ─────────────────────────────────────────────────
+
+interface TCGDexCard {
+  id: string;
+  name: string;
+  image: string;
+  localId: string;
+  rarity?: string;
+  category?: string;
+  hp?: number;
+  types?: string[];
+}
+
+interface TCGDexSet {
+  id: string;
+  name: string;
+  logo?: string;
+  symbol?: string;
+  releaseDate?: string;
+  serie?: { id: string; name: string };
+  cardCount?: { total: number; official: number };
+  cards?: TCGDexCard[];
+}
+
+let setsListCache: TCGDexSet[] | null = null;
+let allCardsCache: PokemonCard[] | null = null;
+
+async function loadSetsList(): Promise<TCGDexSet[]> {
+  if (setsListCache) return setsListCache;
+  const res = await fetch("/data/sets-list.json");
+  if (!res.ok) throw new Error("Failed to load sets list");
+  setsListCache = await res.json();
+  return setsListCache!;
+}
+
+async function loadSetData(setId: string): Promise<TCGDexSet> {
+  const res = await fetch(`/data/sets/${setId}.json`);
+  if (!res.ok) throw new Error(`Failed to load set ${setId}`);
+  return res.json();
+}
+
+function mapCard(card: TCGDexCard, set: TCGDexSet): PokemonCard {
+  return {
+    id: card.id,
+    name: card.name,
+    supertype: card.category || "Pokémon",
+    hp: card.hp ? String(card.hp) : undefined,
+    types: card.types,
+    set: {
+      id: set.id,
+      name: set.name,
+      series: set.serie?.name || "Unknown",
+      printedTotal: set.cardCount?.official || 0,
+      total: set.cardCount?.total || 0,
+      releaseDate: set.releaseDate || "2000-01-01",
+      images: {
+        symbol: set.symbol || "",
+        logo: set.logo || "",
+      },
+    },
+    number: card.localId,
+    rarity: card.rarity,
+    images: {
+      small: card.image + "/low.webp",
+      large: card.image + "/high.webp",
+    },
+  };
+}
+
+function mapSet(set: TCGDexSet): PokemonSet {
+  return {
+    id: set.id,
+    name: set.name,
+    series: set.serie?.name || "Unknown",
+    printedTotal: set.cardCount?.official || 0,
+    total: set.cardCount?.total || 0,
+    releaseDate: set.releaseDate || "2000-01-01",
+    updatedAt: set.releaseDate || "2000-01-01",
+    images: {
+      symbol: set.symbol || "",
+      logo: set.logo || "",
+    },
+  };
+}
+
+// Load ALL cards from ALL sets (cached after first load)
+async function loadAllCards(): Promise<PokemonCard[]> {
+  if (allCardsCache) return allCardsCache;
+  
+  const setsList = await loadSetsList();
+  const allCards: PokemonCard[] = [];
+  
+  // Load sets in parallel batches of 10
+  for (let i = 0; i < setsList.length; i += 10) {
+    const batch = setsList.slice(i, i + 10);
+    const results = await Promise.allSettled(
+      batch.map(async (s) => {
+        try {
+          const setData = await loadSetData(s.id);
+          return (setData.cards || []).map((c) => mapCard(c, setData));
+        } catch {
+          return [];
+        }
+      })
+    );
+    for (const r of results) {
+      if (r.status === "fulfilled") allCards.push(...r.value);
+    }
+  }
+
+  allCardsCache = allCards;
+  return allCards;
+}
+
+// ─── Public API functions (same signatures as before) ─────────────────
+
 export async function searchCards(
   query: string,
   page = 1,
   pageSize = 20,
 ): Promise<SearchResult> {
-  const params = new URLSearchParams({
-    q: `name:"${query}*"`,
-    page: String(page),
-    pageSize: String(pageSize),
-    orderBy: "-set.releaseDate",
-  });
-
-  const res = await fetch(`${BASE_URL}/cards?${params}`);
-  if (!res.ok) throw new Error("Failed to search cards");
-  return res.json();
+  const allCards = await loadAllCards();
+  const q = query.toLowerCase();
+  const filtered = allCards.filter((c) =>
+    c.name.toLowerCase().includes(q)
+  );
+  // Sort newest first
+  filtered.sort((a, b) => b.set.releaseDate.localeCompare(a.set.releaseDate));
+  return paginate(filtered, page, pageSize);
 }
 
 export async function searchCardsAdvanced(
@@ -104,52 +222,78 @@ export async function searchCardsAdvanced(
   page = 1,
   pageSize = 20,
 ): Promise<SearchResult> {
-  const qParts: string[] = [];
-  if (query) qParts.push(`name:"${query}*"`);
-  if (filters.setId) qParts.push(`set.id:"${filters.setId}"`);
-  if (filters.rarity) qParts.push(`rarity:"${filters.rarity}"`);
-  if (filters.supertype) qParts.push(`supertype:"${filters.supertype}"`);
+  const allCards = await loadAllCards();
+  let filtered = [...allCards];
+
+  if (query) {
+    const q = query.toLowerCase();
+    filtered = filtered.filter((c) => c.name.toLowerCase().includes(q));
+  }
+  if (filters.setId) {
+    filtered = filtered.filter((c) => c.set.id === filters.setId);
+  }
+  if (filters.rarity) {
+    filtered = filtered.filter((c) => c.rarity === filters.rarity);
+  }
+  if (filters.supertype) {
+    filtered = filtered.filter((c) => c.supertype === filters.supertype);
+  }
   if (filters.types?.length) {
-    qParts.push(`types:"${filters.types.join('" OR types:"')}"`);
+    filtered = filtered.filter((c) =>
+      filters.types!.some((t) => c.types?.includes(t))
+    );
   }
 
-  const params = new URLSearchParams({
-    q: qParts.join(" "),
-    page: String(page),
-    pageSize: String(pageSize),
-    orderBy: filters.sortBy || "-set.releaseDate",
+  // Sort
+  const sortBy = filters.sortBy || "-set.releaseDate";
+  const desc = sortBy.startsWith("-");
+  const field = sortBy.replace(/^-/, "");
+  filtered.sort((a, b) => {
+    let valA: string, valB: string;
+    if (field === "set.releaseDate") {
+      valA = a.set.releaseDate;
+      valB = b.set.releaseDate;
+    } else if (field === "name") {
+      valA = a.name;
+      valB = b.name;
+    } else if (field === "number") {
+      valA = a.number.padStart(5, "0");
+      valB = b.number.padStart(5, "0");
+    } else {
+      valA = a.name;
+      valB = b.name;
+    }
+    const cmp = valA.localeCompare(valB);
+    return desc ? -cmp : cmp;
   });
 
-  const res = await fetch(`${BASE_URL}/cards?${params}`);
-  if (!res.ok) throw new Error("Failed to search cards");
-  return res.json();
+  return paginate(filtered, page, pageSize);
 }
 
 export async function getLatestCards(
   page = 1,
   pageSize = 20,
 ): Promise<SearchResult> {
-  const params = new URLSearchParams({
-    q: 'supertype:"Pokémon"',
-    page: String(page),
-    pageSize: String(pageSize),
-    orderBy: "-set.releaseDate",
-  });
-
-  const res = await fetch(`${BASE_URL}/cards?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch latest cards");
-  return res.json();
+  const allCards = await loadAllCards();
+  // Sort newest first by set release date
+  const sorted = [...allCards].sort((a, b) =>
+    b.set.releaseDate.localeCompare(a.set.releaseDate)
+  );
+  return paginate(sorted, page, pageSize);
 }
 
 export async function getSets(): Promise<SetSearchResult> {
-  const params = new URLSearchParams({
-    orderBy: "-releaseDate",
-    pageSize: "50",
-  });
-
-  const res = await fetch(`${BASE_URL}/sets?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch sets");
-  return res.json();
+  const setsList = await loadSetsList();
+  const mapped = setsList.map(mapSet);
+  // Sort newest first
+  mapped.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+  return {
+    data: mapped.slice(0, 50),
+    page: 1,
+    pageSize: 50,
+    count: Math.min(50, mapped.length),
+    totalCount: mapped.length,
+  };
 }
 
 export async function getSetCards(
@@ -157,16 +301,25 @@ export async function getSetCards(
   page = 1,
   pageSize = 20,
 ): Promise<SearchResult> {
-  const params = new URLSearchParams({
-    q: `set.id:"${setId}"`,
-    page: String(page),
-    pageSize: String(pageSize),
-    orderBy: "number",
-  });
+  const setData = await loadSetData(setId);
+  const cards = (setData.cards || []).map((c) => mapCard(c, setData));
+  // Sort by card number
+  cards.sort((a, b) => a.number.padStart(5, "0").localeCompare(b.number.padStart(5, "0")));
+  return paginate(cards, page, pageSize);
+}
 
-  const res = await fetch(`${BASE_URL}/cards?${params}`);
-  if (!res.ok) throw new Error("Failed to fetch set cards");
-  return res.json();
+// ─── Helpers ──────────────────────────────────────────────────────────
+
+function paginate(cards: PokemonCard[], page: number, pageSize: number): SearchResult {
+  const start = (page - 1) * pageSize;
+  const sliced = cards.slice(start, start + pageSize);
+  return {
+    data: sliced,
+    page,
+    pageSize,
+    count: sliced.length,
+    totalCount: cards.length,
+  };
 }
 
 export function getMarketPrice(card: PokemonCard): number | null {
