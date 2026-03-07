@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   searchCardsAdvanced,
@@ -17,17 +17,15 @@ import {
   TCGP_SERIES_IDS,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
-import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import ThemeToggle from "@/components/ThemeToggle";
 import {
-  Search, Plus, Loader2, ArrowLeft, Upload, X, Grid3X3, LayoutList,
+  Search, Plus, ArrowLeft, X, Grid3X3, LayoutList,
   ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,13 +45,6 @@ export default function Explore() {
   const [showFilters, setShowFilters] = useState(true);
   const [page, setPage] = useState(1);
   const [productType, setProductType] = useState("");
-
-  // Import state
-  const [importOpen, setImportOpen] = useState(false);
-  const [importParsed, setImportParsed] = useState<CsvRow[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // Fetch sets for filter
   const { data: setsData } = useQuery({
@@ -120,45 +111,6 @@ export default function Explore() {
     setPage(1);
   };
 
-  // CSV Import
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const rows = parseCsv(text);
-      if (rows.length === 0) {
-        toast.error("Could not parse CSV. Ensure it has a 'Name' column.");
-        return;
-      }
-      setImportParsed(rows);
-      setImportOpen(true);
-    };
-    reader.readAsText(file);
-    if (fileRef.current) fileRef.current.value = "";
-  };
-
-  const handleImport = async () => {
-    setImporting(true);
-    setImportProgress({ done: 0, total: importParsed.length });
-    try {
-      const result = await resolveImport(importParsed);
-      let added = 0;
-      for (const { row, card } of result.found) {
-        addToCollection(card, row.condition || "NM", row.quantity || 1);
-        added++;
-        setImportProgress({ done: added, total: importParsed.length });
-      }
-      toast.success(`Imported ${added} cards! ${result.notFound.length} not found.`);
-      setImportOpen(false);
-      setImportParsed([]);
-    } catch {
-      toast.error("Import failed. Please try again.");
-    }
-    setImporting(false);
-  };
-
   const cards = cardsData?.data || [];
   const totalCount = cardsData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / 20);
@@ -180,21 +132,7 @@ export default function Explore() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileRef.current?.click()}
-            >
-              <Upload className="w-4 h-4 mr-1" />
-              Import CSV
-            </Button>
+            <ThemeToggle />
             <Button variant="accent" size="sm" asChild>
               <Link to="/dashboard">My Collection</Link>
             </Button>
@@ -446,61 +384,6 @@ export default function Explore() {
           </div>
         </div>
       </div>
-
-      {/* Import Dialog */}
-      <Dialog open={importOpen} onOpenChange={setImportOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-display">Import Collection</DialogTitle>
-          </DialogHeader>
-          {importing ? (
-            <div className="py-8 text-center space-y-4">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-              <p className="text-sm text-muted-foreground">
-                Importing {importProgress.done} / {importProgress.total} cards...
-              </p>
-              <div className="w-full bg-secondary rounded-full h-2">
-                <div
-                  className="bg-primary h-2 rounded-full transition-all"
-                  style={{ width: `${(importProgress.done / importProgress.total) * 100}%` }}
-                />
-              </div>
-            </div>
-          ) : (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Found <span className="text-foreground font-semibold">{importParsed.length}</span> cards in your CSV.
-                We'll search for each card and add matches to your collection.
-              </p>
-              <ScrollArea className="max-h-60 border border-border rounded-lg">
-                <div className="p-3 space-y-1">
-                  {importParsed.slice(0, 50).map((row, i) => (
-                    <div key={i} className="flex items-center justify-between text-sm py-1">
-                      <span className="text-foreground truncate flex-1">{row.name}</span>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        {row.setName && <span className="text-xs truncate max-w-[100px]">{row.setName}</span>}
-                        <span className="text-xs">×{row.quantity || 1}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {importParsed.length > 50 && (
-                    <p className="text-xs text-muted-foreground text-center py-2">
-                      ...and {importParsed.length - 50} more
-                    </p>
-                  )}
-                </div>
-              </ScrollArea>
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setImportOpen(false)}>Cancel</Button>
-                <Button variant="hero" onClick={handleImport}>
-                  <Upload className="w-4 h-4 mr-1" />
-                  Import {importParsed.length} Cards
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

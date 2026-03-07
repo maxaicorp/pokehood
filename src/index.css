@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap");
 
 @layer base {
   :root {
@@ -57,6 +57,48 @@
     --surface-elevated: 0 0% 98%;
     --shadow-soft: 0 0% 0% / 0.05;
   }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 0 0% 95%;
+
+    --card: 222 47% 9%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 222 47% 9%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 0 0% 95%;
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 222 30% 14%;
+    --secondary-foreground: 0 0% 85%;
+
+    --muted: 222 30% 14%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 222 30% 14%;
+    --accent-foreground: 0 0% 95%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 20% 18%;
+    --input: 222 20% 18%;
+    --ring: 0 0% 80%;
+
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 0% 95%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 222 30% 14%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 222 20% 18%;
+    --sidebar-ring: 0 0% 80%;
+
+    --surface-elevated: 222 30% 12%;
+    --shadow-soft: 0 0% 0% / 0.3;
+  }
 }
 
 @layer base {
@@ -68,7 +110,12 @@
     @apply bg-background text-foreground font-body antialiased;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-display;
   }
 }
@@ -106,15 +153,16 @@
 
   .border-rainbow {
     border-image: linear-gradient(
-      90deg,
-      hsl(0 90% 65%),
-      hsl(30 95% 55%),
-      hsl(50 95% 55%),
-      hsl(145 70% 45%),
-      hsl(217 91% 60%),
-      hsl(270 70% 60%),
-      hsl(325 85% 55%)
-    ) 1;
+        90deg,
+        hsl(0 90% 65%),
+        hsl(30 95% 55%),
+        hsl(50 95% 55%),
+        hsl(145 70% 45%),
+        hsl(217 91% 60%),
+        hsl(270 70% 60%),
+        hsl(325 85% 55%)
+      )
+      1;
   }
 
   .bg-rainbow-gradient {
@@ -144,13 +192,18 @@
   }
 
   .card-shine::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, hsl(0 0% 0% / 0.03), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(0 0% 0% / 0.03),
+      transparent
+    );
     transition: left 0.5s ease;
   }
 
