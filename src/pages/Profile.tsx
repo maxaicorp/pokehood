@@ -104,9 +104,50 @@ export default function Profile() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-primary/8 rounded-full blur-[150px] pointer-events-none" />
 
       <div className="relative z-10 mx-auto max-w-md py-6 sm:py-8 px-4 sm:px-6">
-        <Button variant="ghost" size="sm" className="mb-4 sm:mb-6" asChild>
-          <Link to="/"><ArrowLeft className="w-4 h-4 mr-1" />Back</Link>
-        </Button>
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/"><ArrowLeft className="w-4 h-4 mr-1" />Back</Link>
+          </Button>
+
+          {/* Contact icon — shown when cards are for sale */}
+          {collection.some(c => c.forSale) && links.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <motion.button
+                  className="relative flex items-center justify-center w-10 h-10 rounded-full bg-green-500 text-white shadow-lg hover:bg-green-600 transition-colors"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.4, type: "spring", stiffness: 260, damping: 20 }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  title="Contact seller"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-300 animate-ping" />
+                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-300" />
+                </motion.button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-3">
+                <p className="text-xs font-semibold text-foreground mb-2">Contact Seller</p>
+                <div className="space-y-1.5">
+                  {links.map((link) => (
+                    <a
+                      key={link.id}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"
+                    >
+                      {getPlatformIcon(link.label + " " + link.url, "w-4 h-4")}
+                      <span className="flex-1 truncate">{link.label}</span>
+                      <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                    </a>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
 
         {/* Profile header */}
         <motion.div className="text-center mb-6 sm:mb-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
