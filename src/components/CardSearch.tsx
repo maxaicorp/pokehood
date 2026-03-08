@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { searchCards, PokemonCard, getMarketPrice, formatPrice } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, Loader2 } from "lucide-react";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function CardSearch({ onCardAdded }: { onCardAdded?: () => void }) {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -24,10 +26,18 @@ export default function CardSearch({ onCardAdded }: { onCardAdded?: () => void }
     if (query.trim()) setSearchTerm(query.trim());
   };
 
-  const handleAdd = (card: PokemonCard) => {
-    addToCollection(card);
-    toast.success(`${card.name} added to collection!`);
-    onCardAdded?.();
+  const handleAdd = async (card: PokemonCard) => {
+    if (!user) {
+      toast.error("Please sign in to add cards.");
+      return;
+    }
+    const result = await addToCollection(card, user.id);
+    if (result) {
+      toast.success(`${card.name} added to collection!`);
+      onCardAdded?.();
+    } else {
+      toast.error("Failed to add card.");
+    }
   };
 
   return (
@@ -63,12 +73,7 @@ export default function CardSearch({ onCardAdded }: { onCardAdded?: () => void }
                 whileHover={{ y: -4 }}
                 transition={{ duration: 0.2 }}
               >
-                <img
-                  src={card.images.small}
-                  alt={card.name}
-                  className="w-full"
-                  loading="lazy"
-                />
+                <img src={card.images.small} alt={card.name} className="w-full" loading="lazy" />
                 <div className="p-3">
                   <p className="text-xs font-semibold text-foreground truncate">{card.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{card.set.name}</p>

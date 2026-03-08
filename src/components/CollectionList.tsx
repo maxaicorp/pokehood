@@ -11,10 +11,14 @@ interface Props {
 }
 
 export default function CollectionList({ cards, onUpdate }: Props) {
-  const handleRemove = (card: CollectionCard) => {
-    removeFromCollection(card.id);
-    toast.success(`${card.name} removed`);
-    onUpdate();
+  const handleRemove = async (card: CollectionCard) => {
+    const success = await removeFromCollection(card.id);
+    if (success) {
+      toast.success(`${card.name} removed`);
+      onUpdate();
+    } else {
+      toast.error("Failed to remove card.");
+    }
   };
 
   if (cards.length === 0) {

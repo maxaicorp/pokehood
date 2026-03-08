@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { PokemonCard, getMarketPrice } from "./pokemon-api";
 
 export interface CollectionCard {
@@ -15,59 +16,159 @@ export interface CollectionCard {
   imageLarge: string;
   marketPrice: number | null;
   addedAt: string;
+  forSale: boolean;
+  salePrice: number | null;
 }
 
-const STORAGE_KEY = "pokevault_collection";
-
-export function getCollection(): CollectionCard[] {
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
+/** Map DB row → app type */
+function rowToCard(row: any): CollectionCard {
+  return {
+    id: row.id,
+    tcgApiId: row.tcg_api_id,
+    name: row.name,
+    setName: row.set_name,
+    setId: row.set_id,
+    cardNumber: row.card_number,
+    rarity: row.rarity,
+    condition: row.condition,
+    quantity: row.quantity,
+    manualPrice: row.manual_price,
+    imageSmall: row.image_small,
+    imageLarge: row.image_large,
+    marketPrice: row.market_price,
+    addedAt: row.added_at,
+    forSale: row.for_sale,
+    salePrice: row.sale_price,
+  };
 }
 
-export function addToCollection(card: PokemonCard, condition = "NM", quantity = 1): CollectionCard {
-  const collection = getCollection();
-  const existing = collection.find(c => c.tcgApiId === card.id && c.condition === condition);
+/** Fetch the authenticated user's collection */
+export async function getCollection(): Promise<CollectionCard[]> {
+  const { data, error } = await supabase
+    .from("collection_cards")
+    .select("*")
+    .order("added_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to fetch collection:", error);
+    return [];
+  }
+  return (data || []).map(rowToCard);
+}
+
+/** Fetch a collection for a specific user (public profile view) */
+export async function getCollectionByUserId(userId: string): Promise<CollectionCard[]> {
+  const { data, error } = await supabase
+    .from("collection_cards")
+    .select("*")
+    .eq("user_id", userId)
+    .order("added_at", { ascending: false });
+
+  if (error) {
+    console.error("Failed to fetch user collection:", error);
+    return [];
+  }
+  return (data || []).map(rowToCard);
+}
+
+/** Add a card (or increment quantity if same card + condition exists) */
+export async function addToCollection(
+  card: PokemonCard,
+  userId: string,
+  condition = "NM",
+  quantity = 1
+): Promise<CollectionCard | null> {
+  // Check for existing card with same tcg_api_id + condition
+  const { data: existing } = await supabase
+    .from("collection_cards")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("tcg_api_id", card.id)
+    .eq("condition", condition)
+    .maybeSingle();
 
   if (existing) {
-    existing.quantity += quantity;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
-    return existing;
+    const { data, error } = await supabase
+      .from("collection_cards")
+      .update({ quantity: existing.quantity + quantity })
+      .eq("id", existing.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Failed to update card quantity:", error);
+      return null;
+    }
+    return rowToCard(data);
   }
 
-  const newCard: CollectionCard = {
-    id: crypto.randomUUID(),
-    tcgApiId: card.id,
-    name: card.name,
-    setName: card.set.name,
-    setId: card.set.id,
-    cardNumber: card.number,
-    rarity: card.rarity || "Unknown",
-    condition,
-    quantity,
-    manualPrice: null,
-    imageSmall: card.images.small,
-    imageLarge: card.images.large,
-    marketPrice: getMarketPrice(card),
-    addedAt: new Date().toISOString(),
-  };
+  const { data, error } = await supabase
+    .from("collection_cards")
+    .insert({
+      user_id: userId,
+      tcg_api_id: card.id,
+      name: card.name,
+      set_name: card.set.name,
+      set_id: card.set.id,
+      card_number: card.number,
+      rarity: card.rarity || "Unknown",
+      condition,
+      quantity,
+      manual_price: null,
+      market_price: getMarketPrice(card),
+      image_small: card.images.small,
+      image_large: card.images.large,
+    })
+    .select()
+    .single();
 
-  collection.push(newCard);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
-  return newCard;
-}
-
-export function removeFromCollection(id: string) {
-  const collection = getCollection().filter(c => c.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
-}
-
-export function updateCardQuantity(id: string, quantity: number) {
-  const collection = getCollection();
-  const card = collection.find(c => c.id === id);
-  if (card) {
-    card.quantity = quantity;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
+  if (error) {
+    console.error("Failed to add card:", error);
+    return null;
   }
+  return rowToCard(data);
+}
+
+/** Remove a card by id */
+export async function removeFromCollection(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("collection_cards")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to remove card:", error);
+    return false;
+  }
+  return true;
+}
+
+/** Update card quantity */
+export async function updateCardQuantity(id: string, quantity: number): Promise<boolean> {
+  const { error } = await supabase
+    .from("collection_cards")
+    .update({ quantity })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to update quantity:", error);
+    return false;
+  }
+  return true;
+}
+
+/** Toggle for-sale status */
+export async function toggleForSale(id: string, forSale: boolean, salePrice?: number): Promise<boolean> {
+  const { error } = await supabase
+    .from("collection_cards")
+    .update({ for_sale: forSale, sale_price: salePrice ?? null })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to toggle for sale:", error);
+    return false;
+  }
+  return true;
 }
 
 export function getTotalValue(collection: CollectionCard[]): number {
