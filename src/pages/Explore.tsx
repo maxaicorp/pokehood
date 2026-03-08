@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
+import { useAuth } from "@/contexts/AuthContext";
   searchCardsAdvanced,
   getLatestCards,
   getSets,
@@ -35,6 +35,7 @@ import { Link } from "react-router-dom";
 type ViewMode = "grid" | "list";
 
 export default function Explore() {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSet, setSelectedSet] = useState("");
@@ -96,9 +97,17 @@ export default function Explore() {
     return pages;
   };
 
-  const handleAdd = (card: PokemonCard) => {
-    addToCollection(card);
-    toast.success(`${card.name} added to collection!`);
+  const handleAdd = async (card: PokemonCard) => {
+    if (!user) {
+      toast.error("Please sign in to add cards.");
+      return;
+    }
+    const result = await addToCollection(card, user.id);
+    if (result) {
+      toast.success(`${card.name} added to collection!`);
+    } else {
+      toast.error("Failed to add card.");
+    }
   };
 
   const toggleType = (type: string) => {
@@ -110,7 +119,7 @@ export default function Explore() {
 
   const cards = cardsData?.data || [];
   const totalCount = cardsData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / 20);
+  const totalPages = Math.ceil(totalCount / 35);
 
   const activeFilterCount = [selectedSet, selectedRarity, ...(selectedTypes.length ? ["t"] : [])].filter(Boolean).length;
 
