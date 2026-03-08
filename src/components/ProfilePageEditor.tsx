@@ -175,6 +175,10 @@ export default function ProfilePageEditor() {
   });
 
   const handleSave = () => {
+    if (slugStatus === "taken") {
+      toast.error("That slug is already taken. Please choose another.");
+      return;
+    }
     updateProfile.mutate({
       display_name: displayName.trim() || null,
       bio: bio.trim() || null,
