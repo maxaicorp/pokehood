@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "next-themes";
 import {
   searchCardsAdvanced,
   getLatestCards,
