@@ -171,6 +171,12 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
+            {!isPro && (
+              <Button size="sm" onClick={handleUpgrade} disabled={checkoutLoading} className="bg-amber-500 hover:bg-amber-600 text-white text-xs h-8">
+                {checkoutLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Crown className="w-3.5 h-3.5 mr-1" />}
+                Upgrade
+              </Button>
+            )}
             {profile?.slug && (
               <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
                 <a href={profileUrl} target="_blank" rel="noopener noreferrer">
@@ -210,30 +216,6 @@ export default function Dashboard() {
       </header>
 
       <div className="container py-6 sm:py-8 px-4 sm:px-8">
-        {/* Upgrade Banner */}
-        {!isPro && (
-          <motion.div
-            className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="flex items-center gap-3">
-              <Crown className="w-5 h-5 text-amber-500 shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Free Tier — {totalCards}/{limits.maxCards} cards used
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Upgrade to Pro for unlimited cards, custom profile slugs, and unlimited links.
-                </p>
-              </div>
-            </div>
-            <Button size="sm" onClick={handleUpgrade} disabled={checkoutLoading} className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white">
-              {checkoutLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Crown className="w-4 h-4 mr-1" />}
-              Upgrade — {STRIPE_CONFIG.pro.price}
-            </Button>
-          </motion.div>
-        )}
 
         {/* Tab Content */}
         {activeTab === "collection" && (
