@@ -87,6 +87,7 @@ export default function Explore() {
     setCheckoutLoading(false);
   };
 
+  const { data: setsData } = useQuery({
     queryKey: ["pokemon-sets"],
     queryFn: getSets,
     staleTime: 5 * 60_000,
