@@ -67,9 +67,10 @@ export default function Landing() {
           >
             {/* Animated Pokéball */}
             <motion.div
-              className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-8 drop-shadow-2xl"
+              className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-8"
               animate={{ y: [0, -12, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              style={{ filter: "drop-shadow(0 12px 24px rgba(220, 38, 38, 0.35)) drop-shadow(0 4px 8px rgba(220, 38, 38, 0.2))" }}
             >
               <img src={pokeballHero} alt="Pokéball" className="w-full h-full object-contain" />
             </motion.div>
