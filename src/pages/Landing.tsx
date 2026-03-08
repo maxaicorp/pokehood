@@ -6,6 +6,7 @@ import { TrendingUp, Share2, Search, Zap, ExternalLink, Wallet, ArrowRight, Cred
 import PhoneMockup from "@/components/PhoneMockup";
 import CardSlider from "@/components/CardSlider";
 import ThemeToggle from "@/components/ThemeToggle";
+import pokeballHero from "@/assets/pokeball-hero.png";
 
 // ─── Stats computed from data ───
 interface SetInfo {
@@ -64,10 +65,14 @@ export default function Landing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            {/* Mini icon */}
-            <div className="w-14 h-14 rounded-2xl bg-[#141414] mx-auto mb-8 flex items-center justify-center shadow-lg overflow-hidden">
-              <img src="/logo.png" alt="PokeVault" className="w-11 h-11 object-contain" />
-            </div>
+            {/* Animated Pokéball */}
+            <motion.div
+              className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-8 drop-shadow-2xl"
+              animate={{ y: [0, -12, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <img src={pokeballHero} alt="Pokéball" className="w-full h-full object-contain" />
+            </motion.div>
 
             <h1
               className="font-display leading-none tracking-tight mb-6 text-[#141414] dark:text-white"
