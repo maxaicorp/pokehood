@@ -13,7 +13,8 @@ import { motion } from "framer-motion";
 export default function Profile() {
   const { slug } = useParams();
   const [qrOpen, setQrOpen] = useState(false);
-  const profileUrl = `${window.location.origin}/u/${slug || "demo"}`;
+  const publishedDomain = "https://collectiblez.lovable.app";
+  const profileUrl = `${publishedDomain}/u/${slug || "demo"}`;
 
   // Fetch profile by slug
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -88,7 +89,7 @@ export default function Profile() {
       {/* Ambient glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-primary/8 rounded-full blur-[150px] pointer-events-none" />
 
-      <div className="relative z-10 container max-w-2xl py-6 sm:py-8 px-4 sm:px-8">
+      <div className="relative z-10 mx-auto max-w-md py-6 sm:py-8 px-4 sm:px-6">
         <Button variant="ghost" size="sm" className="mb-4 sm:mb-6" asChild>
           <Link to="/"><ArrowLeft className="w-4 h-4 mr-1" />Back</Link>
         </Button>
