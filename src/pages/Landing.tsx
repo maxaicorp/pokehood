@@ -41,8 +41,8 @@ export default function Landing() {
             <span className="font-display font-bold text-sm text-white dark:text-[#141414] pr-1.5 hidden sm:inline">PokeVault</span>
           </Link>
           <div className="hidden sm:flex items-center gap-0">
-            <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Explore</Link>
             <Link to="/dashboard" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Dashboard</Link>
+            <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Explore</Link>
           </div>
           <Button size="sm" className="rounded-xl bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold ml-1 hidden sm:inline-flex" asChild>
             <Link to="/auth">Get Started</Link>
@@ -69,8 +69,8 @@ export default function Landing() {
               transition={{ duration: 0.15 }}
               className="sm:hidden mt-2 rounded-2xl backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-lg bg-[#F2F2F2]/95 dark:bg-white/10 p-3 flex flex-col gap-1"
             >
-              <Link to="/explore" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors">Explore</Link>
               <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors">Dashboard</Link>
+              <Link to="/explore" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors">Explore</Link>
               <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-semibold text-center rounded-xl bg-[#141414] dark:bg-white text-white dark:text-[#141414]">Get Started</Link>
             </motion.div>
           )}
@@ -100,7 +100,7 @@ export default function Landing() {
                 <Link to="/auth">Start Your Vault <ArrowRight className="w-4 h-4 ml-2" /></Link>
               </Button>
               <Button variant="outline" size="lg" className="rounded-full px-7 h-12 text-base font-semibold border-[#E5E5E5] dark:border-white/15 text-[#141414] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-white/10" asChild>
-                <Link to="/u/demo">See Demo Profile</Link>
+                <Link to="/demo">See Demo Profile</Link>
               </Button>
             </div>
           </motion.div>
@@ -296,9 +296,9 @@ export default function Landing() {
             <div className="md:col-span-2">
               <p className="font-display font-semibold text-white dark:text-[#141414] text-sm mb-4">Product</p>
               <ul className="space-y-2.5">
-                <li><Link to="/explore" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Explore</Link></li>
                 <li><Link to="/dashboard" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Dashboard</Link></li>
-                <li><Link to="/u/demo" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Demo Profile</Link></li>
+                <li><Link to="/explore" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Explore</Link></li>
+                <li><Link to="/demo" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Demo Profile</Link></li>
               </ul>
             </div>
             <div className="md:col-span-2">
