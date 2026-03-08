@@ -319,25 +319,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ═══ SECTION 2: Animated Card Slider ═══ */}
-      <section className="py-16 md:py-24 bg-[#F4F4F4] dark:bg-[#111] transition-colors">
-        <div className="text-center mb-12">
-          <motion.h2
-            className="font-display mb-3 text-[#141414] dark:text-white"
-            style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 44px)" }}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            From Base Set to Today
-          </motion.h2>
-          <p className="text-[#666] dark:text-[#888] text-lg max-w-md mx-auto">
-            Every card from every era, all in one place.
-          </p>
-        </div>
-        <CardSlider />
-      </section>
-
       {/* ═══ SECTION 6: CTA (floating above dark footer) ═══ */}
       <section className="relative z-10 pt-20 pb-28 bg-white dark:bg-[#0a0a0a] rounded-b-[3rem] transition-colors">
         <div className="container max-w-2xl">
