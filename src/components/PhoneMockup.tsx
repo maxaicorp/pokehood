@@ -21,7 +21,7 @@ export default function PhoneMockup({ children }: { children: React.ReactNode })
           <div className="absolute top-[10px] left-1/2 -translate-x-1/2 w-[90px] h-[24px] bg-[#1a1a1a] rounded-full z-20" />
 
           {/* Screen content */}
-          <div className="relative min-h-[520px]">
+          <div className="relative h-[520px] overflow-hidden">
             {children}
           </div>
 
