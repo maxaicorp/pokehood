@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
 
 @layer base {
   :root {
@@ -138,17 +138,13 @@
   }
 
   .text-gradient-primary {
-    background: linear-gradient(135deg, hsl(325 85% 55%), hsl(270 70% 60%));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: rgb(20, 20, 20);
+    -webkit-text-fill-color: rgb(20, 20, 20);
   }
 
   .text-gradient-accent {
-    background: linear-gradient(135deg, hsl(217 91% 60%), hsl(190 90% 50%));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: rgb(20, 20, 20);
+    -webkit-text-fill-color: rgb(20, 20, 20);
   }
 
   .border-rainbow {
@@ -210,4 +206,36 @@
   .card-shine:hover::before {
     left: 100%;
   }
+
+  /* ─── Marquee / Card Slider ─── */
+  .marquee-fade {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+  }
+}
+
+@keyframes marquee-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes marquee-right {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+@keyframes float-drift {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-8px) rotate(2deg); }
+  66% { transform: translateY(4px) rotate(-1deg); }
 }

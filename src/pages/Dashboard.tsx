@@ -5,11 +5,12 @@ import { formatPrice } from "@/lib/pokemon-api";
 import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
 import CollectionList from "@/components/CollectionList";
 import ThemeToggle from "@/components/ThemeToggle";
+import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Wallet, Layers, CreditCard, Share2, Search, Upload, Loader2 } from "lucide-react";
+import { ArrowLeft, Wallet, Layers, CreditCard, Share2, Search, Upload, Loader2, QrCode } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -22,7 +23,10 @@ export default function Dashboard() {
   const [importParsed, setImportParsed] = useState<CsvRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
+  const [qrOpen, setQrOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const profileUrl = `${window.location.origin}/u/demo`;
 
   const refresh = useCallback(() => {
     setCollection(getCollection());
@@ -119,6 +123,16 @@ export default function Dashboard() {
               <Link to="/explore">+ Add Cards</Link>
             </Button>
             <ThemeToggle />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setQrOpen(true)}
+              title="Share QR Code"
+              id="dashboard-qr-button"
+            >
+              <QrCode className="w-4 h-4" />
+            </Button>
             <Button variant="accent" size="sm" asChild>
               <Link to="/u/demo"><Share2 className="w-4 h-4 mr-1" />View Profile</Link>
             </Button>
@@ -229,6 +243,14 @@ export default function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* QR Code Modal */}
+      <QRCodeModal
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        url={profileUrl}
+        title="Share Your Profile"
+      />
     </div>
   );
 }

@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getCollection, getTotalValue } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
+import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Wallet } from "lucide-react";
+import { ArrowLeft, ExternalLink, Wallet, QrCode } from "lucide-react";
 import { motion } from "framer-motion";
 
 const DEMO_LINKS = [
@@ -16,6 +18,9 @@ export default function Profile() {
   const { slug } = useParams();
   const collection = getCollection();
   const totalValue = getTotalValue(collection);
+  const [qrOpen, setQrOpen] = useState(false);
+
+  const profileUrl = `${window.location.origin}/u/${slug || "demo"}`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,6 +49,16 @@ export default function Profile() {
           <p className="text-muted-foreground mt-1">
             Pokémon TCG collector & seller. Always looking for vintage holos! 🔥
           </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4 gap-2"
+            onClick={() => setQrOpen(true)}
+            id="profile-qr-button"
+          >
+            <QrCode className="w-4 h-4" />
+            Share via QR
+          </Button>
         </motion.div>
 
         {/* Value badge */}
@@ -121,6 +136,13 @@ export default function Profile() {
           </p>
         </div>
       </div>
+
+      {/* QR Code Modal */}
+      <QRCodeModal
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        url={profileUrl}
+      />
     </div>
   );
 }
