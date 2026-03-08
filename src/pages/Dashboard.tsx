@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Wallet, Layers, CreditCard, Share2, Search, Upload, Loader2, QrCode } from "lucide-react";
+import { ArrowLeft, Wallet, Layers, CreditCard, Share2, Search, Upload, Loader2, QrCode, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -91,58 +91,49 @@ export default function Dashboard() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
+        <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
               <Link to="/"><ArrowLeft className="w-4 h-4" /></Link>
             </Button>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-display font-bold text-sm">PV</span>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-display font-bold text-xs sm:text-sm">PV</span>
               </div>
-              <span className="font-display font-bold text-lg text-foreground">My Collection</span>
+              <span className="font-display font-bold text-base sm:text-lg text-foreground hidden xs:inline">My Collection</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileRef.current?.click()}
-            >
-              <Upload className="w-4 h-4 mr-1" />
-              Import CSV
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+            <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => fileRef.current?.click()}>
+              <Upload className="w-4 h-4 mr-1" /> Import CSV
             </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/explore">+ Add Cards</Link>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" onClick={() => fileRef.current?.click()} title="Import CSV">
+              <Upload className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
+              <Link to="/explore"><Plus className="w-4 h-4 mr-1" /> Add Cards</Link>
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" asChild>
+              <Link to="/explore"><Plus className="w-4 h-4" /></Link>
             </Button>
             <ThemeToggle />
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setQrOpen(true)}
-              title="Share QR Code"
-              id="dashboard-qr-button"
-            >
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQrOpen(true)} title="Share QR Code" id="dashboard-qr-button">
               <QrCode className="w-4 h-4" />
             </Button>
-            <Button variant="accent" size="sm" asChild>
+            <Button variant="accent" size="sm" className="hidden md:inline-flex" asChild>
               <Link to="/u/demo"><Share2 className="w-4 h-4 mr-1" />View Profile</Link>
+            </Button>
+            <Button variant="accent" size="icon" className="h-8 w-8 md:hidden" asChild>
+              <Link to="/u/demo"><Share2 className="w-4 h-4" /></Link>
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="container py-8">
+      <div className="container py-6 sm:py-8 px-4 sm:px-8">
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
           {[
             { icon: Wallet, label: "Total Value", value: formatPrice(totalValue), glow: true },
             { icon: CreditCard, label: "Cards", value: String(collection.reduce((s, c) => s + c.quantity, 0)) },
@@ -150,18 +141,18 @@ export default function Dashboard() {
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
-              className={`p-5 rounded-xl bg-card border border-border/50 ${stat.glow ? 'glow-primary' : ''}`}
+              className={`p-3 sm:p-5 rounded-xl bg-card border border-border/50 ${stat.glow ? 'glow-primary' : ''}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <stat.icon className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <p className="text-2xl font-display font-bold text-foreground">{stat.value}</p>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate">{stat.label}</p>
+                  <p className="text-lg sm:text-2xl font-display font-bold text-foreground truncate">{stat.value}</p>
                 </div>
               </div>
             </motion.div>
@@ -170,7 +161,7 @@ export default function Dashboard() {
 
         {/* Search Bar */}
         <div className="mb-6">
-          <div className="relative max-w-md">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search your collection..."
@@ -191,7 +182,7 @@ export default function Dashboard() {
 
       {/* Import Dialog */}
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg mx-4">
           <DialogHeader>
             <DialogTitle className="font-display">Import Collection</DialogTitle>
           </DialogHeader>
@@ -202,17 +193,13 @@ export default function Dashboard() {
                 Importing {importProgress.done} / {importProgress.total} cards...
               </p>
               <div className="w-full bg-secondary rounded-full h-2">
-                <div
-                  className="bg-primary h-2 rounded-full transition-all"
-                  style={{ width: `${(importProgress.done / importProgress.total) * 100}%` }}
-                />
+                <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(importProgress.done / importProgress.total) * 100}%` }} />
               </div>
             </div>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
                 Found <span className="text-foreground font-semibold">{importParsed.length}</span> cards in your CSV.
-                We'll search for each card and add matches to your collection.
               </p>
               <ScrollArea className="max-h-60 border border-border rounded-lg">
                 <div className="p-3 space-y-1">
@@ -226,17 +213,14 @@ export default function Dashboard() {
                     </div>
                   ))}
                   {importParsed.length > 50 && (
-                    <p className="text-xs text-muted-foreground text-center py-2">
-                      ...and {importParsed.length - 50} more
-                    </p>
+                    <p className="text-xs text-muted-foreground text-center py-2">...and {importParsed.length - 50} more</p>
                   )}
                 </div>
               </ScrollArea>
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button variant="ghost" onClick={() => setImportOpen(false)}>Cancel</Button>
                 <Button variant="hero" onClick={handleImport}>
-                  <Upload className="w-4 h-4 mr-1" />
-                  Import {importParsed.length} Cards
+                  <Upload className="w-4 h-4 mr-1" /> Import {importParsed.length} Cards
                 </Button>
               </DialogFooter>
             </>
@@ -244,13 +228,7 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* QR Code Modal */}
-      <QRCodeModal
-        open={qrOpen}
-        onOpenChange={setQrOpen}
-        url={profileUrl}
-        title="Share Your Profile"
-      />
+      <QRCodeModal open={qrOpen} onOpenChange={setQrOpen} url={profileUrl} title="Share Your Profile" />
     </div>
   );
 }
