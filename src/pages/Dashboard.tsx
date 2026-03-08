@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft, Wallet, Layers, CreditCard, Search, Upload, Loader2, QrCode,
-  Plus, Crown, LogOut, User, Link2, LayoutGrid, ExternalLink
+  Plus, Crown, LogOut, User, LayoutGrid, ExternalLink
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
