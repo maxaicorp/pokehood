@@ -43,7 +43,7 @@ const PLATFORM_MAP: Record<string, PlatformInfo> = {
   paypal: { icon: <SiPaypal />, color: "#003087", name: "PayPal" },
   whatsapp: { icon: <SiWhatsapp />, color: "#25D366", name: "WhatsApp" },
   telegram: { icon: <SiTelegram />, color: "#26A5E4", name: "Telegram" },
-  linkedin: { icon: <SiGithub />, color: "#0A66C2", name: "LinkedIn" },
+  linkedin: { icon: <Globe />, color: "#0A66C2", name: "LinkedIn" },
   github: { icon: <SiGithub />, color: "#181717", name: "GitHub" },
   patreon: { icon: <SiPatreon />, color: "#FF424D", name: "Patreon" },
   kickstarter: { icon: <SiKickstarter />, color: "#05CE78", name: "Kickstarter" },
