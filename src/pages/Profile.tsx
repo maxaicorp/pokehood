@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getCollectionByUserId, getTotalValue, CollectionCard } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
+import { getPlatformIcon } from "@/lib/platform-icons";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -95,15 +96,6 @@ export default function Profile() {
     );
   }
 
-  const linkIcons: Record<string, string> = {
-    ebay: "🛒", tcgplayer: "🃏", discord: "💬", instagram: "📸",
-    twitter: "🐦", youtube: "📺", twitch: "🎮", tiktok: "🎵",
-  };
-
-  const getIcon = (label: string) => {
-    const key = Object.keys(linkIcons).find(k => label.toLowerCase().includes(k));
-    return key ? linkIcons[key] : "🔗";
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -176,7 +168,7 @@ export default function Profile() {
                 transition={{ delay: 0.3 + i * 0.08 }}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg sm:text-xl">{getIcon(link.label)}</span>
+                  <span className="text-lg sm:text-xl">{getPlatformIcon(link.label + " " + link.url, "w-5 h-5")}</span>
                   <span className="font-semibold text-foreground text-sm sm:text-base">{link.label}</span>
                 </div>
                 <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -209,7 +201,7 @@ export default function Profile() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border/50 hover:border-green-500/50 transition-colors text-xs font-medium text-foreground"
                 >
-                  <span>{getIcon(link.label)}</span>
+                  <span>{getPlatformIcon(link.label + " " + link.url, "w-3.5 h-3.5")}</span>
                   {link.label}
                   <ExternalLink className="w-3 h-3 text-muted-foreground" />
                 </a>

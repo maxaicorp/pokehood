@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2, GripVertical, Loader2, ExternalLink, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { getPlatformIcon } from "@/lib/platform-icons";
 
 interface UserLink {
   id: string;
@@ -125,9 +126,9 @@ export default function LinkManager() {
                 className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 group"
               >
                 <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />
+                <span className="shrink-0">{getPlatformIcon(link.label + " " + link.url, "w-4 h-4")}</span>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-foreground text-sm truncate">{link.label}</p>
-                  <p className="text-xs text-muted-foreground truncate">{link.url}</p>
                 </div>
                 <a
                   href={link.url}
