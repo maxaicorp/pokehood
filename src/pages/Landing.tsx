@@ -31,29 +31,28 @@ export default function Landing() {
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] overflow-hidden transition-colors">
       {/* ═══ SECTION 1: Floating Pill Nav ═══ */}
       <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-auto">
-        <div className="flex items-center justify-between gap-6 px-3 py-2 rounded-full backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-sm bg-[#F2F2F2] dark:bg-white/10">
+        <div className="flex items-center gap-2 px-2 py-1.5 rounded-2xl backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-sm bg-[#F2F2F2]/90 dark:bg-white/10">
           {/* Logo — left */}
-          <Link to="/" className="flex items-center gap-2 px-2 py-1.5">
+          <Link to="/" className="flex items-center gap-2 px-2 py-1">
             <div className="w-7 h-7 rounded-lg bg-[#141414] flex items-center justify-center overflow-hidden">
               <img src="/logo.png" alt="PokeVault" className="w-6 h-6 object-contain" />
             </div>
             <span className="font-display font-bold text-sm text-[#141414] dark:text-white hidden sm:inline">PokeVault</span>
           </Link>
-          {/* Links + actions — right */}
-          <div className="flex items-center gap-1">
-            <div className="hidden sm:flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="rounded-full text-sm h-8 px-4 text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10" asChild>
-                <Link to="/explore">Explore</Link>
-              </Button>
-              <Button variant="ghost" size="sm" className="rounded-full text-sm h-8 px-4 text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10" asChild>
-                <Link to="/dashboard">Dashboard</Link>
-              </Button>
-            </div>
-            <ThemeToggle />
-            <Button size="sm" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold" asChild>
-              <Link to="/explore">Get Started</Link>
-            </Button>
+          {/* Nav links — plain text, no bg */}
+          <div className="hidden sm:flex items-center gap-0">
+            <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">
+              Explore
+            </Link>
+            <Link to="/dashboard" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">
+              Dashboard
+            </Link>
           </div>
+          {/* CTA + theme toggle */}
+          <Button size="sm" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold ml-1" asChild>
+            <Link to="/explore">Get Started</Link>
+          </Button>
+          <ThemeToggle />
         </div>
       </nav>
 
