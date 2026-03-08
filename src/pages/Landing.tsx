@@ -31,7 +31,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] overflow-hidden transition-colors">
       {/* ═══ 1. Floating Pill Nav ═══ */}
-      <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-auto">
+      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-auto">
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-2xl backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-sm bg-[#F2F2F2]/90 dark:bg-white/10">
           <Link to="/" className="flex items-center gap-2 px-2 py-1">
             <div className="w-7 h-7 rounded-lg bg-[#141414] flex items-center justify-center overflow-hidden">
