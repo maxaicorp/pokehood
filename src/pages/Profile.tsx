@@ -149,6 +149,39 @@ export default function Profile() {
           </motion.div>
         )}
 
+        {/* For-sale contact banner */}
+        {collection.some(c => c.forSale) && links.length > 0 && (
+          <motion.div
+            className="mb-6 sm:mb-8 p-4 rounded-xl bg-green-500/10 border border-green-500/30"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-3 h-3 rounded-full bg-green-500" />
+              <span className="text-sm font-semibold text-foreground">Cards For Sale</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Interested in buying? Reach out via:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {links.map((link) => (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border/50 hover:border-green-500/50 transition-colors text-xs font-medium text-foreground"
+                >
+                  <span>{getIcon(link.label)}</span>
+                  {link.label}
+                  <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                </a>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* Card gallery */}
         <div>
           <h2 className="font-display font-bold text-base sm:text-lg text-foreground mb-3 sm:mb-4">
