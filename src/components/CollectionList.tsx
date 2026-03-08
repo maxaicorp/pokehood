@@ -94,10 +94,6 @@ export default function CollectionList({ cards, onUpdate }: Props) {
                 ×{card.quantity}
               </span>
             )}
-            {/* Green dot for-sale indicator */}
-            {card.forSale && (
-              <span className="absolute top-2 left-2 w-3 h-3 rounded-full bg-green-500 border-2 border-background shadow-sm" title="For Sale" />
-            )}
           </div>
 
           <div className="p-3 space-y-2">
