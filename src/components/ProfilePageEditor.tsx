@@ -129,11 +129,16 @@ export default function ProfilePageEditor() {
         .eq("user_id", user!.id);
       if (error) throw error;
     },
+    onMutate: () => setSaveStatus("saving"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-profile"] });
-      toast.success("Profile updated!");
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
     },
-    onError: (err: any) => toast.error(err.message || "Failed to update profile"),
+    onError: (err: any) => {
+      setSaveStatus("idle");
+      toast.error(err.message || "Failed to update profile");
+    },
   });
 
   const addLink = useMutation({
@@ -177,18 +182,33 @@ export default function ProfilePageEditor() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-links"] }),
   });
 
-  const handleSave = () => {
-    if (slugStatus === "taken") {
-      toast.error("That slug is already taken. Please choose another.");
-      return;
-    }
+  const doSave = useCallback(() => {
+    if (slugStatus === "taken" || !initialized) return;
     updateProfile.mutate({
       display_name: displayName.trim() || null,
       bio: bio.trim() || null,
       slug: slug.trim() || null,
       is_published: isPublished,
     });
-  };
+  }, [displayName, bio, slug, isPublished, slugStatus, initialized]);
+
+  // Auto-save with debounce
+  useEffect(() => {
+    if (!initialized || !profile) return;
+    // Don't save if nothing changed
+    if (
+      displayName === (profile.display_name || "") &&
+      bio === (profile.bio || "") &&
+      slug === (profile.slug || "") &&
+      isPublished === profile.is_published
+    ) return;
+    if (slugStatus === "checking" || slugStatus === "taken") return;
+    const timer = setTimeout(doSave, 1200);
+    return () => clearTimeout(timer);
+  }, [displayName, bio, slug, isPublished, doSave, initialized, profile, slugStatus]);
+
+  const publishedDomain = "https://collectiblez.lovable.app";
+  const profileUrl = `${publishedDomain}/u/${slug || profile?.slug || ""}`;
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
