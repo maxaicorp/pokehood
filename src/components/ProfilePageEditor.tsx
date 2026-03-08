@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCollection, getTotalValue, CollectionCard } from "@/lib/collection-store";
+import { getCollection, getTotalValue, checkSlugAvailability, CollectionCard } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import PhoneMockup from "@/components/PhoneMockup";
 import { Button } from "@/components/ui/button";
@@ -86,6 +86,7 @@ export default function ProfilePageEditor() {
   const [slug, setSlug] = useState("");
   const [isPublished, setIsPublished] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
 
   if (profile && !initialized) {
     setDisplayName(profile.display_name || "");
@@ -97,6 +98,24 @@ export default function ProfilePageEditor() {
 
   const totalValue = getTotalValue(collection);
   const atLinkLimit = !isPro && links.length >= limits.maxLinks;
+
+  // Debounced slug availability check
+  useEffect(() => {
+    if (!slug || slug === profile?.slug || !user) {
+      setSlugStatus("idle");
+      return;
+    }
+    if (slug.length < 3) {
+      setSlugStatus("idle");
+      return;
+    }
+    setSlugStatus("checking");
+    const timer = setTimeout(async () => {
+      const available = await checkSlugAvailability(slug, user.id);
+      setSlugStatus(available ? "available" : "taken");
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [slug, profile?.slug, user]);
 
   // Mutations
   const updateProfile = useMutation({
@@ -156,6 +175,10 @@ export default function ProfilePageEditor() {
   });
 
   const handleSave = () => {
+    if (slugStatus === "taken") {
+      toast.error("That slug is already taken. Please choose another.");
+      return;
+    }
     updateProfile.mutate({
       display_name: displayName.trim() || null,
       bio: bio.trim() || null,
@@ -300,6 +323,19 @@ export default function ProfilePageEditor() {
               maxLength={30}
             />
           </div>
+          {slugStatus === "checking" && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" /> Checking availability…
+            </p>
+          )}
+          {slugStatus === "available" && (
+            <p className="text-xs text-green-600 flex items-center gap-1">
+              <Check className="w-3 h-3" /> Available!
+            </p>
+          )}
+          {slugStatus === "taken" && (
+            <p className="text-xs text-destructive">That slug is already taken.</p>
+          )}
         </div>
 
         {/* Published toggle */}

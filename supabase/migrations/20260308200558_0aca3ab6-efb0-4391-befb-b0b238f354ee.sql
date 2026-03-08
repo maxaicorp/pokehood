@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_slug_unique ON public.profiles (slug) WHERE slug IS NOT NULL;
