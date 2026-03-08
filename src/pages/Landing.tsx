@@ -44,7 +44,7 @@ export default function Landing() {
             <Link to="/dashboard" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Dashboard</Link>
           </div>
           <Button size="sm" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold ml-1" asChild>
-            <Link to="/explore">Get Started</Link>
+            <Link to="/auth">Get Started</Link>
           </Button>
           <ThemeToggle />
         </div>
@@ -70,7 +70,7 @@ export default function Landing() {
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <Button size="lg" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 px-7 h-12 text-base font-semibold" asChild>
-                <Link to="/dashboard">Start Your Vault <ArrowRight className="w-4 h-4 ml-2" /></Link>
+                <Link to="/auth">Start Your Vault <ArrowRight className="w-4 h-4 ml-2" /></Link>
               </Button>
               <Button variant="outline" size="lg" className="rounded-full px-7 h-12 text-base font-semibold border-[#E5E5E5] dark:border-white/15 text-[#141414] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-white/10" asChild>
                 <Link to="/u/demo">See Demo Profile</Link>
@@ -249,7 +249,7 @@ export default function Landing() {
             <h2 className="font-display mb-4 text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 40px)" }}>Ready to Build Your Vault?</h2>
             <p className="text-[#666] dark:text-[#888] mb-8 max-w-md mx-auto">Join trainers who track their collection value and share their seller profiles.</p>
             <Button size="lg" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 px-8 h-12 text-base font-semibold" asChild>
-              <Link to="/dashboard">Get Started Free <ArrowRight className="w-4 h-4 ml-2" /></Link>
+              <Link to="/auth">Get Started Free <ArrowRight className="w-4 h-4 ml-2" /></Link>
             </Button>
           </motion.div>
         </div>
