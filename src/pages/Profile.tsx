@@ -159,13 +159,16 @@ export default function Profile() {
               {collection.slice(0, 20).map((card, i) => (
                 <motion.div
                   key={card.id}
-                  className="rounded-xl overflow-hidden border border-border/50"
+                  className="relative rounded-xl overflow-hidden border border-border/50"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.04 }}
                   whileHover={{ scale: 1.05, zIndex: 10 }}
                 >
                   <img src={card.imageSmall} alt={card.name} className="w-full" loading="lazy" />
+                  {card.forSale && (
+                    <span className="absolute top-1.5 left-1.5 w-3 h-3 rounded-full bg-green-500 border-2 border-background shadow-sm" title="For Sale" />
+                  )}
                 </motion.div>
               ))}
             </div>
