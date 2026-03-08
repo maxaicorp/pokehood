@@ -50,6 +50,27 @@ const PLATFORM_MAP: Record<string, PlatformInfo> = {
   tcgplayer: { icon: <Globe />, color: "#1D4ED8", name: "TCGPlayer" },
 };
 
+/** Top seller/social presets for the link label dropdown */
+export const PLATFORM_PRESETS = [
+  { key: "ebay", label: "eBay" },
+  { key: "tcgplayer", label: "TCGPlayer" },
+  { key: "instagram", label: "Instagram" },
+  { key: "discord", label: "Discord" },
+  { key: "youtube", label: "YouTube" },
+  { key: "twitch", label: "Twitch" },
+  { key: "tiktok", label: "TikTok" },
+  { key: "twitter", label: "X (Twitter)" },
+  { key: "facebook", label: "Facebook" },
+  { key: "etsy", label: "Etsy" },
+  { key: "shopify", label: "Shopify" },
+  { key: "paypal", label: "PayPal" },
+  { key: "whatsapp", label: "WhatsApp" },
+  { key: "telegram", label: "Telegram" },
+  { key: "reddit", label: "Reddit" },
+  { key: "patreon", label: "Patreon" },
+  { key: "github", label: "GitHub" },
+] as const;
+
 /**
  * Detect a platform from a label or URL string.
  * Returns the brand icon element or a generic globe icon.

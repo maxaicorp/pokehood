@@ -5,10 +5,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, GripVertical, Loader2, ExternalLink, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
-import { getPlatformIcon } from "@/lib/platform-icons";
+import { getPlatformIcon, PLATFORM_PRESETS } from "@/lib/platform-icons";
 
 interface UserLink {
   id: string;
@@ -21,8 +22,12 @@ interface UserLink {
 export default function LinkManager() {
   const { user, isPro, limits } = useAuth();
   const queryClient = useQueryClient();
-  const [newLabel, setNewLabel] = useState("");
+  const [selectedPlatform, setSelectedPlatform] = useState("");
+  const [customLabel, setCustomLabel] = useState("");
   const [newUrl, setNewUrl] = useState("");
+
+  const isCustom = selectedPlatform === "__custom";
+  const newLabel = isCustom ? customLabel : selectedPlatform;
 
   const { data: links = [], isLoading } = useQuery({
     queryKey: ["my-links", user?.id],
@@ -52,7 +57,8 @@ export default function LinkManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-links"] });
-      setNewLabel("");
+      setSelectedPlatform("");
+      setCustomLabel("");
       setNewUrl("");
       toast.success("Link added!");
     },
@@ -171,15 +177,38 @@ export default function LinkManager() {
           <p className="font-semibold text-foreground text-sm">Add New Link</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="linkLabel" className="text-xs">Label</Label>
-              <Input
-                id="linkLabel"
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="e.g. eBay Store"
-                maxLength={50}
-              />
+              <Label className="text-xs">Platform</Label>
+              <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select platform..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLATFORM_PRESETS.map((p) => (
+                    <SelectItem key={p.key} value={p.label}>
+                      <span className="flex items-center gap-2">
+                        {getPlatformIcon(p.key, "w-4 h-4")}
+                        {p.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom">
+                    <span className="flex items-center gap-2 text-muted-foreground">✏️ Custom</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {isCustom && (
+              <div className="space-y-1">
+                <Label htmlFor="customLabel" className="text-xs">Custom Label</Label>
+                <Input
+                  id="customLabel"
+                  value={customLabel}
+                  onChange={(e) => setCustomLabel(e.target.value)}
+                  placeholder="e.g. My Store"
+                  maxLength={50}
+                />
+              </div>
+            )}
             <div className="space-y-1">
               <Label htmlFor="linkUrl" className="text-xs">URL</Label>
               <Input
