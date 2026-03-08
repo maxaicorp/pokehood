@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "next-themes";
@@ -41,7 +42,7 @@ import { Link } from "react-router-dom";
 type ViewMode = "grid" | "list";
 
 export default function Explore() {
-  const { user, isPro, limits, signOut } = useAuth();
+  const { user, loading, isPro, limits, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const [qrOpen, setQrOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -162,6 +163,9 @@ export default function Explore() {
   const totalPages = Math.ceil(totalCount / 35);
 
   const activeFilterCount = [selectedSet, selectedRarity, ...(selectedTypes.length ? ["t"] : [])].filter(Boolean).length;
+
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" /></div>;
+  if (!user) return <Navigate to="/auth" replace />;
 
   return (
     <div className="min-h-screen bg-background">
