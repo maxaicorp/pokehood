@@ -1,83 +1,239 @@
-# PokeVault Codebase Guide
+# PokeVault — Codebase & Feature Guide
 
 ## Overview
 
-**PokeVault** is a modern React application built using Vite, TypeScript, Tailwind CSS, and shadcn/ui. It serves as a comprehensive Pokémon TCG (Trading Card Game) portfolio tracker, allowing users to search for cards, manage their collections, track market values, and share their portfolios publicly.
+**PokeVault** is a full-stack Pokémon TCG portfolio tracker built with React, TypeScript, and Supabase (Lovable Cloud). Users can search cards, manage collections, track market values, mark cards for sale, and share public linktree-style profile pages.
+
+---
 
 ## Tech Stack
 
-- **Frontend Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Routing**: React Router (v6)
-- **Styling**: Tailwind CSS + shadcn/ui + Framer Motion (for animations)
-- **Data Fetching**: `@tanstack/react-query`
-- **Icons**: Lucide React
-- **API**: [Pokémon TCG API v2](https://pokemontcg.io/)
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript, Vite |
+| Styling | Tailwind CSS, shadcn/ui, Framer Motion |
+| Data Fetching | @tanstack/react-query |
+| Icons | Lucide React, react-icons (brand icons) |
+| Backend | Supabase (Lovable Cloud) — PostgreSQL, Auth, Storage, Edge Functions |
+| Payments | Stripe (checkout, customer portal) |
+| API | [Pokémon TCG API v2](https://pokemontcg.io/) |
+
+---
 
 ## Project Structure
 
 ```text
 src/
-├── components/      # Reusable UI elements (CardSearch, CollectionList, PhoneMockup)
-├── hooks/           # Custom React hooks (use-mobile, use-toast)
-├── lib/             # Core business logic and integrations
-│   ├── pokemon-api.ts      # Pokemon TCG API integration and types
-│   ├── collection-store.ts # Local Storage state management for collections
-│   ├── csv-import.ts       # CSV parsing for TCGPlayer exports
-│   └── utils.ts            # General utility functions (e.g., Tailwind class merging)
-├── pages/           # Route views
-│   ├── Landing.tsx         # Homepage with hero section and features breakdown
-│   ├── Explore.tsx         # Advanced card search, filters, and CSV import interface
-│   ├── Dashboard.tsx       # Personal collection management and portfolio stats
-│   ├── Profile.tsx         # Public-facing linktree-style portfolio view
-│   └── NotFound.tsx        # 404 Error page
-├── App.tsx          # Application routing and provider setup
-└── main.tsx         # Entry point
+├── components/
+│   ├── BackgroundLayer.tsx     # Animated background effects
+│   ├── CardSearch.tsx          # Card search input with autocomplete
+│   ├── CardSlider.tsx          # Horizontal card carousel
+│   ├── CollectionList.tsx      # Dashboard collection grid with actions
+│   ├── LinkManager.tsx         # Linktree-style link CRUD with platform dropdown
+│   ├── NavLink.tsx             # Active-aware navigation link wrapper
+│   ├── PhoneMockup.tsx         # iPhone mockup for profile preview
+│   ├── ProfilePageEditor.tsx   # Dashboard profile settings editor
+│   ├── ProfileSettings.tsx     # Profile display name/slug/bio form
+│   ├── QRCodeModal.tsx         # QR code share dialog
+│   ├── ThemeToggle.tsx         # Light/dark mode toggle
+│   └── ui/                    # shadcn/ui primitives
+├── contexts/
+│   └── AuthContext.tsx         # Auth provider with user, isPro, limits, signOut
+├── lib/
+│   ├── pokemon-api.ts          # Pokémon TCG API wrapper and types
+│   ├── collection-store.ts     # Supabase collection CRUD operations
+│   ├── csv-import.ts           # CSV parsing for bulk imports
+│   ├── platform-icons.tsx      # Brand icon detection (eBay, Instagram, etc.)
+│   ├── qrcode.ts               # QR code generation utility
+│   ├── stripe-config.ts        # Stripe product/price config
+│   └── utils.ts                # Tailwind class merging helpers
+├── pages/
+│   ├── Landing.tsx             # Marketing homepage with hero + features
+│   ├── Dashboard.tsx           # Collection management + profile editor
+│   ├── Explore.tsx             # Advanced card search with filters
+│   ├── Profile.tsx             # Public-facing profile page (/u/:slug)
+│   ├── Auth.tsx                # Login/signup page
+│   └── NotFound.tsx            # 404 page
+├── integrations/
+│   └── supabase/               # Auto-generated Supabase client + types
+└── supabase/
+    └── functions/              # Edge functions (checkout, subscription, portal)
 ```
 
-## Core Functionalities
+---
 
-### 1. Card Discovery & Search (`Explore.tsx`, `CardSearch.tsx`)
+## Database Schema
 
-- Users can search the entire Pokémon TCG database using the `pokemon-api.ts` wrapper.
-- **Advanced Filtering**: Filter by Set, Rarity, and Energy Types. Sort by release date, name, or card number.
-- **View Modes**: Toggle between Grid and List views.
-- **Live Prices**: Extracts TCGplayer market and low prices directly from the API response to show real-time value and price trends.
+### `profiles`
+| Column | Type | Description |
+|--------|------|-------------|
+| user_id | uuid | References auth user |
+| display_name | text | Profile display name |
+| slug | text | URL slug for public profile |
+| bio | text | Short bio |
+| avatar_url | text | Avatar image URL |
+| is_published | boolean | Whether profile is publicly listed |
 
-### 2. Collection Management (`Dashboard.tsx`, `collection-store.ts`)
+### `collection_cards`
+| Column | Type | Description |
+|--------|------|-------------|
+| user_id | uuid | Card owner |
+| tcg_api_id | text | Pokémon TCG API card ID |
+| name, set_name, set_id, card_number, rarity | text | Card metadata |
+| condition | text | Card condition (NM, LP, etc.) |
+| quantity | integer | Number of copies |
+| manual_price / market_price | numeric | User-set or API-fetched price |
+| for_sale | boolean | Whether card is listed for sale |
+| sale_price | numeric | Asking price when for sale |
+| image_small / image_large | text | Card image URLs |
 
-- The user's collection is purely client-side, persisted in the browser's `localStorage` via `collection-store.ts`.
-- **Add/Remove Cards**: Users can add queried cards to their personal "Vault" and remove them.
-- **Quantity Tracking**: The app groups identical cards (same ID and condition) and tracks the quantity.
-- **Value Calculation**: Dynamically computes the total portfolio value based on individual card quantities and their current market prices.
-- **Stats**: Real-time display of total portfolio value, total cards owned, and unique sets collected.
+### `user_links`
+| Column | Type | Description |
+|--------|------|-------------|
+| user_id | uuid | Link owner |
+| label | text | Display label (e.g. "eBay", "Instagram") |
+| url | text | Link URL |
+| sort_order | integer | Display order |
 
-### 3. Public Profiles (`Profile.tsx`)
+### `user_roles`
+| Column | Type | Description |
+|--------|------|-------------|
+| user_id | uuid | User reference |
+| role | app_role enum | admin, moderator, or user |
 
-- Inspired by "Linktree", the app provides a shareable public profile page (`/u/:slug`).
-- Displays the user's total collection value and showcases top cards.
-- Provides static outbound links to marketplaces like eBay, TCGplayer, Mercari, or socials like Instagram and Discord.
+---
 
-### 4. CSV Import (`csv-import.ts`, `Explore.tsx`)
+## Core Features
 
-- Users can import their existing TCGplayer collections via CSV upload.
-- The app parses the CSV, queries the Pokémon TCG API to resolve the exact cards, and bulk-imports them into local storage.
-- Interactive progress bar and feedback using `sonner` toasts during the import.
+### 1. Navigation & Layout
 
-## API Integration Details
+- **Consistent nav bar** across Dashboard and Explore pages with PokeVault logo, Dashboard link, Explore link
+- **Profile avatar dropdown** (top-right) consolidates: account info, Upgrade to Pro, My Profile link, Share QR Code, theme toggle (light/dark), and Sign Out
+- **No back button on dashboard** — users navigate via the nav bar to stay on-platform
+- Landing page has its own floating pill nav with Explore, Dashboard, Get Started, and theme toggle
 
-All external interactions go through `src/lib/pokemon-api.ts`:
+### 2. Card Discovery & Search (Explore)
 
-- **Base URL**: `https://api.pokemontcg.io/v2`
-- **Key Methods**:
-  - `searchCards()` / `searchCardsAdvanced()`: Queries cards with Lucene-like query string parameters.
-  - `getSets()`: Retrieves all available Pokémon sets.
-  - `getLatestCards()`: Fetches the newest Pokémon cards by descending release date.
+- Full-text search against the Pokémon TCG API
+- **Sidebar filters**: Product line (TCG/Pocket), Set, Rarity, Energy Type
+- **Sort options**: Newest, name, card number
+- **View modes**: Grid and List toggle
+- **Live prices**: TCGplayer market and low prices displayed per card
+- **Pagination**: Full page navigation with ellipsis
+- Same nav bar + avatar dropdown as Dashboard
 
-## State Management
+### 3. Collection Management (Dashboard)
 
-Rather than a complex global state manager (like Redux), PokeVault relies on:
+- **Stats bar**: Total Value, Cards count, Sets count
+- **Search**: Filter your collection by name, set, or rarity
+- **Add cards**: Via Explore page or CSV import
+- **CSV Import**: Parses TCGPlayer exports, resolves cards via API, bulk imports with progress bar
+- **Card actions**: Remove, change condition, adjust quantity
+- **For-sale toggle**: Mark individual cards for sale with a dollar sign button
+- **Tabs**: Collection tab + My Page tab (profile editor)
 
-- **React Query**: For server-state (caching and deduping Pokémon TCG API requests).
-- **Local Storage (`collection-store.ts`)**: For client-state (persisting the user's collection without requiring a backend database).
-- **React Context / Local State**: Provided by Shadcn for components like Dialogs, Tabs, and Toasts.
+### 4. For-Sale System
+
+- Cards can be marked "for sale" via the dashboard collection
+- **Green dot indicator**: Appears on the public profile page (top-left corner of each for-sale card) with `z-10` to render above card images
+- **Contact seller icon**: Green message bubble (top-right of public profile) with pulsing animation — only shows when cards are for sale AND user has links configured
+- **Popover**: Clicking the contact icon reveals all the seller's social/marketplace links
+- Contact is off-platform (Instagram DM, eBay, Discord, etc.) to avoid platform liability
+
+### 5. Public Profiles (/u/:slug)
+
+- **Linktree-style** shareable profile at `/u/:slug`
+- Displays: avatar, display name, bio, collection value, external links, card gallery
+- **Brand icons** on links: Auto-detected from label/URL (eBay, Instagram, Discord, YouTube, TCGPlayer, etc.) using react-icons Simple Icons
+- **QR code sharing**: "Share via QR" button generates scannable QR code
+- **Infinite scroll**: Cards load 20 at a time with IntersectionObserver, spinner shown while loading more
+- **Private badge**: If `is_published` is false, a lock icon + "Private Profile" badge appears (but page remains accessible)
+- **Contact icon**: Green floating message button (top-right) with popover showing seller's links
+
+### 6. Link Manager (Dashboard → My Page)
+
+- **Platform dropdown**: Pre-populated with top platforms (eBay, TCGPlayer, Instagram, Discord, YouTube, Twitch, TikTok, X, Facebook, Etsy, Shopify, PayPal, WhatsApp, Telegram, Reddit, Patreon, GitHub) with brand icons
+- **Custom option**: "Custom" choice reveals a free-text label field
+- **Drag-to-reorder**: Links can be reordered via drag handles
+- **Free tier limit**: Configurable max links for free users with upgrade prompt
+
+### 7. Platform Icon System (`platform-icons.tsx`)
+
+- `getPlatformIcon(labelOrUrl, className)` — auto-detects platform from text and returns the brand SVG icon with correct brand color
+- `detectPlatform(labelOrUrl)` — returns platform info (icon, color, name) or null
+- `PLATFORM_PRESETS` — exported array for the link manager dropdown
+- Supports 17+ platforms with fallback to Globe icon for unrecognized links
+
+### 8. Authentication & Authorization
+
+- Email/password auth via Supabase Auth
+- Auto-creates profile on signup (via `handle_new_user` trigger)
+- Role-based access via `user_roles` table + `has_role()` security definer function
+- Admin auto-assignment on signup for designated email
+
+### 9. Pro/Free Tier System
+
+- **Free tier**: Limited cards and links
+- **Pro tier**: Unlimited cards, links, custom slug
+- Stripe integration via edge functions: `create-checkout`, `check-subscription`, `customer-portal`
+- Pro status checked via `useAuth()` context (`isPro`, `limits`)
+
+### 10. Theme System
+
+- Light/dark mode via `next-themes`
+- Theme toggle accessible from avatar dropdown (Dashboard/Explore) and landing page nav
+- Semantic design tokens in `index.css` for consistent theming
+
+---
+
+## RLS (Row-Level Security) Policies
+
+| Table | Policy | Access |
+|-------|--------|--------|
+| collection_cards | Cards are publicly viewable | SELECT: true (restrictive) |
+| collection_cards | Users can manage their own cards | ALL: auth.uid() = user_id |
+| profiles | Public profiles are viewable by everyone | SELECT: true (restrictive) |
+| profiles | Users can insert/update their own profile | INSERT/UPDATE: auth.uid() = user_id |
+| user_links | Links are publicly viewable | SELECT: true (restrictive) |
+| user_links | Users can manage their own links | ALL: auth.uid() = user_id |
+| user_roles | Users can view their own roles | SELECT: auth.uid() = user_id |
+
+---
+
+## Edge Functions
+
+| Function | Purpose |
+|----------|---------|
+| `create-checkout` | Creates Stripe checkout session for Pro upgrade |
+| `check-subscription` | Verifies active Stripe subscription status |
+| `customer-portal` | Redirects to Stripe customer portal for billing management |
+
+---
+
+## Storage
+
+| Bucket | Public | Purpose |
+|--------|--------|---------|
+| avatars | Yes | User profile avatar uploads (WebP compressed client-side) |
+
+---
+
+## Key Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| VITE_SUPABASE_URL | Supabase project URL |
+| VITE_SUPABASE_PUBLISHABLE_KEY | Supabase anon key |
+| STRIPE_SECRET_KEY | Stripe secret (edge function secret) |
+
+---
+
+## Routes
+
+| Path | Page | Auth Required |
+|------|------|---------------|
+| `/` | Landing | No |
+| `/auth` | Login/Signup | No |
+| `/dashboard` | Collection + Profile Editor | Yes |
+| `/explore` | Card Search & Discovery | No (add-to-collection requires auth) |
+| `/u/:slug` | Public Profile | No |
