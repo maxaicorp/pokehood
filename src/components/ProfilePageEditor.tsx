@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,8 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Camera, Loader2, Check, Crown, Plus, Trash2, GripVertical,
-  ExternalLink, Wallet
+  ExternalLink, Wallet, QrCode, Share2
 } from "lucide-react";
+import QRCodeModal from "@/components/QRCodeModal";
 import { toast } from "sonner";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 
