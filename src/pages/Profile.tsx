@@ -1,26 +1,87 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getCollection, getTotalValue } from "@/lib/collection-store";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { getCollectionByUserId, getTotalValue, CollectionCard } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Wallet, QrCode } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeft, ExternalLink, Wallet, QrCode, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
-
-const DEMO_LINKS = [
-  { label: "eBay Store", url: "#", icon: "🛒" },
-  { label: "TCGplayer", url: "#", icon: "🃏" },
-  { label: "Discord Server", url: "#", icon: "💬" },
-  { label: "Instagram", url: "#", icon: "📸" },
-];
 
 export default function Profile() {
   const { slug } = useParams();
-  const collection = getCollection();
-  const totalValue = getTotalValue(collection);
   const [qrOpen, setQrOpen] = useState(false);
-
   const profileUrl = `${window.location.origin}/u/${slug || "demo"}`;
+
+  // Fetch profile by slug
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ["public-profile", slug],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!slug,
+  });
+
+  // Fetch links for this user
+  const { data: links = [] } = useQuery({
+    queryKey: ["public-links", profile?.user_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_links")
+        .select("*")
+        .eq("user_id", profile!.user_id)
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile?.user_id,
+  });
+
+  // Fetch collection for this user
+  const { data: collection = [] } = useQuery({
+    queryKey: ["public-collection", profile?.user_id],
+    queryFn: () => getCollectionByUserId(profile!.user_id),
+    enabled: !!profile?.user_id,
+  });
+
+  const totalValue = getTotalValue(collection);
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+        <p className="text-muted-foreground text-lg">Profile not found</p>
+        <Button variant="outline" asChild>
+          <Link to="/">Go Home</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const linkIcons: Record<string, string> = {
+    ebay: "🛒", tcgplayer: "🃏", discord: "💬", instagram: "📸",
+    twitter: "🐦", youtube: "📺", twitch: "🎮", tiktok: "🎵",
+  };
+
+  const getIcon = (label: string) => {
+    const key = Object.keys(linkIcons).find(k => label.toLowerCase().includes(k));
+    return key ? linkIcons[key] : "🔗";
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,53 +90,63 @@ export default function Profile() {
 
       <div className="relative z-10 container max-w-2xl py-6 sm:py-8 px-4 sm:px-8">
         <Button variant="ghost" size="sm" className="mb-4 sm:mb-6" asChild>
-          <Link to="/dashboard"><ArrowLeft className="w-4 h-4 mr-1" />Back</Link>
+          <Link to="/"><ArrowLeft className="w-4 h-4 mr-1" />Back</Link>
         </Button>
 
         {/* Profile header */}
         <motion.div className="text-center mb-6 sm:mb-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/20 border-2 border-primary mx-auto mb-3 sm:mb-4 flex items-center justify-center">
-            <span className="text-2xl sm:text-3xl font-display font-bold text-primary">
-              {(slug || "D")[0].toUpperCase()}
-            </span>
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary/20 border-2 border-primary mx-auto mb-3 sm:mb-4 flex items-center justify-center overflow-hidden">
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.display_name || ""} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-2xl sm:text-3xl font-display font-bold text-primary">
+                {(profile.display_name || slug || "?")[0].toUpperCase()}
+              </span>
+            )}
           </div>
-          <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground">{slug || "demo"}</h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base px-4">
-            Pokémon TCG collector & seller. Always looking for vintage holos! 🔥
-          </p>
-          <Button variant="outline" size="sm" className="mt-3 sm:mt-4 gap-2" onClick={() => setQrOpen(true)} id="profile-qr-button">
+          <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground">{profile.display_name || slug}</h1>
+          {profile.bio && (
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base px-4">{profile.bio}</p>
+          )}
+          <Button variant="outline" size="sm" className="mt-3 sm:mt-4 gap-2" onClick={() => setQrOpen(true)}>
             <QrCode className="w-4 h-4" /> Share via QR
           </Button>
         </motion.div>
 
         {/* Value badge */}
-        <motion.div className="flex justify-center mb-6 sm:mb-8" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
-          <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-full bg-card border border-border/50 glow-primary">
-            <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-            <span className="text-xs sm:text-sm text-muted-foreground">Collection Value</span>
-            <span className="text-lg sm:text-xl font-display font-bold text-foreground">{formatPrice(totalValue)}</span>
-          </div>
-        </motion.div>
+        {collection.length > 0 && (
+          <motion.div className="flex justify-center mb-6 sm:mb-8" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
+            <div className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-full bg-card border border-border/50 glow-primary">
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+              <span className="text-xs sm:text-sm text-muted-foreground">Collection Value</span>
+              <span className="text-lg sm:text-xl font-display font-bold text-foreground">{formatPrice(totalValue)}</span>
+            </div>
+          </motion.div>
+        )}
 
         {/* Links */}
-        <motion.div className="space-y-2.5 sm:space-y-3 mb-8 sm:mb-10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
-          {DEMO_LINKS.map((link, i) => (
-            <motion.a
-              key={link.label}
-              href={link.url}
-              className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-card border border-border/50 hover:border-primary/30 transition-colors group card-shine"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + i * 0.08 }}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-lg sm:text-xl">{link.icon}</span>
-                <span className="font-semibold text-foreground text-sm sm:text-base">{link.label}</span>
-              </div>
-              <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </motion.a>
-          ))}
-        </motion.div>
+        {links.length > 0 && (
+          <motion.div className="space-y-2.5 sm:space-y-3 mb-8 sm:mb-10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+            {links.map((link, i) => (
+              <motion.a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-card border border-border/50 hover:border-primary/30 transition-colors group card-shine"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + i * 0.08 }}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg sm:text-xl">{getIcon(link.label)}</span>
+                  <span className="font-semibold text-foreground text-sm sm:text-base">{link.label}</span>
+                </div>
+                <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </motion.a>
+            ))}
+          </motion.div>
+        )}
 
         {/* Card gallery */}
         <div>
@@ -99,7 +170,7 @@ export default function Profile() {
             </div>
           ) : (
             <div className="text-center py-12 rounded-xl bg-card border border-border/50">
-              <p className="text-muted-foreground">No cards yet. Add some from the dashboard!</p>
+              <p className="text-muted-foreground">No cards in this collection yet.</p>
             </div>
           )}
         </div>

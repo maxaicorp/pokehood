@@ -1,8 +1,9 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCollection, getTotalValue, getCollectionBySet, CollectionCard, addToCollection } from "@/lib/collection-store";
-import { formatPrice } from "@/lib/pokemon-api";
+import { formatPrice, PokemonCard } from "@/lib/pokemon-api";
 import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +20,7 @@ import { toast } from "sonner";
 
 export default function Dashboard() {
   const { user, loading, isPro, limits, signOut } = useAuth();
-  const [collection, setCollection] = useState<CollectionCard[]>(getCollection());
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [importParsed, setImportParsed] = useState<CsvRow[]>([]);
@@ -29,8 +30,17 @@ export default function Dashboard() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const { data: collection = [], isLoading: collectionLoading } = useQuery({
+    queryKey: ["my-collection", user?.id],
+    queryFn: () => getCollection(),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+
   const profileUrl = `${window.location.origin}/u/demo`;
-  const refresh = useCallback(() => setCollection(getCollection()), []);
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["my-collection"] });
+  }, [queryClient]);
 
   const totalValue = getTotalValue(collection);
   const bySet = getCollectionBySet(collection);
@@ -72,6 +82,7 @@ export default function Dashboard() {
   };
 
   const handleImport = async () => {
+    if (!user) return;
     setImporting(true);
     setImportProgress({ done: 0, total: importParsed.length });
     try {
@@ -82,7 +93,7 @@ export default function Dashboard() {
           toast.error(`Free tier limit reached (${limits.maxCards} cards). Upgrade to Pro for unlimited cards!`);
           break;
         }
-        addToCollection(card, row.condition || "NM", row.quantity || 1);
+        await addToCollection(card, user.id, row.condition || "NM", row.quantity || 1);
         added++;
         setImportProgress({ done: added, total: importParsed.length });
       }
@@ -236,7 +247,13 @@ export default function Dashboard() {
         </div>
 
         {/* Collection */}
-        <CollectionList cards={filteredCollection} onUpdate={refresh} />
+        {collectionLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <CollectionList cards={filteredCollection} onUpdate={refresh} />
+        )}
       </div>
 
       {/* Import Dialog */}
