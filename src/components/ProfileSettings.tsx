@@ -86,11 +86,11 @@ export default function ProfileSettings() {
     if (!file || !user) return;
 
     setUploading(true);
+    let objectUrl = "";
     try {
-      // Compress to webp on client
       const canvas = document.createElement("canvas");
       const img = new Image();
-      const url = URL.createObjectURL(file);
+      objectUrl = URL.createObjectURL(file);
 
       await new Promise<void>((resolve) => {
         img.onload = () => {
@@ -104,7 +104,7 @@ export default function ProfileSettings() {
           ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
           resolve();
         };
-        img.src = url;
+        img.src = objectUrl;
       });
 
       const blob = await new Promise<Blob>((resolve) =>
@@ -131,7 +131,7 @@ export default function ProfileSettings() {
       toast.error(err.message || "Failed to upload avatar");
     }
     setUploading(false);
-    URL.revokeObjectURL(url);
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
   };
 
   // Need to declare url in outer scope for cleanup
