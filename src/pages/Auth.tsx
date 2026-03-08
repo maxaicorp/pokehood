@@ -46,15 +46,12 @@ export default function Auth() {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8">
-          <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Link>
-          </Button>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-display font-bold text-sm">PV</span>
+          <Link to="/" className="inline-flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-foreground">
+              <img src="/logo.png" alt="PokeVault" className="w-6 h-6 object-contain" />
             </div>
             <span className="font-display font-bold text-lg text-foreground">PokeVault</span>
-          </div>
+          </Link>
           <h1 className="font-display font-bold text-2xl text-foreground mt-4">
             {isLogin ? "Welcome back" : "Create your account"}
           </h1>
