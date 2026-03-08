@@ -46,7 +46,7 @@ export default function QRCodeModal({ open, onOpenChange, url, title }: QRCodeMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-xs sm:max-w-sm overflow-hidden">
         <DialogHeader>
           <DialogTitle className="font-display flex items-center gap-2">
             <QrCode className="w-5 h-5 text-primary" />
@@ -54,10 +54,10 @@ export default function QRCodeModal({ open, onOpenChange, url, title }: QRCodeMo
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col items-center gap-5 py-4">
+        <div className="flex flex-col items-center gap-4 py-2">
           {/* QR Code Display */}
           <motion.div
-            className="relative p-4 rounded-2xl bg-white shadow-lg"
+            className="relative p-3 rounded-2xl bg-white shadow-lg w-fit max-w-full"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
@@ -66,62 +66,46 @@ export default function QRCodeModal({ open, onOpenChange, url, title }: QRCodeMo
               <img
                 src={qrDataUrl}
                 alt="QR Code"
-                className="w-56 h-56 rounded-lg"
+                className="w-44 h-44 sm:w-52 sm:h-52 rounded-lg"
                 id="qr-code-image"
               />
             ) : (
-              <div className="w-56 h-56 rounded-lg bg-muted animate-pulse flex items-center justify-center">
+              <div className="w-44 h-44 sm:w-52 sm:h-52 rounded-lg bg-muted animate-pulse flex items-center justify-center">
                 <QrCode className="w-10 h-10 text-muted-foreground/30" />
               </div>
             )}
-
-            {/* Subtle corner accents */}
-            <div className="absolute top-1 left-1 w-4 h-4 border-t-2 border-l-2 border-primary/30 rounded-tl-lg" />
-            <div className="absolute top-1 right-1 w-4 h-4 border-t-2 border-r-2 border-primary/30 rounded-tr-lg" />
-            <div className="absolute bottom-1 left-1 w-4 h-4 border-b-2 border-l-2 border-primary/30 rounded-bl-lg" />
-            <div className="absolute bottom-1 right-1 w-4 h-4 border-b-2 border-r-2 border-primary/30 rounded-br-lg" />
           </motion.div>
 
-          {/* URL display */}
-          <div className="w-full px-3 py-2 rounded-lg bg-muted/50 border border-border/50 text-center">
-            <p className="text-sm text-muted-foreground truncate font-mono">{url}</p>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-3 w-full">
-            <Button
-              variant="hero"
-              className="flex-1"
-              onClick={handleDownload}
-              id="download-qr-button"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download PNG
-            </Button>
+          {/* URL display + copy on same row */}
+          <div className="flex items-center gap-2 w-full min-w-0">
+            <div className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-muted/50 border border-border/50">
+              <p className="text-xs text-muted-foreground truncate font-mono">{url}</p>
+            </div>
             <Button
               variant="outline"
-              className="flex-1"
+              size="icon"
+              className="shrink-0"
               onClick={handleCopy}
               id="copy-link-button"
             >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4 mr-2 text-green-500" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy Link
-                </>
-              )}
+              {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
             </Button>
           </div>
 
+          {/* Download button */}
+          <Button
+            variant="hero"
+            className="w-full"
+            onClick={handleDownload}
+            id="download-qr-button"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download PNG
+          </Button>
+
           {/* Help text */}
           <p className="text-xs text-muted-foreground text-center">
-            Scan this QR code with any phone camera to open your profile. 
-            Download it to add to business cards, social posts, or eBay listings.
+            Scan with any phone camera to open your profile.
           </p>
         </div>
       </DialogContent>
