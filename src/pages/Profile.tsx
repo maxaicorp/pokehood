@@ -7,7 +7,7 @@ import { formatPrice } from "@/lib/pokemon-api";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ExternalLink, Wallet, QrCode, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Wallet, QrCode, Loader2, Lock } from "lucide-react";
 import { motion } from "framer-motion";
 
 const CARDS_PER_PAGE = 20;
