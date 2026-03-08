@@ -56,7 +56,37 @@ export default function Explore() {
   const [page, setPage] = useState(1);
   const [productType, setProductType] = useState("");
 
-  const { data: setsData } = useQuery({
+  const { data: profile } = useQuery({
+    queryKey: ["my-profile", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user!.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const publishedDomain = "https://collectiblez.lovable.app";
+  const profileUrl = `${publishedDomain}/u/${profile?.slug || ""}`;
+
+  const handleUpgrade = async () => {
+    setCheckoutLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: STRIPE_CONFIG.pro.price_id },
+      });
+      if (error) throw error;
+      if (data?.url) window.open(data.url, "_blank");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start checkout");
+    }
+    setCheckoutLoading(false);
+  };
+
     queryKey: ["pokemon-sets"],
     queryFn: getSets,
     staleTime: 5 * 60_000,
