@@ -483,14 +483,6 @@ function FilterControls({
       </div>
     </>
   );
-
-  return (
-    <div className="min-h-screen bg-background">
-      {header}
-      {content}
-      <QRCodeModal open={qrOpen} onOpenChange={setQrOpen} url={profileUrl} title="Share Your Profile" />
-    </div>
-  );
 }
 
 // Grid view component
