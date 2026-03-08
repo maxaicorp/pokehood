@@ -164,6 +164,9 @@ export default function Explore() {
 
   const activeFilterCount = [selectedSet, selectedRarity, ...(selectedTypes.length ? ["t"] : [])].filter(Boolean).length;
 
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" /></div>;
+  if (!user) return <Navigate to="/auth" replace />;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
