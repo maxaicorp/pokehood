@@ -110,7 +110,7 @@ export default function Landing() {
       </section>
 
       {/* ═══ SECTION 2: Animated Card Slider ═══ */}
-      <section className="py-16 md:py-24 bg-[#F4F4F4] dark:bg-[#111] transition-colors">
+      <section className="py-16 md:py-24 bg-white dark:bg-[#0a0a0a] transition-colors">
         <div className="text-center mb-12">
           <motion.h2
             className="font-display mb-3 text-[#141414] dark:text-white"
