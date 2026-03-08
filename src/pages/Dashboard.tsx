@@ -156,20 +156,22 @@ export default function Dashboard() {
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-              <Link to="/"><ArrowLeft className="w-4 h-4" /></Link>
-            </Button>
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-display font-bold text-xs sm:text-sm">PV</span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link to="/" className="flex items-center gap-2 px-1.5 py-1 rounded-xl bg-foreground h-8">
+              <div className="w-6 h-6 rounded-lg flex items-center justify-center overflow-hidden">
+                <img src="/logo.png" alt="PokeVault" className="w-5 h-5 object-contain" />
               </div>
-              <span className="font-display font-bold text-base sm:text-lg text-foreground hidden sm:inline">Dashboard</span>
-              {isPro && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
-                  <Crown className="w-3 h-3" /> PRO
-                </span>
-              )}
+              <span className="font-display font-bold text-sm text-background pr-1.5 hidden sm:inline">PokeVault</span>
+            </Link>
+            <div className="hidden sm:flex items-center gap-0">
+              <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Explore</Link>
+              <Link to="/dashboard" className="px-4 py-1.5 text-sm font-medium text-foreground">Dashboard</Link>
+            </div>
+            {isPro && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
+                <Crown className="w-3 h-3" /> PRO
+              </span>
+            )}
             </div>
           </div>
           <DropdownMenu>
