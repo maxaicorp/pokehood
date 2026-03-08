@@ -375,11 +375,17 @@ export default function ProfilePageEditor() {
           </button>
         </div>
 
-        {/* Save profile */}
-        <Button onClick={handleSave} disabled={updateProfile.isPending}>
-          {updateProfile.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-          Save Changes
-        </Button>
+        {/* Auto-save status + Share */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+            {saveStatus === "saving" && <><Loader2 className="w-3 h-3 animate-spin" /> Saving…</>}
+            {saveStatus === "saved" && <><Check className="w-3 h-3 text-green-500" /> Saved</>}
+            {saveStatus === "idle" && "Auto-saves on change"}
+          </span>
+          <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={() => setQrOpen(true)}>
+            <Share2 className="w-4 h-4" /> Share Profile
+          </Button>
+        </div>
 
         {/* Divider */}
         <div className="border-t border-border" />
