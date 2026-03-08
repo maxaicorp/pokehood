@@ -28,6 +28,7 @@ type Tab = "collection" | "mypage";
 
 export default function Dashboard() {
   const { user, loading, isPro, limits, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>("collection");
   const [searchQuery, setSearchQuery] = useState("");
