@@ -1,8 +1,11 @@
 import { useState, useCallback, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { getCollection, getTotalValue, getCollectionBySet, CollectionCard, addToCollection } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
+import { STRIPE_CONFIG } from "@/lib/stripe-config";
+import { supabase } from "@/integrations/supabase/client";
 import CollectionList from "@/components/CollectionList";
 import ThemeToggle from "@/components/ThemeToggle";
 import QRCodeModal from "@/components/QRCodeModal";
@@ -10,11 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Wallet, Layers, CreditCard, Share2, Search, Upload, Loader2, QrCode, Plus } from "lucide-react";
+import { ArrowLeft, Wallet, Layers, CreditCard, Share2, Search, Upload, Loader2, QrCode, Plus, Crown, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
 export default function Dashboard() {
+  const { user, loading, isPro, limits, signOut } = useAuth();
   const [collection, setCollection] = useState<CollectionCard[]>(getCollection());
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -24,17 +28,21 @@ export default function Dashboard() {
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
   const [qrOpen, setQrOpen] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (!user) return <Navigate to="/auth" replace />;
 
   const profileUrl = `${window.location.origin}/u/demo`;
 
-  const refresh = useCallback(() => {
-    setCollection(getCollection());
-  }, []);
+  const refresh = () => setCollection(getCollection());
 
   const totalValue = getTotalValue(collection);
   const bySet = getCollectionBySet(collection);
   const setCount = Object.keys(bySet).length;
+  const totalCards = collection.reduce((s, c) => s + c.quantity, 0);
+  const atCardLimit = !isPro && totalCards >= limits.maxCards;
 
   const filteredCollection = useMemo(() => {
     if (!searchQuery.trim()) return collection;
@@ -73,6 +81,10 @@ export default function Dashboard() {
       const result = await resolveImport(importParsed);
       let added = 0;
       for (const { row, card } of result.found) {
+        if (!isPro && (totalCards + added) >= limits.maxCards) {
+          toast.error(`Free tier limit reached (${limits.maxCards} cards). Upgrade to Pro for unlimited cards!`);
+          break;
+        }
         addToCollection(card, row.condition || "NM", row.quantity || 1);
         added++;
         setImportProgress({ done: added, total: importParsed.length });
@@ -85,6 +97,22 @@ export default function Dashboard() {
       toast.error("Import failed. Please try again.");
     }
     setImporting(false);
+  };
+
+  const handleUpgrade = async () => {
+    setCheckoutLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: STRIPE_CONFIG.pro.price_id },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start checkout");
+    }
+    setCheckoutLoading(false);
   };
 
   return (
@@ -101,6 +129,11 @@ export default function Dashboard() {
                 <span className="text-primary-foreground font-display font-bold text-xs sm:text-sm">PV</span>
               </div>
               <span className="font-display font-bold text-base sm:text-lg text-foreground hidden xs:inline">My Collection</span>
+              {isPro && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
+                  <Crown className="w-3 h-3" /> PRO
+                </span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -118,25 +151,47 @@ export default function Dashboard() {
               <Link to="/explore"><Plus className="w-4 h-4" /></Link>
             </Button>
             <ThemeToggle />
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQrOpen(true)} title="Share QR Code" id="dashboard-qr-button">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQrOpen(true)} title="Share QR Code">
               <QrCode className="w-4 h-4" />
             </Button>
-            <Button variant="accent" size="sm" className="hidden md:inline-flex" asChild>
-              <Link to="/u/demo"><Share2 className="w-4 h-4 mr-1" />View Profile</Link>
-            </Button>
-            <Button variant="accent" size="icon" className="h-8 w-8 md:hidden" asChild>
-              <Link to="/u/demo"><Share2 className="w-4 h-4" /></Link>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={signOut} title="Sign Out">
+              <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
       </header>
 
       <div className="container py-6 sm:py-8 px-4 sm:px-8">
+        {/* Upgrade Banner */}
+        {!isPro && (
+          <motion.div
+            className="mb-6 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center gap-3">
+              <Crown className="w-5 h-5 text-amber-500 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Free Tier — {totalCards}/{limits.maxCards} cards used
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Upgrade to Pro for unlimited cards, custom profile slugs, and unlimited links.
+                </p>
+              </div>
+            </div>
+            <Button size="sm" onClick={handleUpgrade} disabled={checkoutLoading} className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white">
+              {checkoutLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Crown className="w-4 h-4 mr-1" />}
+              Upgrade — {STRIPE_CONFIG.pro.price}
+            </Button>
+          </motion.div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
           {[
             { icon: Wallet, label: "Total Value", value: formatPrice(totalValue), glow: true },
-            { icon: CreditCard, label: "Cards", value: String(collection.reduce((s, c) => s + c.quantity, 0)) },
+            { icon: CreditCard, label: "Cards", value: String(totalCards) },
             { icon: Layers, label: "Sets", value: String(setCount) },
           ].map((stat, i) => (
             <motion.div
@@ -158,6 +213,13 @@ export default function Dashboard() {
             </motion.div>
           ))}
         </div>
+
+        {/* Card limit warning */}
+        {atCardLimit && (
+          <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive">
+            You've reached the free tier limit of {limits.maxCards} cards. <button onClick={handleUpgrade} className="font-semibold underline">Upgrade to Pro</button> for unlimited cards.
+          </div>
+        )}
 
         {/* Search Bar */}
         <div className="mb-6">
