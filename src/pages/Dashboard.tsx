@@ -172,7 +172,6 @@ export default function Dashboard() {
                 <Crown className="w-3 h-3" /> PRO
               </span>
             )}
-            </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
