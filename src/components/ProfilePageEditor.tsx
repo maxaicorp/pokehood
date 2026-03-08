@@ -515,6 +515,7 @@ export default function ProfilePageEditor() {
           </div>
         </PhoneMockup>
       </div>
+      <QRCodeModal open={qrOpen} onOpenChange={setQrOpen} url={profileUrl} title="Share Your Profile" />
     </div>
   );
 }
