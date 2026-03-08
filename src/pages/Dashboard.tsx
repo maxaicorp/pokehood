@@ -18,10 +18,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft, Wallet, Layers, CreditCard, Search, Upload, Loader2, QrCode,
-  Plus, Crown, LogOut, User, LayoutGrid, ExternalLink
+  Plus, Crown, LogOut, User, LayoutGrid, ExternalLink, Sun, Moon
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
 
 type Tab = "collection" | "mypage";
 
