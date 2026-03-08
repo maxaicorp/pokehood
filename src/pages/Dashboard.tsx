@@ -2,25 +2,33 @@ import { useState, useMemo, useRef, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { getCollection, getTotalValue, getCollectionBySet, CollectionCard, addToCollection } from "@/lib/collection-store";
 import { formatPrice, PokemonCard } from "@/lib/pokemon-api";
 import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
-import { supabase } from "@/integrations/supabase/client";
 import CollectionList from "@/components/CollectionList";
+import ProfileSettings from "@/components/ProfileSettings";
+import LinkManager from "@/components/LinkManager";
 import ThemeToggle from "@/components/ThemeToggle";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Wallet, Layers, CreditCard, Share2, Search, Upload, Loader2, QrCode, Plus, Crown, LogOut } from "lucide-react";
+import {
+  ArrowLeft, Wallet, Layers, CreditCard, Search, Upload, Loader2, QrCode,
+  Plus, Crown, LogOut, User, Link2, LayoutGrid, ExternalLink
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+
+type Tab = "collection" | "profile" | "links";
 
 export default function Dashboard() {
   const { user, loading, isPro, limits, signOut } = useAuth();
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<Tab>("collection");
   const [searchQuery, setSearchQuery] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [importParsed, setImportParsed] = useState<CsvRow[]>([]);
@@ -37,7 +45,22 @@ export default function Dashboard() {
     staleTime: 30_000,
   });
 
-  const profileUrl = `${window.location.origin}/u/demo`;
+  const { data: profile } = useQuery({
+    queryKey: ["my-profile", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user!.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const profileUrl = `${window.location.origin}/u/${profile?.slug || ""}`;
+
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["my-collection"] });
   }, [queryClient]);
@@ -62,7 +85,6 @@ export default function Dashboard() {
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!user) return <Navigate to="/auth" replace />;
 
-  // CSV Import handlers
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -114,14 +136,18 @@ export default function Dashboard() {
         body: { priceId: STRIPE_CONFIG.pro.price_id },
       });
       if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      }
+      if (data?.url) window.open(data.url, "_blank");
     } catch (err: any) {
       toast.error(err.message || "Failed to start checkout");
     }
     setCheckoutLoading(false);
   };
+
+  const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+    { id: "collection", label: "Collection", icon: LayoutGrid },
+    { id: "profile", label: "Profile", icon: User },
+    { id: "links", label: "Links", icon: Link2 },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -136,7 +162,7 @@ export default function Dashboard() {
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="text-primary-foreground font-display font-bold text-xs sm:text-sm">PV</span>
               </div>
-              <span className="font-display font-bold text-base sm:text-lg text-foreground hidden xs:inline">My Collection</span>
+              <span className="font-display font-bold text-base sm:text-lg text-foreground hidden sm:inline">Dashboard</span>
               {isPro && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
                   <Crown className="w-3 h-3" /> PRO
@@ -145,19 +171,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
-            <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => fileRef.current?.click()}>
-              <Upload className="w-4 h-4 mr-1" /> Import CSV
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" onClick={() => fileRef.current?.click()} title="Import CSV">
-              <Upload className="w-4 h-4" />
-            </Button>
-            <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
-              <Link to="/explore"><Plus className="w-4 h-4 mr-1" /> Add Cards</Link>
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8 sm:hidden" asChild>
-              <Link to="/explore"><Plus className="w-4 h-4" /></Link>
-            </Button>
+            {profile?.slug && (
+              <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
+                <a href={profileUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-4 h-4 mr-1" /> My Profile
+                </a>
+              </Button>
+            )}
             <ThemeToggle />
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQrOpen(true)} title="Share QR Code">
               <QrCode className="w-4 h-4" />
@@ -165,6 +185,26 @@ export default function Dashboard() {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={signOut} title="Sign Out">
               <LogOut className="w-4 h-4" />
             </Button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="container px-4 sm:px-8">
+          <div className="flex gap-0 -mb-px">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </header>
@@ -195,65 +235,85 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
-          {[
-            { icon: Wallet, label: "Total Value", value: formatPrice(totalValue), glow: true },
-            { icon: CreditCard, label: "Cards", value: String(totalCards) },
-            { icon: Layers, label: "Sets", value: String(setCount) },
-          ].map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              className={`p-3 sm:p-5 rounded-xl bg-card border border-border/50 ${stat.glow ? 'glow-primary' : ''}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate">{stat.label}</p>
-                  <p className="text-lg sm:text-2xl font-display font-bold text-foreground truncate">{stat.value}</p>
-                </div>
+        {/* Tab Content */}
+        {activeTab === "collection" && (
+          <div>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
+              {[
+                { icon: Wallet, label: "Total Value", value: formatPrice(totalValue), glow: true },
+                { icon: CreditCard, label: "Cards", value: String(totalCards) },
+                { icon: Layers, label: "Sets", value: String(setCount) },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  className={`p-3 sm:p-5 rounded-xl bg-card border border-border/50 ${stat.glow ? "glow-primary" : ""}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] sm:text-sm text-muted-foreground truncate">{stat.label}</p>
+                      <p className="text-lg sm:text-2xl font-display font-bold text-foreground truncate">{stat.value}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Card limit warning */}
+            {atCardLimit && (
+              <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive">
+                You've reached the free tier limit of {limits.maxCards} cards.{" "}
+                <button onClick={handleUpgrade} className="font-semibold underline">Upgrade to Pro</button> for unlimited cards.
               </div>
-            </motion.div>
-          ))}
-        </div>
+            )}
 
-        {/* Card limit warning */}
-        {atCardLimit && (
-          <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive">
-            You've reached the free tier limit of {limits.maxCards} cards. <button onClick={handleUpgrade} className="font-semibold underline">Upgrade to Pro</button> for unlimited cards.
+            {/* Actions bar */}
+            <div className="flex items-center gap-2 mb-4">
+              <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFileUpload} />
+              <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-1" /> Import CSV
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/explore"><Plus className="w-4 h-4 mr-1" /> Add Cards</Link>
+              </Button>
+            </div>
+
+            {/* Search */}
+            <div className="mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search your collection..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                {filteredCollection.length} of {collection.length} cards
+                {searchQuery && ` matching "${searchQuery}"`}
+              </p>
+            </div>
+
+            {/* Collection */}
+            {collectionLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <CollectionList cards={filteredCollection} onUpdate={refresh} />
+            )}
           </div>
         )}
 
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search your collection..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            {filteredCollection.length} of {collection.length} cards
-            {searchQuery && ` matching "${searchQuery}"`}
-          </p>
-        </div>
-
-        {/* Collection */}
-        {collectionLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <CollectionList cards={filteredCollection} onUpdate={refresh} />
-        )}
+        {activeTab === "profile" && <ProfileSettings />}
+        {activeTab === "links" && <LinkManager />}
       </div>
 
       {/* Import Dialog */}
