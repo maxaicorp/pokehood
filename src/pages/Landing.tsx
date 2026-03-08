@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { TrendingUp, Share2, Search, Zap, ExternalLink, Wallet, ArrowRight, CreditCard, Layers, QrCode } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { TrendingUp, Share2, Search, Zap, ExternalLink, Wallet, ArrowRight, CreditCard, Layers, QrCode, Menu, X } from "lucide-react";
 import PhoneMockup from "@/components/PhoneMockup";
 import CardSlider from "@/components/CardSlider";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -17,6 +17,7 @@ interface SetInfo {
 
 export default function Landing() {
   const [stats, setStats] = useState({ sets: 200, cards: 23000, types: 11 });
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     fetch("/data/sets-list.json")
@@ -43,11 +44,37 @@ export default function Landing() {
             <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Explore</Link>
             <Link to="/dashboard" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Dashboard</Link>
           </div>
-          <Button size="sm" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold ml-1" asChild>
+          <Button size="sm" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold ml-1 hidden sm:inline-flex" asChild>
             <Link to="/auth">Get Started</Link>
           </Button>
           <ThemeToggle />
+          {/* Mobile hamburger */}
+          <button
+            className="sm:hidden flex flex-col justify-center items-center w-8 h-8 gap-[5px] ml-0.5"
+            onClick={() => setMobileMenuOpen((o) => !o)}
+            aria-label="Toggle menu"
+          >
+            <span className={`block w-4 h-[1.5px] bg-[#141414] dark:bg-white transition-all duration-200 ${mobileMenuOpen ? "rotate-45 translate-y-[3.25px]" : ""}`} />
+            <span className={`block w-4 h-[1.5px] bg-[#141414] dark:bg-white transition-all duration-200 ${mobileMenuOpen ? "-rotate-45 -translate-y-[3.25px]" : ""}`} />
+          </button>
         </div>
+
+        {/* Mobile dropdown */}
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="sm:hidden mt-2 rounded-2xl backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-lg bg-[#F2F2F2]/95 dark:bg-white/10 p-3 flex flex-col gap-1"
+            >
+              <Link to="/explore" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors">Explore</Link>
+              <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors">Dashboard</Link>
+              <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-semibold text-center rounded-xl bg-[#141414] dark:bg-white text-white dark:text-[#141414]">Get Started</Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
       {/* ═══ 2. Hero ═══ */}
