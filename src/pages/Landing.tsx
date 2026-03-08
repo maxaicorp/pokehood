@@ -185,7 +185,7 @@ export default function Landing() {
               {/* Dashboard mockup */}
               <div className="mt-6 flex justify-center">
                 <PhoneMockup>
-                  <div className="bg-white p-4 pt-10 h-[520px] overflow-y-auto">
+                  <div className="bg-white p-4 pt-10 h-[520px] overflow-hidden">
                     <div className="space-y-2.5">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-5 h-5 rounded bg-[#141414] flex items-center justify-center">
