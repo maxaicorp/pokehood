@@ -222,7 +222,7 @@ export default function Profile() {
                   >
                     <img src={card.imageSmall} alt={card.name} className="w-full" loading="lazy" />
                     {card.forSale && (
-                      <span className="absolute top-1.5 left-1.5 w-3 h-3 rounded-full bg-green-500 border-2 border-background shadow-sm" title="For Sale" />
+                      <span className="absolute top-1.5 left-1.5 z-10 w-3 h-3 rounded-full bg-green-500 border-2 border-background shadow-sm" title="For Sale" />
                     )}
                   </motion.div>
                 ))}
