@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  ArrowLeft, Wallet, Layers, CreditCard, Search, Upload, Loader2, QrCode,
+  Wallet, Layers, CreditCard, Search, Upload, Loader2, QrCode,
   Plus, Crown, LogOut, User, LayoutGrid, ExternalLink, Sun, Moon
 } from "lucide-react";
 import { motion } from "framer-motion";
