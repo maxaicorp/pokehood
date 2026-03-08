@@ -413,6 +413,7 @@ export default function Explore() {
           </div>
         </div>
       </div>
+      <QRCodeModal open={qrOpen} onOpenChange={setQrOpen} url={profileUrl} title="Share Your Profile" />
     </div>
   );
 }
