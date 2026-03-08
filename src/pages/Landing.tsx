@@ -89,10 +89,10 @@ export default function Landing() {
             >
               <img src={pokeballHero} alt="Pokéball" className="w-full h-full object-contain" />
             </motion.div>
-            <h1 className="font-display leading-none tracking-tight mb-6 text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "clamp(48px, 6vw, 80px)", lineHeight: "1" }}>
+            <h1 className="font-display leading-none tracking-tight mb-6 text-foreground" style={{ fontWeight: 520, fontSize: "clamp(48px, 6vw, 80px)", lineHeight: "1" }}>
               Track, Value & Share Your Collection.
             </h1>
-            <p className="text-lg md:text-xl text-[#666] dark:text-[#999] mb-10 max-w-xl mx-auto leading-relaxed">
+            <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed">
               The all-in-one Pokémon TCG portfolio tracker. Live prices, shareable profiles, and instant CSV import — completely free.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
@@ -110,10 +110,10 @@ export default function Landing() {
       {/* ═══ 3. Horizontal Card Slider ═══ */}
       <section className="py-16 md:py-24 transition-colors">
         <div className="text-center mb-12">
-          <motion.h2 className="font-display mb-3 text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 44px)" }} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+          <motion.h2 className="font-display mb-3 text-foreground" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 44px)" }} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             From Base Set to Today
           </motion.h2>
-          <p className="text-[#666] dark:text-[#888] text-lg max-w-md mx-auto">Every card from every era, all in one place.</p>
+          <p className="text-muted-foreground text-lg max-w-md mx-auto">Every card from every era, all in one place.</p>
         </div>
         <CardSlider />
       </section>
@@ -123,17 +123,17 @@ export default function Landing() {
         <div className="container max-w-6xl">
           <div className="grid md:grid-cols-2 gap-6">
             {/* Collection Dashboard */}
-            <motion.div className="rounded-[2rem] p-8 md:p-10 bg-[#F4F4F4] dark:bg-[#151515]" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
+            <motion.div className="rounded-[2rem] p-8 md:p-10 bg-secondary" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
               <div className="mb-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-white/10 text-sm font-semibold text-[#141414] dark:text-white mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background text-sm font-semibold text-foreground mb-4">
                   <CreditCard className="w-3.5 h-3.5" /> Collection Tracker
                 </div>
-                <h3 className="font-display mb-3 text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "28px", lineHeight: "1.2" }}>Your entire vault, one dashboard.</h3>
-                <p className="text-[#666] dark:text-[#888] text-sm leading-relaxed">Search 23,000+ cards across 200 sets. Track quantities, conditions, and portfolio value. Import via CSV.</p>
+                <h3 className="font-display mb-3 text-foreground" style={{ fontWeight: 520, fontSize: "28px", lineHeight: "1.2" }}>Your entire vault, one dashboard.</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">Search 23,000+ cards across 200 sets. Track quantities, conditions, and portfolio value. Import via CSV.</p>
               </div>
               <div className="flex flex-wrap justify-center gap-2">
                 {[{ icon: Search, label: "Filters" }, { icon: Zap, label: "CSV Import" }, { icon: TrendingUp, label: "Value Tracking" }, { icon: Layers, label: "Set Grouping" }].map((f) => (
-                  <div key={f.label} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-white/10 text-xs text-[#666] dark:text-[#aaa]"><f.icon className="w-3 h-3" />{f.label}</div>
+                  <div key={f.label} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background text-xs text-muted-foreground"><f.icon className="w-3 h-3" />{f.label}</div>
                 ))}
               </div>
               <div className="mt-6 flex justify-center">
@@ -171,17 +171,17 @@ export default function Landing() {
             </motion.div>
 
             {/* Shareable Profile */}
-            <motion.div className="rounded-[2rem] p-8 md:p-10 bg-[#F4F4F4] dark:bg-[#151515]" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.1 }}>
+            <motion.div className="rounded-[2rem] p-8 md:p-10 bg-secondary" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.1 }}>
               <div className="mb-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-white/10 text-sm font-semibold text-[#141414] dark:text-white mb-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background text-sm font-semibold text-foreground mb-4">
                   <Share2 className="w-3.5 h-3.5" /> Shareable Profiles
                 </div>
-                <h3 className="font-display mb-3 text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "28px", lineHeight: "1.2" }}>Your Linktree for Pokémon Cards.</h3>
-                <p className="text-[#666] dark:text-[#888] text-sm leading-relaxed">Public profile to showcase your collection and link to all selling platforms. Share with a QR code.</p>
+                <h3 className="font-display mb-3 text-foreground" style={{ fontWeight: 520, fontSize: "28px", lineHeight: "1.2" }}>Your Linktree for Pokémon Cards.</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">Public profile to showcase your collection and link to all selling platforms. Share with a QR code.</p>
               </div>
               <div className="flex flex-wrap justify-center gap-2">
                 {[{ icon: Share2, label: "Public Profile" }, { icon: QrCode, label: "QR Code" }, { icon: ExternalLink, label: "Custom Links" }, { icon: Wallet, label: "Portfolio Value" }].map((f) => (
-                  <div key={f.label} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white dark:bg-white/10 text-xs text-[#666] dark:text-[#aaa]"><f.icon className="w-3 h-3" />{f.label}</div>
+                  <div key={f.label} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background text-xs text-muted-foreground"><f.icon className="w-3 h-3" />{f.label}</div>
                 ))}
               </div>
               <div className="mt-6 flex justify-center">
@@ -227,13 +227,13 @@ export default function Landing() {
       </section>
 
       {/* ═══ 5. Growing Library Stats ═══ */}
-      <section className="py-24 md:py-32 bg-[#F4F4F4] dark:bg-[#111] transition-colors">
+      <section className="py-24 md:py-32 bg-secondary transition-colors">
         <div className="container text-center max-w-2xl mx-auto">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
-            <p className="text-sm font-semibold tracking-widest uppercase text-[#999] dark:text-[#666] mb-6">A growing library of</p>
+            <p className="text-sm font-semibold tracking-widest uppercase text-muted-foreground mb-6">A growing library of</p>
             <div className="space-y-1">
               {[`${stats.sets.toLocaleString()} sets`, `${stats.cards.toLocaleString()} cards`, `${stats.types} types`].map((text) => (
-                <p key={text} className="font-display leading-none text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "clamp(40px, 5.5vw, 72px)" }}>{text}</p>
+                <p key={text} className="font-display leading-none text-foreground" style={{ fontWeight: 520, fontSize: "clamp(40px, 5.5vw, 72px)" }}>{text}</p>
               ))}
             </div>
           </motion.div>
@@ -241,11 +241,11 @@ export default function Landing() {
       </section>
 
       {/* ═══ 6. FAQ ═══ */}
-      <section className="py-20 md:py-28 bg-[#F4F4F4] dark:bg-[#111] transition-colors">
+      <section className="py-20 md:py-28 bg-secondary transition-colors">
         <div className="container max-w-3xl">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-12">
-            <h2 className="font-display mb-3 text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 44px)" }}>Frequently Asked Questions</h2>
-            <p className="text-[#666] dark:text-[#888] text-lg">Everything you need to know about PokeVault.</p>
+            <h2 className="font-display mb-3 text-foreground" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 44px)" }}>Frequently Asked Questions</h2>
+            <p className="text-muted-foreground text-lg">Everything you need to know about PokeVault.</p>
           </motion.div>
           <div className="space-y-3">
             {[
@@ -257,12 +257,12 @@ export default function Landing() {
               { q: "What card conditions can I track?", a: "You can log conditions from Mint to Damaged for every card, plus track quantities and set manual or market-based prices." },
               { q: "Do I need an account?", a: "You can browse and explore cards without an account. To save your collection and create a shareable profile, just sign up — it's quick and free." },
             ].map((item, i) => (
-              <motion.details key={i} className="group rounded-2xl bg-white dark:bg-[#1a1a1a] border border-[#E5E5E5] dark:border-white/10 overflow-hidden" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.3, delay: i * 0.05 }}>
-                <summary className="flex items-center justify-between cursor-pointer px-6 py-5 text-[#141414] dark:text-white font-semibold text-sm md:text-base list-none [&::-webkit-details-marker]:hidden">
+              <motion.details key={i} className="group rounded-2xl bg-background border border-border overflow-hidden" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.3, delay: i * 0.05 }}>
+                <summary className="flex items-center justify-between cursor-pointer px-6 py-5 text-foreground font-semibold text-sm md:text-base list-none [&::-webkit-details-marker]:hidden">
                   {item.q}
-                  <span className="ml-4 text-[#999] dark:text-[#666] transition-transform group-open:rotate-45 text-xl leading-none">+</span>
+                  <span className="ml-4 text-muted-foreground transition-transform group-open:rotate-45 text-xl leading-none">+</span>
                 </summary>
-                <div className="px-6 pb-5 text-[#666] dark:text-[#888] text-sm leading-relaxed">{item.a}</div>
+                <div className="px-6 pb-5 text-muted-foreground text-sm leading-relaxed">{item.a}</div>
               </motion.details>
             ))}
           </div>
@@ -272,10 +272,10 @@ export default function Landing() {
       {/* ═══ 7. CTA Box ═══ */}
       <section className="relative z-10 pt-20 pb-28 rounded-b-[3rem] transition-colors">
         <div className="container max-w-2xl">
-          <motion.div className="relative rounded-[2rem] p-10 md:p-14 text-center overflow-hidden bg-[#F4F4F4] dark:bg-[#151515]" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <h2 className="font-display mb-4 text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 40px)" }}>Ready to Build Your Vault?</h2>
-            <p className="text-[#666] dark:text-[#888] mb-8 max-w-md mx-auto">Join trainers who track their collection value and share their seller profiles.</p>
-            <Button size="lg" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 px-8 h-12 text-base font-semibold" asChild>
+          <motion.div className="relative rounded-[2rem] p-10 md:p-14 text-center overflow-hidden bg-secondary" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <h2 className="font-display mb-4 text-foreground" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 40px)" }}>Ready to Build Your Vault?</h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">Join trainers who track their collection value and share their seller profiles.</p>
+            <Button size="lg" className="rounded-full bg-foreground text-background hover:bg-foreground/80 px-8 h-12 text-base font-semibold" asChild>
               <Link to="/auth">Get Started Free <ArrowRight className="w-4 h-4 ml-2" /></Link>
             </Button>
           </motion.div>
