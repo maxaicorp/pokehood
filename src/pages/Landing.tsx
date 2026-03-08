@@ -34,8 +34,8 @@ export default function Landing() {
         <div className="flex items-center justify-between gap-6 px-3 py-2 rounded-full backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-sm bg-[#F2F2F2] dark:bg-white/10">
           {/* Logo — left */}
           <Link to="/" className="flex items-center gap-2 px-2 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-[#141414] dark:bg-white flex items-center justify-center">
-              <span className="text-white dark:text-[#141414] font-display font-bold text-xs">PV</span>
+            <div className="w-7 h-7 rounded-lg bg-[#141414] flex items-center justify-center overflow-hidden">
+              <img src="/logo.png" alt="PokeVault" className="w-6 h-6 object-contain" />
             </div>
             <span className="font-display font-bold text-sm text-[#141414] dark:text-white hidden sm:inline">PokeVault</span>
           </Link>
@@ -66,8 +66,8 @@ export default function Landing() {
             transition={{ duration: 0.6 }}
           >
             {/* Mini icon */}
-            <div className="w-14 h-14 rounded-2xl bg-[#141414] dark:bg-white mx-auto mb-8 flex items-center justify-center shadow-lg">
-              <span className="text-white dark:text-[#141414] font-display font-bold text-lg">PV</span>
+            <div className="w-14 h-14 rounded-2xl bg-[#141414] mx-auto mb-8 flex items-center justify-center shadow-lg overflow-hidden">
+              <img src="/logo.png" alt="PokeVault" className="w-11 h-11 object-contain" />
             </div>
 
             <h1
