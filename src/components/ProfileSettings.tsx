@@ -134,8 +134,6 @@ export default function ProfileSettings() {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
   };
 
-  // Need to declare url in outer scope for cleanup
-  let url = "";
 
   if (isLoading) {
     return (
