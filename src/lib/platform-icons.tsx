@@ -14,7 +14,7 @@ import {
   SiPaypal,
   SiWhatsapp,
   SiTelegram,
-  SiLinkedin,
+  
   SiGithub,
   SiPatreon,
   SiKickstarter,
