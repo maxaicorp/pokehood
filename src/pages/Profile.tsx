@@ -58,6 +58,23 @@ export default function Profile() {
   });
 
   const totalValue = getTotalValue(collection);
+  const hasMore = visibleCount < collection.length;
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const node = loaderRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setVisibleCount((prev) => Math.min(prev + CARDS_PER_PAGE, collection.length));
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, collection.length]);
 
   if (profileLoading) {
     return (
