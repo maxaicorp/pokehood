@@ -19,16 +19,20 @@ import {
   TCGP_SERIES_IDS,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import ThemeToggle from "@/components/ThemeToggle";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import QRCodeModal from "@/components/QRCodeModal";
+import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import {
-  Search, Plus, ArrowLeft, X, Grid3X3, LayoutList,
-  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2
+  Search, Plus, X, Grid3X3, LayoutList,
+  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2,
+  Crown, LogOut, ExternalLink, QrCode, Sun, Moon
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
