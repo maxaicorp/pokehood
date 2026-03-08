@@ -135,6 +135,21 @@ export default function Profile() {
           </Button>
         </motion.div>
 
+        {/* Private badge */}
+        {!profile.is_published && (
+          <motion.div
+            className="flex justify-center mb-6 sm:mb-8"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.15 }}
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted border border-border">
+              <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">Private Profile</span>
+            </div>
+          </motion.div>
+        )}
+
         {/* Value badge */}
         {collection.length > 0 && (
           <motion.div className="flex justify-center mb-6 sm:mb-8" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }}>
