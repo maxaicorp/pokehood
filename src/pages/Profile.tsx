@@ -10,9 +10,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ExternalLink, Wallet, QrCode, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
+const CARDS_PER_PAGE = 20;
+
 export default function Profile() {
   const { slug } = useParams();
   const [qrOpen, setQrOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(CARDS_PER_PAGE);
+  const loaderRef = useRef<HTMLDivElement>(null);
   const publishedDomain = "https://collectiblez.lovable.app";
   const profileUrl = `${publishedDomain}/u/${slug || "demo"}`;
 
