@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getCollectionByUserId, getTotalValue, CollectionCard } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
+import { getPlatformIcon } from "@/lib/platform-icons";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -95,15 +96,6 @@ export default function Profile() {
     );
   }
 
-  const linkIcons: Record<string, string> = {
-    ebay: "🛒", tcgplayer: "🃏", discord: "💬", instagram: "📸",
-    twitter: "🐦", youtube: "📺", twitch: "🎮", tiktok: "🎵",
-  };
-
-  const getIcon = (label: string) => {
-    const key = Object.keys(linkIcons).find(k => label.toLowerCase().includes(k));
-    return key ? linkIcons[key] : "🔗";
-  };
 
   return (
     <div className="min-h-screen bg-background">
