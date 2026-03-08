@@ -168,7 +168,18 @@ export default function Explore() {
   if (!user) return <Navigate to="/auth" replace />;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-16 sm:pb-0">
+      {/* Mobile bottom nav */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50 flex">
+        <Link to="/dashboard" className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground">
+          <Filter className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Dashboard</span>
+        </Link>
+        <Link to="/explore" className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-foreground">
+          <Search className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Explore</span>
+        </Link>
+      </div>
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
           <div className="flex items-center gap-2 sm:gap-3">

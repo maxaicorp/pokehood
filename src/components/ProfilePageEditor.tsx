@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,8 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Camera, Loader2, Check, Crown, Plus, Trash2, GripVertical,
-  ExternalLink, Wallet
+  ExternalLink, Wallet, QrCode, Share2
 } from "lucide-react";
+import QRCodeModal from "@/components/QRCodeModal";
 import { toast } from "sonner";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 
@@ -42,6 +43,8 @@ export default function ProfilePageEditor() {
   const [uploading, setUploading] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newUrl, setNewUrl] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   // Profile data
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -126,11 +129,16 @@ export default function ProfilePageEditor() {
         .eq("user_id", user!.id);
       if (error) throw error;
     },
+    onMutate: () => setSaveStatus("saving"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-profile"] });
-      toast.success("Profile updated!");
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 2000);
     },
-    onError: (err: any) => toast.error(err.message || "Failed to update profile"),
+    onError: (err: any) => {
+      setSaveStatus("idle");
+      toast.error(err.message || "Failed to update profile");
+    },
   });
 
   const addLink = useMutation({
@@ -174,18 +182,33 @@ export default function ProfilePageEditor() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["my-links"] }),
   });
 
-  const handleSave = () => {
-    if (slugStatus === "taken") {
-      toast.error("That slug is already taken. Please choose another.");
-      return;
-    }
+  const doSave = useCallback(() => {
+    if (slugStatus === "taken" || !initialized) return;
     updateProfile.mutate({
       display_name: displayName.trim() || null,
       bio: bio.trim() || null,
       slug: slug.trim() || null,
       is_published: isPublished,
     });
-  };
+  }, [displayName, bio, slug, isPublished, slugStatus, initialized]);
+
+  // Auto-save with debounce
+  useEffect(() => {
+    if (!initialized || !profile) return;
+    // Don't save if nothing changed
+    if (
+      displayName === (profile.display_name || "") &&
+      bio === (profile.bio || "") &&
+      slug === (profile.slug || "") &&
+      isPublished === profile.is_published
+    ) return;
+    if (slugStatus === "checking" || slugStatus === "taken") return;
+    const timer = setTimeout(doSave, 1200);
+    return () => clearTimeout(timer);
+  }, [displayName, bio, slug, isPublished, doSave, initialized, profile, slugStatus]);
+
+  const publishedDomain = "https://collectiblez.lovable.app";
+  const profileUrl = `${publishedDomain}/u/${slug || profile?.slug || ""}`;
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -311,7 +334,7 @@ export default function ProfilePageEditor() {
           </div>
           <div className="flex items-center gap-0 rounded-md border border-input overflow-hidden">
             <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-r border-input whitespace-nowrap">
-              pokevault.app/u/
+              collectiblez.lovable.app/u/
             </span>
             <Input
               id="slug"
@@ -352,11 +375,17 @@ export default function ProfilePageEditor() {
           </button>
         </div>
 
-        {/* Save profile */}
-        <Button onClick={handleSave} disabled={updateProfile.isPending}>
-          {updateProfile.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-          Save Changes
-        </Button>
+        {/* Auto-save status + Share */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+            {saveStatus === "saving" && <><Loader2 className="w-3 h-3 animate-spin" /> Saving…</>}
+            {saveStatus === "saved" && <><Check className="w-3 h-3 text-green-500" /> Saved</>}
+            {saveStatus === "idle" && "Auto-saves on change"}
+          </span>
+          <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={() => setQrOpen(true)}>
+            <Share2 className="w-4 h-4" /> Share Profile
+          </Button>
+        </div>
 
         {/* Divider */}
         <div className="border-t border-border" />
@@ -486,6 +515,7 @@ export default function ProfilePageEditor() {
           </div>
         </PhoneMockup>
       </div>
+      <QRCodeModal open={qrOpen} onOpenChange={setQrOpen} url={profileUrl} title="Share Your Profile" />
     </div>
   );
 }
