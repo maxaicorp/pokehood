@@ -42,18 +42,16 @@ export default function Explore() {
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("-set.releaseDate");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [showFilters, setShowFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [productType, setProductType] = useState("");
 
-  // Fetch sets for filter
   const { data: setsData } = useQuery({
     queryKey: ["pokemon-sets"],
     queryFn: getSets,
     staleTime: 5 * 60_000,
   });
 
-  // Fetch cards
   const hasFilters = searchTerm || selectedSet || selectedRarity || selectedTypes.length > 0 || productType;
   const { data: cardsData, isLoading } = useQuery({
     queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page, productType],
@@ -85,7 +83,6 @@ export default function Explore() {
     setPage(1);
   };
 
-  // Generate [1, 2, '...', 5, 6, 7, '...', 20] style page numbers
   const getPageNumbers = (current: number, total: number): (number | string)[] => {
     if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
     const pages: (number | string)[] = [];
@@ -115,26 +112,28 @@ export default function Explore() {
   const totalCount = cardsData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / 20);
 
+  const activeFilterCount = [selectedSet, selectedRarity, ...(selectedTypes.length ? ["t"] : [])].filter(Boolean).length;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container flex items-center justify-between h-16">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
+        <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
               <Link to="/"><ArrowLeft className="w-4 h-4" /></Link>
             </Button>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-display font-bold text-sm">PV</span>
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-display font-bold text-xs sm:text-sm">PV</span>
               </div>
-              <span className="font-display font-bold text-lg text-foreground">Explore</span>
+              <span className="font-display font-bold text-base sm:text-lg text-foreground">Explore</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />
             <Button variant="accent" size="sm" asChild>
-              <Link to="/dashboard">My Collection</Link>
+              <Link to="/dashboard" className="text-xs sm:text-sm">My Collection</Link>
             </Button>
           </div>
         </div>
@@ -142,57 +141,62 @@ export default function Explore() {
 
       {/* Search Bar */}
       <div className="border-b border-border/50 bg-card/50">
-        <div className="container py-6">
-          <h2 className="font-display font-bold text-xl text-foreground mb-4">Find a Product</h2>
-          <form onSubmit={handleSearch} className="flex gap-3">
+        <div className="container py-4 sm:py-6 px-4 sm:px-8">
+          <h2 className="font-display font-bold text-lg sm:text-xl text-foreground mb-3 sm:mb-4">Find a Product</h2>
+          <form onSubmit={handleSearch} className="flex gap-2 sm:gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search any sealed or unsealed product..."
+                placeholder="Search products..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="pl-10 bg-background border-border h-11"
+                className="pl-10 bg-background border-border h-10 sm:h-11 text-sm"
               />
             </div>
-            <Button type="submit" variant="hero" className="px-6">
+            <Button type="submit" variant="hero" className="px-4 sm:px-6 h-10 sm:h-11">
               Search
             </Button>
-            <Button type="button" variant="ghost" onClick={clearFilters}>
+            <Button type="button" variant="ghost" onClick={clearFilters} className="hidden sm:inline-flex">
               Clear
             </Button>
           </form>
         </div>
       </div>
 
-      <div className="container py-6">
+      <div className="container py-4 sm:py-6 px-4 sm:px-8">
         {/* Sort bar */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
             <Button
               variant="ghost"
               size="sm"
-              className="lg:hidden"
+              className="lg:hidden shrink-0"
               onClick={() => setShowFilters(!showFilters)}
             >
               <Filter className="w-4 h-4 mr-1" />
               Filters
+              {activeFilterCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-[10px]">
+                  {activeFilterCount}
+                </Badge>
+              )}
             </Button>
             {(selectedSet || selectedRarity || selectedTypes.length > 0) && (
               <div className="flex items-center gap-1 flex-wrap">
                 {selectedSet && setsData?.data && (
-                  <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => { setSelectedSet(""); setPage(1); }}>
+                  <Badge variant="secondary" className="gap-1 cursor-pointer text-xs" onClick={() => { setSelectedSet(""); setPage(1); }}>
                     {setsData.data.find(s => s.id === selectedSet)?.name}
                     <X className="w-3 h-3" />
                   </Badge>
                 )}
                 {selectedRarity && (
-                  <Badge variant="secondary" className="gap-1 cursor-pointer" onClick={() => { setSelectedRarity(""); setPage(1); }}>
+                  <Badge variant="secondary" className="gap-1 cursor-pointer text-xs" onClick={() => { setSelectedRarity(""); setPage(1); }}>
                     {selectedRarity}
                     <X className="w-3 h-3" />
                   </Badge>
                 )}
                 {selectedTypes.map(t => (
-                  <Badge key={t} variant="secondary" className="gap-1 cursor-pointer" onClick={() => toggleType(t)}>
+                  <Badge key={t} variant="secondary" className="gap-1 cursor-pointer text-xs" onClick={() => toggleType(t)}>
                     {t}
                     <X className="w-3 h-3" />
                   </Badge>
@@ -200,11 +204,11 @@ export default function Explore() {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground hidden sm:inline">Sort by:</span>
+              <span className="text-sm text-muted-foreground hidden md:inline">Sort by:</span>
               <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
-                <SelectTrigger className="w-[160px] bg-background">
+                <SelectTrigger className="w-[130px] sm:w-[160px] bg-background text-xs sm:text-sm h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -214,21 +218,11 @@ export default function Explore() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex border border-border rounded-md">
-              <Button
-                variant={viewMode === "grid" ? "secondary" : "ghost"}
-                size="icon"
-                className="h-9 w-9 rounded-r-none"
-                onClick={() => setViewMode("grid")}
-              >
+            <div className="hidden sm:flex border border-border rounded-md">
+              <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-9 w-9 rounded-r-none" onClick={() => setViewMode("grid")}>
                 <Grid3X3 className="w-4 h-4" />
               </Button>
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="icon"
-                className="h-9 w-9 rounded-l-none"
-                onClick={() => setViewMode("list")}
-              >
+              <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="h-9 w-9 rounded-l-none" onClick={() => setViewMode("list")}>
                 <LayoutList className="w-4 h-4" />
               </Button>
             </div>
@@ -236,89 +230,57 @@ export default function Explore() {
         </div>
 
         <div className="flex gap-6">
-          {/* Sidebar Filters */}
-          <aside className={`w-64 shrink-0 space-y-6 ${showFilters ? 'block' : 'hidden'} lg:block`}>
-            {/* Product Type */}
-            <div>
-              <h3 className="font-display font-semibold text-foreground text-sm mb-2">Product</h3>
-              <p className="text-xs text-muted-foreground mb-2">Choose product line.</p>
-              <Select value={productType || "all"} onValueChange={(v) => { setProductType(v === "all" ? "" : v); setSelectedSet(""); setPage(1); }}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="All Products" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRODUCT_TYPES.map(p => (
-                    <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* Sidebar Filters — slide-over on mobile */}
+          {showFilters && (
+            <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setShowFilters(false)}>
+              <div className="absolute inset-0 bg-black/50" />
+              <aside
+                className="absolute left-0 top-0 bottom-0 w-72 bg-background border-r border-border p-6 space-y-6 overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-display font-bold text-foreground">Filters</h3>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowFilters(false)}>
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <FilterControls
+                  productType={productType}
+                  setProductType={setProductType}
+                  selectedSet={selectedSet}
+                  setSelectedSet={setSelectedSet}
+                  selectedRarity={selectedRarity}
+                  setSelectedRarity={setSelectedRarity}
+                  selectedTypes={selectedTypes}
+                  toggleType={toggleType}
+                  setsData={setsData}
+                  setPage={setPage}
+                />
+              </aside>
             </div>
+          )}
 
-            {/* Sets */}
-            <div>
-              <h3 className="font-display font-semibold text-foreground text-sm mb-2">Set</h3>
-              <p className="text-xs text-muted-foreground mb-2">Filter by set.</p>
-              <Select value={selectedSet} onValueChange={(v) => { setSelectedSet(v === "all" ? "" : v); setPage(1); }}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="All Sets" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sets</SelectItem>
-                  {setsData?.data
-                    ?.filter(s => {
-                      if (!productType) return true;
-                      const isPocket = TCGP_SERIES_IDS.includes(s.series.toLowerCase());
-                      return productType === "pocket" ? isPocket : !isPocket;
-                    })
-                    .map(s => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Rarity */}
-            <div>
-              <h3 className="font-display font-semibold text-foreground text-sm mb-2">Rarity</h3>
-              <p className="text-xs text-muted-foreground mb-2">Filter by card rarity.</p>
-              <Select value={selectedRarity} onValueChange={(v) => { setSelectedRarity(v === "all" ? "" : v); setPage(1); }}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="All Rarities" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Rarities</SelectItem>
-                  {CARD_RARITIES.map(r => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Types */}
-            <div>
-              <h3 className="font-display font-semibold text-foreground text-sm mb-2">Type</h3>
-              <p className="text-xs text-muted-foreground mb-3">Select energy types.</p>
-              <div className="space-y-2">
-                {CARD_TYPES.map(type => (
-                  <label key={type} className="flex items-center gap-2 cursor-pointer text-sm">
-                    <Checkbox
-                      checked={selectedTypes.includes(type)}
-                      onCheckedChange={() => toggleType(type)}
-                    />
-                    <span className="text-foreground">{type}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+          {/* Desktop sidebar */}
+          <aside className="hidden lg:block w-64 shrink-0 space-y-6">
+            <FilterControls
+              productType={productType}
+              setProductType={setProductType}
+              selectedSet={selectedSet}
+              setSelectedSet={setSelectedSet}
+              selectedRarity={selectedRarity}
+              setSelectedRarity={setSelectedRarity}
+              selectedTypes={selectedTypes}
+              toggleType={toggleType}
+              setsData={setsData}
+              setPage={setPage}
+            />
           </aside>
 
           {/* Card Grid */}
           <div className="flex-1 min-w-0">
             {isLoading ? (
               <div className={viewMode === "grid"
-                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4"
+                ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4"
                 : "space-y-3"
               }>
                 {Array.from({ length: 10 }).map((_, i) => (
@@ -345,40 +307,16 @@ export default function Explore() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-1 mt-8">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={page <= 1}
-                  onClick={() => setPage(p => p - 1)}
-                >
-                  ‹
-                </Button>
+              <div className="flex items-center justify-center gap-1 mt-8 flex-wrap">
+                <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>‹</Button>
                 {getPageNumbers(page, totalPages).map((p, i) =>
                   p === "..." ? (
                     <span key={`ellipsis-${i}`} className="px-2 text-muted-foreground text-sm">…</span>
                   ) : (
-                    <Button
-                      key={p}
-                      variant={p === page ? "default" : "outline"}
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setPage(p as number)}
-                    >
-                      {p}
-                    </Button>
+                    <Button key={p} variant={p === page ? "default" : "outline"} size="sm" className="h-8 w-8 p-0" onClick={() => setPage(p as number)}>{p}</Button>
                   )
                 )}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage(p => p + 1)}
-                >
-                  ›
-                </Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>›</Button>
               </div>
             )}
           </div>
@@ -388,10 +326,78 @@ export default function Explore() {
   );
 }
 
+// Extracted filter controls to share between mobile drawer and desktop sidebar
+function FilterControls({
+  productType, setProductType, selectedSet, setSelectedSet,
+  selectedRarity, setSelectedRarity, selectedTypes, toggleType,
+  setsData, setPage,
+}: {
+  productType: string; setProductType: (v: string) => void;
+  selectedSet: string; setSelectedSet: (v: string) => void;
+  selectedRarity: string; setSelectedRarity: (v: string) => void;
+  selectedTypes: string[]; toggleType: (t: string) => void;
+  setsData: any; setPage: (p: number) => void;
+}) {
+  return (
+    <>
+      <div>
+        <h3 className="font-display font-semibold text-foreground text-sm mb-2">Product</h3>
+        <p className="text-xs text-muted-foreground mb-2">Choose product line.</p>
+        <Select value={productType || "all"} onValueChange={(v) => { setProductType(v === "all" ? "" : v); setSelectedSet(""); setPage(1); }}>
+          <SelectTrigger className="bg-background"><SelectValue placeholder="All Products" /></SelectTrigger>
+          <SelectContent>
+            {PRODUCT_TYPES.map(p => (<SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <h3 className="font-display font-semibold text-foreground text-sm mb-2">Set</h3>
+        <p className="text-xs text-muted-foreground mb-2">Filter by set.</p>
+        <Select value={selectedSet} onValueChange={(v) => { setSelectedSet(v === "all" ? "" : v); setPage(1); }}>
+          <SelectTrigger className="bg-background"><SelectValue placeholder="All Sets" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sets</SelectItem>
+            {setsData?.data
+              ?.filter((s: any) => {
+                if (!productType) return true;
+                const isPocket = TCGP_SERIES_IDS.includes(s.series.toLowerCase());
+                return productType === "pocket" ? isPocket : !isPocket;
+              })
+              .map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <h3 className="font-display font-semibold text-foreground text-sm mb-2">Rarity</h3>
+        <p className="text-xs text-muted-foreground mb-2">Filter by card rarity.</p>
+        <Select value={selectedRarity} onValueChange={(v) => { setSelectedRarity(v === "all" ? "" : v); setPage(1); }}>
+          <SelectTrigger className="bg-background"><SelectValue placeholder="All Rarities" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Rarities</SelectItem>
+            {CARD_RARITIES.map(r => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <h3 className="font-display font-semibold text-foreground text-sm mb-2">Type</h3>
+        <p className="text-xs text-muted-foreground mb-3">Select energy types.</p>
+        <div className="space-y-2">
+          {CARD_TYPES.map(type => (
+            <label key={type} className="flex items-center gap-2 cursor-pointer text-sm">
+              <Checkbox checked={selectedTypes.includes(type)} onCheckedChange={() => toggleType(type)} />
+              <span className="text-foreground">{type}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // Grid view component
 function CardGrid({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
       <AnimatePresence mode="popLayout">
         {cards.map((card, i) => {
           const price = getMarketPrice(card);
@@ -409,56 +415,25 @@ function CardGrid({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCa
               transition={{ delay: i * 0.02 }}
               whileHover={{ y: -4 }}
             >
-              <div className="relative bg-background/50 p-2">
-                <img
-                  src={card.images.small}
-                  alt={card.name}
-                  className="w-full rounded-lg"
-                  loading="lazy"
-                />
+              <div className="relative bg-background/50 p-1.5 sm:p-2">
+                <img src={card.images.small} alt={card.name} className="w-full rounded-lg" loading="lazy" />
               </div>
-              <div className="p-3 space-y-1">
-                <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
-                <p className="text-xs text-primary/80 truncate">{card.set.name}</p>
+              <div className="p-2 sm:p-3 space-y-0.5 sm:space-y-1">
+                <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{card.name}</p>
+                <p className="text-[10px] sm:text-xs text-primary/80 truncate">{card.set.name}</p>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {card.rarity && (
-                    <span className="text-[10px] text-muted-foreground">{card.rarity}</span>
-                  )}
-                  {card.number && (
-                    <span className="text-[10px] text-muted-foreground">• {card.number}/{card.set.printedTotal}</span>
-                  )}
+                  {card.rarity && <span className="text-[9px] sm:text-[10px] text-muted-foreground">{card.rarity}</span>}
+                  {card.number && <span className="text-[9px] sm:text-[10px] text-muted-foreground">• {card.number}/{card.set.printedTotal}</span>}
                 </div>
-                {card.tcgplayer?.prices && (
-                  <p className="text-[10px] text-muted-foreground">
-                    {Object.keys(card.tcgplayer.prices).filter(k => k !== "normal").join(", ") || "Normal"}
-                  </p>
-                )}
                 <div className="flex items-center justify-between pt-1">
-                  <div>
-                    <div className="flex items-center gap-1">
-                      {priceDiff !== null && priceDiff > 0 && (
-                        <TrendingUp className="w-3 h-3 text-emerald-400" />
-                      )}
-                      {priceDiff !== null && priceDiff < 0 && (
-                        <TrendingDown className="w-3 h-3 text-destructive" />
-                      )}
-                      <span className="text-base font-bold text-foreground">
-                        {formatPrice(price)}
-                      </span>
-                    </div>
-                    {priceDiff !== null && pricePct !== null && (
-                      <p className={`text-[10px] font-medium ${priceDiff >= 0 ? "text-emerald-400" : "text-destructive"}`}>
-                        {priceDiff >= 0 ? "+" : ""}${Math.abs(priceDiff).toFixed(2)} ({pricePct.toFixed(2)}%)
-                      </p>
-                    )}
-                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-foreground">{formatPrice(price)}</span>
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8 rounded-full border border-border/50 hover:border-primary hover:text-primary transition-all"
+                    className="h-7 w-7 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity rounded-full border border-border/50 hover:border-primary hover:text-primary"
                     onClick={() => onAdd(card)}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
                   </Button>
                 </div>
               </div>
@@ -479,33 +454,26 @@ function CardList({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCa
         return (
           <motion.div
             key={card.id}
-            className="flex items-center gap-4 p-3 rounded-xl bg-card border border-border/50 card-shine group"
+            className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-xl bg-card border border-border/50 card-shine group"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.02 }}
           >
-            <img
-              src={card.images.small}
-              alt={card.name}
-              className="w-12 rounded-md"
-              loading="lazy"
-            />
+            <img src={card.images.small} alt={card.name} className="w-10 sm:w-12 rounded-md" loading="lazy" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {card.set.name} • {card.rarity || "Unknown"} • {card.number}/{card.set.printedTotal}
+              <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{card.name}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                {card.set.name} • {card.rarity || "Unknown"}
               </p>
             </div>
-            <span className="text-sm font-bold text-foreground whitespace-nowrap">
-              {formatPrice(price)}
-            </span>
+            <span className="text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">{formatPrice(price)}</span>
             <Button
               size="icon"
               variant="ghost"
-              className="h-8 w-8 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
+              className="h-7 w-7 sm:h-8 sm:w-8 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
               onClick={() => onAdd(card)}
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Button>
           </motion.div>
         );
