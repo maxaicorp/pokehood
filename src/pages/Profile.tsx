@@ -8,7 +8,7 @@ import { getPlatformIcon } from "@/lib/platform-icons";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ExternalLink, Wallet, QrCode, Loader2, Lock, MessageCircle } from "lucide-react";
+import { ExternalLink, Wallet, QrCode, Loader2, Lock, MessageCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 
@@ -104,10 +104,7 @@ export default function Profile() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-primary/8 rounded-full blur-[150px] pointer-events-none" />
 
       <div className="relative z-10 mx-auto max-w-md py-6 sm:py-8 px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/"><ArrowLeft className="w-4 h-4 mr-1" />Back</Link>
-          </Button>
+        <div className="flex items-center justify-end mb-4 sm:mb-6">
 
           {/* Contact icon — shown when cards are for sale */}
           {collection.some(c => c.forSale) && links.length > 0 && (
