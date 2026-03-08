@@ -78,7 +78,6 @@ export async function addToCollection(
   condition = "NM",
   quantity = 1
 ): Promise<CollectionCard | null> {
-  // Check for existing card with same tcg_api_id + condition
   const { data: existing } = await supabase
     .from("collection_cards")
     .select("*")
@@ -157,6 +156,20 @@ export async function updateCardQuantity(id: string, quantity: number): Promise<
   return true;
 }
 
+/** Update card condition */
+export async function updateCardCondition(id: string, condition: string): Promise<boolean> {
+  const { error } = await supabase
+    .from("collection_cards")
+    .update({ condition })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Failed to update condition:", error);
+    return false;
+  }
+  return true;
+}
+
 /** Toggle for-sale status */
 export async function toggleForSale(id: string, forSale: boolean, salePrice?: number): Promise<boolean> {
   const { error } = await supabase
@@ -169,6 +182,22 @@ export async function toggleForSale(id: string, forSale: boolean, salePrice?: nu
     return false;
   }
   return true;
+}
+
+/** Check if a slug is available */
+export async function checkSlugAvailability(slug: string, currentUserId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to check slug:", error);
+    return false;
+  }
+  // Available if no one has it, or the current user already owns it
+  return !data || data.user_id === currentUserId;
 }
 
 export function getTotalValue(collection: CollectionCard[]): number {
