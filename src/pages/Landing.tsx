@@ -185,7 +185,7 @@ export default function Landing() {
               {/* Dashboard mockup */}
               <div className="mt-6 flex justify-center">
                 <PhoneMockup>
-                  <div className="bg-white p-4 pt-10 h-[520px] overflow-y-auto">
+                  <div className="bg-white p-4 pt-10 h-[520px] overflow-hidden">
                     <div className="space-y-2.5">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-5 h-5 rounded bg-[#141414] flex items-center justify-center">
@@ -269,7 +269,7 @@ export default function Landing() {
               {/* Profile mockup */}
               <div className="mt-6 flex justify-center">
                 <PhoneMockup>
-                  <div className="bg-white p-5 pt-10 h-[520px] overflow-y-auto">
+                  <div className="bg-white p-5 pt-10 h-[520px] overflow-hidden">
                     <div className="text-center mb-3">
                       <div className="w-10 h-10 rounded-full bg-[#F4F4F4] border-2 border-[#141414] mx-auto mb-1.5 flex items-center justify-center">
                         <span className="text-sm font-display font-bold text-[#141414]">D</span>
