@@ -29,7 +29,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] overflow-hidden transition-colors">
+    <div className="min-h-screen overflow-hidden transition-colors">
       {/* ═══ 1. Floating Pill Nav ═══ */}
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-auto">
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-2xl backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-sm bg-[#F2F2F2]/90 dark:bg-white/10">
@@ -51,7 +51,7 @@ export default function Landing() {
       </nav>
 
       {/* ═══ 2. Hero ═══ */}
-      <section className="relative pt-32 pb-16 md:pt-44 md:pb-24 bg-white dark:bg-[#0a0a0a] transition-colors">
+      <section className="relative pt-32 pb-16 md:pt-44 md:pb-24 transition-colors">
         <div className="container relative z-10 max-w-4xl mx-auto text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <motion.div
@@ -81,7 +81,7 @@ export default function Landing() {
       </section>
 
       {/* ═══ 3. Horizontal Card Slider ═══ */}
-      <section className="py-16 md:py-24 bg-white dark:bg-[#0a0a0a] transition-colors">
+      <section className="py-16 md:py-24 transition-colors">
         <div className="text-center mb-12">
           <motion.h2 className="font-display mb-3 text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 44px)" }} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             From Base Set to Today
@@ -92,7 +92,7 @@ export default function Landing() {
       </section>
 
       {/* ═══ 4. Feature Cards ═══ */}
-      <section className="py-20 md:py-28 bg-white dark:bg-[#0a0a0a] transition-colors">
+      <section className="py-20 md:py-28 transition-colors">
         <div className="container max-w-6xl">
           <div className="grid md:grid-cols-2 gap-6">
             {/* Collection Dashboard */}
@@ -243,7 +243,7 @@ export default function Landing() {
       </section>
 
       {/* ═══ 7. CTA Box ═══ */}
-      <section className="relative z-10 pt-20 pb-28 bg-white dark:bg-[#0a0a0a] rounded-b-[3rem] transition-colors">
+      <section className="relative z-10 pt-20 pb-28 rounded-b-[3rem] transition-colors">
         <div className="container max-w-2xl">
           <motion.div className="relative rounded-[2rem] p-10 md:p-14 text-center overflow-hidden bg-[#F4F4F4] dark:bg-[#151515]" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <h2 className="font-display mb-4 text-[#141414] dark:text-white" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 40px)" }}>Ready to Build Your Vault?</h2>
