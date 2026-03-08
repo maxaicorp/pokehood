@@ -33,14 +33,12 @@ export default function Landing() {
       {/* ═══ SECTION 1: Floating Pill Nav ═══ */}
       <nav className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-auto">
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-2xl backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-sm bg-[#F2F2F2]/90 dark:bg-white/10">
-          {/* Logo — left */}
           <Link to="/" className="flex items-center gap-2 px-2 py-1">
             <div className="w-7 h-7 rounded-lg bg-[#141414] flex items-center justify-center overflow-hidden">
               <img src="/logo.png" alt="PokeVault" className="w-6 h-6 object-contain" />
             </div>
             <span className="font-display font-bold text-sm text-[#141414] dark:text-white hidden sm:inline">PokeVault</span>
           </Link>
-          {/* Nav links — plain text, no bg */}
           <div className="hidden sm:flex items-center gap-0">
             <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">
               Explore
@@ -49,7 +47,6 @@ export default function Landing() {
               Dashboard
             </Link>
           </div>
-          {/* CTA + theme toggle */}
           <Button size="sm" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold ml-1" asChild>
             <Link to="/explore">Get Started</Link>
           </Button>
@@ -77,11 +74,7 @@ export default function Landing() {
 
             <h1
               className="font-display leading-none tracking-tight mb-6 text-[#141414] dark:text-white"
-              style={{
-                fontWeight: 520,
-                fontSize: "clamp(48px, 6vw, 80px)",
-                lineHeight: "1",
-              }}
+              style={{ fontWeight: 520, fontSize: "clamp(48px, 6vw, 80px)", lineHeight: "1" }}
             >
               Track, Value & Share Your Collection.
             </h1>
@@ -115,55 +108,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ═══ SECTION 2: Animated Card Slider ═══ */}
-      <section className="py-16 md:py-24 bg-white dark:bg-[#0a0a0a] transition-colors">
-        <div className="text-center mb-12">
-          <motion.h2
-            className="font-display mb-3 text-[#141414] dark:text-white"
-            style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 44px)" }}
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            From Base Set to Today
-          </motion.h2>
-          <p className="text-[#666] dark:text-[#888] text-lg max-w-md mx-auto">
-            Every card from every era, all in one place.
-          </p>
-        </div>
-        <CardSlider />
-      </section>
-      <section className="py-24 md:py-32 bg-[#F4F4F4] dark:bg-[#111] transition-colors">
-        <div className="container text-center max-w-2xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <p className="text-sm font-semibold tracking-widest uppercase text-[#999] dark:text-[#666] mb-6">
-              A growing library of
-            </p>
-            <div className="space-y-1">
-              {[
-                `${stats.sets.toLocaleString()} sets`,
-                `${stats.cards.toLocaleString()} cards`,
-                `${stats.types} types`,
-              ].map((text) => (
-                <p
-                  key={text}
-                  className="font-display leading-none text-[#141414] dark:text-white"
-                  style={{ fontWeight: 520, fontSize: "clamp(40px, 5.5vw, 72px)" }}
-                >
-                  {text}
-                </p>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══ SECTION 4: Feature Showcase ═══ */}
+      {/* ═══ SECTION 3: Feature Showcase (moved above slider/stats) ═══ */}
       <section className="py-20 md:py-28 bg-white dark:bg-[#0a0a0a] transition-colors">
         <div className="container max-w-6xl">
           <div className="grid md:grid-cols-2 gap-6">
@@ -204,7 +149,6 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              {/* Dashboard mockup */}
               <div className="mt-6 flex justify-center">
                 <PhoneMockup>
                   <div className="bg-white p-4 pt-14 h-[520px] overflow-hidden">
@@ -228,13 +172,13 @@ export default function Landing() {
                         ))}
                       </div>
                       {[
-                        { name: "Charizard ex", set: "Surging Sparks", price: "$45.00", img: "https://assets.tcgdex.net/en/sv/sv08/6/low.webp" },
-                        { name: "Pikachu ex", set: "Surging Sparks", price: "$32.50", img: "https://assets.tcgdex.net/en/sv/sv08/57/low.webp" },
-                        { name: "Mewtwo ex", set: "Prismatic Evol.", price: "$28.00", img: "https://assets.tcgdex.net/en/sv/sv08.5/58/low.webp" },
-                        { name: "Umbreon ex", set: "Prismatic Evol.", price: "$62.00", img: "https://assets.tcgdex.net/en/sv/sv08.5/61/low.webp" },
+                        { name: "Charizard ex", set: "Surging Sparks", price: "$45.00", img: "https://assets.tcgdex.net/en/sv/sv08/006/low.webp" },
+                        { name: "Pikachu ex", set: "Surging Sparks", price: "$32.50", img: "https://assets.tcgdex.net/en/sv/sv08/057/low.webp" },
+                        { name: "Mewtwo ex", set: "Prismatic Evol.", price: "$28.00", img: "https://assets.tcgdex.net/en/sv/sv08/058/low.webp" },
+                        { name: "Umbreon ex", set: "Prismatic Evol.", price: "$62.00", img: "https://assets.tcgdex.net/en/sv/sv08/061/low.webp" },
                         { name: "Lugia ex", set: "Surging Sparks", price: "$18.50", img: "https://assets.tcgdex.net/en/sv/sv08/117/low.webp" },
                         { name: "Rayquaza ex", set: "Surging Sparks", price: "$24.00", img: "https://assets.tcgdex.net/en/sv/sv08/123/low.webp" },
-                        { name: "Gengar ex", set: "Prismatic Evol.", price: "$35.00", img: "https://assets.tcgdex.net/en/sv/sv08.5/45/low.webp" },
+                        { name: "Gengar ex", set: "Prismatic Evol.", price: "$35.00", img: "https://assets.tcgdex.net/en/sv/sv08/045/low.webp" },
                       ].map((card) => (
                         <div key={card.name} className="flex items-center gap-2 p-1.5 rounded-md bg-[#F4F4F4]">
                           <img src={card.img} alt={card.name} className="w-7 h-10 rounded object-cover" loading="lazy" />
@@ -288,7 +232,6 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              {/* Profile mockup */}
               <div className="mt-6 flex justify-center">
                 <PhoneMockup>
                   <div className="bg-white p-5 pt-10 h-[520px] overflow-hidden">
@@ -324,12 +267,12 @@ export default function Landing() {
                     <p className="text-[8px] font-display font-semibold text-[#141414] mb-1.5">Collection</p>
                     <div className="grid grid-cols-3 gap-1">
                       {[
-                        "https://assets.tcgdex.net/en/base/base1/4/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/2/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/15/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/14/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/16/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/58/low.webp",
+                        "https://assets.tcgdex.net/en/base/base1/004/low.webp",
+                        "https://assets.tcgdex.net/en/base/base1/002/low.webp",
+                        "https://assets.tcgdex.net/en/base/base1/015/low.webp",
+                        "https://assets.tcgdex.net/en/base/base1/014/low.webp",
+                        "https://assets.tcgdex.net/en/base/base1/016/low.webp",
+                        "https://assets.tcgdex.net/en/base/base1/058/low.webp",
                       ].map((src, i) => (
                         <img key={i} src={src} alt="card" className="rounded w-full" loading="lazy" />
                       ))}
@@ -339,6 +282,56 @@ export default function Landing() {
               </div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* ═══ SECTION 4: Animated Card Slider ═══ */}
+      <section className="py-16 md:py-24 bg-white dark:bg-[#0a0a0a] transition-colors">
+        <div className="text-center mb-12">
+          <motion.h2
+            className="font-display mb-3 text-[#141414] dark:text-white"
+            style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 44px)" }}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            From Base Set to Today
+          </motion.h2>
+          <p className="text-[#666] dark:text-[#888] text-lg max-w-md mx-auto">
+            Every card from every era, all in one place.
+          </p>
+        </div>
+        <CardSlider />
+      </section>
+
+      {/* ═══ SECTION 5: Stats ═══ */}
+      <section className="py-24 md:py-32 bg-[#F4F4F4] dark:bg-[#111] transition-colors">
+        <div className="container text-center max-w-2xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <p className="text-sm font-semibold tracking-widest uppercase text-[#999] dark:text-[#666] mb-6">
+              A growing library of
+            </p>
+            <div className="space-y-1">
+              {[
+                `${stats.sets.toLocaleString()} sets`,
+                `${stats.cards.toLocaleString()} cards`,
+                `${stats.types} types`,
+              ].map((text) => (
+                <p
+                  key={text}
+                  className="font-display leading-none text-[#141414] dark:text-white"
+                  style={{ fontWeight: 520, fontSize: "clamp(40px, 5.5vw, 72px)" }}
+                >
+                  {text}
+                </p>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 
