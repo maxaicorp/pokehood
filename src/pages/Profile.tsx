@@ -8,7 +8,7 @@ import { getPlatformIcon } from "@/lib/platform-icons";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, ExternalLink, Wallet, QrCode, Loader2, Lock, MessageCircle } from "lucide-react";
+import { ExternalLink, Wallet, QrCode, Loader2, Lock, MessageCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 
