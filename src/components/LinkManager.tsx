@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2, GripVertical, Loader2, ExternalLink, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { getPlatformIcon } from "@/lib/platform-icons";
 
 interface UserLink {
   id: string;
