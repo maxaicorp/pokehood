@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/pokemon-api";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import { motion } from "framer-motion";
+import { ReactNode } from "react";
 
 const DEMO_LINKS = [
   { label: "eBay Store", url: "https://ebay.com" },
@@ -67,21 +68,18 @@ export default function DemoProfile() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.15 }}
         >
-          {DEMO_LINKS.map((link) => {
-            const Icon = getPlatformIcon(link.url);
-            return (
+          {DEMO_LINKS.map((link) => (
               <div
                 key={link.label}
                 className="flex items-center justify-between p-3 sm:p-4 rounded-xl bg-card border border-border/50 hover:border-primary/30 transition-colors cursor-default"
               >
                 <div className="flex items-center gap-3">
-                  {Icon && <Icon className="w-5 h-5 text-muted-foreground" />}
+                  <span className="w-5 h-5 flex items-center justify-center text-muted-foreground">{getPlatformIcon(link.url, "w-5 h-5")}</span>
                   <span className="text-sm font-semibold text-foreground">{link.label}</span>
                 </div>
                 <ExternalLink className="w-4 h-4 text-muted-foreground" />
               </div>
-            );
-          })}
+          ))}
         </motion.div>
 
         {/* Collection */}
