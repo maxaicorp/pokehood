@@ -57,7 +57,8 @@ export default function LinkManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-links"] });
-      setNewLabel("");
+      setSelectedPlatform("");
+      setCustomLabel("");
       setNewUrl("");
       toast.success("Link added!");
     },
@@ -176,17 +177,38 @@ export default function LinkManager() {
           <p className="font-semibold text-foreground text-sm">Add New Link</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="linkLabel" className="text-xs">Label</Label>
-              <Input
-                id="linkLabel"
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="e.g. eBay Store"
-                maxLength={50}
-              />
+              <Label className="text-xs">Platform</Label>
+              <Select value={selectedPlatform} onValueChange={setSelectedPlatform}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select platform..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLATFORM_PRESETS.map((p) => (
+                    <SelectItem key={p.key} value={p.label}>
+                      <span className="flex items-center gap-2">
+                        {getPlatformIcon(p.key, "w-4 h-4")}
+                        {p.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom">
+                    <span className="flex items-center gap-2 text-muted-foreground">✏️ Custom</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="linkUrl" className="text-xs">URL</Label>
+            {isCustom && (
+              <div className="space-y-1">
+                <Label htmlFor="customLabel" className="text-xs">Custom Label</Label>
+                <Input
+                  id="customLabel"
+                  value={customLabel}
+                  onChange={(e) => setCustomLabel(e.target.value)}
+                  placeholder="e.g. My Store"
+                  maxLength={50}
+                />
+              </div>
+            )}
               <Input
                 id="linkUrl"
                 value={newUrl}
