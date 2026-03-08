@@ -209,6 +209,8 @@ export default function LinkManager() {
                 />
               </div>
             )}
+            <div className="space-y-1">
+              <Label htmlFor="linkUrl" className="text-xs">URL</Label>
               <Input
                 id="linkUrl"
                 value={newUrl}
