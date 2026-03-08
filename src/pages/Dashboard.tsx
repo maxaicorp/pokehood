@@ -8,8 +8,7 @@ import { formatPrice, PokemonCard } from "@/lib/pokemon-api";
 import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import CollectionList from "@/components/CollectionList";
-import ProfileSettings from "@/components/ProfileSettings";
-import LinkManager from "@/components/LinkManager";
+import ProfilePageEditor from "@/components/ProfilePageEditor";
 import ThemeToggle from "@/components/ThemeToggle";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
@@ -18,12 +17,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft, Wallet, Layers, CreditCard, Search, Upload, Loader2, QrCode,
-  Plus, Crown, LogOut, User, Link2, LayoutGrid, ExternalLink
+  Plus, Crown, LogOut, User, LayoutGrid, ExternalLink
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-type Tab = "collection" | "profile" | "links";
+type Tab = "collection" | "mypage";
 
 export default function Dashboard() {
   const { user, loading, isPro, limits, signOut } = useAuth();
@@ -145,8 +144,7 @@ export default function Dashboard() {
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "collection", label: "Collection", icon: LayoutGrid },
-    { id: "profile", label: "Profile", icon: User },
-    { id: "links", label: "Links", icon: Link2 },
+    { id: "mypage", label: "My Page", icon: User },
   ];
 
   return (
@@ -294,8 +292,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {activeTab === "profile" && <ProfileSettings />}
-        {activeTab === "links" && <LinkManager />}
+        {activeTab === "mypage" && <ProfilePageEditor />}
       </div>
 
       {/* Import Dialog */}
