@@ -21,8 +21,6 @@ export default function Dashboard() {
   const { user, loading, isPro, limits, signOut } = useAuth();
   const [collection, setCollection] = useState<CollectionCard[]>(getCollection());
   const [searchQuery, setSearchQuery] = useState("");
-
-  // CSV Import state
   const [importOpen, setImportOpen] = useState(false);
   const [importParsed, setImportParsed] = useState<CsvRow[]>([]);
   const [importing, setImporting] = useState(false);
@@ -31,12 +29,11 @@ export default function Dashboard() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const profileUrl = `${window.location.origin}/u/demo`;
+  const refresh = useCallback(() => setCollection(getCollection()), []);
+
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   if (!user) return <Navigate to="/auth" replace />;
-
-  const profileUrl = `${window.location.origin}/u/demo`;
-
-  const refresh = () => setCollection(getCollection());
 
   const totalValue = getTotalValue(collection);
   const bySet = getCollectionBySet(collection);
