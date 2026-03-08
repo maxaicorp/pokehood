@@ -2,33 +2,27 @@ import { useState, useMemo, useRef, useCallback } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { getCollection, getTotalValue, getCollectionBySet, CollectionCard, addToCollection } from "@/lib/collection-store";
-import { formatPrice, PokemonCard } from "@/lib/pokemon-api";
+import { getCollection, getTotalValue, getCollectionBySet, addToCollection } from "@/lib/collection-store";
+import { formatPrice } from "@/lib/pokemon-api";
 import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
-import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import CollectionList from "@/components/CollectionList";
 import ProfilePageEditor from "@/components/ProfilePageEditor";
-import ThemeToggle from "@/components/ThemeToggle";
-import QRCodeModal from "@/components/QRCodeModal";
+import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Wallet, Layers, CreditCard, Search, Upload, Loader2, QrCode,
-  Plus, Crown, LogOut, User, LayoutGrid, ExternalLink, Sun, Moon
+  Wallet, Layers, CreditCard, Search, Upload, Loader2,
+  Plus, LayoutGrid, User
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { useTheme } from "next-themes";
 
 type Tab = "collection" | "mypage";
 
 export default function Dashboard() {
-  const { user, loading, isPro, limits, signOut } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { user, loading, isPro, limits } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>("collection");
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,8 +30,6 @@ export default function Dashboard() {
   const [importParsed, setImportParsed] = useState<CsvRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState({ done: 0, total: 0 });
-  const [qrOpen, setQrOpen] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: collection = [], isLoading: collectionLoading } = useQuery({
@@ -46,23 +38,6 @@ export default function Dashboard() {
     enabled: !!user,
     staleTime: 30_000,
   });
-
-  const { data: profile } = useQuery({
-    queryKey: ["my-profile", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", user!.id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  const publishedDomain = "https://collectiblez.lovable.app";
-  const profileUrl = `${publishedDomain}/u/${profile?.slug || ""}`;
 
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["my-collection"] });
@@ -132,20 +107,6 @@ export default function Dashboard() {
     setImporting(false);
   };
 
-  const handleUpgrade = async () => {
-    setCheckoutLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId: STRIPE_CONFIG.pro.price_id },
-      });
-      if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to start checkout");
-    }
-    setCheckoutLoading(false);
-  };
-
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "collection", label: "Collection", icon: LayoutGrid },
     { id: "mypage", label: "My Page", icon: User },
@@ -153,82 +114,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background pb-16 sm:pb-0">
-      {/* Mobile bottom nav */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50 flex">
-        <Link to="/dashboard" className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-foreground">
-          <LayoutGrid className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Dashboard</span>
-        </Link>
-        <Link to="/explore" className="flex-1 flex flex-col items-center gap-0.5 py-2.5 text-muted-foreground">
-          <Search className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Explore</span>
-        </Link>
-      </div>
-      {/* Header */}
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Link to="/" className="flex items-center gap-2 px-1.5 py-1 rounded-xl bg-foreground h-8">
-              <div className="w-6 h-6 rounded-lg flex items-center justify-center overflow-hidden">
-                <img src="/logo.png" alt="PokeVault" className="w-5 h-5 object-contain" />
-              </div>
-              <span className="font-display font-bold text-sm text-background pr-1.5 hidden sm:inline">PokeVault</span>
-            </Link>
-            <div className="hidden sm:flex items-center gap-0">
-              <Link to="/dashboard" className="px-4 py-1.5 text-sm font-medium text-foreground">Dashboard</Link>
-              <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Explore</Link>
-            </div>
-            {isPro && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
-                <Crown className="w-3 h-3" /> PRO
-              </span>
-            )}
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary/50">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-sm font-display font-bold text-primary">
-                    {(profile?.display_name || user?.email || "?")[0].toUpperCase()}
-                  </span>
-                )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <div className="px-3 py-2">
-                <p className="text-sm font-semibold text-foreground truncate">{profile?.display_name || "My Account"}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-              </div>
-              <DropdownMenuSeparator />
-              {!isPro && (
-                <DropdownMenuItem onClick={handleUpgrade} disabled={checkoutLoading} className="text-amber-600 dark:text-amber-400">
-                  <Crown className="w-4 h-4 mr-2" /> Upgrade to Pro
-                </DropdownMenuItem>
-              )}
-              {profile?.slug && (
-                <DropdownMenuItem asChild>
-                  <a href={profileUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4 mr-2" /> My Profile
-                  </a>
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => setQrOpen(true)}>
-                <QrCode className="w-4 h-4 mr-2" /> Share QR Code
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-                {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
-                {theme === "dark" ? "Light Mode" : "Dark Mode"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut} className="text-destructive">
-                <LogOut className="w-4 h-4 mr-2" /> Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
+      <AppHeader activePage="dashboard">
         {/* Tabs */}
         <div className="container px-4 sm:px-8">
           <div className="flex gap-0 -mb-px">
@@ -248,11 +134,9 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-      </header>
+      </AppHeader>
 
       <div className="container py-6 sm:py-8 px-4 sm:px-8">
-
-        {/* Tab Content */}
         {activeTab === "collection" && (
           <div>
             {/* Stats */}
@@ -282,11 +166,9 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Card limit warning */}
             {atCardLimit && (
               <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive">
-                You've reached the free tier limit of {limits.maxCards} cards.{" "}
-                <button onClick={handleUpgrade} className="font-semibold underline">Upgrade to Pro</button> for unlimited cards.
+                You've reached the free tier limit of {limits.maxCards} cards. Upgrade to Pro for unlimited cards.
               </div>
             )}
 
@@ -318,7 +200,6 @@ export default function Dashboard() {
               </p>
             </div>
 
-            {/* Collection */}
             {collectionLoading ? (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -379,8 +260,6 @@ export default function Dashboard() {
           )}
         </DialogContent>
       </Dialog>
-
-      <QRCodeModal open={qrOpen} onOpenChange={setQrOpen} url={profileUrl} title="Share Your Profile" />
     </div>
   );
 }
