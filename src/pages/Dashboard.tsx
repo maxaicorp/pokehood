@@ -23,7 +23,7 @@ import {
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-type Tab = "collection" | "profile" | "links";
+type Tab = "collection" | "mypage";
 
 export default function Dashboard() {
   const { user, loading, isPro, limits, signOut } = useAuth();
