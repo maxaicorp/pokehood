@@ -41,7 +41,10 @@ import { Link } from "react-router-dom";
 type ViewMode = "grid" | "list";
 
 export default function Explore() {
-  const { user } = useAuth();
+  const { user, isPro, limits, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const [qrOpen, setQrOpen] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSet, setSelectedSet] = useState("");
