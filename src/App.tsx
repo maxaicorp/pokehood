@@ -32,7 +32,9 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/u/:slug" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
-          </Routes>
+              </Routes>
+            </div>
+          </BgThemeProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
