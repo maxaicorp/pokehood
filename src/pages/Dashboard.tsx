@@ -32,9 +32,6 @@ export default function Dashboard() {
   const profileUrl = `${window.location.origin}/u/demo`;
   const refresh = useCallback(() => setCollection(getCollection()), []);
 
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  if (!user) return <Navigate to="/auth" replace />;
-
   const totalValue = getTotalValue(collection);
   const bySet = getCollectionBySet(collection);
   const setCount = Object.keys(bySet).length;
@@ -51,6 +48,9 @@ export default function Dashboard() {
         c.rarity.toLowerCase().includes(q)
     );
   }, [collection, searchQuery]);
+
+  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+  if (!user) return <Navigate to="/auth" replace />;
 
   // CSV Import handlers
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
