@@ -185,7 +185,7 @@ export default function Landing() {
               {/* Dashboard mockup */}
               <div className="mt-6 flex justify-center">
                 <PhoneMockup>
-                  <div className="bg-white p-4 pt-10 min-h-[420px]">
+                  <div className="bg-white p-4 pt-10 h-[520px] overflow-y-auto">
                     <div className="space-y-2.5">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-5 h-5 rounded bg-[#141414] flex items-center justify-center">
@@ -206,9 +206,13 @@ export default function Landing() {
                         ))}
                       </div>
                       {[
-                        { name: "Charizard", set: "Base Set", price: "$45.00", img: "https://assets.tcgdex.net/en/base/base1/4/low.webp" },
-                        { name: "Pikachu", set: "Base Set", price: "$32.50", img: "https://assets.tcgdex.net/en/base/base1/58/low.webp" },
-                        { name: "Mewtwo", set: "Base Set", price: "$28.00", img: "https://assets.tcgdex.net/en/base/base1/10/low.webp" },
+                        { name: "Charizard ex", set: "Surging Sparks", price: "$45.00", img: "https://assets.tcgdex.net/en/sv/sv08/6/low.webp" },
+                        { name: "Pikachu ex", set: "Surging Sparks", price: "$32.50", img: "https://assets.tcgdex.net/en/sv/sv08/57/low.webp" },
+                        { name: "Mewtwo ex", set: "Prismatic Evol.", price: "$28.00", img: "https://assets.tcgdex.net/en/sv/sv08.5/58/low.webp" },
+                        { name: "Umbreon ex", set: "Prismatic Evol.", price: "$62.00", img: "https://assets.tcgdex.net/en/sv/sv08.5/61/low.webp" },
+                        { name: "Lugia ex", set: "Surging Sparks", price: "$18.50", img: "https://assets.tcgdex.net/en/sv/sv08/117/low.webp" },
+                        { name: "Rayquaza ex", set: "Surging Sparks", price: "$24.00", img: "https://assets.tcgdex.net/en/sv/sv08/123/low.webp" },
+                        { name: "Gengar ex", set: "Prismatic Evol.", price: "$35.00", img: "https://assets.tcgdex.net/en/sv/sv08.5/45/low.webp" },
                       ].map((card) => (
                         <div key={card.name} className="flex items-center gap-2 p-1.5 rounded-md bg-[#F4F4F4]">
                           <img src={card.img} alt={card.name} className="w-7 h-10 rounded object-cover" loading="lazy" />
@@ -265,7 +269,7 @@ export default function Landing() {
               {/* Profile mockup */}
               <div className="mt-6 flex justify-center">
                 <PhoneMockup>
-                  <div className="bg-white p-5 pt-10 min-h-[420px]">
+                  <div className="bg-white p-5 pt-10 h-[520px] overflow-y-auto">
                     <div className="text-center mb-3">
                       <div className="w-10 h-10 rounded-full bg-[#F4F4F4] border-2 border-[#141414] mx-auto mb-1.5 flex items-center justify-center">
                         <span className="text-sm font-display font-bold text-[#141414]">D</span>
