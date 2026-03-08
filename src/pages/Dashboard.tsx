@@ -14,18 +14,21 @@ import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft, Wallet, Layers, CreditCard, Search, Upload, Loader2, QrCode,
-  Plus, Crown, LogOut, User, LayoutGrid, ExternalLink
+  Plus, Crown, LogOut, User, LayoutGrid, ExternalLink, Sun, Moon
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
 
 type Tab = "collection" | "mypage";
 
 export default function Dashboard() {
   const { user, loading, isPro, limits, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>("collection");
   const [searchQuery, setSearchQuery] = useState("");
@@ -169,28 +172,49 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {!isPro && (
-              <Button size="sm" onClick={handleUpgrade} disabled={checkoutLoading} className="bg-amber-500 hover:bg-amber-600 text-white text-xs h-8">
-                {checkoutLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Crown className="w-3.5 h-3.5 mr-1" />}
-                Upgrade
-              </Button>
-            )}
-            {profile?.slug && (
-              <Button variant="outline" size="sm" className="hidden sm:inline-flex" asChild>
-                <a href={profileUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="w-4 h-4 mr-1" /> My Profile
-                </a>
-              </Button>
-            )}
-            <ThemeToggle />
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQrOpen(true)} title="Share QR Code">
-              <QrCode className="w-4 h-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={signOut} title="Sign Out">
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary/50">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm font-display font-bold text-primary">
+                    {(profile?.display_name || user?.email || "?")[0].toUpperCase()}
+                  </span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <div className="px-3 py-2">
+                <p className="text-sm font-semibold text-foreground truncate">{profile?.display_name || "My Account"}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
+              <DropdownMenuSeparator />
+              {!isPro && (
+                <DropdownMenuItem onClick={handleUpgrade} disabled={checkoutLoading} className="text-amber-600 dark:text-amber-400">
+                  <Crown className="w-4 h-4 mr-2" /> Upgrade to Pro
+                </DropdownMenuItem>
+              )}
+              {profile?.slug && (
+                <DropdownMenuItem asChild>
+                  <a href={profileUrl} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="w-4 h-4 mr-2" /> My Profile
+                  </a>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => setQrOpen(true)}>
+                <QrCode className="w-4 h-4 mr-2" /> Share QR Code
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+                {theme === "dark" ? "Light Mode" : "Dark Mode"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut} className="text-destructive">
+                <LogOut className="w-4 h-4 mr-2" /> Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Tabs */}
