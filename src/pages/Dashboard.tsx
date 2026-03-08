@@ -58,7 +58,8 @@ export default function Dashboard() {
     enabled: !!user,
   });
 
-  const profileUrl = `${window.location.origin}/u/${profile?.slug || ""}`;
+  const publishedDomain = "https://collectiblez.lovable.app";
+  const profileUrl = `${publishedDomain}/u/${profile?.slug || ""}`;
 
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["my-collection"] });
