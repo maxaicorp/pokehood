@@ -336,7 +336,78 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ═══ SECTION 6: CTA (floating above dark footer) ═══ */}
+      {/* ═══ SECTION: FAQ ═══ */}
+      <section className="py-20 md:py-28 bg-[#F4F4F4] dark:bg-[#111] transition-colors">
+        <div className="container max-w-3xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-12"
+          >
+            <h2
+              className="font-display mb-3 text-[#141414] dark:text-white"
+              style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 44px)" }}
+            >
+              Frequently Asked Questions
+            </h2>
+            <p className="text-[#666] dark:text-[#888] text-lg">
+              Everything you need to know about PokeVault.
+            </p>
+          </motion.div>
+          <div className="space-y-3">
+            {[
+              {
+                q: "Is PokeVault free to use?",
+                a: "Yes, completely free. Track your collection, get live valuations, share your profile, and import via CSV — all at no cost.",
+              },
+              {
+                q: "How do I add cards to my collection?",
+                a: "Search our database of 23,000+ cards across 200+ sets using the Explore page. You can also bulk-import your collection via CSV file.",
+              },
+              {
+                q: "Where do the card prices come from?",
+                a: "We pull market data from TCGdex and other sources so your portfolio value stays up to date automatically.",
+              },
+              {
+                q: "What are shareable profiles?",
+                a: "Think of it as a Linktree for your Pokémon cards. You get a public page that shows your collection, total value, and links to your selling platforms like eBay or TCGplayer.",
+              },
+              {
+                q: "Can I share my profile with a QR code?",
+                a: "Absolutely. Every profile gets an auto-generated QR code you can screenshot, print, or share at events and meetups.",
+              },
+              {
+                q: "What card conditions can I track?",
+                a: "You can log conditions from Mint to Damaged for every card, plus track quantities and set manual or market-based prices.",
+              },
+              {
+                q: "Do I need an account?",
+                a: "You can browse and explore cards without an account. To save your collection and create a shareable profile, just sign up — it's quick and free.",
+              },
+            ].map((item, i) => (
+              <motion.details
+                key={i}
+                className="group rounded-2xl bg-white dark:bg-[#1a1a1a] border border-[#E5E5E5] dark:border-white/10 overflow-hidden"
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: i * 0.05 }}
+              >
+                <summary className="flex items-center justify-between cursor-pointer px-6 py-5 text-[#141414] dark:text-white font-semibold text-sm md:text-base list-none [&::-webkit-details-marker]:hidden">
+                  {item.q}
+                  <span className="ml-4 text-[#999] dark:text-[#666] transition-transform group-open:rotate-45 text-xl leading-none">+</span>
+                </summary>
+                <div className="px-6 pb-5 text-[#666] dark:text-[#888] text-sm leading-relaxed">
+                  {item.a}
+                </div>
+              </motion.details>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="relative z-10 pt-20 pb-28 bg-white dark:bg-[#0a0a0a] rounded-b-[3rem] transition-colors">
         <div className="container max-w-2xl">
           <motion.div
