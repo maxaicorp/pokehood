@@ -532,6 +532,7 @@ function CardGrid({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCa
           );
         })}
       </AnimatePresence>
+      <QRCodeModal open={qrOpen} onOpenChange={setQrOpen} url={profileUrl} title="Share Your Profile" />
     </div>
   );
 }
