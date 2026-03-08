@@ -43,6 +43,8 @@ export default function ProfilePageEditor() {
   const [uploading, setUploading] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newUrl, setNewUrl] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
   // Profile data
   const { data: profile, isLoading: profileLoading } = useQuery({
