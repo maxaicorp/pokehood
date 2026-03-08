@@ -34,17 +34,17 @@ export default function Landing() {
       {/* ═══ 1. Floating Pill Nav ═══ */}
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-auto">
         <div className="flex items-center gap-2 px-2 py-1.5 rounded-2xl backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-sm bg-[#F2F2F2]/90 dark:bg-white/10">
-          <Link to="/" className="flex items-center gap-2 px-2 py-1">
-            <div className="w-7 h-7 rounded-lg bg-[#141414] flex items-center justify-center overflow-hidden">
-              <img src="/logo.png" alt="PokeVault" className="w-6 h-6 object-contain" />
+          <Link to="/" className="flex items-center gap-2 px-1.5 py-1 rounded-xl bg-[#141414] dark:bg-white h-8">
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center overflow-hidden">
+              <img src="/logo.png" alt="PokeVault" className="w-5 h-5 object-contain" />
             </div>
-            <span className="font-display font-bold text-sm text-[#141414] dark:text-white hidden sm:inline">PokeVault</span>
+            <span className="font-display font-bold text-sm text-white dark:text-[#141414] pr-1.5 hidden sm:inline">PokeVault</span>
           </Link>
           <div className="hidden sm:flex items-center gap-0">
             <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Explore</Link>
             <Link to="/dashboard" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Dashboard</Link>
           </div>
-          <Button size="sm" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold ml-1 hidden sm:inline-flex" asChild>
+          <Button size="sm" className="rounded-xl bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold ml-1 hidden sm:inline-flex" asChild>
             <Link to="/auth">Get Started</Link>
           </Button>
           <ThemeToggle />
@@ -283,46 +283,46 @@ export default function Landing() {
       </section>
 
       {/* ═══ 8. Footer ═══ */}
-      <footer className="relative -mt-12 pt-24 pb-10 bg-[#141414]">
+      <footer className="relative -mt-12 pt-24 pb-10 bg-[#141414] dark:bg-white transition-colors">
         <div className="container max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-10 md:gap-8 mb-16">
             <div className="md:col-span-5">
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center"><span className="text-[#141414] font-display font-bold text-xs">PV</span></div>
-                <span className="font-display font-bold text-lg text-white">PokeVault</span>
+                <div className="w-8 h-8 rounded-lg bg-white dark:bg-[#141414] flex items-center justify-center"><span className="text-[#141414] dark:text-white font-display font-bold text-xs">PV</span></div>
+                <span className="font-display font-bold text-lg text-white dark:text-[#141414]">PokeVault</span>
               </div>
-              <p className="text-[#888] text-sm leading-relaxed max-w-xs">Track your Pokémon TCG collection, monitor card values, and share your portfolio with the world.</p>
+              <p className="text-[#888] dark:text-[#666] text-sm leading-relaxed max-w-xs">Track your Pokémon TCG collection, monitor card values, and share your portfolio with the world.</p>
             </div>
             <div className="md:col-span-2">
-              <p className="font-display font-semibold text-white text-sm mb-4">Product</p>
+              <p className="font-display font-semibold text-white dark:text-[#141414] text-sm mb-4">Product</p>
               <ul className="space-y-2.5">
-                <li><Link to="/explore" className="text-[#888] hover:text-white text-sm transition-colors">Explore</Link></li>
-                <li><Link to="/dashboard" className="text-[#888] hover:text-white text-sm transition-colors">Dashboard</Link></li>
-                <li><Link to="/u/demo" className="text-[#888] hover:text-white text-sm transition-colors">Demo Profile</Link></li>
+                <li><Link to="/explore" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Explore</Link></li>
+                <li><Link to="/dashboard" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Dashboard</Link></li>
+                <li><Link to="/u/demo" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Demo Profile</Link></li>
               </ul>
             </div>
             <div className="md:col-span-2">
-              <p className="font-display font-semibold text-white text-sm mb-4">Features</p>
+              <p className="font-display font-semibold text-white dark:text-[#141414] text-sm mb-4">Features</p>
               <ul className="space-y-2.5">
-                <li><span className="text-[#888] text-sm">Collection Tracker</span></li>
-                <li><span className="text-[#888] text-sm">QR Code Sharing</span></li>
-                <li><span className="text-[#888] text-sm">CSV Import</span></li>
-                <li><span className="text-[#888] text-sm">Seller Profiles</span></li>
+                <li><span className="text-[#888] dark:text-[#666] text-sm">Collection Tracker</span></li>
+                <li><span className="text-[#888] dark:text-[#666] text-sm">QR Code Sharing</span></li>
+                <li><span className="text-[#888] dark:text-[#666] text-sm">CSV Import</span></li>
+                <li><span className="text-[#888] dark:text-[#666] text-sm">Seller Profiles</span></li>
               </ul>
             </div>
             <div className="md:col-span-3">
-              <p className="font-display font-semibold text-white text-sm mb-4">Legal</p>
+              <p className="font-display font-semibold text-white dark:text-[#141414] text-sm mb-4">Legal</p>
               <ul className="space-y-2.5">
-                <li><Link to="/privacy" className="text-[#888] hover:text-white text-sm transition-colors">Privacy Policy</Link></li>
-                <li><Link to="/terms" className="text-[#888] hover:text-white text-sm transition-colors">Terms of Service</Link></li>
+                <li><Link to="/privacy" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Privacy Policy</Link></li>
+                <li><Link to="/terms" className="text-[#888] dark:text-[#666] hover:text-white dark:hover:text-[#141414] text-sm transition-colors">Terms of Service</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-[#555] text-xs">© PokeVault 2025–{new Date().getFullYear()}. All rights reserved.</p>
+          <div className="border-t border-white/10 dark:border-[#141414]/10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-[#555] dark:text-[#999] text-xs">© PokeVault 2025–{new Date().getFullYear()}. All rights reserved.</p>
             <div className="flex items-center gap-6">
-              <Link to="/privacy" className="text-[#555] hover:text-white text-xs transition-colors">Privacy policy</Link>
-              <Link to="/terms" className="text-[#555] hover:text-white text-xs transition-colors">Terms</Link>
+              <Link to="/privacy" className="text-[#555] dark:text-[#999] hover:text-white dark:hover:text-[#141414] text-xs transition-colors">Privacy policy</Link>
+              <Link to="/terms" className="text-[#555] dark:text-[#999] hover:text-white dark:hover:text-[#141414] text-xs transition-colors">Terms</Link>
             </div>
           </div>
         </div>
