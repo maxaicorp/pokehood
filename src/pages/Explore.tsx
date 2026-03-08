@@ -43,9 +43,6 @@ type ViewMode = "grid" | "list";
 
 export default function Explore() {
   const { user, loading, isPro, limits, signOut } = useAuth();
-
-  if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" /></div>;
-  if (!user) return <Navigate to="/auth" replace />;
   const { theme, setTheme } = useTheme();
   const [qrOpen, setQrOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
