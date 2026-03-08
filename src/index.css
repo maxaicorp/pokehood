@@ -239,3 +239,11 @@
   33% { transform: translateY(-8px) rotate(2deg); }
   66% { transform: translateY(4px) rotate(-1deg); }
 }
+@keyframes aurora-shift {
+  0% { transform: translateX(0) translateY(0) rotate(0deg); }
+  100% { transform: translateX(-15%) translateY(5%) rotate(3deg); }
+}
+@keyframes holo-shift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}

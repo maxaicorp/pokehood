@@ -10,6 +10,8 @@ import Explore from "./pages/Explore";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { BgThemeProvider } from "@/components/BackgroundThemeSwitcher";
+import BackgroundLayer from "@/components/BackgroundLayer";
 
 const queryClient = new QueryClient();
 
@@ -20,14 +22,19 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
+          <BgThemeProvider>
+            <BackgroundLayer />
+            <div className="relative z-[1]">
+              <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/u/:slug" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
-          </Routes>
+              </Routes>
+            </div>
+          </BgThemeProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
