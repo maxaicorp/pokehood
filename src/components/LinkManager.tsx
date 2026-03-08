@@ -22,8 +22,12 @@ interface UserLink {
 export default function LinkManager() {
   const { user, isPro, limits } = useAuth();
   const queryClient = useQueryClient();
-  const [newLabel, setNewLabel] = useState("");
+  const [selectedPlatform, setSelectedPlatform] = useState("");
+  const [customLabel, setCustomLabel] = useState("");
   const [newUrl, setNewUrl] = useState("");
+
+  const isCustom = selectedPlatform === "__custom";
+  const newLabel = isCustom ? customLabel : selectedPlatform;
 
   const { data: links = [], isLoading } = useQuery({
     queryKey: ["my-links", user?.id],
