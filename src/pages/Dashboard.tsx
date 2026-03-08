@@ -144,8 +144,7 @@ export default function Dashboard() {
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: "collection", label: "Collection", icon: LayoutGrid },
-    { id: "profile", label: "Profile", icon: User },
-    { id: "links", label: "Links", icon: Link2 },
+    { id: "mypage", label: "My Page", icon: User },
   ];
 
   return (
@@ -293,8 +292,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {activeTab === "profile" && <ProfileSettings />}
-        {activeTab === "links" && <LinkManager />}
+        {activeTab === "mypage" && <ProfilePageEditor />}
       </div>
 
       {/* Import Dialog */}
