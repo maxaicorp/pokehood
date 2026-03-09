@@ -202,6 +202,86 @@ export type Database = {
         }
         Relationships: []
       }
+      wishlist_cards: {
+        Row: {
+          added_at: string
+          card_number: string
+          id: string
+          image_large: string
+          image_small: string
+          market_price: number | null
+          name: string
+          rarity: string
+          set_id: string
+          set_name: string
+          tcg_api_id: string
+          user_id: string
+          wishlist_id: string
+        }
+        Insert: {
+          added_at?: string
+          card_number: string
+          id?: string
+          image_large: string
+          image_small: string
+          market_price?: number | null
+          name: string
+          rarity?: string
+          set_id: string
+          set_name: string
+          tcg_api_id: string
+          user_id: string
+          wishlist_id: string
+        }
+        Update: {
+          added_at?: string
+          card_number?: string
+          id?: string
+          image_large?: string
+          image_small?: string
+          market_price?: number | null
+          name?: string
+          rarity?: string
+          set_id?: string
+          set_name?: string
+          tcg_api_id?: string
+          user_id?: string
+          wishlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_cards_wishlist_id_fkey"
+            columns: ["wishlist_id"]
+            isOneToOne: false
+            referencedRelation: "wishlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wishlists: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
