@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Camera, Loader2, Check, Crown, Plus, Trash2, GripVertical,
-  ExternalLink, Wallet, QrCode, Share2
+  ExternalLink, Wallet, QrCode
 } from "lucide-react";
 import QRCodeModal from "@/components/QRCodeModal";
 import { toast } from "sonner";
