@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getWishlists, createWishlist, addCardToWishlist, getAllWishlistCardIds,
+} from "@/lib/wishlist-store";
 import {
   searchCardsAdvanced,
   getLatestCards,
@@ -28,7 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Plus, X, Grid3X3, LayoutList,
-  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2,
+  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2, Heart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -36,7 +39,8 @@ import { motion, AnimatePresence } from "framer-motion";
 type ViewMode = "grid" | "list";
 
 export default function Explore() {
-  const { user, loading } = useAuth();
+  const { user, loading, isPro, limits } = useAuth();
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSet, setSelectedSet] = useState("");
@@ -109,6 +113,46 @@ export default function Explore() {
     } else {
       toast.error("Failed to add card.");
     }
+  };
+
+  // Wishlist logic
+  const { data: wishlists = [] } = useQuery({
+    queryKey: ["wishlists", user?.id],
+    queryFn: getWishlists,
+    enabled: !!user,
+  });
+
+  const { data: wishlistedIds = new Set<string>() } = useQuery({
+    queryKey: ["wishlisted-ids", user?.id],
+    queryFn: () => getAllWishlistCardIds(user!.id),
+    enabled: !!user,
+  });
+
+  const handleWishlist = async (card: PokemonCard) => {
+    if (!user) { toast.error("Please sign in."); return; }
+    let targetWishlist = wishlists[0];
+    if (!targetWishlist) {
+      try {
+        targetWishlist = await createWishlist(user.id, "My Wishlist");
+        queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+      } catch { toast.error("Failed to create wishlist."); return; }
+    }
+    if (!isPro) {
+      // Check card count limit - approximate via Set size
+      if (wishlistedIds.size >= limits.maxWishlistCards) {
+        toast.error(`Free tier: max ${limits.maxWishlistCards} wishlist cards. Upgrade to Pro!`);
+        return;
+      }
+    }
+    try {
+      const ok = await addCardToWishlist(targetWishlist.id, user.id, card);
+      if (ok) {
+        toast.success(`${card.name} added to wishlist!`);
+        queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
+      } else {
+        toast.info("Already in wishlist.");
+      }
+    } catch { toast.error("Failed to add to wishlist."); }
   };
 
   const toggleType = (type: string) => {
@@ -292,9 +336,9 @@ export default function Explore() {
                 <p className="text-muted-foreground text-sm mt-1">Try adjusting your search or filters</p>
               </div>
             ) : viewMode === "grid" ? (
-              <CardGrid cards={cards} onAdd={handleAdd} />
+              <CardGrid cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} />
             ) : (
-              <CardList cards={cards} onAdd={handleAdd} />
+              <CardList cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} />
             )}
 
             {/* Pagination */}
@@ -387,15 +431,13 @@ function FilterControls({
 }
 
 // Grid view component
-function CardGrid({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void }) {
+function CardGrid({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string> }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
       <AnimatePresence mode="popLayout">
         {cards.map((card, i) => {
           const price = getMarketPrice(card);
-          const low = getLowPrice(card);
-          const priceDiff = price && low ? price - low : null;
-          const pricePct = price && low && low !== 0 ? ((price - low) / low) * 100 : null;
+          const isWishlisted = wishlistedIds.has(card.id);
 
           return (
             <motion.div
@@ -409,6 +451,16 @@ function CardGrid({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCa
             >
               <div className="relative bg-background/50 p-1.5 sm:p-2">
                 <img src={card.images.small} alt={card.name} className="w-full rounded-lg" loading="lazy" />
+                <button
+                  onClick={() => onWishlist(card)}
+                  className={`absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                    isWishlisted
+                      ? "bg-destructive text-destructive-foreground"
+                      : "bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive"
+                  }`}
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isWishlisted ? "fill-current" : ""}`} />
+                </button>
               </div>
               <div className="p-2 sm:p-3 space-y-0.5 sm:space-y-1">
                 <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{card.name}</p>
@@ -438,11 +490,12 @@ function CardGrid({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCa
 }
 
 // List view component
-function CardList({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void }) {
+function CardList({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string> }) {
   return (
     <div className="space-y-2">
       {cards.map((card, i) => {
         const price = getMarketPrice(card);
+        const isWishlisted = wishlistedIds.has(card.id);
         return (
           <motion.div
             key={card.id}
@@ -459,6 +512,14 @@ function CardList({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCa
               </p>
             </div>
             <span className="text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">{formatPrice(price)}</span>
+            <button
+              onClick={() => onWishlist(card)}
+              className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                isWishlisted ? "text-destructive" : "text-muted-foreground hover:text-destructive"
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${isWishlisted ? "fill-current" : ""}`} />
+            </button>
             <Button
               size="icon"
               variant="ghost"

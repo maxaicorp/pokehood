@@ -11,10 +11,14 @@ export const FREE_TIER_LIMITS = {
   maxCards: 20,
   maxLinks: 2,
   customSlug: false,
+  maxWishlists: 1,
+  maxWishlistCards: 20,
 } as const;
 
 export const PRO_TIER_LIMITS = {
   maxCards: Infinity,
   maxLinks: Infinity,
   customSlug: true,
+  maxWishlists: Infinity,
+  maxWishlistCards: Infinity,
 } as const;
