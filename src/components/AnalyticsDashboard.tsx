@@ -86,12 +86,17 @@ export default function AnalyticsDashboard({ collection }: Props) {
       byDay[day] = (byDay[day] || 0) + (card.manualPrice ?? card.marketPrice ?? 0) * card.quantity;
     });
     let running = 0;
-    return Object.entries(byDay)
+    const points = Object.entries(byDay)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, val]) => {
         running += val;
         return { date: format(new Date(date + "T12:00:00"), "MMM d"), value: parseFloat(running.toFixed(2)) };
       });
+    // Ensure at least 2 points for a visible chart line
+    if (points.length === 1) {
+      points.unshift({ date: "Start", value: 0 });
+    }
+    return points;
   }, [collection]);
 
   const viewsByDay = useMemo(() => {
@@ -236,7 +241,7 @@ export default function AnalyticsDashboard({ collection }: Props) {
       </div>
 
       {/* Portfolio value over time */}
-      {valueHistory.length > 1 && (
+      {valueHistory.length > 0 && (
         <motion.div 
           className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
           initial={{ opacity: 0, y: 10 }}
