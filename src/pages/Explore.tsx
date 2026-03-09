@@ -115,6 +115,46 @@ export default function Explore() {
     }
   };
 
+  // Wishlist logic
+  const { data: wishlists = [] } = useQuery({
+    queryKey: ["wishlists", user?.id],
+    queryFn: getWishlists,
+    enabled: !!user,
+  });
+
+  const { data: wishlistedIds = new Set<string>() } = useQuery({
+    queryKey: ["wishlisted-ids", user?.id],
+    queryFn: () => getAllWishlistCardIds(user!.id),
+    enabled: !!user,
+  });
+
+  const handleWishlist = async (card: PokemonCard) => {
+    if (!user) { toast.error("Please sign in."); return; }
+    let targetWishlist = wishlists[0];
+    if (!targetWishlist) {
+      try {
+        targetWishlist = await createWishlist(user.id, "My Wishlist");
+        queryClient.invalidateQueries({ queryKey: ["wishlists"] });
+      } catch { toast.error("Failed to create wishlist."); return; }
+    }
+    if (!isPro) {
+      // Check card count limit - approximate via Set size
+      if (wishlistedIds.size >= limits.maxWishlistCards) {
+        toast.error(`Free tier: max ${limits.maxWishlistCards} wishlist cards. Upgrade to Pro!`);
+        return;
+      }
+    }
+    try {
+      const ok = await addCardToWishlist(targetWishlist.id, user.id, card);
+      if (ok) {
+        toast.success(`${card.name} added to wishlist!`);
+        queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
+      } else {
+        toast.info("Already in wishlist.");
+      }
+    } catch { toast.error("Failed to add to wishlist."); }
+  };
+
   const toggleType = (type: string) => {
     setSelectedTypes(prev =>
       prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
