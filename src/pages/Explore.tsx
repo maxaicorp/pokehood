@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getWishlists, createWishlist, addCardToWishlist, getAllWishlistCardIds,
+} from "@/lib/wishlist-store";
 import {
   searchCardsAdvanced,
   getLatestCards,
@@ -28,7 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Plus, X, Grid3X3, LayoutList,
-  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2,
+  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2, Heart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
