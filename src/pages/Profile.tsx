@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getCollectionByUserId, getTotalValue, CollectionCard } from "@/lib/collection-store";
+import { getCollectionByUserId, getTotalValue } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, Wallet, QrCode, Loader2, Lock, Mail, Share } from "lucide-react";
+import { ExternalLink, Wallet, Loader2, Lock, Mail, Share } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 
@@ -62,6 +61,23 @@ export default function Profile() {
   const totalValue = getTotalValue(collection);
   const hasMore = visibleCount < collection.length;
 
+  // Track profile view on mount (once per session)
+  useEffect(() => {
+    if (!profile?.user_id) return;
+    const key = `viewed_${profile.user_id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    // Fire-and-forget insert
+    supabase.from("profile_views").insert({ profile_user_id: profile.user_id }).then();
+  }, [profile?.user_id]);
+
+  // Track link clicks
+  const handleLinkClick = (link: any) => {
+    supabase.from("link_clicks").insert({
+      link_id: link.id,
+      link_user_id: link.user_id,
+    }).then();
+  };
 
   // Infinite scroll observer
   useEffect(() => {
@@ -214,6 +230,7 @@ export default function Profile() {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => handleLinkClick(link)}
                 className="flex items-center justify-between p-3.5 sm:p-4 rounded-xl bg-card border border-border/50 hover:border-primary/30 transition-colors group card-shine"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}

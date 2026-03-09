@@ -74,6 +74,53 @@ export type Database = {
         }
         Relationships: []
       }
+      link_clicks: {
+        Row: {
+          clicked_at: string
+          id: string
+          link_id: string
+          link_user_id: string
+        }
+        Insert: {
+          clicked_at?: string
+          id?: string
+          link_id: string
+          link_user_id: string
+        }
+        Update: {
+          clicked_at?: string
+          id?: string
+          link_id?: string
+          link_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "link_clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "user_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_views: {
+        Row: {
+          id: string
+          profile_user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          profile_user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          profile_user_id?: string
+          viewed_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
