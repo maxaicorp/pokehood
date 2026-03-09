@@ -16,12 +16,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Wallet, Layers, CreditCard, Search, Upload, Loader2,
-  Plus, LayoutGrid, User, BarChart3, Crown
+  Plus, LayoutGrid, User, BarChart3, Crown, Heart
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-type Tab = "collection" | "mypage" | "analytics";
+type Tab = "collection" | "wishlists" | "mypage" | "analytics";
 
 export default function Dashboard() {
   const { user, loading, isPro, limits } = useAuth();
@@ -111,6 +111,7 @@ export default function Dashboard() {
 
   const tabs: { id: Tab; label: string; icon: React.ElementType; pro?: boolean }[] = [
     { id: "collection", label: "Collection", icon: LayoutGrid },
+    { id: "wishlists", label: "Wishlists", icon: Heart },
     { id: "mypage", label: "My Page", icon: User },
     { id: "analytics", label: "Analytics", icon: BarChart3, pro: true },
   ];
@@ -213,6 +214,8 @@ export default function Dashboard() {
             )}
           </div>
         )}
+
+        {activeTab === "wishlists" && <WishlistDashboard />}
 
         {activeTab === "mypage" && <ProfilePageEditor />}
 
