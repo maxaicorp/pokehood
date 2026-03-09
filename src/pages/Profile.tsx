@@ -104,47 +104,55 @@ export default function Profile() {
       {/* Ambient glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-primary/8 rounded-full blur-[150px] pointer-events-none" />
 
-      <div className="relative z-10 mx-auto max-w-md py-6 sm:py-8 px-4 sm:px-6">
-        {/* Contact button - show when cards are for sale and links exist */}
-        {collection.some(c => c.forSale) && links.length > 0 && (
-          <div className="flex justify-end mb-6">
-            <Popover>
-              <PopoverTrigger asChild>
-                <motion.button
-                  className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-card border border-border/50 text-foreground hover:border-primary/30 transition-colors shadow-sm"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.4, type: "spring", stiffness: 260, damping: 20 }}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  title="Contact seller"
-                >
-                  <Mail className="w-5 h-5" />
-                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary animate-ping" />
-                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary" />
-                </motion.button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 p-3">
-                <p className="text-xs font-semibold text-foreground mb-2">Contact Seller</p>
-                <div className="space-y-1.5">
-                  {links.map((link) => (
-                    <a
-                      key={link.id}
-                      href={link.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"
-                    >
-                      {getPlatformIcon(link.label + " " + link.url, "w-4 h-4")}
-                      <span className="flex-1 truncate">{link.label}</span>
-                      <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                    </a>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+      <div className="relative z-10 mx-auto max-w-md sm:max-w-lg py-6 sm:py-8 px-4 sm:px-6">
+        {/* Header with QR code icon */}
+        <div className="flex justify-between items-center mb-6">
+          <div></div> {/* Empty div for spacing */}
+          <div className="flex gap-3">
+            {/* QR Code button */}
+            <Button variant="ghost" size="sm" className="p-2" onClick={() => setQrOpen(true)} title="Share via QR">
+              <QrCode className="w-5 h-5" />
+            </Button>
+            {/* Contact button - show when cards are for sale and links exist */}
+            {collection.some(c => c.forSale) && links.length > 0 && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <motion.button
+                    className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-card border border-border/50 text-foreground hover:border-primary/30 transition-colors shadow-sm"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.4, type: "spring", stiffness: 260, damping: 20 }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    title="Contact seller"
+                  >
+                    <Mail className="w-5 h-5" />
+                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary animate-ping" />
+                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary" />
+                  </motion.button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-56 p-3">
+                  <p className="text-xs font-semibold text-foreground mb-2">Contact Seller</p>
+                  <div className="space-y-1.5">
+                    {links.map((link) => (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-muted transition-colors text-sm text-foreground"
+                      >
+                        {getPlatformIcon(link.label + " " + link.url, "w-4 h-4")}
+                        <span className="flex-1 truncate">{link.label}</span>
+                        <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                      </a>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Profile header */}
         <motion.div className="text-center mb-6 sm:mb-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -161,9 +169,6 @@ export default function Profile() {
           {profile.bio && (
             <p className="text-muted-foreground mt-1 text-sm sm:text-base px-4">{profile.bio}</p>
           )}
-          <Button variant="outline" size="sm" className="mt-3 sm:mt-4 gap-2" onClick={() => setQrOpen(true)}>
-            <QrCode className="w-4 h-4" /> Share via QR
-          </Button>
         </motion.div>
 
         {/* Private badge */}
