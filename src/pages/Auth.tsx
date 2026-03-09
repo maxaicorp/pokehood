@@ -8,9 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Particles } from "@/components/ui/particles";
+import { useTheme } from "next-themes";
 
 export default function Auth() {
   const { user, loading } = useAuth();
+  const { theme } = useTheme();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,10 +46,17 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-2">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 relative overflow-hidden">
+      <Particles
+        className="absolute inset-0 z-0"
+        quantity={200}
+        ease={80}
+        color={theme === "dark" ? "#ffffff" : "#000000"}
+        refresh
+      />
+      <div className="w-full max-w-sm relative z-10 bg-background/80 backdrop-blur-xl p-8 rounded-2xl border border-border/50 shadow-2xl shadow-red-500/20">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <Link to="/" className="inline-flex flex-col items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-foreground">
               <img src="/logo.png" alt="PokeVault" className="w-6 h-6 object-contain" />
             </div>

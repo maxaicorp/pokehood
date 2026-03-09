@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { NumberTicker } from "@/components/ui/number-ticker";
+import { MagicCard } from "@/components/ui/magic-card";
+import { NeonGradientCard } from "@/components/ui/neon-gradient-card";
 
 type Tab = "collection" | "wishlists" | "mypage" | "analytics";
 
@@ -147,34 +150,55 @@ export default function Dashboard() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
               {[
-                { icon: Wallet, label: "Total Value", value: formatPrice(totalValue), glow: true },
-                { icon: CreditCard, label: "Cards", value: String(totalCards) },
-                { icon: Layers, label: "Sets", value: String(setCount) },
+                { icon: Wallet, label: "Total Value", num: totalValue, isCurrency: true, glow: true },
+                { icon: CreditCard, label: "Cards", num: totalCards },
+                { icon: Layers, label: "Sets", num: setCount },
               ].map((stat, i) => (
                 <motion.div
                   key={stat.label}
-                  className={`p-3 sm:p-5 rounded-xl bg-card border border-border/50 ${stat.glow ? "glow-primary" : ""}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
+                  className="h-full"
                 >
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                  <MagicCard className={`h-full p-3 sm:p-5 bg-card border-border/50 ${stat.glow ? "glow-primary" : ""}`}>
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] sm:text-sm text-muted-foreground truncate">{stat.label}</p>
+                        <p className="text-lg sm:text-2xl font-display font-bold text-foreground truncate flex items-center gap-[2px]">
+                          {stat.isCurrency && <span>$</span>}
+                          <NumberTicker value={stat.num} decimalPlaces={stat.isCurrency ? 2 : 0} />
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] sm:text-sm text-muted-foreground truncate">{stat.label}</p>
-                      <p className="text-lg sm:text-2xl font-display font-bold text-foreground truncate">{stat.value}</p>
-                    </div>
-                  </div>
+                  </MagicCard>
                 </motion.div>
               ))}
             </div>
 
             {atCardLimit && (
-              <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-destructive">
-                You've reached the free tier limit of {limits.maxCards} cards. Upgrade to Pro for unlimited cards.
-              </div>
+              <NeonGradientCard 
+                className="mb-4"
+                borderSize={2}
+                borderRadius={12}
+                neonColors={{ firstColor: "#FF0000", secondColor: "#FF9900" }}
+              >
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-1">
+                  <div className="flex items-center gap-3">
+                    <Crown className="w-6 h-6 text-amber-500" />
+                    <div>
+                      <h4 className="font-bold text-foreground">Vault Full</h4>
+                      <p className="text-sm text-muted-foreground">You've reached the free tier limit of {limits.maxCards} cards.</p>
+                    </div>
+                  </div>
+                  <Button onClick={() => document.getElementById("upgrade-to-pro")?.click()} className="bg-amber-500 hover:bg-amber-600 text-white shrink-0">
+                    Upgrade to Pro ✨
+                  </Button>
+                </div>
+              </NeonGradientCard>
             )}
 
             {/* Actions bar */}

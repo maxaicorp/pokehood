@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { Marquee } from "@/components/ui/marquee";
+import { BlurFade } from "@/components/ui/blur-fade";
 
 // Curated cards from newer Scarlet & Violet sets (verified working IDs)
 const SLIDER_CARDS = [
@@ -23,27 +24,13 @@ const SLIDER_CARDS = [
 ];
 
 export default function CardSlider() {
-  // Duplicate for seamless loop
-  const doubled = [...SLIDER_CARDS, ...SLIDER_CARDS];
-
   return (
-    <motion.div
-      className="overflow-hidden marquee-fade"
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.8 }}
-    >
-      <div
-        className="flex gap-5 w-max"
-        style={{
-          animation: "marquee-left 50s linear infinite",
-        }}
-      >
-        {doubled.map((src, i) => (
+    <BlurFade delay={0.25} inView className="overflow-hidden marquee-fade">
+      <Marquee pauseOnHover className="[--duration:50s]">
+        {SLIDER_CARDS.map((src, i) => (
           <div
             key={i}
-            className="flex-shrink-0 w-[200px] sm:w-[230px] md:w-[260px] rounded-xl overflow-hidden shadow-md hover:shadow-xl hover:scale-[1.03] transition-all duration-300"
+            className="w-[200px] sm:w-[230px] md:w-[260px] rounded-xl overflow-hidden shadow-md hover:shadow-xl hover:scale-[1.03] transition-all duration-300 mx-2"
           >
             <img
               src={src}
@@ -53,7 +40,7 @@ export default function CardSlider() {
             />
           </div>
         ))}
-      </div>
-    </motion.div>
+      </Marquee>
+    </BlurFade>
   );
 }

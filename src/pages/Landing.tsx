@@ -7,6 +7,13 @@ import PhoneMockup from "@/components/PhoneMockup";
 import CardSlider from "@/components/CardSlider";
 import ThemeToggle from "@/components/ThemeToggle";
 import pokeballHero from "@/assets/pokeball-hero.png";
+import { NumberTicker } from "@/components/ui/number-ticker";
+import { BlurFade } from "@/components/ui/blur-fade";
+import { ShimmerButton } from "@/components/ui/shimmer-button";
+import { AnimatedShinyText } from "@/components/ui/animated-shiny-text";
+import { DotPattern } from "@/components/ui/dot-pattern";
+import { MagicCard } from "@/components/ui/magic-card";
+import { cn } from "@/lib/utils";
 
 // ─── Stats computed from data ───
 interface SetInfo {
@@ -33,30 +40,34 @@ export default function Landing() {
     <div className="min-h-screen overflow-hidden transition-colors">
       {/* ═══ 1. Floating Pill Nav ═══ */}
       <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-auto">
-        <div className="flex items-center gap-2 px-2 py-1.5 rounded-2xl backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-sm bg-[#F2F2F2]/90 dark:bg-white/10">
-          <Link to="/" className="flex items-center gap-2 px-1.5 py-1 rounded-xl bg-[#141414] dark:bg-white h-8">
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center overflow-hidden">
-              <img src="/logo.png" alt="PokeVault" className="w-5 h-5 object-contain" />
+        <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-[1.25rem] sm:rounded-2xl backdrop-blur-xl border border-[#E5E5E5] dark:border-white/10 shadow-sm bg-[#F2F2F2]/90 dark:bg-white/10">
+          <Link to="/" className="flex items-center gap-2 px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-xl bg-[#141414] dark:bg-white h-8 sm:h-9 shrink-0">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg flex items-center justify-center overflow-hidden">
+              <img src="/logo.png" alt="PokeVault" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
             </div>
-            <span className="font-display font-bold text-sm text-white dark:text-[#141414] pr-1.5 hidden sm:inline">PokeVault</span>
+            <span className="font-display font-bold text-xs sm:text-sm text-white dark:text-[#141414] pr-1 sm:pr-1.5 hidden sm:inline">PokeVault</span>
           </Link>
           <div className="hidden sm:flex items-center gap-0">
             <Link to="/dashboard" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Dashboard</Link>
             <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Explore</Link>
           </div>
-          <Button size="sm" className="rounded-xl bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 h-8 px-5 text-sm font-semibold ml-1 hidden sm:inline-flex" asChild>
-            <Link to="/auth">Get Started</Link>
-          </Button>
-          <ThemeToggle />
-          {/* Mobile hamburger */}
-          <button
-            className="sm:hidden flex flex-col justify-center items-center w-8 h-8 gap-[5px] ml-0.5"
-            onClick={() => setMobileMenuOpen((o) => !o)}
-            aria-label="Toggle menu"
-          >
-            <span className={`block w-4 h-[1.5px] bg-[#141414] dark:bg-white transition-all duration-200 ${mobileMenuOpen ? "rotate-45 translate-y-[3.25px]" : ""}`} />
-            <span className={`block w-4 h-[1.5px] bg-[#141414] dark:bg-white transition-all duration-200 ${mobileMenuOpen ? "-rotate-45 -translate-y-[3.25px]" : ""}`} />
-          </button>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-1">
+            <Link to="/auth" className="hidden sm:inline-flex">
+              <ShimmerButton className="h-8 sm:h-9 px-4 sm:px-5 rounded-xl text-xs sm:text-sm font-semibold shadow-md">
+                <span className="flex items-center">Get Started</span>
+              </ShimmerButton>
+            </Link>
+            <ThemeToggle />
+            {/* Mobile hamburger */}
+            <button
+              className="sm:hidden flex flex-col justify-center items-center w-8 h-8 gap-[5px]"
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              aria-label="Toggle menu"
+            >
+              <span className={`block w-4 h-[1.5px] bg-[#141414] dark:bg-white transition-all duration-200 ${mobileMenuOpen ? "rotate-45 translate-y-[3.25px]" : ""}`} />
+              <span className={`block w-4 h-[1.5px] bg-[#141414] dark:bg-white transition-all duration-200 ${mobileMenuOpen ? "-rotate-45 -translate-y-[3.25px]" : ""}`} />
+            </button>
+          </div>
         </div>
 
         {/* Mobile dropdown */}
@@ -79,8 +90,14 @@ export default function Landing() {
 
       {/* ═══ 2. Hero ═══ */}
       <section className="relative pt-32 pb-16 md:pt-44 md:pb-24 transition-colors">
+        <DotPattern
+          className={cn(
+            "[mask-image:radial-gradient(400px_circle_at_center,white,transparent)]",
+            "inset-0 h-full w-full absolute opacity-50 dark:opacity-30"
+          )}
+        />
         <div className="container relative z-10 max-w-4xl mx-auto text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <BlurFade delay={0.25} inView>
             <motion.div
               className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-8"
               animate={{ y: [0, -12, 0] }}
@@ -92,18 +109,24 @@ export default function Landing() {
             <h1 className="font-display leading-none tracking-tight mb-6 text-foreground" style={{ fontWeight: 520, fontSize: "clamp(48px, 6vw, 80px)", lineHeight: "1" }}>
               Track, Value & Share Your Collection.
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed">
-              The all-in-one Pokémon TCG portfolio tracker. Live prices, shareable profiles, and instant CSV import — completely free.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Button size="lg" className="rounded-full bg-[#141414] dark:bg-white text-white dark:text-[#141414] hover:bg-[#333] dark:hover:bg-white/90 px-7 h-12 text-base font-semibold" asChild>
-                <Link to="/auth">Start Your Vault <ArrowRight className="w-4 h-4 ml-2" /></Link>
-              </Button>
+            <div className="text-lg md:text-xl mb-10 max-w-xl mx-auto leading-relaxed">
+              <AnimatedShinyText className="inline-flex items-center justify-center w-full">
+                <span className="text-center font-medium">The all-in-one Pokémon TCG portfolio tracker. Live prices, shareable profiles, and instant CSV import — completely free.</span>
+              </AnimatedShinyText>
+            </div>
+            <div className="flex flex-wrap justify-center gap-4">
+              <Link to="/auth">
+                <ShimmerButton className="shadow-2xl h-12 px-7" background="#141414">
+                  <span className="text-base font-semibold text-white tracking-tight flex items-center">
+                    Start Your Vault <ArrowRight className="w-4 h-4 ml-2" />
+                  </span>
+                </ShimmerButton>
+              </Link>
               <Button variant="outline" size="lg" className="rounded-full px-7 h-12 text-base font-semibold border-[#E5E5E5] dark:border-white/15 text-[#141414] dark:text-white hover:bg-[#F4F4F4] dark:hover:bg-white/10" asChild>
                 <Link to="/demo">See Demo Profile</Link>
               </Button>
             </div>
-          </motion.div>
+          </BlurFade>
         </div>
       </section>
 
@@ -123,7 +146,8 @@ export default function Landing() {
         <div className="container max-w-6xl">
           <div className="grid md:grid-cols-2 gap-6">
             {/* Collection Dashboard */}
-            <motion.div className="rounded-[2rem] p-8 md:p-10 bg-secondary" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="h-full">
+              <MagicCard gradientColor="rgba(255,0,0,0.1)" className="h-full rounded-[2rem] p-8 md:p-10 bg-secondary/50 border-border/50">
               <div className="mb-6">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background text-sm font-semibold text-foreground mb-4">
                   <CreditCard className="w-3.5 h-3.5" /> Collection Tracker
@@ -150,13 +174,13 @@ export default function Landing() {
                         ))}
                       </div>
                       {[
-                        { name: "Charizard ex", set: "Surging Sparks", price: "$45.00", img: "https://assets.tcgdex.net/en/sv/sv08/006/low.webp" },
-                        { name: "Pikachu ex", set: "Surging Sparks", price: "$32.50", img: "https://assets.tcgdex.net/en/sv/sv08/057/low.webp" },
-                        { name: "Mewtwo ex", set: "Prismatic Evol.", price: "$28.00", img: "https://assets.tcgdex.net/en/sv/sv08/058/low.webp" },
-                        { name: "Umbreon ex", set: "Prismatic Evol.", price: "$62.00", img: "https://assets.tcgdex.net/en/sv/sv08/061/low.webp" },
-                        { name: "Lugia ex", set: "Surging Sparks", price: "$18.50", img: "https://assets.tcgdex.net/en/sv/sv08/117/low.webp" },
-                        { name: "Rayquaza ex", set: "Surging Sparks", price: "$24.00", img: "https://assets.tcgdex.net/en/sv/sv08/123/low.webp" },
-                        { name: "Gengar ex", set: "Surging Sparks", price: "$35.00", img: "https://assets.tcgdex.net/en/sv/sv08/045/low.webp" },
+                        { name: "Charizard ex", set: "Surging Sparks", price: "$45.00", img: "https://images.pokemontcg.io/sv8/6.png" },
+                        { name: "Pikachu ex", set: "Surging Sparks", price: "$32.50", img: "https://images.pokemontcg.io/sv8/57.png" },
+                        { name: "Mewtwo ex", set: "Prismatic Evol.", price: "$28.00", img: "https://images.pokemontcg.io/sv8a/58.png" },
+                        { name: "Umbreon ex", set: "Prismatic Evol.", price: "$62.00", img: "https://images.pokemontcg.io/sv8a/61.png" },
+                        { name: "Lugia ex", set: "Surging Sparks", price: "$18.50", img: "https://images.pokemontcg.io/sv8/117.png" },
+                        { name: "Rayquaza ex", set: "Surging Sparks", price: "$24.00", img: "https://images.pokemontcg.io/sv8/123.png" },
+                        { name: "Gengar ex", set: "Surging Sparks", price: "$35.00", img: "https://images.pokemontcg.io/sv8/45.png" },
                       ].map((card) => (
                         <div key={card.name} className="flex items-center gap-2 p-1.5 rounded-md bg-[#F4F4F4]">
                           <img src={card.img} alt={card.name} className="w-7 h-10 rounded object-cover" loading="lazy" />
@@ -168,10 +192,12 @@ export default function Landing() {
                   </div>
                 </PhoneMockup>
               </div>
+              </MagicCard>
             </motion.div>
 
             {/* Shareable Profile */}
-            <motion.div className="rounded-[2rem] p-8 md:p-10 bg-secondary" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.1 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.1 }} className="h-full">
+              <MagicCard gradientColor="rgba(255,0,0,0.1)" className="flex flex-col justify-between h-full rounded-[2rem] p-8 md:p-10 bg-secondary/50 border-border/50">
               <div className="mb-6">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-background text-sm font-semibold text-foreground mb-4">
                   <Share2 className="w-3.5 h-3.5" /> Shareable Profiles
@@ -208,12 +234,12 @@ export default function Landing() {
                     <p className="text-[8px] font-display font-semibold text-[#141414] mb-1.5">Collection</p>
                     <div className="grid grid-cols-3 gap-1">
                       {[
-                        "https://assets.tcgdex.net/en/base/base1/004/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/002/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/015/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/014/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/016/low.webp",
-                        "https://assets.tcgdex.net/en/base/base1/058/low.webp",
+                        "https://images.pokemontcg.io/base1/4.png",
+                        "https://images.pokemontcg.io/base1/2.png",
+                        "https://images.pokemontcg.io/base1/15.png",
+                        "https://images.pokemontcg.io/base1/14.png",
+                        "https://images.pokemontcg.io/base1/16.png",
+                        "https://images.pokemontcg.io/base1/58.png",
                       ].map((src, i) => (
                         <img key={i} src={src} alt="card" className="rounded w-full" loading="lazy" />
                       ))}
@@ -221,22 +247,29 @@ export default function Landing() {
                   </div>
                 </PhoneMockup>
               </div>
+              </MagicCard>
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* ═══ 5. Growing Library Stats ═══ */}
-      <section className="py-24 md:py-32 bg-secondary transition-colors">
-        <div className="container text-center max-w-2xl mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+      <section className="relative py-24 md:py-32 transition-colors overflow-hidden">
+        <div className="container relative z-10 text-center max-w-2xl mx-auto">
+          <BlurFade delay={0.25} inView>
             <p className="text-sm font-semibold tracking-widest uppercase text-muted-foreground mb-6">A growing library of</p>
             <div className="space-y-1">
-              {[`${stats.sets.toLocaleString()} sets`, `${stats.cards.toLocaleString()} cards`, `${stats.types} types`].map((text) => (
-                <p key={text} className="font-display leading-none text-foreground" style={{ fontWeight: 520, fontSize: "clamp(40px, 5.5vw, 72px)" }}>{text}</p>
-              ))}
+              <p className="font-display leading-none text-foreground" style={{ fontWeight: 520, fontSize: "clamp(40px, 5.5vw, 72px)" }}>
+                <NumberTicker value={stats.sets} /> sets
+              </p>
+              <p className="font-display leading-none text-foreground" style={{ fontWeight: 520, fontSize: "clamp(40px, 5.5vw, 72px)" }}>
+                <NumberTicker value={stats.cards} /> cards
+              </p>
+              <p className="font-display leading-none text-foreground" style={{ fontWeight: 520, fontSize: "clamp(40px, 5.5vw, 72px)" }}>
+                <NumberTicker value={stats.types} /> types
+              </p>
             </div>
-          </motion.div>
+          </BlurFade>
         </div>
       </section>
 
@@ -270,9 +303,9 @@ export default function Landing() {
       </section>
 
       {/* ═══ 7. CTA Box ═══ */}
-      <section className="relative z-10 pt-20 pb-28 rounded-b-[3rem] transition-colors">
-        <div className="container max-w-2xl">
-          <motion.div className="relative rounded-[2rem] p-10 md:p-14 text-center overflow-hidden bg-secondary" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+      <section className="relative z-10 pt-10 pb-28 rounded-b-[3rem] bg-secondary transition-colors">
+        <div className="container max-w-3xl">
+          <motion.div className="relative rounded-[2rem] p-10 md:p-14 text-center overflow-hidden bg-background border border-border shadow-sm" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
             <h2 className="font-display mb-4 text-foreground" style={{ fontWeight: 520, fontSize: "clamp(28px, 3.5vw, 40px)" }}>Ready to Build Your Vault?</h2>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">Join trainers who track their collection value and share their seller profiles.</p>
             <Button size="lg" className="rounded-full bg-foreground text-background hover:bg-foreground/80 px-8 h-12 text-base font-semibold" asChild>

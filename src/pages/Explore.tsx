@@ -23,6 +23,8 @@ import {
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import AppHeader from "@/components/AppHeader";
+import { MagicCard } from "@/components/ui/magic-card";
+import { RetroGrid } from "@/components/ui/retro-grid";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -442,45 +444,47 @@ function CardGrid({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonC
           return (
             <motion.div
               key={card.id}
-              className="group rounded-xl bg-card border border-border/50 overflow-hidden card-shine"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ delay: i * 0.02 }}
               whileHover={{ y: -4 }}
+              className="h-full"
             >
-              <div className="relative bg-background/50 p-1.5 sm:p-2">
-                <img src={card.images.small} alt={card.name} className="w-full rounded-lg" loading="lazy" />
-                <button
-                  onClick={() => onWishlist(card)}
-                  className={`absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                    isWishlisted
-                      ? "bg-destructive text-destructive-foreground"
-                      : "bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive"
-                  }`}
-                >
-                  <Heart className={`w-3.5 h-3.5 ${isWishlisted ? "fill-current" : ""}`} />
-                </button>
-              </div>
-              <div className="p-2 sm:p-3 space-y-0.5 sm:space-y-1">
-                <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{card.name}</p>
-                <p className="text-[10px] sm:text-xs text-primary/80 truncate">{card.set.name}</p>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {card.rarity && <span className="text-[9px] sm:text-[10px] text-muted-foreground">{card.rarity}</span>}
-                  {card.number && <span className="text-[9px] sm:text-[10px] text-muted-foreground">• {card.number}/{card.set.printedTotal}</span>}
-                </div>
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-xs sm:text-sm font-bold text-foreground">{formatPrice(price)}</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity rounded-full border border-border/50 hover:border-primary hover:text-primary"
-                    onClick={() => onAdd(card)}
+              <MagicCard className="group flex flex-col h-full rounded-xl bg-card border-border/50 overflow-hidden">
+                <div className="relative bg-background/50 p-1.5 sm:p-2">
+                  <img src={card.images.small} alt={card.name} className="w-full rounded-lg" loading="lazy" />
+                  <button
+                    onClick={() => onWishlist(card)}
+                    className={`absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                      isWishlisted
+                        ? "bg-destructive text-destructive-foreground"
+                        : "bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive"
+                    }`}
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                  </Button>
+                    <Heart className={`w-3.5 h-3.5 ${isWishlisted ? "fill-current" : ""}`} />
+                  </button>
                 </div>
-              </div>
+                <div className="p-2 sm:p-3 space-y-0.5 sm:space-y-1 flex-1 flex flex-col justify-end">
+                  <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{card.name}</p>
+                  <p className="text-[10px] sm:text-xs text-primary/80 truncate">{card.set.name}</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {card.rarity && <span className="text-[9px] sm:text-[10px] text-muted-foreground">{card.rarity}</span>}
+                    {card.number && <span className="text-[9px] sm:text-[10px] text-muted-foreground">• {card.number}/{card.set.printedTotal}</span>}
+                  </div>
+                  <div className="flex items-center justify-between pt-1 mt-auto">
+                    <span className="text-xs sm:text-sm font-bold text-foreground">{formatPrice(price)}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity rounded-full border border-border/50 hover:border-primary hover:text-primary z-10"
+                      onClick={() => onAdd(card)}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </MagicCard>
             </motion.div>
           );
         })}
