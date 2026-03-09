@@ -431,15 +431,13 @@ function FilterControls({
 }
 
 // Grid view component
-function CardGrid({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void }) {
+function CardGrid({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string> }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
       <AnimatePresence mode="popLayout">
         {cards.map((card, i) => {
           const price = getMarketPrice(card);
-          const low = getLowPrice(card);
-          const priceDiff = price && low ? price - low : null;
-          const pricePct = price && low && low !== 0 ? ((price - low) / low) * 100 : null;
+          const isWishlisted = wishlistedIds.has(card.id);
 
           return (
             <motion.div
@@ -453,6 +451,16 @@ function CardGrid({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCa
             >
               <div className="relative bg-background/50 p-1.5 sm:p-2">
                 <img src={card.images.small} alt={card.name} className="w-full rounded-lg" loading="lazy" />
+                <button
+                  onClick={() => onWishlist(card)}
+                  className={`absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                    isWishlisted
+                      ? "bg-destructive text-destructive-foreground"
+                      : "bg-background/80 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive"
+                  }`}
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isWishlisted ? "fill-current" : ""}`} />
+                </button>
               </div>
               <div className="p-2 sm:p-3 space-y-0.5 sm:space-y-1">
                 <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{card.name}</p>
@@ -482,11 +490,12 @@ function CardGrid({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCa
 }
 
 // List view component
-function CardList({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void }) {
+function CardList({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string> }) {
   return (
     <div className="space-y-2">
       {cards.map((card, i) => {
         const price = getMarketPrice(card);
+        const isWishlisted = wishlistedIds.has(card.id);
         return (
           <motion.div
             key={card.id}
@@ -503,6 +512,14 @@ function CardList({ cards, onAdd }: { cards: PokemonCard[]; onAdd: (c: PokemonCa
               </p>
             </div>
             <span className="text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">{formatPrice(price)}</span>
+            <button
+              onClick={() => onWishlist(card)}
+              className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                isWishlisted ? "text-destructive" : "text-muted-foreground hover:text-destructive"
+              }`}
+            >
+              <Heart className={`w-3.5 h-3.5 ${isWishlisted ? "fill-current" : ""}`} />
+            </button>
             <Button
               size="icon"
               variant="ghost"
