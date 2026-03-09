@@ -15,6 +15,7 @@ interface AuthContextType {
   loading: boolean;
   subscription: SubscriptionInfo;
   isPro: boolean;
+  isAdmin: boolean;
   limits: typeof FREE_TIER_LIMITS | typeof PRO_TIER_LIMITS;
   checkSubscription: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionInfo>({
     subscribed: false,
     productId: null,
@@ -63,12 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => authSub.unsubscribe();
   }, []);
 
-  // Check subscription when session changes
+  // Check subscription + admin role when session changes
   useEffect(() => {
     if (session) {
       checkSubscription();
+      // Check admin role
+      supabase.rpc("has_role", { _user_id: session.user.id, _role: "admin" })
+        .then(({ data }) => setIsAdmin(!!data));
     } else {
       setSubscription({ subscribed: false, productId: null, subscriptionEnd: null });
+      setIsAdmin(false);
     }
   }, [session, checkSubscription]);
 
@@ -79,17 +85,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [session, checkSubscription]);
 
-  const isPro = subscription.subscribed && subscription.productId === STRIPE_CONFIG.pro.product_id;
+  const isPro = isAdmin || (subscription.subscribed && subscription.productId === STRIPE_CONFIG.pro.product_id);
   const limits = isPro ? PRO_TIER_LIMITS : FREE_TIER_LIMITS;
 
   const signOut = async () => {
     await supabase.auth.signOut();
     setSession(null);
     setSubscription({ subscribed: false, productId: null, subscriptionEnd: null });
+    setIsAdmin(false);
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, subscription, isPro, limits, checkSubscription, signOut }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, subscription, isPro, isAdmin, limits, checkSubscription, signOut }}>
       {children}
     </AuthContext.Provider>
   );
