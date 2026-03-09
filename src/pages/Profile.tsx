@@ -8,7 +8,7 @@ import { getPlatformIcon } from "@/lib/platform-icons";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, Wallet, QrCode, Loader2, Lock, Mail } from "lucide-react";
+import { ExternalLink, Wallet, QrCode, Loader2, Lock, Mail, Share } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 
@@ -107,10 +107,19 @@ export default function Profile() {
       <div className="relative z-10 mx-auto max-w-lg sm:max-w-2xl py-6 sm:py-8 px-4 sm:px-6">
         {/* Header: QR on left, Mail on right */}
         <div className="flex justify-between items-center mb-6">
-          {/* QR Code button — replaces back button */}
-          <Button variant="ghost" size="sm" className="p-2" onClick={() => setQrOpen(true)} title="Share via QR">
-            <QrCode className="w-5 h-5" />
-          </Button>
+          {/* Share button */}
+          <motion.button
+            className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-card border border-border/50 text-foreground hover:border-primary/30 transition-colors shadow-sm"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.3, type: "spring", stiffness: 260, damping: 20 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setQrOpen(true)}
+            title="Share Profile"
+          >
+            <Share className="w-5 h-5" />
+          </motion.button>
           <div className="flex gap-3">
             {/* Contact button - show when cards are for sale and links exist */}
             {collection.some(c => c.forSale) && links.length > 0 && (
