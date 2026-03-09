@@ -382,8 +382,8 @@ export default function ProfilePageEditor() {
             {saveStatus === "saved" && <><Check className="w-3 h-3 text-green-500" /> Saved</>}
             {saveStatus === "idle" && "Auto-saves on change"}
           </span>
-          <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={() => setQrOpen(true)}>
-            <Share2 className="w-4 h-4" /> Share Profile
+          <Button variant="outline" size="icon" className="ml-auto h-9 w-9" onClick={() => setQrOpen(true)} title="Share Profile">
+            <QrCode className="w-4 h-4" />
           </Button>
         </div>
 
