@@ -142,24 +142,32 @@ export default function Profile() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-primary/8 rounded-full blur-[150px] pointer-events-none" />
 
       <div className="relative z-10 mx-auto max-w-md py-6 sm:py-8 px-4 sm:px-6">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          {/* Theme switcher for contact button */}
-          {collection.some(c => c.forSale) && links.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Button:</span>
-              <select
-                value={contactButtonVariant}
-                onChange={(e) => setContactButtonVariant(Number(e.target.value))}
-                className="text-xs bg-background border border-border rounded px-2 py-1"
-              >
-                {contactButtonVariants.map((variant, index) => (
-                  <option key={index} value={index}>{variant.name}</option>
-                ))}
-              </select>
+        {/* Contact button theme switcher - always visible for testing */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-foreground">Contact Style:</span>
+            <div className="flex gap-2">
+              {contactButtonVariants.map((variant, index) => {
+                const IconComponent = variant.icon;
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setContactButtonVariant(index)}
+                    className={`p-2 rounded-lg border transition-all ${
+                      contactButtonVariant === index 
+                        ? 'border-primary bg-primary/10 text-primary' 
+                        : 'border-border hover:border-primary/50 text-muted-foreground hover:text-foreground'
+                    }`}
+                    title={variant.name}
+                  >
+                    <IconComponent className="w-4 h-4" />
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
 
-          {/* Contact icon — shown when cards are for sale */}
+          {/* Contact button - show when cards are for sale and links exist */}
           {collection.some(c => c.forSale) && links.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
