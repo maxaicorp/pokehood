@@ -104,15 +104,14 @@ export default function Profile() {
       {/* Ambient glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-primary/8 rounded-full blur-[150px] pointer-events-none" />
 
-      <div className="relative z-10 mx-auto max-w-md sm:max-w-lg py-6 sm:py-8 px-4 sm:px-6">
-        {/* Header with QR code icon */}
+      <div className="relative z-10 mx-auto max-w-lg sm:max-w-2xl py-6 sm:py-8 px-4 sm:px-6">
+        {/* Header: QR on left, Mail on right */}
         <div className="flex justify-between items-center mb-6">
-          <div></div> {/* Empty div for spacing */}
+          {/* QR Code button — replaces back button */}
+          <Button variant="ghost" size="sm" className="p-2" onClick={() => setQrOpen(true)} title="Share via QR">
+            <QrCode className="w-5 h-5" />
+          </Button>
           <div className="flex gap-3">
-            {/* QR Code button */}
-            <Button variant="ghost" size="sm" className="p-2" onClick={() => setQrOpen(true)} title="Share via QR">
-              <QrCode className="w-5 h-5" />
-            </Button>
             {/* Contact button - show when cards are for sale and links exist */}
             {collection.some(c => c.forSale) && links.length > 0 && (
               <Popover>
