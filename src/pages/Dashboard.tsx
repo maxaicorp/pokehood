@@ -7,6 +7,7 @@ import { formatPrice } from "@/lib/pokemon-api";
 import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
 import CollectionList from "@/components/CollectionList";
 import ProfilePageEditor from "@/components/ProfilePageEditor";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,12 +15,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Wallet, Layers, CreditCard, Search, Upload, Loader2,
-  Plus, LayoutGrid, User
+  Plus, LayoutGrid, User, BarChart3, Crown
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
-type Tab = "collection" | "mypage";
+type Tab = "collection" | "mypage" | "analytics";
 
 export default function Dashboard() {
   const { user, loading, isPro, limits } = useAuth();
@@ -107,9 +108,10 @@ export default function Dashboard() {
     setImporting(false);
   };
 
-  const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+  const tabs: { id: Tab; label: string; icon: React.ElementType; pro?: boolean }[] = [
     { id: "collection", label: "Collection", icon: LayoutGrid },
     { id: "mypage", label: "My Page", icon: User },
+    { id: "analytics", label: "Analytics", icon: BarChart3, pro: true },
   ];
 
   return (
@@ -130,6 +132,7 @@ export default function Dashboard() {
               >
                 <tab.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
+                {tab.pro && !isPro && <Crown className="w-3 h-3 text-primary ml-1" />}
               </button>
             ))}
           </div>
@@ -211,6 +214,8 @@ export default function Dashboard() {
         )}
 
         {activeTab === "mypage" && <ProfilePageEditor />}
+
+        {activeTab === "analytics" && <AnalyticsDashboard collection={collection} />}
       </div>
 
       {/* Import Dialog */}
