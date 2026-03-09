@@ -39,7 +39,8 @@ import { motion, AnimatePresence } from "framer-motion";
 type ViewMode = "grid" | "list";
 
 export default function Explore() {
-  const { user, loading } = useAuth();
+  const { user, loading, isPro, limits } = useAuth();
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSet, setSelectedSet] = useState("");
