@@ -8,17 +8,14 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
-import { Crown, Eye, MousePointerClick, Wallet, TrendingUp, Loader2 } from "lucide-react";
+import { Crown, Eye, MousePointerClick, Wallet, TrendingUp, Loader2, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format, subDays } from "date-fns";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-
-const CHART_BLUE = "hsl(217 91% 60%)";
-const CHART_COLORS = [
-  "hsl(0 90% 65%)", "hsl(30 95% 55%)", "hsl(50 95% 55%)", "hsl(145 70% 45%)",
-  "hsl(217 91% 60%)", "hsl(270 70% 60%)", "hsl(325 85% 55%)", "hsl(190 80% 50%)",
-];
+import {
+  AnalyticsThemeId, ANALYTICS_THEMES, getAnalyticsTheme, setAnalyticsTheme, AnalyticsTheme,
+} from "@/lib/analytics-themes";
 
 type TimeRange = "7d" | "30d" | "90d" | "all";
 const TIME_OPTIONS: { value: TimeRange; label: string }[] = [
@@ -28,7 +25,7 @@ const TIME_OPTIONS: { value: TimeRange; label: string }[] = [
   { value: "all", label: "All" },
 ];
 
-function TimeFilter({ value, onChange }: { value: TimeRange; onChange: (v: TimeRange) => void }) {
+function TimeFilter({ value, onChange, theme }: { value: TimeRange; onChange: (v: TimeRange) => void; theme: AnalyticsTheme }) {
   return (
     <div className="flex gap-1">
       {TIME_OPTIONS.map((opt) => (
@@ -37,13 +34,46 @@ function TimeFilter({ value, onChange }: { value: TimeRange; onChange: (v: TimeR
           onClick={() => onChange(opt.value)}
           className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
             value === opt.value
-              ? "bg-primary text-primary-foreground"
+              ? `${theme.filterActiveBg} ${theme.filterActiveText}`
               : "bg-muted text-muted-foreground hover:text-foreground"
           }`}
         >
           {opt.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function ThemeSelector({ current, onChange }: { current: AnalyticsThemeId; onChange: (id: AnalyticsThemeId) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={() => setOpen(!open)}>
+        <Palette className="w-3.5 h-3.5" /> Theme
+      </Button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-xl bg-card border border-border shadow-lg p-2 space-y-1">
+            {(Object.keys(ANALYTICS_THEMES) as AnalyticsThemeId[]).map((id) => {
+              const t = ANALYTICS_THEMES[id];
+              return (
+                <button
+                  key={id}
+                  onClick={() => { onChange(id); setOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                    current === id ? "bg-primary/10 text-foreground" : "hover:bg-muted text-muted-foreground"
+                  }`}
+                >
+                  <span className="font-medium text-foreground">{t.name}</span>
+                  <span className="block text-[11px] text-muted-foreground">{t.description}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -64,14 +94,19 @@ interface Props {
 
 export default function AnalyticsDashboard({ collection }: Props) {
   const { user, isPro } = useAuth();
+  const [themeId, setThemeId] = useState<AnalyticsThemeId>(getAnalyticsTheme);
+  const theme = ANALYTICS_THEMES[themeId];
 
-  // Time range state per chart
+  const handleThemeChange = (id: AnalyticsThemeId) => {
+    setThemeId(id);
+    setAnalyticsTheme(id);
+  };
+
   const [valueRange, setValueRange] = useState<TimeRange>("all");
   const [viewsRange, setViewsRange] = useState<TimeRange>("30d");
   const [clicksRange, setClicksRange] = useState<TimeRange>("30d");
   const [rarityRange, setRarityRange] = useState<TimeRange>("all");
 
-  // Fetch ALL profile views (filter client-side)
   const { data: allProfileViews = [], isLoading: viewsLoading } = useQuery({
     queryKey: ["profile-views-all", user?.id],
     queryFn: async () => {
@@ -86,7 +121,6 @@ export default function AnalyticsDashboard({ collection }: Props) {
     enabled: !!user && isPro,
   });
 
-  // Fetch user links
   const { data: links = [] } = useQuery({
     queryKey: ["my-links-analytics", user?.id],
     queryFn: async () => {
@@ -101,7 +135,6 @@ export default function AnalyticsDashboard({ collection }: Props) {
     enabled: !!user && isPro,
   });
 
-  // Fetch ALL link clicks (filter client-side)
   const { data: allLinkClicks = [] } = useQuery({
     queryKey: ["link-clicks-all", user?.id],
     queryFn: async () => {
@@ -116,7 +149,7 @@ export default function AnalyticsDashboard({ collection }: Props) {
     enabled: !!user && isPro,
   });
 
-  // ─── Filter helpers ───
+  // Filter helpers
   const filteredCollection = useMemo(() => {
     const cutoff = getDayCutoff(valueRange);
     if (!cutoff) return collection;
@@ -145,7 +178,7 @@ export default function AnalyticsDashboard({ collection }: Props) {
     return collection.filter(c => new Date(c.addedAt).getTime() >= cutoffMs);
   }, [collection, rarityRange]);
 
-  // ─── Derived chart data ───
+  // Derived chart data
   const valueHistory = useMemo(() => {
     if (filteredCollection.length === 0) return [];
     const sorted = [...filteredCollection].sort((a, b) =>
@@ -286,8 +319,21 @@ export default function AnalyticsDashboard({ collection }: Props) {
   const viewsRangeLabel = viewsRange === "all" ? "" : ` (${viewsRange})`;
   const clicksRangeLabel = clicksRange === "all" ? "" : ` (${clicksRange})`;
 
+  const tooltipStyle = {
+    background: theme.tooltipBg,
+    border: `1px solid ${theme.tooltipBorder}`,
+    borderRadius: "8px",
+    fontSize: "12px",
+    color: theme.tooltipText,
+  };
+
   return (
     <div className="space-y-6">
+      {/* Theme selector */}
+      <div className="flex justify-end">
+        <ThemeSelector current={themeId} onChange={handleThemeChange} />
+      </div>
+
       {/* Quick stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
@@ -298,17 +344,17 @@ export default function AnalyticsDashboard({ collection }: Props) {
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
-            className="p-4 rounded-xl bg-card border border-border/50 space-y-2"
+            className={`p-4 rounded-xl ${theme.cardBg} border ${theme.cardBorder} space-y-2`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.08 }}
           >
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <stat.icon className="w-4 h-4 text-primary" />
+            <div className={`w-8 h-8 rounded-lg ${theme.statIconBg} flex items-center justify-center`}>
+              <stat.icon className={`w-4 h-4 ${theme.statIconColor}`} />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{stat.label}</p>
-              <p className="text-xl font-display font-bold text-foreground">{stat.value}</p>
+              <p className={`text-xl font-bold ${theme.valueClass}`}>{stat.value}</p>
             </div>
           </motion.div>
         ))}
@@ -316,33 +362,29 @@ export default function AnalyticsDashboard({ collection }: Props) {
 
       {/* Portfolio value over time */}
       <motion.div
-        className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
+        className={`p-5 rounded-xl ${theme.cardBg} border ${theme.cardBorder} space-y-3`}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35 }}
       >
         <div className="flex items-center justify-between">
-          <h3 className="font-display font-bold text-foreground text-sm">Portfolio Value Over Time</h3>
-          <TimeFilter value={valueRange} onChange={setValueRange} />
+          <h3 className={`text-sm ${theme.headingClass}`}>Portfolio Value Over Time</h3>
+          <TimeFilter value={valueRange} onChange={setValueRange} theme={theme} />
         </div>
         {valueHistory.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={valueHistory}>
               <defs>
                 <linearGradient id="valueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={CHART_BLUE} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={CHART_BLUE} stopOpacity={0} />
+                  <stop offset="5%" stopColor={theme.chartPrimary} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={theme.chartPrimary} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" strokeOpacity={0.3} />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(0 0% 55%)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "hsl(0 0% 55%)" }} tickFormatter={(v) => `$${v}`} axisLine={false} tickLine={false} width={50} />
-              <Tooltip
-                formatter={(v: number) => [formatPrice(v), "Portfolio Value"]}
-                contentStyle={{ background: "hsl(222 47% 9%)", border: "1px solid hsl(222 20% 18%)", borderRadius: "8px", fontSize: "12px" }}
-                labelStyle={{ color: "hsl(0 0% 95%)" }}
-              />
-              <Area type="monotone" dataKey="value" stroke={CHART_BLUE} fill="url(#valueGrad)" strokeWidth={2} />
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} strokeOpacity={0.5} />
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: theme.axisColor }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: theme.axisColor }} tickFormatter={(v) => `$${v}`} axisLine={false} tickLine={false} width={50} />
+              <Tooltip formatter={(v: number) => [formatPrice(v), "Portfolio Value"]} contentStyle={tooltipStyle} labelStyle={{ color: theme.tooltipText }} />
+              <Area type="monotone" dataKey="value" stroke={theme.chartPrimary} fill="url(#valueGrad)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
@@ -354,16 +396,15 @@ export default function AnalyticsDashboard({ collection }: Props) {
 
       {/* Profile views + Rarity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Profile views */}
         <motion.div
-          className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
+          className={`p-5 rounded-xl ${theme.cardBg} border ${theme.cardBorder} space-y-3`}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
           <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold text-foreground text-sm">Profile Views</h3>
-            <TimeFilter value={viewsRange} onChange={setViewsRange} />
+            <h3 className={`text-sm ${theme.headingClass}`}>Profile Views</h3>
+            <TimeFilter value={viewsRange} onChange={setViewsRange} theme={theme} />
           </div>
           {totalViews === 0 ? (
             <div className="h-[180px] flex items-center justify-center">
@@ -372,35 +413,31 @@ export default function AnalyticsDashboard({ collection }: Props) {
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={viewsByDay}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" strokeOpacity={0.3} />
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.gridColor} strokeOpacity={0.5} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 9, fill: "hsl(0 0% 55%)" }}
+                  tick={{ fontSize: 9, fill: theme.axisColor }}
                   interval={Math.max(0, Math.floor(viewsByDay.length / 6) - 1)}
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis tick={{ fontSize: 10, fill: "hsl(0 0% 55%)" }} allowDecimals={false} axisLine={false} tickLine={false} width={30} />
-                <Tooltip
-                  contentStyle={{ background: "hsl(222 47% 9%)", border: "1px solid hsl(222 20% 18%)", borderRadius: "8px", fontSize: "12px" }}
-                  labelStyle={{ color: "hsl(0 0% 95%)" }}
-                />
-                <Bar dataKey="views" fill={CHART_BLUE} radius={[3, 3, 0, 0]} />
+                <YAxis tick={{ fontSize: 10, fill: theme.axisColor }} allowDecimals={false} axisLine={false} tickLine={false} width={30} />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: theme.tooltipText }} />
+                <Bar dataKey="views" fill={theme.chartPrimary} radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
         </motion.div>
 
-        {/* Rarity breakdown */}
         <motion.div
-          className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
+          className={`p-5 rounded-xl ${theme.cardBg} border ${theme.cardBorder} space-y-3`}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}
         >
           <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold text-foreground text-sm">Rarity Breakdown</h3>
-            <TimeFilter value={rarityRange} onChange={setRarityRange} />
+            <h3 className={`text-sm ${theme.headingClass}`}>Rarity Breakdown</h3>
+            <TimeFilter value={rarityRange} onChange={setRarityRange} theme={theme} />
           </div>
           {rarityData.length === 0 ? (
             <div className="h-[180px] flex items-center justify-center">
@@ -412,19 +449,16 @@ export default function AnalyticsDashboard({ collection }: Props) {
                 <PieChart>
                   <Pie data={rarityData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={40}>
                     {rarityData.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      <Cell key={i} fill={theme.chartColors[i % theme.chartColors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    contentStyle={{ background: "hsl(222 47% 9%)", border: "1px solid hsl(222 20% 18%)", borderRadius: "8px", fontSize: "12px" }}
-                    labelStyle={{ color: "hsl(0 0% 95%)" }}
-                  />
+                  <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: theme.tooltipText }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-1.5 max-h-[180px] overflow-y-auto">
                 {rarityData.map((item, i) => (
                   <div key={item.name} className="flex items-center gap-2 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: theme.chartColors[i % theme.chartColors.length] }} />
                     <span className="text-muted-foreground truncate flex-1">{item.name}</span>
                     <span className="font-semibold text-foreground">{item.value}</span>
                   </div>
@@ -437,16 +471,15 @@ export default function AnalyticsDashboard({ collection }: Props) {
 
       {/* Link analytics + Top cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Link analytics */}
         <motion.div
-          className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
+          className={`p-5 rounded-xl ${theme.cardBg} border ${theme.cardBorder} space-y-3`}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
           <div className="flex items-center justify-between">
-            <h3 className="font-display font-bold text-foreground text-sm">Link Clicks</h3>
-            <TimeFilter value={clicksRange} onChange={setClicksRange} />
+            <h3 className={`text-sm ${theme.headingClass}`}>Link Clicks</h3>
+            <TimeFilter value={clicksRange} onChange={setClicksRange} theme={theme} />
           </div>
           {linkClickCounts.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No links added yet</p>
@@ -465,7 +498,7 @@ export default function AnalyticsDashboard({ collection }: Props) {
                         className="h-full rounded-full transition-all"
                         style={{
                           width: `${Math.max((link.clicks / maxClicks) * 100, link.clicks > 0 ? 5 : 0)}%`,
-                          background: CHART_BLUE,
+                          background: theme.chartPrimary,
                         }}
                       />
                     </div>
@@ -476,14 +509,13 @@ export default function AnalyticsDashboard({ collection }: Props) {
           )}
         </motion.div>
 
-        {/* Top valuable cards */}
         <motion.div
-          className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
+          className={`p-5 rounded-xl ${theme.cardBg} border ${theme.cardBorder} space-y-3`}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.55 }}
         >
-          <h3 className="font-display font-bold text-foreground text-sm">Top Cards by Value</h3>
+          <h3 className={`text-sm ${theme.headingClass}`}>Top Cards by Value</h3>
           {topCards.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No cards in collection</p>
           ) : (
@@ -498,7 +530,7 @@ export default function AnalyticsDashboard({ collection }: Props) {
                       <p className="text-xs font-semibold text-foreground truncate">{card.name}</p>
                       <p className="text-[10px] text-muted-foreground truncate">{card.setName}</p>
                     </div>
-                    <span className="text-xs font-display font-bold text-foreground shrink-0">{formatPrice(val)}</span>
+                    <span className={`text-xs font-bold shrink-0 ${theme.valueClass}`}>{formatPrice(val)}</span>
                   </div>
                 );
               })}

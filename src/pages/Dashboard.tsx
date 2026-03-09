@@ -8,6 +8,7 @@ import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
 import CollectionList from "@/components/CollectionList";
 import ProfilePageEditor from "@/components/ProfilePageEditor";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
+import WishlistDashboard from "@/components/WishlistDashboard";
 import AppHeader from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
