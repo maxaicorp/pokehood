@@ -8,7 +8,7 @@ import { getPlatformIcon } from "@/lib/platform-icons";
 import QRCodeModal from "@/components/QRCodeModal";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ExternalLink, Wallet, QrCode, Loader2, Lock, MessageCircle } from "lucide-react";
+import { ExternalLink, Wallet, QrCode, Loader2, Lock, MessageCircle, Mail, MessageSquare, Phone } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 
@@ -18,6 +18,7 @@ export default function Profile() {
   const { slug } = useParams();
   const [qrOpen, setQrOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(CARDS_PER_PAGE);
+  const [contactButtonVariant, setContactButtonVariant] = useState<number>(0);
   const loaderRef = useRef<HTMLDivElement>(null);
   const publishedDomain = "https://collectiblez.lovable.app";
   const profileUrl = `${publishedDomain}/u/${slug || "demo"}`;
@@ -62,6 +63,43 @@ export default function Profile() {
   const totalValue = getTotalValue(collection);
   const hasMore = visibleCount < collection.length;
 
+  const contactButtonVariants = [
+    {
+      name: "Rainbow Outline",
+      className: "relative flex items-center justify-center w-10 h-10 rounded-full border-2 border-transparent bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 p-[2px]",
+      innerClassName: "w-full h-full bg-background rounded-full flex items-center justify-center text-foreground hover:bg-muted transition-colors",
+      icon: MessageCircle,
+      pulseClassName: "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary animate-ping",
+      pulseInnerClassName: "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary"
+    },
+    {
+      name: "Minimal Icon",
+      className: "relative flex items-center justify-center w-10 h-10 rounded-full text-foreground hover:text-primary transition-colors",
+      innerClassName: "",
+      icon: MessageCircle,
+      pulseClassName: "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary animate-ping",
+      pulseInnerClassName: "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary"
+    },
+    {
+      name: "Mail Icon Card",
+      className: "relative flex items-center justify-center w-10 h-10 rounded-xl bg-card border border-border/50 text-foreground hover:border-primary/30 transition-colors shadow-sm",
+      innerClassName: "",
+      icon: Mail,
+      pulseClassName: "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary animate-ping",
+      pulseInnerClassName: "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary"
+    },
+    {
+      name: "Message Square Subtle",
+      className: "relative flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors",
+      innerClassName: "",
+      icon: MessageSquare,
+      pulseClassName: "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary animate-ping",
+      pulseInnerClassName: "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-primary"
+    }
+  ];
+
+  const currentVariant = contactButtonVariants[contactButtonVariant];
+
   // Infinite scroll observer
   useEffect(() => {
     const node = loaderRef.current;
@@ -104,14 +142,29 @@ export default function Profile() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-primary/8 rounded-full blur-[150px] pointer-events-none" />
 
       <div className="relative z-10 mx-auto max-w-md py-6 sm:py-8 px-4 sm:px-6">
-        <div className="flex items-center justify-end mb-4 sm:mb-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          {/* Theme switcher for contact button */}
+          {collection.some(c => c.forSale) && links.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Button:</span>
+              <select
+                value={contactButtonVariant}
+                onChange={(e) => setContactButtonVariant(Number(e.target.value))}
+                className="text-xs bg-background border border-border rounded px-2 py-1"
+              >
+                {contactButtonVariants.map((variant, index) => (
+                  <option key={index} value={index}>{variant.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Contact icon — shown when cards are for sale */}
           {collection.some(c => c.forSale) && links.length > 0 && (
             <Popover>
               <PopoverTrigger asChild>
                 <motion.button
-                  className="relative flex items-center justify-center w-10 h-10 rounded-full bg-green-500 text-white shadow-lg hover:bg-green-600 transition-colors"
+                  className={currentVariant.className}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.4, type: "spring", stiffness: 260, damping: 20 }}
@@ -119,9 +172,15 @@ export default function Profile() {
                   whileTap={{ scale: 0.95 }}
                   title="Contact seller"
                 >
-                  <MessageCircle className="w-5 h-5" />
-                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-300 animate-ping" />
-                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-300" />
+                  {currentVariant.innerClassName ? (
+                    <div className={currentVariant.innerClassName}>
+                      <currentVariant.icon className="w-5 h-5" />
+                    </div>
+                  ) : (
+                    <currentVariant.icon className="w-5 h-5" />
+                  )}
+                  <span className={currentVariant.pulseClassName} />
+                  <span className={currentVariant.pulseInnerClassName} />
                 </motion.button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 p-3">
