@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +20,44 @@ const CHART_COLORS = [
   "hsl(217 91% 60%)", "hsl(270 70% 60%)", "hsl(325 85% 55%)", "hsl(190 80% 50%)",
 ];
 
+type TimeRange = "7d" | "30d" | "90d" | "all";
+const TIME_OPTIONS: { value: TimeRange; label: string }[] = [
+  { value: "7d", label: "7d" },
+  { value: "30d", label: "30d" },
+  { value: "90d", label: "90d" },
+  { value: "all", label: "All" },
+];
+
+function TimeFilter({ value, onChange }: { value: TimeRange; onChange: (v: TimeRange) => void }) {
+  return (
+    <div className="flex gap-1">
+      {TIME_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+            value === opt.value
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function getDayCutoff(range: TimeRange): Date | null {
+  if (range === "all") return null;
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  return subDays(new Date(), days);
+}
+
+function getDayCount(range: TimeRange): number {
+  return range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 365;
+}
+
 interface Props {
   collection: CollectionCard[];
 }
@@ -27,16 +65,21 @@ interface Props {
 export default function AnalyticsDashboard({ collection }: Props) {
   const { user, isPro } = useAuth();
 
-  // Fetch profile views (last 30 days)
-  const { data: profileViews = [], isLoading: viewsLoading } = useQuery({
-    queryKey: ["profile-views", user?.id],
+  // Time range state per chart
+  const [valueRange, setValueRange] = useState<TimeRange>("all");
+  const [viewsRange, setViewsRange] = useState<TimeRange>("30d");
+  const [clicksRange, setClicksRange] = useState<TimeRange>("30d");
+  const [rarityRange, setRarityRange] = useState<TimeRange>("all");
+
+  // Fetch ALL profile views (filter client-side)
+  const { data: allProfileViews = [], isLoading: viewsLoading } = useQuery({
+    queryKey: ["profile-views-all", user?.id],
     queryFn: async () => {
-      const since = subDays(new Date(), 30).toISOString();
       const { data, error } = await supabase
         .from("profile_views")
         .select("viewed_at")
         .eq("profile_user_id", user!.id)
-        .gte("viewed_at", since);
+        .order("viewed_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
@@ -58,26 +101,54 @@ export default function AnalyticsDashboard({ collection }: Props) {
     enabled: !!user && isPro,
   });
 
-  // Fetch link clicks (last 30 days)
-  const { data: linkClicks = [] } = useQuery({
-    queryKey: ["link-clicks", user?.id],
+  // Fetch ALL link clicks (filter client-side)
+  const { data: allLinkClicks = [] } = useQuery({
+    queryKey: ["link-clicks-all", user?.id],
     queryFn: async () => {
-      const since = subDays(new Date(), 30).toISOString();
       const { data, error } = await supabase
         .from("link_clicks")
         .select("link_id, clicked_at")
         .eq("link_user_id", user!.id)
-        .gte("clicked_at", since);
+        .order("clicked_at", { ascending: true });
       if (error) throw error;
       return data || [];
     },
     enabled: !!user && isPro,
   });
 
-  // ─── Derived data ───
+  // ─── Filter helpers ───
+  const filteredCollection = useMemo(() => {
+    const cutoff = getDayCutoff(valueRange);
+    if (!cutoff) return collection;
+    const cutoffMs = cutoff.getTime();
+    return collection.filter(c => new Date(c.addedAt).getTime() >= cutoffMs);
+  }, [collection, valueRange]);
+
+  const filteredViews = useMemo(() => {
+    const cutoff = getDayCutoff(viewsRange);
+    if (!cutoff) return allProfileViews;
+    const cutoffIso = cutoff.toISOString();
+    return allProfileViews.filter((v: any) => v.viewed_at >= cutoffIso);
+  }, [allProfileViews, viewsRange]);
+
+  const filteredClicks = useMemo(() => {
+    const cutoff = getDayCutoff(clicksRange);
+    if (!cutoff) return allLinkClicks;
+    const cutoffIso = cutoff.toISOString();
+    return allLinkClicks.filter((c: any) => c.clicked_at >= cutoffIso);
+  }, [allLinkClicks, clicksRange]);
+
+  const filteredRarityCollection = useMemo(() => {
+    const cutoff = getDayCutoff(rarityRange);
+    if (!cutoff) return collection;
+    const cutoffMs = cutoff.getTime();
+    return collection.filter(c => new Date(c.addedAt).getTime() >= cutoffMs);
+  }, [collection, rarityRange]);
+
+  // ─── Derived chart data ───
   const valueHistory = useMemo(() => {
-    if (collection.length === 0) return [];
-    const sorted = [...collection].sort((a, b) =>
+    if (filteredCollection.length === 0) return [];
+    const sorted = [...filteredCollection].sort((a, b) =>
       new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime()
     );
     const byDay: Record<string, number> = {};
@@ -92,29 +163,29 @@ export default function AnalyticsDashboard({ collection }: Props) {
         running += val;
         return { date: format(new Date(date + "T12:00:00"), "MMM d"), value: parseFloat(running.toFixed(2)) };
       });
-    // Ensure at least 2 points for a visible chart line
     if (points.length === 1) {
       points.unshift({ date: "Start", value: 0 });
     }
     return points;
-  }, [collection]);
+  }, [filteredCollection]);
 
   const viewsByDay = useMemo(() => {
+    const dayCount = getDayCount(viewsRange);
     const counts: Record<string, number> = {};
-    profileViews.forEach((v: any) => {
+    filteredViews.forEach((v: any) => {
       const day = v.viewed_at.slice(0, 10);
       counts[day] = (counts[day] || 0) + 1;
     });
-    return Array.from({ length: 30 }, (_, i) => {
-      const d = subDays(new Date(), 29 - i);
+    return Array.from({ length: dayCount }, (_, i) => {
+      const d = subDays(new Date(), dayCount - 1 - i);
       const key = format(d, "yyyy-MM-dd");
       return { date: format(d, "MMM d"), views: counts[key] || 0 };
     });
-  }, [profileViews]);
+  }, [filteredViews, viewsRange]);
 
   const rarityData = useMemo(() => {
     const counts: Record<string, number> = {};
-    collection.forEach(card => {
+    filteredRarityCollection.forEach(card => {
       const r = card.rarity || "Unknown";
       counts[r] = (counts[r] || 0) + card.quantity;
     });
@@ -122,14 +193,14 @@ export default function AnalyticsDashboard({ collection }: Props) {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 8)
       .map(([name, value]) => ({ name, value }));
-  }, [collection]);
+  }, [filteredRarityCollection]);
 
   const linkClickCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    linkClicks.forEach((c: any) => { counts[c.link_id] = (counts[c.link_id] || 0) + 1; });
+    filteredClicks.forEach((c: any) => { counts[c.link_id] = (counts[c.link_id] || 0) + 1; });
     return links.map((link: any) => ({ ...link, clicks: counts[link.id] || 0 }))
       .sort((a: any, b: any) => b.clicks - a.clicks);
-  }, [links, linkClicks]);
+  }, [links, filteredClicks]);
 
   const topCards = useMemo(() => {
     return [...collection]
@@ -141,12 +212,13 @@ export default function AnalyticsDashboard({ collection }: Props) {
       .slice(0, 10);
   }, [collection]);
 
+  // Stats
   const totalValue = collection.reduce((s, c) => s + (c.manualPrice ?? c.marketPrice ?? 0) * c.quantity, 0);
   const cardCount = collection.reduce((s, c) => s + c.quantity, 0);
   const avgCardValue = cardCount > 0 ? totalValue / cardCount : 0;
   const forSaleValue = collection.filter(c => c.forSale).reduce((s, c) => s + (c.salePrice ?? c.marketPrice ?? 0) * c.quantity, 0);
-  const totalViews = profileViews.length;
-  const totalClicks = linkClicks.length;
+  const totalViews = filteredViews.length;
+  const totalClicks = filteredClicks.length;
 
   const handleUpgrade = async () => {
     try {
@@ -162,7 +234,7 @@ export default function AnalyticsDashboard({ collection }: Props) {
   if (!isPro) {
     return (
       <div className="flex flex-col items-center justify-center py-16 sm:py-20 gap-6 text-center">
-        <motion.div 
+        <motion.div
           className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -183,8 +255,8 @@ export default function AnalyticsDashboard({ collection }: Props) {
             { icon: MousePointerClick, label: "Link click analytics" },
             { icon: Wallet, label: "Rarity & value breakdown" },
           ].map(({ icon: Icon, label }, i) => (
-            <motion.div 
-              key={label} 
+            <motion.div
+              key={label}
               className="flex items-center gap-2.5 p-3 rounded-xl bg-card border border-border/50"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -211,14 +283,16 @@ export default function AnalyticsDashboard({ collection }: Props) {
     );
   }
 
-  // Pro analytics UI
+  const viewsRangeLabel = viewsRange === "all" ? "" : ` (${viewsRange})`;
+  const clicksRangeLabel = clicksRange === "all" ? "" : ` (${clicksRange})`;
+
   return (
     <div className="space-y-6">
       {/* Quick stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { icon: Eye, label: "Profile Views (30d)", value: totalViews.toLocaleString() },
-          { icon: MousePointerClick, label: "Link Clicks (30d)", value: totalClicks.toLocaleString() },
+          { icon: Eye, label: `Profile Views${viewsRangeLabel}`, value: totalViews.toLocaleString() },
+          { icon: MousePointerClick, label: `Link Clicks${clicksRangeLabel}`, value: totalClicks.toLocaleString() },
           { icon: Wallet, label: "Avg Card Value", value: formatPrice(avgCardValue) },
           { icon: TrendingUp, label: "Listed For Sale", value: formatPrice(forSaleValue) },
         ].map((stat, i) => (
@@ -241,14 +315,17 @@ export default function AnalyticsDashboard({ collection }: Props) {
       </div>
 
       {/* Portfolio value over time */}
-      {valueHistory.length > 0 && (
-        <motion.div 
-          className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-        >
+      <motion.div
+        className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+      >
+        <div className="flex items-center justify-between">
           <h3 className="font-display font-bold text-foreground text-sm">Portfolio Value Over Time</h3>
+          <TimeFilter value={valueRange} onChange={setValueRange} />
+        </div>
+        {valueHistory.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={valueHistory}>
               <defs>
@@ -260,27 +337,34 @@ export default function AnalyticsDashboard({ collection }: Props) {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" strokeOpacity={0.3} />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(0 0% 55%)" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: "hsl(0 0% 55%)" }} tickFormatter={(v) => `$${v}`} axisLine={false} tickLine={false} width={50} />
-              <Tooltip 
-                formatter={(v: number) => [formatPrice(v), "Portfolio Value"]} 
+              <Tooltip
+                formatter={(v: number) => [formatPrice(v), "Portfolio Value"]}
                 contentStyle={{ background: "hsl(222 47% 9%)", border: "1px solid hsl(222 20% 18%)", borderRadius: "8px", fontSize: "12px" }}
                 labelStyle={{ color: "hsl(0 0% 95%)" }}
               />
               <Area type="monotone" dataKey="value" stroke={CHART_BLUE} fill="url(#valueGrad)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
-        </motion.div>
-      )}
+        ) : (
+          <div className="h-[200px] flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">No cards added in this period</p>
+          </div>
+        )}
+      </motion.div>
 
       {/* Profile views + Rarity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Profile views */}
-        <motion.div 
+        <motion.div
           className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <h3 className="font-display font-bold text-foreground text-sm">Profile Views (Last 30 Days)</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-display font-bold text-foreground text-sm">Profile Views</h3>
+            <TimeFilter value={viewsRange} onChange={setViewsRange} />
+          </div>
           {totalViews === 0 ? (
             <div className="h-[180px] flex items-center justify-center">
               <p className="text-sm text-muted-foreground">No views yet — share your profile!</p>
@@ -289,9 +373,15 @@ export default function AnalyticsDashboard({ collection }: Props) {
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={viewsByDay}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" strokeOpacity={0.3} />
-                <XAxis dataKey="date" tick={{ fontSize: 9, fill: "hsl(0 0% 55%)" }} interval={6} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 9, fill: "hsl(0 0% 55%)" }}
+                  interval={Math.max(0, Math.floor(viewsByDay.length / 6) - 1)}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <YAxis tick={{ fontSize: 10, fill: "hsl(0 0% 55%)" }} allowDecimals={false} axisLine={false} tickLine={false} width={30} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ background: "hsl(222 47% 9%)", border: "1px solid hsl(222 20% 18%)", borderRadius: "8px", fontSize: "12px" }}
                   labelStyle={{ color: "hsl(0 0% 95%)" }}
                 />
@@ -302,16 +392,19 @@ export default function AnalyticsDashboard({ collection }: Props) {
         </motion.div>
 
         {/* Rarity breakdown */}
-        <motion.div 
+        <motion.div
           className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}
         >
-          <h3 className="font-display font-bold text-foreground text-sm">Rarity Breakdown</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-display font-bold text-foreground text-sm">Rarity Breakdown</h3>
+            <TimeFilter value={rarityRange} onChange={setRarityRange} />
+          </div>
           {rarityData.length === 0 ? (
             <div className="h-[180px] flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">No cards in collection</p>
+              <p className="text-sm text-muted-foreground">No cards in this period</p>
             </div>
           ) : (
             <div className="flex items-center gap-4">
@@ -322,7 +415,7 @@ export default function AnalyticsDashboard({ collection }: Props) {
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ background: "hsl(222 47% 9%)", border: "1px solid hsl(222 20% 18%)", borderRadius: "8px", fontSize: "12px" }}
                     labelStyle={{ color: "hsl(0 0% 95%)" }}
                   />
@@ -345,13 +438,16 @@ export default function AnalyticsDashboard({ collection }: Props) {
       {/* Link analytics + Top cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Link analytics */}
-        <motion.div 
+        <motion.div
           className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <h3 className="font-display font-bold text-foreground text-sm">Link Clicks (Last 30 Days)</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-display font-bold text-foreground text-sm">Link Clicks</h3>
+            <TimeFilter value={clicksRange} onChange={setClicksRange} />
+          </div>
           {linkClickCounts.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">No links added yet</p>
           ) : (
@@ -381,7 +477,7 @@ export default function AnalyticsDashboard({ collection }: Props) {
         </motion.div>
 
         {/* Top valuable cards */}
-        <motion.div 
+        <motion.div
           className="p-5 rounded-xl bg-card border border-border/50 space-y-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
