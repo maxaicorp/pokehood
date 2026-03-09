@@ -336,9 +336,9 @@ export default function Explore() {
                 <p className="text-muted-foreground text-sm mt-1">Try adjusting your search or filters</p>
               </div>
             ) : viewMode === "grid" ? (
-              <CardGrid cards={cards} onAdd={handleAdd} />
+              <CardGrid cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} />
             ) : (
-              <CardList cards={cards} onAdd={handleAdd} />
+              <CardList cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} />
             )}
 
             {/* Pagination */}
