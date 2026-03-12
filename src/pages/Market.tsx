@@ -10,8 +10,11 @@ import {
   formatPrice,
   PokemonCard,
   PokemonSet,
+  TCGP_SERIES_IDS,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
+import { formatPct } from "@/lib/price-snapshots";
+import { recordCollectionAdd } from "@/lib/card-stats-store";
 import AppHeader from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -67,6 +70,7 @@ export default function Market() {
     });
     if (result) {
       toast.success(`${card.name} added to collection!`);
+      recordCollectionAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
       queryClient.invalidateQueries({ queryKey: ["collection"] });
     } else {
       toast.error("Failed to add card.");
@@ -127,7 +131,9 @@ export default function Market() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Recent Sets</SelectItem>
-                {setsData?.data?.map((s: PokemonSet) => (
+                {setsData?.data
+                  ?.filter((s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()))
+                  .map((s: PokemonSet) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
                   </SelectItem>
@@ -140,11 +146,14 @@ export default function Market() {
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
           {/* Table header */}
-          <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
+          <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
             <span>#</span>
             <span>Card</span>
             <span className={selectedSetId ? "hidden" : ""}>Set</span>
             <span className="text-right">Market Price</span>
+            <span className="text-right">24h %</span>
+            <span className="text-right">7d %</span>
+            <span className="text-right">30d %</span>
             <span />
           </div>
 
@@ -173,13 +182,19 @@ export default function Market() {
             <div>
               {pricedCards.map((card, i) => {
                 const price = getMarketPrice(card);
+                // Compute % change from Cardmarket rolling averages
+                const avgs = card.cardmarketAvgs;
+                const trend = avgs?.trend ?? null;
+                const pct24h = formatPct(trend != null && avgs?.avg1 != null && avgs.avg1 !== 0 ? ((trend - avgs.avg1) / avgs.avg1) * 100 : null);
+                const pct7d = formatPct(trend != null && avgs?.avg7 != null && avgs.avg7 !== 0 ? ((trend - avgs.avg7) / avgs.avg7) * 100 : null);
+                const pct30d = formatPct(trend != null && avgs?.avg30 != null && avgs.avg30 !== 0 ? ((trend - avgs.avg30) / avgs.avg30) * 100 : null);
                 return (
                   <motion.div
                     key={card.id}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(i * 0.008, 0.3) }}
-                    className="grid grid-cols-[40px_1fr_44px] sm:grid-cols-[40px_1fr_160px_100px_44px] gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors"
+                    className="grid grid-cols-[40px_1fr_44px] sm:grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px] gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors"
                     onClick={() => navigate(`/card/${card.id}`)}
                   >
                     {/* Rank */}
@@ -222,6 +237,21 @@ export default function Market() {
                       {formatPrice(price)}
                     </p>
 
+                    {/* 24h % */}
+                    <p className={`hidden sm:block text-xs font-medium text-right tabular-nums ${pct24h.className}`}>
+                      {pct24h.text}
+                    </p>
+
+                    {/* 7d % */}
+                    <p className={`hidden sm:block text-xs font-medium text-right tabular-nums ${pct7d.className}`}>
+                      {pct7d.text}
+                    </p>
+
+                    {/* 30d % */}
+                    <p className={`hidden sm:block text-xs font-medium text-right tabular-nums ${pct30d.className}`}>
+                      {pct30d.text}
+                    </p>
+
                     {/* Mobile price + add button */}
                     <div className="flex items-center justify-end gap-2">
                       <span className="text-sm font-bold text-foreground sm:hidden tabular-nums">
@@ -253,7 +283,7 @@ export default function Market() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: Math.min(i * 0.005, 0.2) }}
-                      className="grid grid-cols-[40px_1fr_44px] sm:grid-cols-[40px_1fr_160px_100px_44px] gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50"
+                      className="grid grid-cols-[40px_1fr_44px] sm:grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px] gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50"
                       onClick={() => navigate(`/card/${card.id}`)}
                     >
                       <span className="text-sm font-mono text-muted-foreground">
@@ -279,6 +309,9 @@ export default function Market() {
                       <p className="hidden sm:block text-sm text-muted-foreground text-right">
                         N/A
                       </p>
+                      <p className="hidden sm:block text-xs text-muted-foreground text-right">—</p>
+                      <p className="hidden sm:block text-xs text-muted-foreground text-right">—</p>
+                      <p className="hidden sm:block text-xs text-muted-foreground text-right">—</p>
                       <div className="flex items-center justify-end gap-2">
                         <span className="text-sm text-muted-foreground sm:hidden">N/A</span>
                         <Button

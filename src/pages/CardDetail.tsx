@@ -1,16 +1,19 @@
-import { useParams, Link, Navigate } from "react-router-dom";
+﻿import { useParams, Link, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getCardById,
   fetchCardDetail,
   getSetCards,
+  getMarketPrice,
+  enrichCardWithPricing,
   formatPrice,
   CONDITIONS,
   CardDetailFull,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
+import { recordCardView, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
 import {
   getWishlists,
   createWishlist,
@@ -31,6 +34,7 @@ import {
 import { ChevronRight, Heart, Plus, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import PriceChart from "@/components/PriceChart";
 
 // ─── Type styling ─────────────────────────────────────────────────────────────
 
@@ -105,6 +109,26 @@ export default function CardDetail() {
     staleTime: 5 * 60_000,
   });
 
+  // Enrich with pricing + cardmarket averages (for chart)
+  const { data: enrichedCard } = useQuery({
+    queryKey: ["card-enriched", id],
+    queryFn: () => enrichCardWithPricing(card!),
+    enabled: !!card,
+    staleTime: 5 * 60_000,
+  });
+
+  // Track card view (fire-and-forget)
+  useEffect(() => {
+    if (card) {
+      recordCardView({
+        id: card.id,
+        name: card.name,
+        setName: card.set.name,
+        imageSmall: card.images.small,
+      });
+    }
+  }, [card?.id]);
+
   const { data: setCardsResult } = useQuery({
     queryKey: ["set-cards-suggestions", card?.set.id],
     queryFn: () => getSetCards(card!.set.id, 1, 20),
@@ -139,6 +163,7 @@ export default function CardDetail() {
     const result = await addToCollection(card, user.id, condition);
     if (result) {
       toast.success(`${card.name} added to collection!`);
+      recordCollectionAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
     } else {
       toast.error("Failed to add to collection.");
     }
@@ -161,6 +186,7 @@ export default function CardDetail() {
       const ok = await addCardToWishlist(target.id, user.id, card);
       if (ok) {
         toast.success(`${card.name} added to wishlist!`);
+        recordWishlistAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
         queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
       } else {
         toast.info("Already in wishlist.");
@@ -206,17 +232,17 @@ export default function CardDetail() {
           )}
         </nav>
 
-        {/* Hero: image + info */}
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8 items-start">
+        {/* Hero row — card image + compact info side-by-side */}
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
           {/* Card image */}
-          <div className="lg:sticky lg:top-20">
+          <div className="flex items-start justify-center">
             {cardLoading ? (
-              <Skeleton className="aspect-[2.5/3.5] w-full max-w-[320px] mx-auto rounded-2xl" />
+              <Skeleton className="aspect-[2.5/3.5] w-full max-w-[320px] rounded-2xl" />
             ) : card ? (
               <motion.img
                 src={card.images.large}
                 alt={card.name}
-                className="w-full max-w-[320px] mx-auto rounded-2xl shadow-2xl"
+                className="w-full max-w-[320px] rounded-2xl shadow-2xl"
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
@@ -224,8 +250,8 @@ export default function CardDetail() {
             ) : null}
           </div>
 
-          {/* Card info */}
-          <div className="space-y-4">
+          {/* Core info — compact to fit beside card */}
+          <div className="flex flex-col gap-3">
             {/* Name + meta */}
             <div>
               {cardLoading ? (
@@ -250,7 +276,7 @@ export default function CardDetail() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-1.5 text-sm text-muted-foreground flex-wrap">
+                  <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground flex-wrap">
                     <span>{card.set.name}</span>
                     <span>·</span>
                     <span>
@@ -263,7 +289,7 @@ export default function CardDetail() {
 
                   {/* Type / HP / Stage pills */}
                   {(detail?.types?.length || detail?.hp || detail?.stage) && (
-                    <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
                       {detail?.types?.map((t) => (
                         <span
                           key={t}
@@ -289,7 +315,7 @@ export default function CardDetail() {
                   )}
 
                   {detail?.illustrator && (
-                    <p className="text-xs text-muted-foreground mt-2">
+                    <p className="text-xs text-muted-foreground mt-1.5">
                       Illus.{" "}
                       <span className="text-foreground/70">
                         {detail.illustrator}
@@ -307,15 +333,15 @@ export default function CardDetail() {
               )}
             </div>
 
-            {/* Pricing */}
-            <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-              <h3 className="font-display font-semibold text-foreground mb-3">
+            {/* Pricing table */}
+            <div className="rounded-xl border border-border bg-card p-4 flex-1 min-h-0">
+              <h3 className="font-display font-semibold text-foreground mb-2 text-sm">
                 Pricing
               </h3>
               {detailLoading ? (
                 <div className="space-y-2">
                   {[1, 2].map((i) => (
-                    <Skeleton key={i} className="h-8 w-full" />
+                    <Skeleton key={i} className="h-7 w-full" />
                   ))}
                 </div>
               ) : pricingRows.length > 0 ? (
@@ -323,10 +349,10 @@ export default function CardDetail() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-muted-foreground text-xs border-b border-border">
-                        <th className="text-left pb-2 font-medium">Variant</th>
-                        <th className="text-right pb-2 font-medium">Low</th>
-                        <th className="text-right pb-2 font-medium">Market</th>
-                        <th className="text-right pb-2 font-medium">High</th>
+                        <th className="text-left pb-1.5 font-medium">Variant</th>
+                        <th className="text-right pb-1.5 font-medium">Low</th>
+                        <th className="text-right pb-1.5 font-medium">Market</th>
+                        <th className="text-right pb-1.5 font-medium">High</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -335,20 +361,20 @@ export default function CardDetail() {
                           key={variant}
                           className="border-b border-border/50 last:border-0"
                         >
-                          <td className="py-2.5 text-muted-foreground text-xs">
+                          <td className="py-2 text-muted-foreground text-xs">
                             {VARIANT_LABELS[variant] || variant}
                           </td>
-                          <td className="py-2.5 text-right text-xs">
+                          <td className="py-2 text-right text-xs">
                             {v?.lowPrice ? formatPrice(v.lowPrice) : "—"}
                           </td>
-                          <td className="py-2.5 text-right font-semibold text-foreground">
+                          <td className="py-2 text-right font-semibold text-foreground">
                             {v?.marketPrice
                               ? formatPrice(v.marketPrice)
                               : v?.midPrice
                               ? formatPrice(v.midPrice)
                               : "—"}
                           </td>
-                          <td className="py-2.5 text-right text-xs">
+                          <td className="py-2 text-right text-xs">
                             {v?.highPrice ? formatPrice(v.highPrice) : "—"}
                           </td>
                         </tr>
@@ -361,55 +387,51 @@ export default function CardDetail() {
                   No pricing data available.
                 </p>
               )}
-
-              {/* Actions */}
-              <div className="flex items-center gap-3 mt-4 pt-4 border-t border-border flex-wrap">
-                <Select value={condition} onValueChange={setCondition}>
-                  <SelectTrigger className="w-[100px] h-9 text-sm bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CONDITIONS.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={handleAddToCollection}
-                  disabled={addingToCollection}
-                  className="flex-1 sm:flex-none"
-                >
-                  <Plus className="w-4 h-4 mr-1.5" />
-                  Add to Collection
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleWishlist}
-                  className={
-                    isWishlisted ? "text-destructive border-destructive/50" : ""
-                  }
-                >
-                  <Heart
-                    className={`w-4 h-4 mr-1.5 ${
-                      isWishlisted ? "fill-current" : ""
-                    }`}
-                  />
-                  {isWishlisted ? "Wishlisted" : "Wishlist"}
-                </Button>
-              </div>
             </div>
 
-            {/* Format legality */}
-            {detail?.legal && (
-              <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="font-display font-semibold text-foreground text-sm mb-3">
-                  Format Legality
-                </h3>
-                <div className="flex gap-3 flex-wrap">
+            {/* Actions + Format legality */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <Select value={condition} onValueChange={setCondition}>
+                <SelectTrigger className="w-[100px] h-9 text-sm bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONDITIONS.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleAddToCollection}
+                disabled={addingToCollection}
+                className="flex-1 sm:flex-none"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Add to Collection
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleWishlist}
+                className={
+                  isWishlisted ? "text-destructive border-destructive/50" : ""
+                }
+              >
+                <Heart
+                  className={`w-4 h-4 mr-1.5 ${
+                    isWishlisted ? "fill-current" : ""
+                  }`}
+                />
+                {isWishlisted ? "Wishlisted" : "Wishlist"}
+              </Button>
+
+              {/* Inline format legality pills */}
+              {detail?.legal && (
+                <>
+                  <span className="hidden sm:block w-px h-6 bg-border mx-1" />
                   <div
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
                       detail.legal.standard
                         ? "bg-green-500/10 text-green-400 border border-green-500/20"
                         : "bg-muted text-muted-foreground border border-border line-through"
@@ -425,7 +447,7 @@ export default function CardDetail() {
                     Standard
                   </div>
                   <div
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
                       detail.legal.expanded
                         ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
                         : "bg-muted text-muted-foreground border border-border line-through"
@@ -440,18 +462,27 @@ export default function CardDetail() {
                     />
                     Expanded
                   </div>
-                </div>
-              </div>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Game data: Attacks, Abilities, Battle Stats */}
+        {/* Price Chart — full width below hero */}
+        <div className="mt-6 rounded-xl border border-border bg-card p-4 sm:p-5">
+          <PriceChart
+            cardId={id!}
+            currentPrice={enrichedCard ? getMarketPrice(enrichedCard) : null}
+            cardmarketAvgs={enrichedCard?.cardmarketAvgs}
+          />
+        </div>
+
+        {/* Game data — full-width 2-col grid */}
         {(detail?.attacks?.length ||
           detail?.abilities?.length ||
           detail?.weaknesses?.length ||
           detail?.retreat !== undefined) && (
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Attacks */}
             {detail?.attacks && detail.attacks.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4 sm:p-5">

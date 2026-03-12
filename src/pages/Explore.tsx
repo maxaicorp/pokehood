@@ -23,6 +23,7 @@ import {
   TCGP_SERIES_IDS,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
+import { recordSearchHits, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
 import AppHeader from "@/components/AppHeader";
 import { MagicCard } from "@/components/ui/magic-card";
 import { RetroGrid } from "@/components/ui/retro-grid";
@@ -77,6 +78,13 @@ export default function Explore() {
     staleTime: 60_000,
   });
 
+  // Track search hits when results arrive for a search term
+  useEffect(() => {
+    if (searchTerm && cardsData?.data?.length) {
+      recordSearchHits(cardsData.data);
+    }
+  }, [searchTerm, cardsData?.data]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchTerm(query.trim());
@@ -120,6 +128,7 @@ export default function Explore() {
       return next;
     });
     if (result) {
+      recordCollectionAdd(card);
       toast.success(`${card.name} added to collection!`);
     } else {
       toast.error("Failed to add card.");
@@ -158,6 +167,7 @@ export default function Explore() {
     try {
       const ok = await addCardToWishlist(targetWishlist.id, user.id, card);
       if (ok) {
+        recordWishlistAdd(card);
         toast.success(`${card.name} added to wishlist!`);
         queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
       } else {

@@ -33,6 +33,13 @@ export interface PokemonCard {
       "1stEditionHolofoil"?: PriceData;
     };
   };
+  /** Rolling Cardmarket averages from TCGdex (EUR-based, still useful for % change) */
+  cardmarketAvgs?: {
+    avg1: number | null;
+    avg7: number | null;
+    avg30: number | null;
+    trend: number | null;
+  };
 }
 
 interface PriceData {
@@ -182,12 +189,22 @@ export async function enrichPageWithPricing(cards: PokemonCard[]): Promise<Pokem
   return Promise.all(cards.map(enrichCardWithPricing));
 }
 
+// Cache for cardmarket averages (separate from tcgplayer pricing)
+const cardmarketAvgsCache = new Map<string, PokemonCard["cardmarketAvgs"]>();
+
 export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonCard> {
-  if (card.tcgplayer?.prices) return card;
+  if (card.tcgplayer?.prices) {
+    // Already has tcgplayer prices but might be missing avgs
+    if (!card.cardmarketAvgs && cardmarketAvgsCache.has(card.id)) {
+      return { ...card, cardmarketAvgs: cardmarketAvgsCache.get(card.id) ?? undefined };
+    }
+    return card;
+  }
 
   if (pricingCache.has(card.id)) {
     const cached = pricingCache.get(card.id);
-    return cached ? { ...card, tcgplayer: cached } : card;
+    const avgs = cardmarketAvgsCache.get(card.id);
+    return cached ? { ...card, tcgplayer: cached, cardmarketAvgs: avgs ?? undefined } : card;
   }
 
   try {
@@ -195,6 +212,16 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
     if (!res.ok) { pricingCache.set(card.id, undefined); return card; }
     const data = await res.json();
     const updatedAt = new Date().toISOString().split("T")[0];
+
+    // Extract Cardmarket rolling averages (always, even when TCGPlayer is primary)
+    const cm = data.pricing?.cardmarket;
+    if (cm) {
+      const isHoloAvg = (cm["avg1-holo"] ?? 0) > 0;
+      const avgs: PokemonCard["cardmarketAvgs"] = isHoloAvg
+        ? { avg1: cm["avg1-holo"] ?? null, avg7: cm["avg7-holo"] ?? null, avg30: cm["avg30-holo"] ?? null, trend: cm["trend-holo"] ?? null }
+        : { avg1: cm["avg1"] ?? null, avg7: cm["avg7"] ?? null, avg30: cm["avg30"] ?? null, trend: cm["trend"] ?? null };
+      cardmarketAvgsCache.set(card.id, avgs);
+    }
 
     // Try TCGPlayer first
     const tcp = data.pricing?.tcgplayer;
@@ -216,12 +243,11 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
           },
         };
         pricingCache.set(card.id, tcgplayer);
-        return { ...card, tcgplayer };
+        return { ...card, tcgplayer, cardmarketAvgs: cardmarketAvgsCache.get(card.id) ?? undefined };
       }
     }
 
-    // Fall back to Cardmarket
-    const cm = data.pricing?.cardmarket;
+    // Fall back to Cardmarket for main price (cm already extracted above)
     if (cm) {
       const isHolo = (cm["avg-holo"] ?? 0) > 0;
       const priceData: PriceData = isHolo
@@ -235,7 +261,7 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
           prices: isHolo ? { holofoil: priceData } : { normal: priceData },
         };
         pricingCache.set(card.id, tcgplayer);
-        return { ...card, tcgplayer };
+        return { ...card, tcgplayer, cardmarketAvgs: cardmarketAvgsCache.get(card.id) ?? undefined };
       }
     }
   } catch { /* ignore network errors */ }
@@ -419,7 +445,7 @@ export const SORT_OPTIONS = [
 export const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"] as const;
 export type CardCondition = (typeof CONDITIONS)[number];
 
-export const TCGP_SERIES_IDS = ["tcgp"];
+export const TCGP_SERIES_IDS = ["pokémon tcg pocket"];
 
 export const PRODUCT_TYPES = [
   { value: "all", label: "All Products" },
@@ -492,7 +518,8 @@ export async function fetchCardDetail(id: string): Promise<CardDetailFull | null
 /** Top cards across the 6 newest sets, sorted by price descending. */
 export async function getTopPricedCards(limit = 100): Promise<PokemonCard[]> {
   const { cards, sets } = await loadCardIndex();
-  const recentSetIds = new Set(sets.slice(0, 6).map((s) => s.id));
+  const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
+  const recentSetIds = new Set(physicalSets.slice(0, 6).map((s) => s.id));
   const candidates = cards.filter((c) => recentSetIds.has(c.set.id));
   const priced = await enrichPageWithPricing(candidates);
   return priced
