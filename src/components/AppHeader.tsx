@@ -6,12 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X } from "lucide-react";
+import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
 interface AppHeaderProps {
-  activePage: "dashboard" | "explore";
+  activePage: "dashboard" | "explore" | "market";
   children?: React.ReactNode;
 }
 
@@ -113,6 +113,10 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           <Search className="w-5 h-5" />
           <span className="text-[10px] font-medium">Explore</span>
         </Link>
+        <Link to="/market" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "market" ? "text-foreground" : "text-muted-foreground"}`}>
+          <TrendingUp className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Market</span>
+        </Link>
       </div>
 
       {/* Header */}
@@ -129,6 +133,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
             <div className="hidden sm:flex items-center gap-0">
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Dashboard</Link>
               <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Explore</Link>
+              <Link to="/market" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "market" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Market</Link>
             </div>
             {isPro && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">

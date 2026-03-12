@@ -486,3 +486,23 @@ export async function fetchCardDetail(id: string): Promise<CardDetailFull | null
     return null;
   }
 }
+
+// ─── Market leaderboard ───────────────────────────────────────────────────────
+
+const HIGH_VALUE_RARITIES = [
+  "Special Illustration Rare", "Hyper Rare", "Illustration Rare",
+  "Rare Secret", "Shiny Ultra Rare", "ACE SPEC Rare", "Rare Rainbow",
+  "Rare Ultra", "Double Rare", "Ultra Rare", "Amazing Rare",
+];
+
+export async function getTopPricedCards(limit = 100): Promise<PokemonCard[]> {
+  const { cards } = await loadCardIndex();
+  const candidates = cards.filter(
+    (c) => c.rarity && HIGH_VALUE_RARITIES.includes(c.rarity)
+  );
+  const priced = await enrichPageWithPricing(candidates.slice(0, 400));
+  return priced
+    .filter((c) => getMarketPrice(c) !== null)
+    .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
+    .slice(0, limit);
+}

@@ -13,6 +13,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import DemoProfile from "./pages/DemoProfile";
 import CardDetail from "./pages/CardDetail";
+import Market from "./pages/Market";
 import NotFound from "./pages/NotFound";
 import BackgroundLayer from "@/components/BackgroundLayer";
 
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/demo" element={<DemoProfile />} />
               <Route path="/u/:slug" element={<Profile />} />
               <Route path="/card/:id" element={<CardDetail />} />
+              <Route path="/market" element={<Market />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>
