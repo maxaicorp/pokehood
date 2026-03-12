@@ -489,14 +489,23 @@ export async function fetchCardDetail(id: string): Promise<CardDetailFull | null
 
 // ─── Market leaderboard ───────────────────────────────────────────────────────
 
+/** Top cards across the 6 newest sets, sorted by price descending. */
 export async function getTopPricedCards(limit = 100): Promise<PokemonCard[]> {
-  const { cards } = await loadCardIndex();
-  // Cards are already sorted newest-first. Recent sets contain the most
-  // valuable cards (SIR, Hyper Rare, etc.). Fetch prices for the first 400
-  // and sort by market price to surface the top 100.
-  const priced = await enrichPageWithPricing(cards.slice(0, 400));
+  const { cards, sets } = await loadCardIndex();
+  const recentSetIds = new Set(sets.slice(0, 6).map((s) => s.id));
+  const candidates = cards.filter((c) => recentSetIds.has(c.set.id));
+  const priced = await enrichPageWithPricing(candidates);
   return priced
     .filter((c) => getMarketPrice(c) !== null)
     .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
     .slice(0, limit);
+}
+
+/** All cards in a specific set, sorted by price descending. */
+export async function getSetCardsByPrice(setId: string): Promise<PokemonCard[]> {
+  const result = await getSetCards(setId, 1, 500);
+  const priced = await enrichPageWithPricing(result.data);
+  return priced.sort(
+    (a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0)
+  );
 }
