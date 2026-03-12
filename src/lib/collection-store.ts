@@ -81,13 +81,20 @@ export async function addToCollection(
   // Enrich card with live pricing before storing
   card = await enrichCardWithPricing(card);
 
-  const { data: existing } = await supabase
+  const { data: existing, error: lookupError } = await supabase
     .from("collection_cards")
     .select("*")
     .eq("user_id", userId)
     .eq("tcg_api_id", card.id)
     .eq("condition", condition)
     .maybeSingle();
+
+  // If lookup errored (e.g. multiple rows exist due to prior race condition),
+  // bail out rather than inserting another duplicate.
+  if (lookupError) {
+    console.error("Failed to check existing card:", lookupError);
+    return null;
+  }
 
   if (existing) {
     const { data, error } = await supabase

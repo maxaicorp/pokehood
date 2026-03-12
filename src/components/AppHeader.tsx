@@ -6,13 +6,62 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search } from "lucide-react";
+import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface AppHeaderProps {
   activePage: "dashboard" | "explore";
   children?: React.ReactNode;
+}
+
+function ApiHealthBanner() {
+  const [status, setStatus] = useState<"ok" | "slow" | "down" | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      const start = Date.now();
+      try {
+        const res = await fetch("https://api.tcgdex.net/v2/en/sets/swsh1", {
+          signal: AbortSignal.timeout(8000),
+        });
+        if (cancelled) return;
+        const ms = Date.now() - start;
+        if (!res.ok) setStatus("down");
+        else if (ms > 4000) setStatus("slow");
+        else setStatus("ok");
+      } catch {
+        if (!cancelled) setStatus("down");
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (status === "ok" || status === null || dismissed) return null;
+
+  const isSlow = status === "slow";
+  return (
+    <div className={`w-full px-4 py-2 flex items-center justify-between gap-3 text-sm ${
+      isSlow
+        ? "bg-amber-500/10 border-b border-amber-500/20 text-amber-400"
+        : "bg-destructive/10 border-b border-destructive/20 text-destructive"
+    }`}>
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="w-4 h-4 shrink-0" />
+        <span>
+          {isSlow
+            ? "Card pricing is loading slowly — the data provider is taking longer than usual."
+            : "Card pricing is currently unavailable. Prices may show as N/A until the service recovers."}
+        </span>
+      </div>
+      <button onClick={() => setDismissed(true)} className="shrink-0 opacity-70 hover:opacity-100">
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  );
 }
 
 export default function AppHeader({ activePage, children }: AppHeaderProps) {
@@ -68,6 +117,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
 
       {/* Header */}
       <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
+        <ApiHealthBanner />
         <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
           <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/" className="flex items-center gap-2 px-1.5 py-1 rounded-xl bg-foreground h-8">

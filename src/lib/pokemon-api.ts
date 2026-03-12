@@ -426,3 +426,63 @@ export const PRODUCT_TYPES = [
   { value: "tcg", label: "Pokémon TCG" },
   { value: "pocket", label: "TCG Pocket" },
 ];
+
+// ─── Card detail (full TCGdex card shape) ─────────────────────────────────────
+
+export interface CardDetailFull {
+  id: string;
+  name: string;
+  hp?: number;
+  types?: string[];
+  stage?: string;
+  suffix?: string;
+  illustrator?: string;
+  rarity?: string;
+  regulationMark?: string;
+  attacks?: Array<{
+    cost?: string[];
+    name: string;
+    damage?: string;
+    effect?: string;
+  }>;
+  abilities?: Array<{
+    type: string;
+    name: string;
+    effect: string;
+  }>;
+  weaknesses?: Array<{ type: string; value: string }>;
+  resistances?: Array<{ type: string; value: string }>;
+  retreat?: number;
+  variants?: {
+    firstEdition?: boolean;
+    holo?: boolean;
+    normal?: boolean;
+    reverse?: boolean;
+  };
+  legal?: { standard?: boolean; expanded?: boolean };
+  pricing?: {
+    tcgplayer?: Record<string, {
+      lowPrice?: number;
+      midPrice?: number;
+      highPrice?: number;
+      marketPrice?: number;
+    }>;
+    cardmarket?: Record<string, number>;
+  };
+  set?: { id: string; name: string; releaseDate?: string };
+}
+
+export async function getCardById(id: string): Promise<PokemonCard | null> {
+  const { cards } = await loadCardIndex();
+  return cards.find((c) => c.id === id) ?? null;
+}
+
+export async function fetchCardDetail(id: string): Promise<CardDetailFull | null> {
+  try {
+    const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${id}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}

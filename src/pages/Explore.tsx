@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -54,6 +54,7 @@ export default function Explore() {
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
   const [productType, setProductType] = useState("");
+  const [addingCards, setAddingCards] = useState(new Set<string>());
 
   const { data: setsData } = useQuery({
     queryKey: ["pokemon-sets"],
@@ -110,7 +111,14 @@ export default function Explore() {
       toast.error("Please sign in to add cards.");
       return;
     }
+    if (addingCards.has(card.id)) return;
+    setAddingCards((prev) => new Set(prev).add(card.id));
     const result = await addToCollection(card, user.id);
+    setAddingCards((prev) => {
+      const next = new Set(prev);
+      next.delete(card.id);
+      return next;
+    });
     if (result) {
       toast.success(`${card.name} added to collection!`);
     } else {
@@ -444,6 +452,7 @@ function FilterControls({
 
 // Grid view component
 function CardGrid({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string>; isPricingLoading?: boolean }) {
+  const navigate = useNavigate();
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
       <AnimatePresence mode="popLayout">
@@ -459,13 +468,14 @@ function CardGrid({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
               exit={{ opacity: 0 }}
               transition={{ delay: i * 0.02 }}
               whileHover={{ y: -4 }}
-              className="h-full"
+              className="h-full cursor-pointer"
+              onClick={() => navigate(`/card/${card.id}`)}
             >
               <MagicCard className="group flex flex-col h-full rounded-xl bg-card border-border/50 overflow-hidden">
                 <div className="relative bg-background/50 p-1.5 sm:p-2">
                   <img src={card.images.small} alt={card.name} className="w-full rounded-lg" loading="lazy" />
                   <button
-                    onClick={() => onWishlist(card)}
+                    onClick={(e) => { e.stopPropagation(); onWishlist(card); }}
                     className={`absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                       isWishlisted
                         ? "bg-destructive text-destructive-foreground"
@@ -491,7 +501,7 @@ function CardGrid({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
                       size="icon"
                       variant="ghost"
                       className="h-7 w-7 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity rounded-full border border-border/50 hover:border-primary hover:text-primary z-10"
-                      onClick={() => onAdd(card)}
+                      onClick={(e) => { e.stopPropagation(); onAdd(card); }}
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </Button>
@@ -508,6 +518,7 @@ function CardGrid({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
 
 // List view component
 function CardList({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string>; isPricingLoading?: boolean }) {
+  const navigate = useNavigate();
   return (
     <div className="space-y-2">
       {cards.map((card, i) => {
@@ -516,10 +527,11 @@ function CardList({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
         return (
           <motion.div
             key={card.id}
-            className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-xl bg-card border border-border/50 card-shine group"
+            className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-xl bg-card border border-border/50 card-shine group cursor-pointer"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.02 }}
+            onClick={() => navigate(`/card/${card.id}`)}
           >
             <img src={card.images.small} alt={card.name} className="w-10 sm:w-12 rounded-md" loading="lazy" />
             <div className="flex-1 min-w-0">
@@ -533,7 +545,7 @@ function CardList({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
               : <span className="text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">{formatPrice(price)}</span>
             }
             <button
-              onClick={() => onWishlist(card)}
+              onClick={(e) => { e.stopPropagation(); onWishlist(card); }}
               className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                 isWishlisted ? "text-destructive" : "text-muted-foreground hover:text-destructive"
               }`}
@@ -544,7 +556,7 @@ function CardList({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
               size="icon"
               variant="ghost"
               className="h-7 w-7 sm:h-8 sm:w-8 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
-              onClick={() => onAdd(card)}
+              onClick={(e) => { e.stopPropagation(); onAdd(card); }}
             >
               <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Button>
