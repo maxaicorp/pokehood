@@ -1,8 +1,8 @@
-// ─── Local-first data layer ───────────────────────────────────────────
-// Reads from the TCGdex JSON files we downloaded into /public/data/
-// and maps them into the PokemonCard / PokemonSet interfaces the UI expects.
+// ─── Data layer ───────────────────────────────────────────────────────────────
+// Card/set metadata: single fetch from /data/all-cards.json (browser-cached)
+// Pricing: TCGdex live API per card on demand (free, no key required)
 
-// ─── Interfaces (unchanged for UI compatibility) ──────────────────────
+// ─── Interfaces ───────────────────────────────────────────────────────────────
 
 export interface PokemonCard {
   id: string;
@@ -18,17 +18,11 @@ export interface PokemonCard {
     printedTotal: number;
     total: number;
     releaseDate: string;
-    images: {
-      symbol: string;
-      logo: string;
-    };
+    images: { symbol: string; logo: string };
   };
   number: string;
   rarity?: string;
-  images: {
-    small: string;
-    large: string;
-  };
+  images: { small: string; large: string };
   tcgplayer?: {
     url: string;
     updatedAt: string;
@@ -57,10 +51,7 @@ export interface PokemonSet {
   total: number;
   releaseDate: string;
   updatedAt: string;
-  images: {
-    symbol: string;
-    logo: string;
-  };
+  images: { symbol: string; logo: string };
 }
 
 export interface SearchResult {
@@ -79,163 +70,215 @@ export interface SetSearchResult {
   totalCount: number;
 }
 
-// ─── Local data cache ─────────────────────────────────────────────────
+// ─── Card index types (all-cards.json shape) ──────────────────────────────────
 
-interface TCGDexCard {
+interface CardIndexSet {
+  name: string;
+  logo: string;
+  symbol: string;
+  releaseDate: string;
+  series: string;
+  serieId: string;
+  printedTotal: number;
+  total: number;
+}
+
+interface CardIndexCard {
   id: string;
   name: string;
   image: string;
   localId: string;
-  rarity?: string;
-  category?: string;
-  hp?: number;
-  types?: string[];
+  setId: string;
 }
 
-interface TCGDexSet {
-  id: string;
-  name: string;
-  logo?: string;
-  symbol?: string;
-  releaseDate?: string;
-  serie?: { id: string; name: string };
-  cardCount?: { total: number; official: number };
-  cards?: TCGDexCard[];
+interface CardIndex {
+  sets: Record<string, CardIndexSet>;
+  cards: CardIndexCard[];
 }
 
-let setsListCache: TCGDexSet[] | null = null;
+// ─── In-memory cache ──────────────────────────────────────────────────────────
+
 let allCardsCache: PokemonCard[] | null = null;
+let allSetsCache: PokemonSet[] | null = null;
+const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 
-const CACHE_VERSION = "v2";
-const SETS_CACHE_KEY = `pokevault_sets_${CACHE_VERSION}`;
-const CARDS_CACHE_KEY = `pokevault_cards_${CACHE_VERSION}`;
+// ─── Loader ───────────────────────────────────────────────────────────────────
 
-async function loadSetsList(): Promise<TCGDexSet[]> {
-  if (setsListCache) return setsListCache;
-
-  // Try localStorage first
-  try {
-    const cached = localStorage.getItem(SETS_CACHE_KEY);
-    if (cached) {
-      setsListCache = JSON.parse(cached);
-      return setsListCache!;
-    }
-  } catch { /* ignore */ }
-
-  const res = await fetch("/data/sets-list.json");
-  if (!res.ok) throw new Error("Failed to load sets list");
-  setsListCache = await res.json();
-
-  // Cache to localStorage
-  try { localStorage.setItem(SETS_CACHE_KEY, JSON.stringify(setsListCache)); } catch { /* ignore */ }
-  return setsListCache!;
-}
-
-async function loadSetData(setId: string): Promise<TCGDexSet> {
-  const res = await fetch(`/data/sets/${setId}.json`);
-  if (!res.ok) throw new Error(`Failed to load set ${setId}`);
-  return res.json();
-}
-
-function mapCard(card: TCGDexCard, set: TCGDexSet): PokemonCard {
-  return {
-    id: card.id,
-    name: card.name,
-    supertype: card.category || "Pokémon",
-    hp: card.hp ? String(card.hp) : undefined,
-    types: card.types,
-    set: {
-      id: set.id,
-      name: set.name,
-      series: set.serie?.name || "Unknown",
-      printedTotal: set.cardCount?.official || 0,
-      total: set.cardCount?.total || 0,
-      releaseDate: set.releaseDate || "2000-01-01",
-      images: {
-        symbol: set.symbol || "",
-        logo: set.logo || "",
-      },
-    },
-    number: card.localId,
-    rarity: card.rarity,
-    images: {
-      small: card.image + "/low.webp",
-      large: card.image + "/high.webp",
-    },
-  };
-}
-
-function mapSet(set: TCGDexSet): PokemonSet {
-  return {
-    id: set.id,
-    name: set.name,
-    series: set.serie?.name || "Unknown",
-    printedTotal: set.cardCount?.official || 0,
-    total: set.cardCount?.total || 0,
-    releaseDate: set.releaseDate || "2000-01-01",
-    updatedAt: set.releaseDate || "2000-01-01",
-    images: {
-      symbol: set.symbol || "",
-      logo: set.logo || "",
-    },
-  };
-}
-
-// Load ALL cards from ALL sets (cached after first load)
-async function loadAllCards(): Promise<PokemonCard[]> {
-  if (allCardsCache) return allCardsCache;
-
-  // Try localStorage first
-  try {
-    const cached = localStorage.getItem(CARDS_CACHE_KEY);
-    if (cached) {
-      allCardsCache = JSON.parse(cached);
-      return allCardsCache!;
-    }
-  } catch { /* ignore */ }
-  
-  const setsList = await loadSetsList();
-  const allCards: PokemonCard[] = [];
-  
-  // Load sets in parallel batches of 10
-  for (let i = 0; i < setsList.length; i += 10) {
-    const batch = setsList.slice(i, i + 10);
-    const results = await Promise.allSettled(
-      batch.map(async (s) => {
-        try {
-          const setData = await loadSetData(s.id);
-          return (setData.cards || []).map((c) => mapCard(c, setData));
-        } catch {
-          return [];
-        }
-      })
-    );
-    for (const r of results) {
-      if (r.status === "fulfilled") allCards.push(...r.value);
-    }
+async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet[] }> {
+  if (allCardsCache && allSetsCache) {
+    return { cards: allCardsCache, sets: allSetsCache };
   }
 
-  allCardsCache = allCards;
+  const res = await fetch("/data/all-cards.json");
+  if (!res.ok) throw new Error("Failed to load card index");
+  const index: CardIndex = await res.json();
 
-  // Cache to localStorage (may fail if too large, that's ok)
-  try { localStorage.setItem(CARDS_CACHE_KEY, JSON.stringify(allCards)); } catch { /* ignore */ }
-  return allCards;
+  // Map sets
+  const sets: PokemonSet[] = Object.entries(index.sets).map(([id, s]) => ({
+    id,
+    name: s.name,
+    series: s.series,
+    printedTotal: s.printedTotal,
+    total: s.total,
+    releaseDate: s.releaseDate,
+    updatedAt: s.releaseDate,
+    images: { symbol: s.symbol, logo: s.logo },
+  }));
+  sets.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+
+  // Map cards
+  const cards: PokemonCard[] = index.cards.map((c) => {
+    const s = index.sets[c.setId];
+    return {
+      id: c.id,
+      name: c.name,
+      supertype: "Pokémon",
+      set: {
+        id: c.setId,
+        name: s?.name ?? c.setId,
+        series: s?.series ?? "Unknown",
+        printedTotal: s?.printedTotal ?? 0,
+        total: s?.total ?? 0,
+        releaseDate: s?.releaseDate ?? "2000-01-01",
+        images: { symbol: s?.symbol ?? "", logo: s?.logo ?? "" },
+      },
+      number: c.localId,
+      images: {
+        small: c.image + "/low.webp",
+        large: c.image + "/high.webp",
+      },
+    };
+  });
+
+  // Sort newest-first so getLatestCards() and default view show recent cards
+  cards.sort((a, b) => b.set.releaseDate.localeCompare(a.set.releaseDate));
+
+  allCardsCache = cards;
+  allSetsCache = sets;
+  return { cards, sets };
 }
 
-// ─── Public API functions (same signatures as before) ─────────────────
+// ─── Live pricing ─────────────────────────────────────────────────────────────
+
+function mapLivePriceVariant(v?: {
+  lowPrice?: number; midPrice?: number; highPrice?: number;
+  marketPrice?: number; directLowPrice?: number;
+}): PriceData | undefined {
+  if (!v) return undefined;
+  const hasData = v.lowPrice !== undefined || v.midPrice !== undefined ||
+    v.highPrice !== undefined || v.marketPrice !== undefined;
+  if (!hasData) return undefined;
+  return {
+    low: v.lowPrice ?? 0,
+    mid: v.midPrice ?? 0,
+    high: v.highPrice ?? 0,
+    market: v.marketPrice ?? v.midPrice ?? 0,
+    directLow: v.directLowPrice,
+  };
+}
+
+/**
+ * Fetch live pricing for a card from TCGdex and merge it into the card object.
+ * Falls back to Cardmarket data if TCGPlayer data is unavailable.
+ * Results are cached in memory for the session.
+ */
+/** Fetch pricing for all cards on a page in parallel. */
+export async function enrichPageWithPricing(cards: PokemonCard[]): Promise<PokemonCard[]> {
+  return Promise.all(cards.map(enrichCardWithPricing));
+}
+
+export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonCard> {
+  if (card.tcgplayer?.prices) return card;
+
+  if (pricingCache.has(card.id)) {
+    const cached = pricingCache.get(card.id);
+    return cached ? { ...card, tcgplayer: cached } : card;
+  }
+
+  try {
+    const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${card.id}`);
+    if (!res.ok) { pricingCache.set(card.id, undefined); return card; }
+    const data = await res.json();
+    const updatedAt = new Date().toISOString().split("T")[0];
+
+    // Try TCGPlayer first
+    const tcp = data.pricing?.tcgplayer;
+    if (tcp) {
+      const normal = mapLivePriceVariant(tcp.normal);
+      const holofoil = mapLivePriceVariant(tcp.holofoil);
+      const reverseHolofoil = mapLivePriceVariant(tcp.reverseHolofoil);
+      const firstEdition = mapLivePriceVariant(tcp.firstEdition);
+      const hasPrices = normal || holofoil || reverseHolofoil || firstEdition;
+      if (hasPrices) {
+        const tcgplayer: PokemonCard["tcgplayer"] = {
+          url: "",
+          updatedAt,
+          prices: {
+            ...(normal && { normal }),
+            ...(holofoil && { holofoil }),
+            ...(reverseHolofoil && { reverseHolofoil }),
+            ...(firstEdition && { "1stEditionHolofoil": firstEdition }),
+          },
+        };
+        pricingCache.set(card.id, tcgplayer);
+        return { ...card, tcgplayer };
+      }
+    }
+
+    // Fall back to Cardmarket
+    const cm = data.pricing?.cardmarket;
+    if (cm) {
+      const isHolo = (cm["avg-holo"] ?? 0) > 0;
+      const priceData: PriceData = isHolo
+        ? { low: cm["low-holo"] ?? 0, mid: cm["avg-holo"] ?? 0, high: cm["avg-holo"] ?? 0, market: cm["trend-holo"] ?? cm["avg-holo"] ?? 0 }
+        : { low: cm.low ?? 0, mid: cm.avg ?? 0, high: cm.avg ?? 0, market: cm.trend ?? cm.avg ?? 0 };
+
+      if (priceData.market > 0) {
+        const tcgplayer: PokemonCard["tcgplayer"] = {
+          url: "",
+          updatedAt,
+          prices: isHolo ? { holofoil: priceData } : { normal: priceData },
+        };
+        pricingCache.set(card.id, tcgplayer);
+        return { ...card, tcgplayer };
+      }
+    }
+  } catch { /* ignore network errors */ }
+
+  pricingCache.set(card.id, undefined);
+  return card;
+}
+
+// ─── Public API functions ─────────────────────────────────────────────────────
+
+export async function getSets(): Promise<SetSearchResult> {
+  const { sets } = await loadCardIndex();
+  return {
+    data: sets,
+    page: 1,
+    pageSize: sets.length,
+    count: sets.length,
+    totalCount: sets.length,
+  };
+}
+
+export async function getLatestCards(
+  page = 1,
+  pageSize = 35,
+): Promise<SearchResult> {
+  const { cards } = await loadCardIndex();
+  // Already sorted newest-first after load; just paginate
+  return paginate(cards, page, pageSize);
+}
 
 export async function searchCards(
   query: string,
   page = 1,
   pageSize = 35,
 ): Promise<SearchResult> {
-  const allCards = await loadAllCards();
+  const { cards } = await loadCardIndex();
   const q = query.toLowerCase();
-  const filtered = allCards.filter((c) =>
-    c.name.toLowerCase().includes(q)
-  );
-  // Sort newest first
-  filtered.sort((a, b) => b.set.releaseDate.localeCompare(a.set.releaseDate));
+  const filtered = cards.filter((c) => c.name.toLowerCase().includes(q));
   return paginate(filtered, page, pageSize);
 }
 
@@ -252,8 +295,8 @@ export async function searchCardsAdvanced(
   page = 1,
   pageSize = 35,
 ): Promise<SearchResult> {
-  const allCards = await loadAllCards();
-  let filtered = [...allCards];
+  const { cards } = await loadCardIndex();
+  let filtered = cards;
 
   if (query) {
     const q = query.toLowerCase();
@@ -283,52 +326,23 @@ export async function searchCardsAdvanced(
   const sortBy = filters.sortBy || "-set.releaseDate";
   const desc = sortBy.startsWith("-");
   const field = sortBy.replace(/^-/, "");
-  filtered.sort((a, b) => {
-    let valA: string, valB: string;
-    if (field === "set.releaseDate") {
-      valA = a.set.releaseDate;
-      valB = b.set.releaseDate;
-    } else if (field === "name") {
-      valA = a.name;
-      valB = b.name;
-    } else if (field === "number") {
-      valA = a.number.padStart(5, "0");
-      valB = b.number.padStart(5, "0");
-    } else {
-      valA = a.name;
-      valB = b.name;
-    }
-    const cmp = valA.localeCompare(valB);
-    return desc ? -cmp : cmp;
-  });
+
+  if (field !== "set.releaseDate" || desc !== true) {
+    // Default sort (newest-first) is already applied at load time; only re-sort when different
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      let valA: string, valB: string;
+      if (field === "set.releaseDate") { valA = a.set.releaseDate; valB = b.set.releaseDate; }
+      else if (field === "name") { valA = a.name; valB = b.name; }
+      else if (field === "number") { valA = a.number.padStart(5, "0"); valB = b.number.padStart(5, "0"); }
+      else { valA = a.name; valB = b.name; }
+      const cmp = valA.localeCompare(valB);
+      return desc ? -cmp : cmp;
+    });
+    return paginate(sorted, page, pageSize);
+  }
 
   return paginate(filtered, page, pageSize);
-}
-
-export async function getLatestCards(
-  page = 1,
-  pageSize = 35,
-): Promise<SearchResult> {
-  const allCards = await loadAllCards();
-  // Sort newest first by set release date
-  const sorted = [...allCards].sort((a, b) =>
-    b.set.releaseDate.localeCompare(a.set.releaseDate)
-  );
-  return paginate(sorted, page, pageSize);
-}
-
-export async function getSets(): Promise<SetSearchResult> {
-  const setsList = await loadSetsList();
-  const mapped = setsList.map(mapSet);
-  // Sort newest first
-  mapped.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
-  return {
-    data: mapped,
-    page: 1,
-    pageSize: mapped.length,
-    count: mapped.length,
-    totalCount: mapped.length,
-  };
 }
 
 export async function getSetCards(
@@ -336,14 +350,14 @@ export async function getSetCards(
   page = 1,
   pageSize = 20,
 ): Promise<SearchResult> {
-  const setData = await loadSetData(setId);
-  const cards = (setData.cards || []).map((c) => mapCard(c, setData));
-  // Sort by card number
-  cards.sort((a, b) => a.number.padStart(5, "0").localeCompare(b.number.padStart(5, "0")));
-  return paginate(cards, page, pageSize);
+  const { cards } = await loadCardIndex();
+  const filtered = cards
+    .filter((c) => c.set.id === setId)
+    .sort((a, b) => a.number.padStart(5, "0").localeCompare(b.number.padStart(5, "0")));
+  return paginate(filtered, page, pageSize);
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function paginate(cards: PokemonCard[], page: number, pageSize: number): SearchResult {
   const start = (page - 1) * pageSize;
@@ -360,7 +374,6 @@ function paginate(cards: PokemonCard[], page: number, pageSize: number): SearchR
 export function getMarketPrice(card: PokemonCard): number | null {
   const prices = card.tcgplayer?.prices;
   if (!prices) return null;
-
   const priceData =
     prices.holofoil ||
     prices.normal ||
@@ -372,7 +385,6 @@ export function getMarketPrice(card: PokemonCard): number | null {
 export function getLowPrice(card: PokemonCard): number | null {
   const prices = card.tcgplayer?.prices;
   if (!prices) return null;
-
   const priceData =
     prices.holofoil ||
     prices.normal ||
@@ -386,43 +398,19 @@ export function formatPrice(price: number | null): string {
   return `$${price.toFixed(2)}`;
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 export const CARD_RARITIES = [
-  "Common",
-  "Uncommon",
-  "Rare",
-  "Rare Holo",
-  "Rare Holo EX",
-  "Rare Holo GX",
-  "Rare Holo V",
-  "Rare VMAX",
-  "Rare VSTAR",
-  "Rare Ultra",
-  "Rare Secret",
-  "Rare Rainbow",
-  "Illustration Rare",
-  "Special Illustration Rare",
-  "Hyper Rare",
-  "Double Rare",
-  "Ultra Rare",
-  "Shiny Rare",
-  "Shiny Ultra Rare",
-  "ACE SPEC Rare",
-  "Amazing Rare",
-  "Promo",
+  "Common", "Uncommon", "Rare", "Rare Holo", "Rare Holo EX", "Rare Holo GX",
+  "Rare Holo V", "Rare VMAX", "Rare VSTAR", "Rare Ultra", "Rare Secret",
+  "Rare Rainbow", "Illustration Rare", "Special Illustration Rare", "Hyper Rare",
+  "Double Rare", "Ultra Rare", "Shiny Rare", "Shiny Ultra Rare", "ACE SPEC Rare",
+  "Amazing Rare", "Promo",
 ];
 
 export const CARD_TYPES = [
-  "Colorless",
-  "Darkness",
-  "Dragon",
-  "Fairy",
-  "Fighting",
-  "Fire",
-  "Grass",
-  "Lightning",
-  "Metal",
-  "Psychic",
-  "Water",
+  "Colorless", "Darkness", "Dragon", "Fairy", "Fighting", "Fire",
+  "Grass", "Lightning", "Metal", "Psychic", "Water",
 ];
 
 export const SORT_OPTIONS = [
@@ -436,7 +424,6 @@ export const SORT_OPTIONS = [
 export const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"] as const;
 export type CardCondition = (typeof CONDITIONS)[number];
 
-// TCG Pocket series identifiers (from TCGdex serie.id)
 export const TCGP_SERIES_IDS = ["tcgp"];
 
 export const PRODUCT_TYPES = [

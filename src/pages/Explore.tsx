@@ -12,6 +12,7 @@ import {
   getMarketPrice,
   getLowPrice,
   formatPrice,
+  enrichPageWithPricing,
   PokemonCard,
   PokemonSet,
   CARD_RARITIES,
@@ -164,7 +165,16 @@ export default function Explore() {
     setPage(1);
   };
 
-  const cards = cardsData?.data || [];
+  // Second-pass query: fetch live pricing for the current page in parallel
+  const cardIds = (cardsData?.data || []).map((c) => c.id).join(",");
+  const { data: pricedCards, isLoading: isPricingLoading } = useQuery({
+    queryKey: ["card-prices", cardIds],
+    queryFn: () => enrichPageWithPricing(cardsData!.data),
+    enabled: !!cardsData?.data?.length,
+    staleTime: 5 * 60_000,
+  });
+
+  const cards = pricedCards || cardsData?.data || [];
   const totalCount = cardsData?.totalCount || 0;
   const totalPages = Math.ceil(totalCount / 35);
 
@@ -338,9 +348,9 @@ export default function Explore() {
                 <p className="text-muted-foreground text-sm mt-1">Try adjusting your search or filters</p>
               </div>
             ) : viewMode === "grid" ? (
-              <CardGrid cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} />
+              <CardGrid cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} isPricingLoading={isPricingLoading} />
             ) : (
-              <CardList cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} />
+              <CardList cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} isPricingLoading={isPricingLoading} />
             )}
 
             {/* Pagination */}
@@ -433,7 +443,7 @@ function FilterControls({
 }
 
 // Grid view component
-function CardGrid({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string> }) {
+function CardGrid({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string>; isPricingLoading?: boolean }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
       <AnimatePresence mode="popLayout">
@@ -473,7 +483,10 @@ function CardGrid({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonC
                     {card.number && <span className="text-[9px] sm:text-[10px] text-muted-foreground">• {card.number}/{card.set.printedTotal}</span>}
                   </div>
                   <div className="flex items-center justify-between pt-1 mt-auto">
-                    <span className="text-xs sm:text-sm font-bold text-foreground">{formatPrice(price)}</span>
+                    {isPricingLoading
+                      ? <Skeleton className="h-4 w-12" />
+                      : <span className="text-xs sm:text-sm font-bold text-foreground">{formatPrice(price)}</span>
+                    }
                     <Button
                       size="icon"
                       variant="ghost"
@@ -494,7 +507,7 @@ function CardGrid({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonC
 }
 
 // List view component
-function CardList({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string> }) {
+function CardList({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }: { cards: PokemonCard[]; onAdd: (c: PokemonCard) => void; onWishlist: (c: PokemonCard) => void; wishlistedIds: Set<string>; isPricingLoading?: boolean }) {
   return (
     <div className="space-y-2">
       {cards.map((card, i) => {
@@ -515,7 +528,10 @@ function CardList({ cards, onAdd, onWishlist, wishlistedIds }: { cards: PokemonC
                 {card.set.name} • {card.rarity || "Unknown"}
               </p>
             </div>
-            <span className="text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">{formatPrice(price)}</span>
+            {isPricingLoading
+              ? <Skeleton className="h-4 w-14 shrink-0" />
+              : <span className="text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">{formatPrice(price)}</span>
+            }
             <button
               onClick={() => onWishlist(card)}
               className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${

@@ -11,16 +11,6 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
-    proxy: {
-      "/api": {
-        target: "https://api.pokemontcg.io/v2",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
-        headers: {
-          "X-Api-Key": "b908af79-547e-46de-9c89-c210da26564e"
-        }
-      },
-    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

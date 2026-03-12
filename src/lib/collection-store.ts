@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { PokemonCard, getMarketPrice } from "./pokemon-api";
+import { PokemonCard, getMarketPrice, enrichCardWithPricing } from "./pokemon-api";
 
 export interface CollectionCard {
   id: string;
@@ -78,6 +78,9 @@ export async function addToCollection(
   condition = "NM",
   quantity = 1
 ): Promise<CollectionCard | null> {
+  // Enrich card with live pricing before storing
+  card = await enrichCardWithPricing(card);
+
   const { data: existing } = await supabase
     .from("collection_cards")
     .select("*")
