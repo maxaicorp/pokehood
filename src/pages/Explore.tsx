@@ -169,7 +169,7 @@ export default function Explore() {
   const cardIds = (cardsData?.data || []).map((c) => c.id).join(",");
   const { data: pricedCards, isLoading: isPricingLoading } = useQuery({
     queryKey: ["card-prices", cardIds],
-    queryFn: () => enrichPageWithPricing(cardsData!.data),
+    queryFn: () => enrichPageWithPricing(cardsData?.data ?? []),
     enabled: !!cardsData?.data?.length,
     staleTime: 5 * 60_000,
   });

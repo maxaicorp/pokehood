@@ -177,11 +177,6 @@ function mapLivePriceVariant(v?: {
   };
 }
 
-/**
- * Fetch live pricing for a card from TCGdex and merge it into the card object.
- * Falls back to Cardmarket data if TCGPlayer data is unavailable.
- * Results are cached in memory for the session.
- */
 /** Fetch pricing for all cards on a page in parallel. */
 export async function enrichPageWithPricing(cards: PokemonCard[]): Promise<PokemonCard[]> {
   return Promise.all(cards.map(enrichCardWithPricing));
