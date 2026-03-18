@@ -88,6 +88,7 @@ function EnergyCost({ type }: { type: string }) {
 
 export default function CardDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
   const [addingToCollection, setAddingToCollection] = useState(false);
