@@ -38,7 +38,7 @@ export async function getPriceChanges(
     price_1d_ago: number | null;
     price_7d_ago: number | null;
     price_30d_ago: number | null;
-  }>) {
+  }>)) {
     map.set(row.card_id, {
       cardId: row.card_id,
       currentPrice: row.current_price,
