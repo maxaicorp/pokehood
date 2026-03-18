@@ -32,7 +32,7 @@ export async function getPriceChanges(
 
   if (error || !data) return map;
 
-  for (const row of data as Array<{
+  for (const row of (data as unknown as Array<{
     card_id: string;
     current_price: number | null;
     price_1d_ago: number | null;
