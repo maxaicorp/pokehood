@@ -26,7 +26,7 @@ export async function getPriceChanges(
   const map = new Map<string, PriceChange>();
   if (cardIds.length === 0) return map;
 
-  const { data, error } = await supabase.rpc("get_price_changes", {
+  const { data, error } = await (supabase.rpc as any)("get_price_changes", {
     p_card_ids: cardIds,
   });
 
@@ -80,13 +80,15 @@ export async function getCardPriceHistory(
   cutoff.setDate(cutoff.getDate() - days);
   const cutoffStr = cutoff.toISOString().split("T")[0];
 
-  const { data, error } = await supabase
-    .from("price_snapshots")
+  const { data, error } = await (supabase.from as any)("price_snapshots")
     .select("recorded_at, price")
     .eq("card_id", cardId)
     .gte("recorded_at", cutoffStr)
     .order("recorded_at", { ascending: true });
 
   if (error || !data) return [];
-  return data.map((row) => ({ date: row.recorded_at, price: Number(row.price) }));
+  return (data as Array<{ recorded_at: string; price: number }>).map((row) => ({
+    date: row.recorded_at,
+    price: Number(row.price),
+  }));
 }

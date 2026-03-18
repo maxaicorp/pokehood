@@ -133,21 +133,19 @@ export default function PriceChart({
           Price History
         </h3>
         <div className="flex gap-1">
-          {(["7d", "30d", "90d"] as Range[])
-            .filter((r) => !isSynthetic || r !== "90d")
-            .map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
-                  range === r
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
+          {(["7d", "30d", "90d"] as Range[]).map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
+                range === r
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {r}
+            </button>
+          ))}
         </div>
       </div>
 

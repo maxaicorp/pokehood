@@ -9,7 +9,7 @@
 // Or invoke manually: curl -X POST <SUPABASE_URL>/functions/v1/snapshot-prices
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,8 +51,7 @@ interface TcgdexCardPricing {
 }
 
 function extractMarketPrice(data: TcgdexCardPricing): number | null {
-  // TCGPlayer only (USD). Cardmarket prices are EUR and would corrupt the
-  // historical chart which uses USD as its currency baseline.
+  // Try TCGPlayer first
   const tcp = data.pricing?.tcgplayer;
   if (tcp) {
     for (const variant of ["holofoil", "normal", "reverseHolofoil", "firstEdition"]) {
@@ -60,6 +59,14 @@ function extractMarketPrice(data: TcgdexCardPricing): number | null {
       if (v?.marketPrice) return v.marketPrice;
       if (v?.midPrice) return v.midPrice;
     }
+  }
+  // Fallback to Cardmarket
+  const cm = data.pricing?.cardmarket;
+  if (cm) {
+    if ((cm["trend-holo"] ?? 0) > 0) return cm["trend-holo"]!;
+    if ((cm["trend"] ?? 0) > 0) return cm["trend"]!;
+    if ((cm["avg-holo"] ?? 0) > 0) return cm["avg-holo"]!;
+    if ((cm["avg"] ?? 0) > 0) return cm["avg"]!;
   }
   return null;
 }
