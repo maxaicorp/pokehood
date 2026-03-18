@@ -35,7 +35,7 @@ function isDuplicate(cardId: string, stat: StatType): boolean {
 async function recordStat(card: CardIdentifier, stat: StatType) {
   if (isDuplicate(card.id, stat)) return;
   try {
-    await supabase.rpc("increment_card_stat", {
+    await (supabase.rpc as any)("increment_card_stat", {
       p_tcg_api_id: card.id,
       p_name: card.name,
       p_set_name: card.setName ?? "",
