@@ -327,6 +327,23 @@ export default function CardDetail() {
               <p className="text-muted-foreground">Card not found.</p>
             )}
 
+            {/* Price — mobile only (shown between card meta and chart) */}
+            {marketPrice !== null && (
+              <div className="lg:hidden">
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="text-3xl font-bold text-foreground tabular-nums">
+                    {formatPrice(marketPrice)}
+                  </span>
+                  {pct24h !== null && (
+                    <span className={`flex items-center gap-1 text-sm font-semibold ${pct24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {pct24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                      {pct24h >= 0 ? "+" : ""}{pct24h.toFixed(2)}% (24h)
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Price chart */}
             <div className="rounded-xl border border-border bg-card p-4 sm:p-5 flex-1">
               <PriceChart
@@ -339,8 +356,8 @@ export default function CardDetail() {
 
           {/* Col 3 — Price + Actions */}
           <div className="flex flex-col gap-3">
-            {/* Price display */}
-            <div>
+            {/* Price display — desktop only (mobile version lives in Col 2) */}
+            <div className="hidden lg:block">
               {marketPrice !== null ? (
                 <>
                   <div className="flex items-baseline gap-3 flex-wrap">

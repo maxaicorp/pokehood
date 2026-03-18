@@ -51,7 +51,8 @@ interface TcgdexCardPricing {
 }
 
 function extractMarketPrice(data: TcgdexCardPricing): number | null {
-  // Try TCGPlayer first
+  // TCGPlayer only (USD). Cardmarket prices are EUR and would corrupt the
+  // historical chart which uses USD as its currency baseline.
   const tcp = data.pricing?.tcgplayer;
   if (tcp) {
     for (const variant of ["holofoil", "normal", "reverseHolofoil", "firstEdition"]) {
@@ -59,14 +60,6 @@ function extractMarketPrice(data: TcgdexCardPricing): number | null {
       if (v?.marketPrice) return v.marketPrice;
       if (v?.midPrice) return v.midPrice;
     }
-  }
-  // Fallback to Cardmarket
-  const cm = data.pricing?.cardmarket;
-  if (cm) {
-    if ((cm["trend-holo"] ?? 0) > 0) return cm["trend-holo"]!;
-    if ((cm["trend"] ?? 0) > 0) return cm["trend"]!;
-    if ((cm["avg-holo"] ?? 0) > 0) return cm["avg-holo"]!;
-    if ((cm["avg"] ?? 0) > 0) return cm["avg"]!;
   }
   return null;
 }
