@@ -26,7 +26,7 @@ export async function getPriceChanges(
   const map = new Map<string, PriceChange>();
   if (cardIds.length === 0) return map;
 
-  const { data, error } = await supabase.rpc("get_price_changes", {
+  const { data, error } = await (supabase.rpc as any)("get_price_changes", {
     p_card_ids: cardIds,
   });
 
