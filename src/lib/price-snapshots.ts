@@ -32,13 +32,13 @@ export async function getPriceChanges(
 
   if (error || !data) return map;
 
-  for (const row of data as Array<{
+  for (const row of (data as unknown as Array<{
     card_id: string;
     current_price: number | null;
     price_1d_ago: number | null;
     price_7d_ago: number | null;
     price_30d_ago: number | null;
-  }>) {
+  }>)) {
     map.set(row.card_id, {
       cardId: row.card_id,
       currentPrice: row.current_price,
@@ -87,8 +87,5 @@ export async function getCardPriceHistory(
     .order("recorded_at", { ascending: true });
 
   if (error || !data) return [];
-  return (data as Array<{ recorded_at: string; price: number }>).map((row) => ({
-    date: row.recorded_at,
-    price: Number(row.price),
-  }));
+  return (data as Array<{ recorded_at: string; price: number }>).map((row) => ({ date: row.recorded_at, price: Number(row.price) }));
 }

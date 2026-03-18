@@ -22,6 +22,7 @@ function isDuplicate(cardId: string, stat: StatType): boolean {
   const now = Date.now();
   if (last && now - last < DEDUPE_MS) return true;
   recentEvents.set(key, now);
+  // keep map from growing forever
   if (recentEvents.size > 200) {
     const cutoff = now - DEDUPE_MS;
     for (const [k, v] of recentEvents) {
@@ -53,6 +54,7 @@ export function recordCardView(card: CardIdentifier) {
 
 /** Record that a card appeared in search results */
 export function recordSearchHits(cards: CardIdentifier[]) {
+  // only bump the top results to avoid flooding
   for (const card of cards.slice(0, 20)) {
     recordStat(card, "search_hit");
   }
@@ -81,15 +83,34 @@ export interface CardStatRow {
   wishlist_add_count: number;
 }
 
-async function queryCardStats(orderBy: string, limit: number): Promise<CardStatRow[]> {
+export async function getMostViewed(limit = 20): Promise<CardStatRow[]> {
   const { data } = await (supabase.from as any)("card_stats")
     .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
-    .order(orderBy, { ascending: false })
+    .order("view_count", { ascending: false })
     .limit(limit);
-  return (data as CardStatRow[]) ?? [];
+  return (data as CardStatRow[] | null) ?? [];
 }
 
-export const getMostViewed = (limit = 20) => queryCardStats("view_count", limit);
-export const getMostSearched = (limit = 20) => queryCardStats("search_hit_count", limit);
-export const getMostCollected = (limit = 20) => queryCardStats("collection_add_count", limit);
-export const getMostWishlisted = (limit = 20) => queryCardStats("wishlist_add_count", limit);
+export async function getMostSearched(limit = 20): Promise<CardStatRow[]> {
+  const { data } = await (supabase.from as any)("card_stats")
+    .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
+    .order("search_hit_count", { ascending: false })
+    .limit(limit);
+  return (data as CardStatRow[] | null) ?? [];
+}
+
+export async function getMostCollected(limit = 20): Promise<CardStatRow[]> {
+  const { data } = await (supabase.from as any)("card_stats")
+    .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
+    .order("collection_add_count", { ascending: false })
+    .limit(limit);
+  return (data as CardStatRow[] | null) ?? [];
+}
+
+export async function getMostWishlisted(limit = 20): Promise<CardStatRow[]> {
+  const { data } = await (supabase.from as any)("card_stats")
+    .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
+    .order("wishlist_add_count", { ascending: false })
+    .limit(limit);
+  return (data as CardStatRow[] | null) ?? [];
+}
