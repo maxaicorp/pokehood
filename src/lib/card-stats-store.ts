@@ -84,37 +84,33 @@ export interface CardStatRow {
 }
 
 export async function getMostViewed(limit = 20): Promise<CardStatRow[]> {
-  const { data } = await supabase
-    .from("card_stats")
+  const { data } = await (supabase.from as any)("card_stats")
     .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
     .order("view_count", { ascending: false })
     .limit(limit);
-  return (data as CardStatRow[]) ?? [];
+  return (data as CardStatRow[] | null) ?? [];
 }
 
 export async function getMostSearched(limit = 20): Promise<CardStatRow[]> {
-  const { data } = await supabase
-    .from("card_stats")
+  const { data } = await (supabase.from as any)("card_stats")
     .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
     .order("search_hit_count", { ascending: false })
     .limit(limit);
-  return (data as CardStatRow[]) ?? [];
+  return (data as CardStatRow[] | null) ?? [];
 }
 
 export async function getMostCollected(limit = 20): Promise<CardStatRow[]> {
-  const { data } = await supabase
-    .from("card_stats")
+  const { data } = await (supabase.from as any)("card_stats")
     .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
     .order("collection_add_count", { ascending: false })
     .limit(limit);
-  return (data as CardStatRow[]) ?? [];
+  return (data as CardStatRow[] | null) ?? [];
 }
 
 export async function getMostWishlisted(limit = 20): Promise<CardStatRow[]> {
-  const { data } = await supabase
-    .from("card_stats")
+  const { data } = await (supabase.from as any)("card_stats")
     .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
     .order("wishlist_add_count", { ascending: false })
     .limit(limit);
-  return (data as CardStatRow[]) ?? [];
+  return (data as CardStatRow[] | null) ?? [];
 }
