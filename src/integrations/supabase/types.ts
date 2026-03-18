@@ -14,51 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      card_stats: {
-        Row: {
-          tcg_api_id: string
-          name: string
-          set_name: string
-          image_small: string
-          view_count: number
-          search_hit_count: number
-          collection_add_count: number
-          wishlist_add_count: number
-          last_viewed_at: string | null
-          last_searched_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          tcg_api_id: string
-          name: string
-          set_name?: string
-          image_small?: string
-          view_count?: number
-          search_hit_count?: number
-          collection_add_count?: number
-          wishlist_add_count?: number
-          last_viewed_at?: string | null
-          last_searched_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          tcg_api_id?: string
-          name?: string
-          set_name?: string
-          image_small?: string
-          view_count?: number
-          search_hit_count?: number
-          collection_add_count?: number
-          wishlist_add_count?: number
-          last_viewed_at?: string | null
-          last_searched_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       collection_cards: {
         Row: {
           added_at: string
@@ -116,33 +71,6 @@ export type Database = {
           set_name?: string
           tcg_api_id?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      price_snapshots: {
-        Row: {
-          id: string
-          card_id: string
-          card_name: string
-          set_name: string
-          price: number
-          recorded_at: string
-        }
-        Insert: {
-          id?: string
-          card_id: string
-          card_name?: string
-          set_name?: string
-          price: number
-          recorded_at?: string
-        }
-        Update: {
-          id?: string
-          card_id?: string
-          card_name?: string
-          set_name?: string
-          price?: number
-          recorded_at?: string
         }
         Relationships: []
       }
@@ -365,28 +293,6 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
-      }
-      increment_card_stat: {
-        Args: {
-          p_tcg_api_id: string
-          p_name: string
-          p_set_name: string
-          p_image_small: string
-          p_stat: string
-        }
-        Returns: undefined
-      }
-      get_price_changes: {
-        Args: {
-          p_card_ids: string[]
-        }
-        Returns: {
-          card_id: string
-          current_price: number | null
-          price_1d_ago: number | null
-          price_7d_ago: number | null
-          price_30d_ago: number | null
-        }[]
       }
     }
     Enums: {
