@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, TrendingUp } from "lucide-react";
+import { Plus, TrendingUp, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -35,6 +35,17 @@ export default function Market() {
   const queryClient = useQueryClient();
   const [selectedSetId, setSelectedSetId] = useState("");
   const [addingCards, setAddingCards] = useState(new Set<string>());
+  const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | "30d" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const handleSort = (col: "price" | "24h" | "7d" | "30d") => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("desc");
+    }
+  };
 
   const { data: setsData } = useQuery({
     queryKey: ["pokemon-sets"],
@@ -78,11 +89,52 @@ export default function Market() {
   };
 
   const selectedSet = setsData?.data?.find((s: PokemonSet) => s.id === selectedSetId);
-  const pricedCards = (cards || []).filter((c) => getMarketPrice(c) !== null);
+
+  const getPcts = (card: PokemonCard) => {
+    const avgs = card.cardmarketAvgs;
+    const trend = avgs?.trend ?? null;
+    const raw24h = trend != null && avgs?.avg1 != null && avgs.avg1 !== 0 ? ((trend - avgs.avg1) / avgs.avg1) * 100 : null;
+    const raw7d = trend != null && avgs?.avg7 != null && avgs.avg7 !== 0 ? ((trend - avgs.avg7) / avgs.avg7) * 100 : null;
+    const raw30d = trend != null && avgs?.avg30 != null && avgs.avg30 !== 0 ? ((trend - avgs.avg30) / avgs.avg30) * 100 : null;
+    return { raw24h, raw7d, raw30d };
+  };
+
+  const rawPricedCards = (cards || []).filter((c) => getMarketPrice(c) !== null);
   const unpricedCards = (cards || []).filter((c) => getMarketPrice(c) === null);
+
+  const pricedCards = sortCol
+    ? [...rawPricedCards].sort((a, b) => {
+        let va: number | null, vb: number | null;
+        if (sortCol === "price") {
+          va = getMarketPrice(a);
+          vb = getMarketPrice(b);
+        } else {
+          const pa = getPcts(a);
+          const pb = getPcts(b);
+          va = sortCol === "24h" ? pa.raw24h : sortCol === "7d" ? pa.raw7d : pa.raw30d;
+          vb = sortCol === "24h" ? pb.raw24h : sortCol === "7d" ? pb.raw7d : pb.raw30d;
+        }
+        if (va === null && vb === null) return 0;
+        if (va === null) return 1;
+        if (vb === null) return -1;
+        return sortDir === "asc" ? va - vb : vb - va;
+      })
+    : rawPricedCards;
+
   const setTotalValue = selectedSetId
-    ? pricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0)
+    ? rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0)
     : null;
+
+  const gridCols = selectedSetId
+    ? "grid-cols-[40px_1fr_100px_72px_72px_72px_44px]"
+    : "grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px]";
+
+  const SortIcon = ({ col }: { col: "price" | "24h" | "7d" | "30d" }) => {
+    if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+    return sortDir === "asc"
+      ? <ArrowUp className="w-3 h-3 ml-1 text-primary" />
+      : <ArrowDown className="w-3 h-3 ml-1 text-primary" />;
+  };
 
   return (
     <div className="min-h-screen bg-background pb-16 sm:pb-0">
@@ -146,14 +198,22 @@ export default function Market() {
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
           {/* Table header */}
-          <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
+          <div className={`hidden sm:grid ${gridCols} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground`}>
             <span>#</span>
             <span>Card</span>
-            <span className={selectedSetId ? "hidden" : ""}>Set</span>
-            <span className="text-right">Market Price</span>
-            <span className="text-right">24h %</span>
-            <span className="text-right">7d %</span>
-            <span className="text-right">30d %</span>
+            {!selectedSetId && <span>Set</span>}
+            <button onClick={() => handleSort("price")} className="flex items-center justify-end hover:text-foreground transition-colors">
+              Market Price <SortIcon col="price" />
+            </button>
+            <button onClick={() => handleSort("24h")} className="flex items-center justify-end hover:text-foreground transition-colors">
+              24h % <SortIcon col="24h" />
+            </button>
+            <button onClick={() => handleSort("7d")} className="flex items-center justify-end hover:text-foreground transition-colors">
+              7d % <SortIcon col="7d" />
+            </button>
+            <button onClick={() => handleSort("30d")} className="flex items-center justify-end hover:text-foreground transition-colors">
+              30d % <SortIcon col="30d" />
+            </button>
             <span />
           </div>
 
@@ -182,19 +242,17 @@ export default function Market() {
             <div>
               {pricedCards.map((card, i) => {
                 const price = getMarketPrice(card);
-                // Compute % change from Cardmarket rolling averages
-                const avgs = card.cardmarketAvgs;
-                const trend = avgs?.trend ?? null;
-                const pct24h = formatPct(trend != null && avgs?.avg1 != null && avgs.avg1 !== 0 ? ((trend - avgs.avg1) / avgs.avg1) * 100 : null);
-                const pct7d = formatPct(trend != null && avgs?.avg7 != null && avgs.avg7 !== 0 ? ((trend - avgs.avg7) / avgs.avg7) * 100 : null);
-                const pct30d = formatPct(trend != null && avgs?.avg30 != null && avgs.avg30 !== 0 ? ((trend - avgs.avg30) / avgs.avg30) * 100 : null);
+                const { raw24h, raw7d, raw30d } = getPcts(card);
+                const pct24h = formatPct(raw24h);
+                const pct7d = formatPct(raw7d);
+                const pct30d = formatPct(raw30d);
                 return (
                   <motion.div
                     key={card.id}
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(i * 0.008, 0.3) }}
-                    className="grid grid-cols-[40px_1fr_44px] sm:grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px] gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors"
+                    className={`grid grid-cols-[40px_1fr_44px] sm:${gridCols} gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors`}
                     onClick={() => navigate(`/card/${card.id}`)}
                   >
                     {/* Rank */}
@@ -223,14 +281,12 @@ export default function Market() {
                       </div>
                     </div>
 
-                    {/* Set — desktop, hidden in set-specific view */}
-                    <p
-                      className={`hidden sm:block text-sm text-muted-foreground truncate ${
-                        selectedSetId ? "opacity-0 pointer-events-none" : ""
-                      }`}
-                    >
-                      {card.set.name}
-                    </p>
+                    {/* Set — desktop only, not rendered in set-specific view */}
+                    {!selectedSetId && (
+                      <p className="hidden sm:block text-sm text-muted-foreground truncate">
+                        {card.set.name}
+                      </p>
+                    )}
 
                     {/* Price */}
                     <p className="hidden sm:block text-sm font-bold text-foreground text-right tabular-nums">
@@ -283,7 +339,7 @@ export default function Market() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: Math.min(i * 0.005, 0.2) }}
-                      className="grid grid-cols-[40px_1fr_44px] sm:grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px] gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50"
+                      className={`grid grid-cols-[40px_1fr_44px] sm:${gridCols} gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50`}
                       onClick={() => navigate(`/card/${card.id}`)}
                     >
                       <span className="text-sm font-mono text-muted-foreground">
@@ -305,7 +361,7 @@ export default function Market() {
                           </p>
                         </div>
                       </div>
-                      <p className="hidden sm:block text-sm text-muted-foreground/40 truncate opacity-0" />
+                      {!selectedSetId && <p className="hidden sm:block text-sm text-muted-foreground truncate">{card.set.name}</p>}
                       <p className="hidden sm:block text-sm text-muted-foreground text-right">
                         N/A
                       </p>

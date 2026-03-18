@@ -46,29 +46,29 @@ function buildSyntheticHistory(
   const today = new Date();
   const points: PriceHistoryPoint[] = [];
 
-  // 30 days ago
+  // Cardmarket averages are in EUR; TCGPlayer currentPrice is in USD.
+  // Scale using trend as the bridge: ratio = USD price / EUR trend price.
+  // This preserves the shape of price movement while keeping Y-axis in USD.
+  const scaleFactor =
+    avgs.trend != null && avgs.trend > 0 ? currentPrice / avgs.trend : 1;
+
   if (avgs.avg30 != null) {
     const d = new Date(today);
     d.setDate(d.getDate() - 30);
-    points.push({ date: d.toISOString().split("T")[0], price: avgs.avg30 });
+    points.push({ date: d.toISOString().split("T")[0], price: avgs.avg30 * scaleFactor });
   }
-  // 7 days ago
   if (avgs.avg7 != null) {
     const d = new Date(today);
     d.setDate(d.getDate() - 7);
-    points.push({ date: d.toISOString().split("T")[0], price: avgs.avg7 });
+    points.push({ date: d.toISOString().split("T")[0], price: avgs.avg7 * scaleFactor });
   }
-  // 1 day ago
   if (avgs.avg1 != null) {
     const d = new Date(today);
     d.setDate(d.getDate() - 1);
-    points.push({ date: d.toISOString().split("T")[0], price: avgs.avg1 });
+    points.push({ date: d.toISOString().split("T")[0], price: avgs.avg1 * scaleFactor });
   }
-  // today (trend or live)
-  points.push({
-    date: today.toISOString().split("T")[0],
-    price: avgs.trend ?? currentPrice,
-  });
+  // Today = currentPrice (already USD, no scaling)
+  points.push({ date: today.toISOString().split("T")[0], price: currentPrice });
 
   return points;
 }

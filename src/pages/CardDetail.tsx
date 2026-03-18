@@ -1,4 +1,4 @@
-﻿import { useParams, Link, Navigate } from "react-router-dom";
+import { useParams, Link, Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,7 +9,6 @@ import {
   getMarketPrice,
   enrichCardWithPricing,
   formatPrice,
-  CONDITIONS,
   CardDetailFull,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
@@ -25,13 +24,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ChevronRight, Heart, Plus, ArrowLeft } from "lucide-react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronRight, ArrowLeft, ExternalLink, ChevronDown, TrendingUp, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import PriceChart from "@/components/PriceChart";
@@ -92,7 +90,6 @@ export default function CardDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
-  const [condition, setCondition] = useState("NM");
   const [addingToCollection, setAddingToCollection] = useState(false);
 
   const { data: card, isLoading: cardLoading } = useQuery({
@@ -109,7 +106,6 @@ export default function CardDetail() {
     staleTime: 5 * 60_000,
   });
 
-  // Enrich with pricing + cardmarket averages (for chart)
   const { data: enrichedCard } = useQuery({
     queryKey: ["card-enriched", id],
     queryFn: () => enrichCardWithPricing(card!),
@@ -117,7 +113,6 @@ export default function CardDetail() {
     staleTime: 5 * 60_000,
   });
 
-  // Track card view (fire-and-forget)
   useEffect(() => {
     if (card) {
       recordCardView({
@@ -160,7 +155,7 @@ export default function CardDetail() {
   const handleAddToCollection = async () => {
     if (!card || !user) return;
     setAddingToCollection(true);
-    const result = await addToCollection(card, user.id, condition);
+    const result = await addToCollection(card, user.id, "NM");
     if (result) {
       toast.success(`${card.name} added to collection!`);
       recordCollectionAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
@@ -204,24 +199,44 @@ export default function CardDetail() {
       )
     : [];
 
+  const marketPrice = enrichedCard ? getMarketPrice(enrichedCard) : null;
+  const avgs = enrichedCard?.cardmarketAvgs;
+  const trend = avgs?.trend ?? null;
+  const pct24h = trend != null && avgs?.avg1 != null && avgs.avg1 !== 0
+    ? ((trend - avgs.avg1) / avgs.avg1) * 100
+    : null;
+
   const suggestions = (setCardsResult?.data || [])
     .filter((c) => c.id !== id)
     .slice(0, 10);
+
+  const buyQuery = card ? encodeURIComponent(`${card.name} ${card.set.name} pokemon card`) : "";
+  const buyLinks = [
+    {
+      label: "TCGPlayer",
+      url: `https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(card?.name || "")}`,
+    },
+    {
+      label: "eBay",
+      url: `https://www.ebay.com/sch/i.html?_nkw=${buyQuery}&_sacat=0`,
+    },
+    {
+      label: "Amazon",
+      url: `https://www.amazon.com/s?k=${buyQuery}`,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-16 sm:pb-0">
       <AppHeader activePage="explore" />
 
-      <div className="container py-6 px-4 sm:px-8 max-w-6xl">
+      <div className="container py-6 px-4 sm:px-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6 flex-wrap">
-          <Link
-            to="/explore"
-            className="hover:text-foreground transition-colors flex items-center gap-1"
-          >
+          <button onClick={() => navigate(-1)} className="hover:text-foreground transition-colors flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
-            Explore
-          </Link>
+            Back
+          </button>
           {card && (
             <>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -232,10 +247,11 @@ export default function CardDetail() {
           )}
         </nav>
 
-        {/* Hero row — card image + compact info side-by-side */}
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
-          {/* Card image */}
-          <div className="flex items-start justify-center">
+        {/* ── 3-column hero ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_280px] gap-6 items-start">
+
+          {/* Col 1 — Card image */}
+          <div className="flex items-start justify-center lg:justify-start">
             {cardLoading ? (
               <Skeleton className="aspect-[2.5/3.5] w-full max-w-[320px] rounded-2xl" />
             ) : card ? (
@@ -250,267 +266,180 @@ export default function CardDetail() {
             ) : null}
           </div>
 
-          {/* Core info — compact to fit beside card */}
-          <div className="flex flex-col gap-3">
+          {/* Col 2 — Info + chart */}
+          <div className="flex flex-col gap-4 min-w-0">
             {/* Name + meta */}
-            <div>
-              {cardLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-8 w-64" />
-                  <Skeleton className="h-4 w-48" />
+            {cardLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-64" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ) : card ? (
+              <div>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
+                    {card.name}
+                  </h1>
+                  {(card.rarity || detail?.rarity) && (
+                    <Badge variant="secondary" className="shrink-0 text-xs mt-1">
+                      {card.rarity || detail?.rarity}
+                    </Badge>
+                  )}
                 </div>
-              ) : card ? (
-                <>
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
-                      {card.name}
-                      {detail?.suffix && (
-                        <span className="text-primary ml-2 text-xl">
-                          {detail.suffix}
-                        </span>
-                      )}
-                    </h1>
-                    {(card.rarity || detail?.rarity) && (
-                      <Badge variant="secondary" className="shrink-0 text-xs mt-1">
-                        {card.rarity || detail?.rarity}
-                      </Badge>
+                <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground flex-wrap">
+                  <span>{card.set.name}</span>
+                  <span>·</span>
+                  <span>#{card.number}/{card.set.printedTotal || card.set.total}</span>
+                  <span>·</span>
+                  <span>{card.set.releaseDate}</span>
+                </div>
+                {(detail?.types?.length || detail?.hp || detail?.stage) && (
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {detail?.types?.map((t) => (
+                      <span key={t} className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[t] || "bg-muted text-muted-foreground border border-border"}`}>
+                        {t}
+                      </span>
+                    ))}
+                    {detail?.hp && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                        HP {detail.hp}
+                      </span>
+                    )}
+                    {detail?.stage && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
+                        {detail.stage}
+                      </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground flex-wrap">
-                    <span>{card.set.name}</span>
-                    <span>·</span>
-                    <span>
-                      #{card.number}/
-                      {card.set.printedTotal || card.set.total}
-                    </span>
-                    <span>·</span>
-                    <span>{card.set.releaseDate}</span>
-                  </div>
+                )}
+                {detail?.illustrator && (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Illus. <span className="text-foreground/70">{detail.illustrator}</span>
+                    {detail.regulationMark && (
+                      <span className="ml-3 font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">
+                        {detail.regulationMark}
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">Card not found.</p>
+            )}
 
-                  {/* Type / HP / Stage pills */}
-                  {(detail?.types?.length || detail?.hp || detail?.stage) && (
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      {detail?.types?.map((t) => (
-                        <span
-                          key={t}
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            TYPE_COLORS[t] ||
-                            "bg-muted text-muted-foreground border border-border"
-                          }`}
-                        >
-                          {t}
-                        </span>
+            {/* Price chart */}
+            <div className="rounded-xl border border-border bg-card p-4 sm:p-5 flex-1">
+              <PriceChart
+                cardId={id!}
+                currentPrice={enrichedCard ? getMarketPrice(enrichedCard) : null}
+                cardmarketAvgs={enrichedCard?.cardmarketAvgs}
+              />
+            </div>
+          </div>
+
+          {/* Col 3 — Price + Actions */}
+          <div className="flex flex-col gap-3">
+            {/* Price display */}
+            <div>
+              {marketPrice !== null ? (
+                <>
+                  <div className="flex items-baseline gap-3 flex-wrap">
+                    <span className="text-3xl font-bold text-foreground tabular-nums">
+                      {formatPrice(marketPrice)}
+                    </span>
+                    {pct24h !== null && (
+                      <span className={`flex items-center gap-1 text-sm font-semibold ${pct24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {pct24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                        {pct24h >= 0 ? "+" : ""}{pct24h.toFixed(2)}% (24h)
+                      </span>
+                    )}
+                  </div>
+                  {pricingRows.length > 0 && (
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      {pricingRows.map(([variant, v]) => (
+                        <div key={variant} className="text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground/70">{VARIANT_LABELS[variant] || variant}</span>
+                          <span className="mx-1.5">·</span>
+                          <span>Low {v?.lowPrice ? formatPrice(v.lowPrice) : "—"}</span>
+                          <span className="mx-1">·</span>
+                          <span className="font-semibold text-foreground">
+                            {v?.marketPrice ? formatPrice(v.marketPrice) : v?.midPrice ? formatPrice(v.midPrice) : "—"}
+                          </span>
+                          <span className="mx-1">·</span>
+                          <span>High {v?.highPrice ? formatPrice(v.highPrice) : "—"}</span>
+                        </div>
                       ))}
-                      {detail?.hp && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
-                          HP {detail.hp}
-                        </span>
-                      )}
-                      {detail?.stage && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
-                          {detail.stage}
-                        </span>
-                      )}
                     </div>
                   )}
-
-                  {detail?.illustrator && (
-                    <p className="text-xs text-muted-foreground mt-1.5">
-                      Illus.{" "}
-                      <span className="text-foreground/70">
-                        {detail.illustrator}
-                      </span>
-                      {detail.regulationMark && (
-                        <span className="ml-3 font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">
-                          {detail.regulationMark}
-                        </span>
-                      )}
-                    </p>
-                  )}
                 </>
-              ) : (
-                <p className="text-muted-foreground">Card not found.</p>
-              )}
+              ) : detailLoading ? (
+                <Skeleton className="h-9 w-32" />
+              ) : null}
             </div>
 
-            {/* Pricing table */}
-            <div className="rounded-xl border border-border bg-card p-4 flex-1 min-h-0">
-              <h3 className="font-display font-semibold text-foreground mb-2 text-sm">
-                Pricing
-              </h3>
-              {detailLoading ? (
-                <div className="space-y-2">
-                  {[1, 2].map((i) => (
-                    <Skeleton key={i} className="h-7 w-full" />
-                  ))}
-                </div>
-              ) : pricingRows.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-muted-foreground text-xs border-b border-border">
-                        <th className="text-left pb-1.5 font-medium">Variant</th>
-                        <th className="text-right pb-1.5 font-medium">Low</th>
-                        <th className="text-right pb-1.5 font-medium">Market</th>
-                        <th className="text-right pb-1.5 font-medium">High</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pricingRows.map(([variant, v]) => (
-                        <tr
-                          key={variant}
-                          className="border-b border-border/50 last:border-0"
-                        >
-                          <td className="py-2 text-muted-foreground text-xs">
-                            {VARIANT_LABELS[variant] || variant}
-                          </td>
-                          <td className="py-2 text-right text-xs">
-                            {v?.lowPrice ? formatPrice(v.lowPrice) : "—"}
-                          </td>
-                          <td className="py-2 text-right font-semibold text-foreground">
-                            {v?.marketPrice
-                              ? formatPrice(v.marketPrice)
-                              : v?.midPrice
-                              ? formatPrice(v.midPrice)
-                              : "—"}
-                          </td>
-                          <td className="py-2 text-right text-xs">
-                            {v?.highPrice ? formatPrice(v.highPrice) : "—"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No pricing data available.
-                </p>
-              )}
-            </div>
+            <div className="w-full h-px bg-border" />
 
-            {/* Actions + Format legality */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <Select value={condition} onValueChange={setCondition}>
-                <SelectTrigger className="w-[100px] h-9 text-sm bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONDITIONS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={handleAddToCollection}
-                disabled={addingToCollection}
-                className="flex-1 sm:flex-none"
-              >
-                <Plus className="w-4 h-4 mr-1.5" />
-                Add to Collection
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleWishlist}
-                className={
-                  isWishlisted ? "text-destructive border-destructive/50" : ""
-                }
-              >
-                <Heart
-                  className={`w-4 h-4 mr-1.5 ${
-                    isWishlisted ? "fill-current" : ""
-                  }`}
-                />
-                {isWishlisted ? "Wishlisted" : "Wishlist"}
-              </Button>
+            {/* Buy Now dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="w-full h-12 text-base" size="lg">
+                  Buy Now
+                  <ChevronDown className="w-4 h-4 ml-2 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                {buyLinks.map((link) => (
+                  <DropdownMenuItem key={link.label} asChild>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between">
+                      {link.label}
+                      <ExternalLink className="w-3.5 h-3.5 opacity-50" />
+                    </a>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              {/* Inline format legality pills */}
-              {detail?.legal && (
-                <>
-                  <span className="hidden sm:block w-px h-6 bg-border mx-1" />
-                  <div
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                      detail.legal.standard
-                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                        : "bg-muted text-muted-foreground border border-border line-through"
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        detail.legal.standard
-                          ? "bg-green-400"
-                          : "bg-muted-foreground"
-                      }`}
-                    />
-                    Standard
-                  </div>
-                  <div
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                      detail.legal.expanded
-                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                        : "bg-muted text-muted-foreground border border-border line-through"
-                    }`}
-                  >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        detail.legal.expanded
-                          ? "bg-blue-400"
-                          : "bg-muted-foreground"
-                      }`}
-                    />
-                    Expanded
-                  </div>
-                </>
-              )}
-            </div>
+            {/* Add to collection */}
+            <Button
+              onClick={handleAddToCollection}
+              disabled={addingToCollection}
+              variant="outline"
+              className="w-full h-12 text-base"
+            >
+              Add to Collection
+            </Button>
+
+            {/* Wishlist */}
+            <Button
+              variant="outline"
+              onClick={handleWishlist}
+              className={`w-full h-12 text-base ${isWishlisted ? "text-destructive border-destructive/50" : ""}`}
+            >
+              {isWishlisted ? "Wishlisted" : "Wishlist"}
+            </Button>
           </div>
         </div>
 
-        {/* Price Chart — full width below hero */}
-        <div className="mt-6 rounded-xl border border-border bg-card p-4 sm:p-5">
-          <PriceChart
-            cardId={id!}
-            currentPrice={enrichedCard ? getMarketPrice(enrichedCard) : null}
-            cardmarketAvgs={enrichedCard?.cardmarketAvgs}
-          />
-        </div>
-
-        {/* Game data — full-width 2-col grid */}
-        {(detail?.attacks?.length ||
-          detail?.abilities?.length ||
-          detail?.weaknesses?.length ||
-          detail?.retreat !== undefined) && (
+        {/* ── Game data ── */}
+        {(detail?.attacks?.length || detail?.abilities?.length || detail?.weaknesses?.length || detail?.retreat !== undefined) && (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Attacks */}
             {detail?.attacks && detail.attacks.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <h3 className="font-display font-semibold text-foreground mb-4">
-                  Attacks
-                </h3>
+                <h3 className="font-display font-semibold text-foreground mb-4">Attacks</h3>
                 <div className="space-y-4">
                   {detail.attacks.map((attack, i) => (
                     <div key={i} className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <div className="flex gap-0.5">
-                          {attack.cost?.map((c, j) => (
-                            <EnergyCost key={j} type={c} />
-                          ))}
+                          {attack.cost?.map((c, j) => <EnergyCost key={j} type={c} />)}
                         </div>
-                        <span className="font-semibold text-foreground text-sm flex-1">
-                          {attack.name}
-                        </span>
+                        <span className="font-semibold text-foreground text-sm flex-1">{attack.name}</span>
                         {attack.damage && (
-                          <span className="font-bold text-foreground tabular-nums">
-                            {attack.damage}
-                          </span>
+                          <span className="font-bold text-foreground tabular-nums">{attack.damage}</span>
                         )}
                       </div>
                       {attack.effect && (
-                        <p className="text-xs text-muted-foreground leading-relaxed pl-1">
-                          {attack.effect}
-                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed pl-1">{attack.effect}</p>
                       )}
                     </div>
                   ))}
@@ -518,57 +447,32 @@ export default function CardDetail() {
               </div>
             )}
 
-            {/* Abilities */}
             {detail?.abilities && detail.abilities.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <h3 className="font-display font-semibold text-foreground mb-4">
-                  Abilities
-                </h3>
+                <h3 className="font-display font-semibold text-foreground mb-4">Abilities</h3>
                 <div className="space-y-3">
                   {detail.abilities.map((ability, i) => (
                     <div key={i}>
                       <div className="flex items-center gap-2 mb-1">
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] px-1.5 py-0"
-                        >
-                          {ability.type}
-                        </Badge>
-                        <span className="font-semibold text-sm text-foreground">
-                          {ability.name}
-                        </span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{ability.type}</Badge>
+                        <span className="font-semibold text-sm text-foreground">{ability.name}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {ability.effect}
-                      </p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{ability.effect}</p>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Battle stats */}
-            {(detail?.weaknesses?.length ||
-              detail?.resistances?.length ||
-              detail?.retreat !== undefined) && (
+            {(detail?.weaknesses?.length || detail?.resistances?.length || detail?.retreat !== undefined) && (
               <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <h3 className="font-display font-semibold text-foreground mb-4">
-                  Battle Stats
-                </h3>
+                <h3 className="font-display font-semibold text-foreground mb-4">Battle Stats</h3>
                 {detail?.weaknesses && detail.weaknesses.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs text-muted-foreground mb-1.5">
-                      Weakness
-                    </p>
+                    <p className="text-xs text-muted-foreground mb-1.5">Weakness</p>
                     <div className="flex gap-2 flex-wrap">
                       {detail.weaknesses.map((w, i) => (
-                        <span
-                          key={i}
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                            TYPE_COLORS[w.type] ||
-                            "bg-muted text-muted-foreground border border-border"
-                          }`}
-                        >
+                        <span key={i} className={`px-2.5 py-1 rounded-full text-xs font-medium ${TYPE_COLORS[w.type] || "bg-muted text-muted-foreground border border-border"}`}>
                           {w.type} {w.value}
                         </span>
                       ))}
@@ -577,18 +481,10 @@ export default function CardDetail() {
                 )}
                 {detail?.resistances && detail.resistances.length > 0 && (
                   <div className="mb-3">
-                    <p className="text-xs text-muted-foreground mb-1.5">
-                      Resistance
-                    </p>
+                    <p className="text-xs text-muted-foreground mb-1.5">Resistance</p>
                     <div className="flex gap-2 flex-wrap">
                       {detail.resistances.map((r, i) => (
-                        <span
-                          key={i}
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                            TYPE_COLORS[r.type] ||
-                            "bg-muted text-muted-foreground border border-border"
-                          }`}
-                        >
+                        <span key={i} className={`px-2.5 py-1 rounded-full text-xs font-medium ${TYPE_COLORS[r.type] || "bg-muted text-muted-foreground border border-border"}`}>
                           {r.type} {r.value}
                         </span>
                       ))}
@@ -597,18 +493,13 @@ export default function CardDetail() {
                 )}
                 {detail?.retreat !== undefined && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">
-                      Retreat Cost
-                    </p>
+                    <p className="text-xs text-muted-foreground mb-1.5">Retreat Cost</p>
                     {detail.retreat === 0 ? (
                       <span className="text-xs text-green-400">Free</span>
                     ) : (
                       <div className="flex gap-0.5">
                         {Array.from({ length: detail.retreat }).map((_, i) => (
-                          <span
-                            key={i}
-                            className="w-4 h-4 rounded-full bg-gray-400 inline-block"
-                          />
+                          <span key={i} className="w-4 h-4 rounded-full bg-gray-400 inline-block" />
                         ))}
                       </div>
                     )}
@@ -619,21 +510,16 @@ export default function CardDetail() {
           </div>
         )}
 
-        {/* More from this set */}
+        {/* ── More from this set ── */}
         {suggestions.length > 0 && (
           <div className="mt-10">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display font-semibold text-foreground">
-                More from {card?.set.name}
-              </h3>
-            </div>
+            <h3 className="font-display font-semibold text-foreground mb-4">
+              More from {card?.set.name}
+            </h3>
             <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
               {suggestions.map((c) => (
                 <Link key={c.id} to={`/card/${c.id}`} className="shrink-0 group">
-                  <motion.div
-                    whileHover={{ y: -4 }}
-                    transition={{ duration: 0.15 }}
-                  >
+                  <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }}>
                     <img
                       src={c.images.small}
                       alt={c.name}

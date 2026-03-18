@@ -50,6 +50,7 @@ export default function Landing() {
           <div className="hidden sm:flex items-center gap-0">
             <Link to="/dashboard" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Dashboard</Link>
             <Link to="/explore" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Explore</Link>
+            <Link to="/market" className="px-4 py-1.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:text-[#666] dark:hover:text-white transition-colors">Market</Link>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-1">
             <Link to="/auth" className="hidden sm:inline-flex">
@@ -82,6 +83,7 @@ export default function Landing() {
             >
               <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors">Dashboard</Link>
               <Link to="/explore" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors">Explore</Link>
+              <Link to="/market" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-medium text-[#141414] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors">Market</Link>
               <Link to="/auth" onClick={() => setMobileMenuOpen(false)} className="px-4 py-2.5 text-sm font-semibold text-center rounded-xl bg-[#141414] dark:bg-white text-white dark:text-[#141414]">Get Started</Link>
             </motion.div>
           )}
