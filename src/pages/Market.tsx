@@ -125,9 +125,9 @@ export default function Market() {
     ? rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0)
     : null;
 
-  const gridCols = selectedSetId
-    ? "grid-cols-[40px_1fr_100px_72px_72px_72px_44px]"
-    : "grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px]";
+  const gridClasses = selectedSetId
+    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_72px_44px]"
+    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px]";
 
   const SortIcon = ({ col }: { col: "price" | "24h" | "7d" | "30d" }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
@@ -198,7 +198,7 @@ export default function Market() {
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
           {/* Table header */}
-          <div className={`hidden sm:grid ${gridCols} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground`}>
+          <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground`}>
             <span>#</span>
             <span>Card</span>
             {!selectedSetId && <span>Set</span>}
@@ -252,7 +252,7 @@ export default function Market() {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(i * 0.008, 0.3) }}
-                    className={`grid grid-cols-[40px_1fr_44px] sm:${gridCols} gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors`}
+                    className={`grid grid-cols-[40px_1fr_44px] ${gridClasses} gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors`}
                     onClick={() => navigate(`/card/${card.id}`)}
                   >
                     {/* Rank */}
@@ -339,7 +339,7 @@ export default function Market() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: Math.min(i * 0.005, 0.2) }}
-                      className={`grid grid-cols-[40px_1fr_44px] sm:${gridCols} gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50`}
+                      className={`grid grid-cols-[40px_1fr_44px] ${gridClasses} gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50`}
                       onClick={() => navigate(`/card/${card.id}`)}
                     >
                       <span className="text-sm font-mono text-muted-foreground">
