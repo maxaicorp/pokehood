@@ -339,7 +339,7 @@ export default function Market() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: Math.min(i * 0.005, 0.2) }}
-                      className={`grid grid-cols-[40px_1fr_44px] sm:${gridCols} gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50`}
+                      className={`grid grid-cols-[40px_1fr_44px] ${gridClasses} gap-4 px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50`}
                       onClick={() => navigate(`/card/${card.id}`)}
                     >
                       <span className="text-sm font-mono text-muted-foreground">
