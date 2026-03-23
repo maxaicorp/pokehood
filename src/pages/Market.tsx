@@ -198,7 +198,7 @@ export default function Market() {
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
           {/* Table header */}
-          <div className={`hidden sm:grid ${gridCols} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground`}>
+          <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground`}>
             <span>#</span>
             <span>Card</span>
             {!selectedSetId && <span>Set</span>}
