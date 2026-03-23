@@ -125,9 +125,9 @@ export default function Market() {
     ? rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0)
     : null;
 
-  const gridCols = selectedSetId
-    ? "grid-cols-[40px_1fr_100px_72px_72px_72px_44px]"
-    : "grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px]";
+  const gridClasses = selectedSetId
+    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_72px_44px]"
+    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px]";
 
   const SortIcon = ({ col }: { col: "price" | "24h" | "7d" | "30d" }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
