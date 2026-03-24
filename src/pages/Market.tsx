@@ -174,30 +174,30 @@ export default function Market() {
       <AppHeader activePage="market" />
 
       <div className="container py-6 px-4 sm:px-8">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
-          <div>
-            <p className="text-sm text-muted-foreground">
-              {selectedSetId
-                ? selectedSet
-                  ? `${selectedSet.name} — ${pricedCards.length} cards with pricing`
-                  : "Cards sorted by market price"
-                : activeTab === "top"
-                  ? "Top 100 most valuable cards across all sets"
-                  : activeTab === "trending"
-                    ? "Cards with the most price activity in the last 24h"
-                    : activeTab === "gainers"
-                      ? "Biggest price increases in the last 24h"
-                      : "Biggest price drops in the last 24h"}
-              {isLoading && (
-                <span className="ml-2 text-primary animate-pulse">
-                  Loading prices…
-                </span>
-              )}
-            </p>
+        {/* Tabs + Set selector */}
+        <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+          <div className="flex items-center gap-1 border-b border-border/50 overflow-x-auto">
+            {([
+              { key: "top", label: "Top", icon: Trophy },
+              { key: "trending", label: "Trending", icon: Flame },
+              { key: "gainers", label: "Gainers", icon: TrendingUp },
+              { key: "losers", label: "Losers", icon: TrendingDown },
+            ] as const).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => { setActiveTab(key); setSortCol(null); }}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === key
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
           </div>
 
-          {/* Set selector */}
           <div className="flex items-center gap-3">
             {setTotalValue !== null && !isLoading && (
               <div className="text-right">
@@ -226,28 +226,6 @@ export default function Market() {
               </SelectContent>
             </Select>
           </div>
-        </div>
-        {/* Tabs */}
-        <div className="flex items-center gap-1 mb-4 border-b border-border/50 overflow-x-auto">
-          {([
-            { key: "top", label: "Top", icon: Trophy },
-            { key: "trending", label: "Trending", icon: Flame },
-            { key: "gainers", label: "Gainers", icon: TrendingUp },
-            { key: "losers", label: "Losers", icon: TrendingDown },
-          ] as const).map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => { setActiveTab(key); setSortCol(null); }}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === key
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </button>
-          ))}
         </div>
 
         {/* Table */}
