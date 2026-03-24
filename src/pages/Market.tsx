@@ -161,7 +161,7 @@ export default function Market() {
 
   const pricedCards = getTabSortedCards();
 
-  const isSingleSet = selectedSetId && selectedSetId !== "recent";
+  const isSingleSet = selectedSetId && !selectedSetId.startsWith("recent");
   const setTotalValue = isSingleSet
     ? rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0)
     : null;
