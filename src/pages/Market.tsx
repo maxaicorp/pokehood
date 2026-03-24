@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -77,10 +77,12 @@ export default function Market() {
       </div>
     );
   }
-  if (!user) return <Navigate to="/auth" replace />;
-
   const handleAdd = async (e: React.MouseEvent, card: PokemonCard) => {
     e.stopPropagation();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
     if (addingCards.has(card.id)) return;
     setAddingCards((prev) => new Set(prev).add(card.id));
     const result = await addToCollection(card, user.id);
