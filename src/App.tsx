@@ -28,7 +28,7 @@ const App = () => (
           <BackgroundLayer />
           <div className="relative z-[1]">
             <Routes>
-              <Route path="/" element={<Landing />} />
+              <Route path="/" element={<Market />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/explore" element={<Explore />} />
               <Route path="/dashboard" element={<Dashboard />} />
