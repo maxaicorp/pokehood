@@ -224,8 +224,8 @@ export default function Market() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sets</SelectItem>
-                <SelectItem value="recent5">All Recent Sets (5)</SelectItem>
-                <SelectItem value="recent10">All Recent Sets (10)</SelectItem>
+                <SelectItem value="recent5">Recent Sets (5)</SelectItem>
+                <SelectItem value="recent10">Recent Sets (10)</SelectItem>
                 {setsData?.data
                   ?.filter((s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()))
                   .map((s: PokemonSet) => (
