@@ -515,12 +515,12 @@ export async function fetchCardDetail(id: string): Promise<CardDetailFull | null
 
 // ─── Market leaderboard ───────────────────────────────────────────────────────
 
-/** Top cards across the 6 newest sets, sorted by price descending. */
+/** Top cards across ALL sets, sorted by price descending. */
 export async function getTopPricedCards(limit = 100): Promise<PokemonCard[]> {
   const { cards, sets } = await loadCardIndex();
   const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
-  const recentSetIds = new Set(physicalSets.slice(0, 6).map((s) => s.id));
-  const candidates = cards.filter((c) => recentSetIds.has(c.set.id));
+  const physicalSetIds = new Set(physicalSets.map((s) => s.id));
+  const candidates = cards.filter((c) => physicalSetIds.has(c.set.id));
   const priced = await enrichPageWithPricing(candidates);
   return priced
     .filter((c) => getMarketPrice(c) !== null)
