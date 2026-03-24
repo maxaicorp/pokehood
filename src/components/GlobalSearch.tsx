@@ -93,8 +93,12 @@ export default function GlobalSearch() {
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelectedIdx(i => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && results[selectedIdx]) {
-      handleSelect(results[selectedIdx]);
+    } else if (e.key === "Enter") {
+      if (results[selectedIdx]) {
+        handleSelect(results[selectedIdx]);
+      } else {
+        handleSearchSubmit();
+      }
     }
   };
 
@@ -139,9 +143,6 @@ export default function GlobalSearch() {
         ) : (
           <span className="text-sm text-muted-foreground select-none">Search cards...</span>
         )}
-        <kbd className="hidden lg:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono text-muted-foreground border border-border/50">
-          ⌘K
-        </kbd>
         {open && query && (
           <button onClick={(e) => { e.stopPropagation(); setQuery(""); setResults([]); }} className="text-muted-foreground hover:text-foreground">
             <X className="w-3.5 h-3.5" />
