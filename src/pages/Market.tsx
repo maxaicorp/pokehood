@@ -60,7 +60,11 @@ export default function Market() {
   const { data: cards, isLoading } = useQuery({
     queryKey: ["market-cards", selectedSetId],
     queryFn: () =>
-      selectedSetId ? getSetCardsByPrice(selectedSetId) : getTopPricedCards(100),
+      selectedSetId === "recent"
+        ? getRecentSetCards(100)
+        : selectedSetId
+          ? getSetCardsByPrice(selectedSetId)
+          : getTopPricedCards(100),
     staleTime: 15 * 60_000,
   });
 
