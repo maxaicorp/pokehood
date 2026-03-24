@@ -199,7 +199,7 @@ export default function GlobalSearch() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="hidden sm:block absolute top-full right-0 mt-2 w-[380px] rounded-xl border border-border/50 bg-popover shadow-xl overflow-hidden z-50"
+            className="hidden sm:block absolute top-full left-0 right-0 mt-2 rounded-xl border border-border/50 bg-popover shadow-xl overflow-hidden z-50"
           >
             <SearchResults
               results={results}
