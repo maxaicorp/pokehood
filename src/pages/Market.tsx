@@ -241,7 +241,7 @@ export default function Market() {
           <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground`}>
             <span>#</span>
             <span>Card</span>
-            {!selectedSetId && <span>Set</span>}
+            {!isSingleSet && <span>Set</span>}
             <button onClick={() => handleSort("price")} className="flex items-center justify-end hover:text-foreground transition-colors">
               Market Price <SortIcon col="price" />
             </button>
@@ -322,7 +322,7 @@ export default function Market() {
                     </div>
 
                     {/* Set — desktop only, not rendered in set-specific view */}
-                    {!selectedSetId && (
+                    {!isSingleSet && (
                       <p className="hidden sm:block text-sm text-muted-foreground truncate">
                         {card.set.name}
                       </p>
@@ -368,7 +368,7 @@ export default function Market() {
               })}
 
               {/* Unpriced cards in set view */}
-              {selectedSetId && unpricedCards.length > 0 && (
+              {isSingleSet && unpricedCards.length > 0 && (
                 <>
                   <div className="px-4 py-2 bg-muted/30 border-t border-border text-xs text-muted-foreground">
                     {unpricedCards.length} card{unpricedCards.length !== 1 ? "s" : ""} with no pricing data
@@ -401,7 +401,7 @@ export default function Market() {
                           </p>
                         </div>
                       </div>
-                      {!selectedSetId && <p className="hidden sm:block text-sm text-muted-foreground truncate">{card.set.name}</p>}
+                      {!isSingleSet && <p className="hidden sm:block text-sm text-muted-foreground truncate">{card.set.name}</p>}
                       <p className="hidden sm:block text-sm text-muted-foreground text-right">
                         N/A
                       </p>
