@@ -304,7 +304,7 @@ export default function Market() {
                     </span>
 
                     {/* Card image + name */}
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <img
                         src={card.images.small}
                         alt={card.name}
