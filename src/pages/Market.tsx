@@ -227,6 +227,28 @@ export default function Market() {
             </Select>
           </div>
         </div>
+        {/* Tabs */}
+        <div className="flex items-center gap-1 mb-4 border-b border-border/50 overflow-x-auto">
+          {([
+            { key: "top", label: "Top", icon: Trophy },
+            { key: "trending", label: "Trending", icon: Flame },
+            { key: "gainers", label: "Gainers", icon: TrendingUp },
+            { key: "losers", label: "Losers", icon: TrendingDown },
+          ] as const).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => { setActiveTab(key); setSortCol(null); }}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === key
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
+        </div>
 
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
