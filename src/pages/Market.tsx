@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, TrendingUp, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
