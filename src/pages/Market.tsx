@@ -60,11 +60,13 @@ export default function Market() {
   const { data: cards, isLoading } = useQuery({
     queryKey: ["market-cards", selectedSetId],
     queryFn: () =>
-      selectedSetId === "recent"
-        ? getRecentSetCards(100)
-        : selectedSetId
-          ? getSetCardsByPrice(selectedSetId)
-          : getTopPricedCards(100),
+      selectedSetId === "recent5"
+        ? getRecentSetCards(100, 5)
+        : selectedSetId === "recent10"
+          ? getRecentSetCards(100, 10)
+          : selectedSetId
+            ? getSetCardsByPrice(selectedSetId)
+            : getTopPricedCards(100),
     staleTime: 15 * 60_000,
   });
 
@@ -159,7 +161,7 @@ export default function Market() {
 
   const pricedCards = getTabSortedCards();
 
-  const isSingleSet = selectedSetId && selectedSetId !== "recent";
+  const isSingleSet = selectedSetId && !selectedSetId.startsWith("recent");
   const setTotalValue = isSingleSet
     ? rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0)
     : null;
@@ -222,7 +224,8 @@ export default function Market() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sets</SelectItem>
-                <SelectItem value="recent">All Recent Sets (Top 5)</SelectItem>
+                <SelectItem value="recent5">All Recent Sets (5)</SelectItem>
+                <SelectItem value="recent10">All Recent Sets (10)</SelectItem>
                 {setsData?.data
                   ?.filter((s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()))
                   .map((s: PokemonSet) => (
