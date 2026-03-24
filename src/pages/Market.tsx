@@ -177,19 +177,13 @@ export default function Market() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              <h1 className="font-display font-bold text-xl sm:text-2xl text-foreground">
-                Price Market
-              </h1>
-            </div>
             <p className="text-sm text-muted-foreground">
               {selectedSetId
                 ? selectedSet
                   ? `${selectedSet.name} — ${pricedCards.length} cards with pricing`
                   : "Cards sorted by market price"
                 : activeTab === "top"
-                  ? "Top 100 most valuable cards across the 6 newest sets"
+                  ? "Top 100 most valuable cards across all sets"
                   : activeTab === "trending"
                     ? "Cards with the most price activity in the last 24h"
                     : activeTab === "gainers"
