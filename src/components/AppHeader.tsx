@@ -188,6 +188,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        </div>
         {children}
       </header>
 
