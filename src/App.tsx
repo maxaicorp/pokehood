@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import Explore from "./pages/Explore";
 import Profile from "./pages/Profile";
@@ -29,7 +28,7 @@ const App = () => (
           <BackgroundLayer />
           <div className="relative z-[1]">
             <Routes>
-              <Route path="/" element={<Landing />} />
+              <Route path="/" element={<Market />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/explore" element={<Explore />} />
               <Route path="/dashboard" element={<Dashboard />} />
