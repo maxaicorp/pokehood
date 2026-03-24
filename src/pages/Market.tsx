@@ -25,9 +25,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, TrendingUp, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+
+type MarketTab = "top" | "trending" | "gainers" | "losers";
 
 export default function Market() {
   const { user, loading } = useAuth();
@@ -37,6 +39,7 @@ export default function Market() {
   const [addingCards, setAddingCards] = useState(new Set<string>());
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | "30d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [activeTab, setActiveTab] = useState<MarketTab>("top");
 
   const handleSort = (col: "price" | "24h" | "7d" | "30d") => {
     if (sortCol === col) {
@@ -102,8 +105,13 @@ export default function Market() {
   const rawPricedCards = (cards || []).filter((c) => getMarketPrice(c) !== null);
   const unpricedCards = (cards || []).filter((c) => getMarketPrice(c) === null);
 
-  const pricedCards = sortCol
-    ? [...rawPricedCards].sort((a, b) => {
+  // Apply tab-based default sorting, then allow manual column sort to override
+  const getTabSortedCards = () => {
+    let sorted = [...rawPricedCards];
+
+    // If user clicked a column header, that takes priority
+    if (sortCol) {
+      return sorted.sort((a, b) => {
         let va: number | null, vb: number | null;
         if (sortCol === "price") {
           va = getMarketPrice(a);
@@ -118,8 +126,33 @@ export default function Market() {
         if (va === null) return 1;
         if (vb === null) return -1;
         return sortDir === "asc" ? va - vb : vb - va;
-      })
-    : rawPricedCards;
+      });
+    }
+
+    // Tab-based default sorting
+    switch (activeTab) {
+      case "top":
+        return sorted.sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0));
+      case "trending": {
+        // Cards with highest absolute 24h movement (either direction = activity)
+        return sorted
+          .filter((c) => getPcts(c).raw24h !== null)
+          .sort((a, b) => Math.abs(getPcts(b).raw24h ?? 0) - Math.abs(getPcts(a).raw24h ?? 0));
+      }
+      case "gainers":
+        return sorted
+          .filter((c) => (getPcts(c).raw24h ?? 0) > 0)
+          .sort((a, b) => (getPcts(b).raw24h ?? 0) - (getPcts(a).raw24h ?? 0));
+      case "losers":
+        return sorted
+          .filter((c) => (getPcts(c).raw24h ?? 0) < 0)
+          .sort((a, b) => (getPcts(a).raw24h ?? 0) - (getPcts(b).raw24h ?? 0));
+      default:
+        return sorted;
+    }
+  };
+
+  const pricedCards = getTabSortedCards();
 
   const setTotalValue = selectedSetId
     ? rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0)
@@ -155,7 +188,13 @@ export default function Market() {
                 ? selectedSet
                   ? `${selectedSet.name} — ${pricedCards.length} cards with pricing`
                   : "Cards sorted by market price"
-                : "Top 100 most valuable cards across the 6 newest sets"}
+                : activeTab === "top"
+                  ? "Top 100 most valuable cards across the 6 newest sets"
+                  : activeTab === "trending"
+                    ? "Cards with the most price activity in the last 24h"
+                    : activeTab === "gainers"
+                      ? "Biggest price increases in the last 24h"
+                      : "Biggest price drops in the last 24h"}
               {isLoading && (
                 <span className="ml-2 text-primary animate-pulse">
                   Loading prices…
@@ -193,6 +232,28 @@ export default function Market() {
               </SelectContent>
             </Select>
           </div>
+        </div>
+        {/* Tabs */}
+        <div className="flex items-center gap-1 mb-4 border-b border-border/50 overflow-x-auto">
+          {([
+            { key: "top", label: "Top", icon: Trophy },
+            { key: "trending", label: "Trending", icon: Flame },
+            { key: "gainers", label: "Gainers", icon: TrendingUp },
+            { key: "losers", label: "Losers", icon: TrendingDown },
+          ] as const).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => { setActiveTab(key); setSortCol(null); }}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === key
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Table */}
