@@ -159,11 +159,12 @@ export default function Market() {
 
   const pricedCards = getTabSortedCards();
 
-  const setTotalValue = selectedSetId
+  const isSingleSet = selectedSetId && selectedSetId !== "recent";
+  const setTotalValue = isSingleSet
     ? rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0)
     : null;
 
-  const gridClasses = selectedSetId
+  const gridClasses = isSingleSet
     ? "sm:grid-cols-[40px_1fr_100px_72px_72px_72px_44px]"
     : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px]";
 
