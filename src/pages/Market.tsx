@@ -212,10 +212,10 @@ export default function Market() {
               onValueChange={(v) => setSelectedSetId(v === "all" ? "" : v)}
             >
               <SelectTrigger className="w-[200px] bg-background">
-                <SelectValue placeholder="All Recent Sets" />
+                <SelectValue placeholder="All Sets" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Recent Sets</SelectItem>
+                <SelectItem value="all">All Sets</SelectItem>
                 {setsData?.data
                   ?.filter((s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()))
                   .map((s: PokemonSet) => (
