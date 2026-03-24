@@ -161,7 +161,7 @@ export default function GlobalSearch() {
               exit={{ opacity: 0 }}
               className="sm:hidden fixed inset-0 z-[60] bg-background"
             >
-              <div className="flex items-center gap-2 px-4 h-14 border-b border-border/50">
+              <div className="flex items-center gap-2 px-4 h-14 border-b border-border/50 bg-background">
                 <Search className="w-4 h-4 text-muted-foreground shrink-0" />
                 <input
                   ref={inputRef}
@@ -176,7 +176,7 @@ export default function GlobalSearch() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="overflow-y-auto max-h-[calc(100vh-3.5rem)]">
+              <div className="overflow-y-auto max-h-[calc(100vh-3.5rem)] bg-background">
                 <SearchResults
                   results={results}
                   loading={loading}
@@ -253,7 +253,7 @@ function SearchResults({
   if (results.length === 0) return null;
 
   return (
-    <div>
+    <div className="bg-background">
       <div className="px-3 py-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
         Cards
       </div>
