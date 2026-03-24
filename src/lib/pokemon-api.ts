@@ -529,7 +529,7 @@ export async function getTopPricedCards(limit = 100): Promise<PokemonCard[]> {
 }
 
 /** Top cards from the 5 most recent sets, sorted by price descending. */
-export async function getRecentSetCards(limit = 100): Promise<PokemonCard[]> {
+export async function getRecentSetCards(limit = 100, numSets = 5): Promise<PokemonCard[]> {
   const { cards, sets } = await loadCardIndex();
   const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
   const recentSetIds = new Set(physicalSets.slice(0, 5).map((s) => s.id));
