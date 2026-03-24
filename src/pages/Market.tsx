@@ -430,9 +430,9 @@ export default function Market() {
 
         {!isLoading && (
           <p className="text-xs text-muted-foreground text-center mt-4">
-            {selectedSetId
+            {isSingleSet
               ? `${pricedCards.length} of ${(cards || []).length} cards have pricing · Prices sourced from TCGdex`
-              : "Showing top 100 cards from the 6 newest sets · Prices sourced from TCGdex"}
+              : `Showing top ${pricedCards.length} cards · Prices sourced from TCGdex`}
           </p>
         )}
       </div>
