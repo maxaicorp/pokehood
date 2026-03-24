@@ -80,6 +80,15 @@ export default function Explore() {
     staleTime: 60_000,
   });
 
+  // Sync from URL query param
+  useEffect(() => {
+    if (urlQuery && urlQuery !== searchTerm) {
+      setQuery(urlQuery);
+      setSearchTerm(urlQuery);
+      setPage(1);
+    }
+  }, [urlQuery]);
+
   // Track search hits when results arrive for a search term
   useEffect(() => {
     if (searchTerm && cardsData?.data?.length) {
