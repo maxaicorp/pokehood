@@ -159,7 +159,7 @@ export default function GlobalSearch() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="sm:hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur-xl"
+              className="sm:hidden fixed inset-0 z-[60] bg-background"
             >
               <div className="flex items-center gap-2 px-4 h-14 border-b border-border/50">
                 <Search className="w-4 h-4 text-muted-foreground shrink-0" />
