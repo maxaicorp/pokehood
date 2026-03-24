@@ -29,6 +29,8 @@ import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame,
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
+type MarketTab = "top" | "trending" | "gainers" | "losers";
+
 export default function Market() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -37,6 +39,7 @@ export default function Market() {
   const [addingCards, setAddingCards] = useState(new Set<string>());
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | "30d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [activeTab, setActiveTab] = useState<MarketTab>("top");
 
   const handleSort = (col: "price" | "24h" | "7d" | "30d") => {
     if (sortCol === col) {
