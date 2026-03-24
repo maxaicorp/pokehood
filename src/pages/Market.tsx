@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getTopPricedCards,
+  getRecentSetCards,
   getSetCardsByPrice,
   getSets,
   getMarketPrice,
@@ -59,7 +60,11 @@ export default function Market() {
   const { data: cards, isLoading } = useQuery({
     queryKey: ["market-cards", selectedSetId],
     queryFn: () =>
-      selectedSetId ? getSetCardsByPrice(selectedSetId) : getTopPricedCards(100),
+      selectedSetId === "recent"
+        ? getRecentSetCards(100)
+        : selectedSetId
+          ? getSetCardsByPrice(selectedSetId)
+          : getTopPricedCards(100),
     staleTime: 15 * 60_000,
   });
 
@@ -154,11 +159,12 @@ export default function Market() {
 
   const pricedCards = getTabSortedCards();
 
-  const setTotalValue = selectedSetId
+  const isSingleSet = selectedSetId && selectedSetId !== "recent";
+  const setTotalValue = isSingleSet
     ? rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0)
     : null;
 
-  const gridClasses = selectedSetId
+  const gridClasses = isSingleSet
     ? "sm:grid-cols-[40px_1fr_100px_72px_72px_72px_44px]"
     : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px]";
 
@@ -216,6 +222,7 @@ export default function Market() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sets</SelectItem>
+                <SelectItem value="recent">All Recent Sets (Top 5)</SelectItem>
                 {setsData?.data
                   ?.filter((s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()))
                   .map((s: PokemonSet) => (
@@ -234,7 +241,7 @@ export default function Market() {
           <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground`}>
             <span>#</span>
             <span>Card</span>
-            {!selectedSetId && <span>Set</span>}
+            {!isSingleSet && <span>Set</span>}
             <button onClick={() => handleSort("price")} className="flex items-center justify-end hover:text-foreground transition-colors">
               Market Price <SortIcon col="price" />
             </button>
@@ -315,7 +322,7 @@ export default function Market() {
                     </div>
 
                     {/* Set — desktop only, not rendered in set-specific view */}
-                    {!selectedSetId && (
+                    {!isSingleSet && (
                       <p className="hidden sm:block text-sm text-muted-foreground truncate">
                         {card.set.name}
                       </p>
@@ -361,7 +368,7 @@ export default function Market() {
               })}
 
               {/* Unpriced cards in set view */}
-              {selectedSetId && unpricedCards.length > 0 && (
+              {isSingleSet && unpricedCards.length > 0 && (
                 <>
                   <div className="px-4 py-2 bg-muted/30 border-t border-border text-xs text-muted-foreground">
                     {unpricedCards.length} card{unpricedCards.length !== 1 ? "s" : ""} with no pricing data
@@ -394,7 +401,7 @@ export default function Market() {
                           </p>
                         </div>
                       </div>
-                      {!selectedSetId && <p className="hidden sm:block text-sm text-muted-foreground truncate">{card.set.name}</p>}
+                      {!isSingleSet && <p className="hidden sm:block text-sm text-muted-foreground truncate">{card.set.name}</p>}
                       <p className="hidden sm:block text-sm text-muted-foreground text-right">
                         N/A
                       </p>
@@ -423,9 +430,9 @@ export default function Market() {
 
         {!isLoading && (
           <p className="text-xs text-muted-foreground text-center mt-4">
-            {selectedSetId
+            {isSingleSet
               ? `${pricedCards.length} of ${(cards || []).length} cards have pricing · Prices sourced from TCGdex`
-              : "Showing top 100 cards from the 6 newest sets · Prices sourced from TCGdex"}
+              : `Showing top ${pricedCards.length} cards · Prices sourced from TCGdex`}
           </p>
         )}
       </div>

@@ -528,6 +528,26 @@ export async function getTopPricedCards(limit = 100): Promise<PokemonCard[]> {
     .slice(0, limit);
 }
 
+/** Top cards from the 5 most recent sets, sorted by price descending. */
+export async function getRecentSetCards(limit = 100): Promise<PokemonCard[]> {
+  const { cards, sets } = await loadCardIndex();
+  const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
+  const recentSetIds = new Set(physicalSets.slice(0, 5).map((s) => s.id));
+  const candidates = cards.filter((c) => recentSetIds.has(c.set.id));
+  const priced = await enrichPageWithPricing(candidates);
+  return priced
+    .filter((c) => getMarketPrice(c) !== null)
+    .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
+    .slice(0, limit);
+}
+
+/** Get the IDs of the 5 most recent physical sets. */
+export async function getRecentSetIds(): Promise<string[]> {
+  const { sets } = await loadCardIndex();
+  const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
+  return physicalSets.slice(0, 5).map((s) => s.id);
+}
+
 /** All cards in a specific set, sorted by price descending. */
 export async function getSetCardsByPrice(setId: string): Promise<PokemonCard[]> {
   const result = await getSetCards(setId, 1, 500);
