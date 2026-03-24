@@ -93,8 +93,12 @@ export default function GlobalSearch() {
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelectedIdx(i => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" && results[selectedIdx]) {
-      handleSelect(results[selectedIdx]);
+    } else if (e.key === "Enter") {
+      if (results[selectedIdx]) {
+        handleSelect(results[selectedIdx]);
+      } else {
+        handleSearchSubmit();
+      }
     }
   };
 
