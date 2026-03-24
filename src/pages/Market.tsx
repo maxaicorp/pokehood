@@ -188,7 +188,13 @@ export default function Market() {
                 ? selectedSet
                   ? `${selectedSet.name} — ${pricedCards.length} cards with pricing`
                   : "Cards sorted by market price"
-                : "Top 100 most valuable cards across the 6 newest sets"}
+                : activeTab === "top"
+                  ? "Top 100 most valuable cards across the 6 newest sets"
+                  : activeTab === "trending"
+                    ? "Cards with the most price activity in the last 24h"
+                    : activeTab === "gainers"
+                      ? "Biggest price increases in the last 24h"
+                      : "Biggest price drops in the last 24h"}
               {isLoading && (
                 <span className="ml-2 text-primary animate-pulse">
                   Loading prices…
