@@ -206,7 +206,7 @@ export default function Market() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
             {!isLoading && (
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Total Value</p>
@@ -219,7 +219,7 @@ export default function Market() {
               value={selectedSetId || "all"}
               onValueChange={(v) => setSelectedSetId(v === "all" ? "" : v)}
             >
-              <SelectTrigger className="w-[200px] bg-background">
+              <SelectTrigger className="w-[180px] sm:w-[200px] bg-background">
                 <SelectValue placeholder="All Sets" />
               </SelectTrigger>
               <SelectContent>
