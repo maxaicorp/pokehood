@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getTopPricedCards,
+  getRecentSetCards,
   getSetCardsByPrice,
   getSets,
   getMarketPrice,
