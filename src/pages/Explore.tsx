@@ -45,8 +45,10 @@ type ViewMode = "grid" | "list";
 export default function Explore() {
   const { user, loading, isPro, limits } = useAuth();
   const queryClient = useQueryClient();
-  const [query, setQuery] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchParams] = useSearchParams();
+  const urlQuery = searchParams.get("q") || "";
+  const [query, setQuery] = useState(urlQuery);
+  const [searchTerm, setSearchTerm] = useState(urlQuery);
   const [selectedSet, setSelectedSet] = useState("");
   const [selectedRarity, setSelectedRarity] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
