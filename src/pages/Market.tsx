@@ -36,7 +36,7 @@ export default function Market() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedSetId, setSelectedSetId] = useState("");
+  const [selectedSetId, setSelectedSetId] = useState("recent5");
   const [addingCards, setAddingCards] = useState(new Set<string>());
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | "30d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -224,8 +224,8 @@ export default function Market() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sets</SelectItem>
-                <SelectItem value="recent5">All Recent Sets (5)</SelectItem>
-                <SelectItem value="recent10">All Recent Sets (10)</SelectItem>
+                <SelectItem value="recent5">Recent Sets (5)</SelectItem>
+                <SelectItem value="recent10">Recent Sets (10)</SelectItem>
                 {setsData?.data
                   ?.filter((s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()))
                   .map((s: PokemonSet) => (
