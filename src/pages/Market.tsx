@@ -36,7 +36,7 @@ export default function Market() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedSetId, setSelectedSetId] = useState("");
+  const [selectedSetId, setSelectedSetId] = useState("recent5");
   const [addingCards, setAddingCards] = useState(new Set<string>());
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | "30d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
