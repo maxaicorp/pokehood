@@ -7,6 +7,7 @@ import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X, TrendingUp } from "lucide-react";
+import GlobalSearch from "@/components/GlobalSearch";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
@@ -141,49 +142,52 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               </span>
             )}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary/50">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-sm font-display font-bold text-primary">
-                    {(profile?.display_name || user?.email || "?")[0].toUpperCase()}
-                  </span>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <GlobalSearch />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary/50">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-display font-bold text-primary">
+                      {(profile?.display_name || user?.email || "?")[0].toUpperCase()}
+                    </span>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <div className="px-3 py-2">
+                  <p className="text-sm font-semibold text-foreground truncate">{profile?.display_name || "My Account"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                </div>
+                <DropdownMenuSeparator />
+                {!isPro && (
+                  <DropdownMenuItem onClick={handleUpgrade} disabled={checkoutLoading} className="text-amber-600 dark:text-amber-400">
+                    <Crown className="w-4 h-4 mr-2" /> Upgrade to Pro
+                  </DropdownMenuItem>
                 )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
-              <div className="px-3 py-2">
-                <p className="text-sm font-semibold text-foreground truncate">{profile?.display_name || "My Account"}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-              </div>
-              <DropdownMenuSeparator />
-              {!isPro && (
-                <DropdownMenuItem onClick={handleUpgrade} disabled={checkoutLoading} className="text-amber-600 dark:text-amber-400">
-                  <Crown className="w-4 h-4 mr-2" /> Upgrade to Pro
+                {profile?.slug && (
+                  <DropdownMenuItem asChild>
+                    <a href={profileUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-4 h-4 mr-2" /> My Profile
+                    </a>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => setQrOpen(true)}>
+                  <QrCode className="w-4 h-4 mr-2" /> Share QR Code
                 </DropdownMenuItem>
-              )}
-              {profile?.slug && (
-                <DropdownMenuItem asChild>
-                  <a href={profileUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4 mr-2" /> My Profile
-                  </a>
+                <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                  {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
+                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onClick={() => setQrOpen(true)}>
-                <QrCode className="w-4 h-4 mr-2" /> Share QR Code
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-                {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
-                {theme === "dark" ? "Light Mode" : "Dark Mode"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut} className="text-destructive">
-                <LogOut className="w-4 h-4 mr-2" /> Sign Out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={signOut} className="text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         {children}
       </header>
