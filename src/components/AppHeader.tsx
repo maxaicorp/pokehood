@@ -142,8 +142,9 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               </span>
             )}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <GlobalSearch />
+            <DropdownMenu>
               <button className="w-9 h-9 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center overflow-hidden hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary/50">
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
