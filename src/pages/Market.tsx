@@ -205,11 +205,11 @@ export default function Market() {
           </div>
 
           <div className="flex items-center gap-3">
-            {setTotalValue !== null && !isLoading && (
+            {!isLoading && (
               <div className="text-right">
-                <p className="text-xs text-muted-foreground">Set total value</p>
+                <p className="text-xs text-muted-foreground">Total Value</p>
                 <p className="text-lg font-bold text-foreground">
-                  {formatPrice(setTotalValue)}
+                  {formatPrice(totalValue)}
                 </p>
               </div>
             )}
