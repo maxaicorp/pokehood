@@ -102,7 +102,15 @@ export default function Market() {
     return () => observer.disconnect();
   }, [cards.length]);
 
-  if (loading) {
+  const handleSort = (col: "price" | "24h" | "7d" | "30d") => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("desc");
+    }
+  };
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" />
