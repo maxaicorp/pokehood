@@ -616,18 +616,3 @@ export async function getSetCardsByPrice(
   );
 }
 
-/** Get the IDs of the 5 most recent physical sets. */
-export async function getRecentSetIds(): Promise<string[]> {
-  const { sets } = await loadCardIndex();
-  const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
-  return physicalSets.slice(0, 5).map((s) => s.id);
-}
-
-/** All cards in a specific set, sorted by price descending. */
-export async function getSetCardsByPrice(setId: string): Promise<PokemonCard[]> {
-  const result = await getSetCards(setId, 1, 500);
-  const priced = await enrichPageWithPricing(result.data);
-  return priced.sort(
-    (a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0)
-  );
-}
