@@ -547,30 +547,73 @@ export async function fetchCardDetail(id: string): Promise<CardDetailFull | null
 
 // ─── Market leaderboard ───────────────────────────────────────────────────────
 
-/** Top cards across ALL sets, sorted by price descending. */
-export async function getTopPricedCards(limit = 100): Promise<PokemonCard[]> {
+/** Top cards across ALL sets, sorted by price descending. Progressive callback supported. */
+export async function getTopPricedCards(
+  limit = 100,
+  onProgress?: (cards: PokemonCard[]) => void,
+): Promise<PokemonCard[]> {
   const { cards, sets } = await loadCardIndex();
   const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
   const physicalSetIds = new Set(physicalSets.map((s) => s.id));
   const candidates = cards.filter((c) => physicalSetIds.has(c.set.id));
-  const priced = await enrichPageWithPricing(candidates);
+  const priced = await enrichCardsProgressively(candidates, 50, 15, (soFar) => {
+    const sorted = soFar
+      .filter((c) => getMarketPrice(c) !== null)
+      .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
+      .slice(0, limit);
+    onProgress?.(sorted);
+  });
   return priced
     .filter((c) => getMarketPrice(c) !== null)
     .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
     .slice(0, limit);
 }
 
-/** Top cards from the 5 most recent sets, sorted by price descending. */
-export async function getRecentSetCards(limit = 100, numSets = 5): Promise<PokemonCard[]> {
+/** Top cards from the N most recent sets, sorted by price descending. */
+export async function getRecentSetCards(
+  limit = 100,
+  numSets = 5,
+  onProgress?: (cards: PokemonCard[]) => void,
+): Promise<PokemonCard[]> {
   const { cards, sets } = await loadCardIndex();
   const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
   const recentSetIds = new Set(physicalSets.slice(0, numSets).map((s) => s.id));
   const candidates = cards.filter((c) => recentSetIds.has(c.set.id));
-  const priced = await enrichPageWithPricing(candidates);
+  const priced = await enrichCardsProgressively(candidates, 50, 15, (soFar) => {
+    const sorted = soFar
+      .filter((c) => getMarketPrice(c) !== null)
+      .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
+      .slice(0, limit);
+    onProgress?.(sorted);
+  });
   return priced
     .filter((c) => getMarketPrice(c) !== null)
     .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
     .slice(0, limit);
+}
+
+/** Get the IDs of the 5 most recent physical sets. */
+export async function getRecentSetIds(): Promise<string[]> {
+  const { sets } = await loadCardIndex();
+  const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
+  return physicalSets.slice(0, 5).map((s) => s.id);
+}
+
+/** All cards in a specific set, sorted by price descending. */
+export async function getSetCardsByPrice(
+  setId: string,
+  onProgress?: (cards: PokemonCard[]) => void,
+): Promise<PokemonCard[]> {
+  const result = await getSetCards(setId, 1, 500);
+  const priced = await enrichCardsProgressively(result.data, 50, 15, (soFar) => {
+    const sorted = [...soFar].sort(
+      (a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0)
+    );
+    onProgress?.(sorted);
+  });
+  return priced.sort(
+    (a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0)
+  );
 }
 
 /** Get the IDs of the 5 most recent physical sets. */
