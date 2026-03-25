@@ -202,6 +202,7 @@ export default function Market() {
   };
 
   const pricedCards = getTabSortedCards();
+  const visibleCards = pricedCards.slice(0, visibleCount);
 
   const isSingleSet = selectedSetId && !selectedSetId.startsWith("recent");
   const totalValue = rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0);
