@@ -111,12 +111,6 @@ export default function Market() {
     }
   };
 
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
   const handleAdd = async (e: React.MouseEvent, card: PokemonCard) => {
     e.stopPropagation();
     if (!user) {
