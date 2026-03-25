@@ -468,6 +468,14 @@ export default function Market() {
                   ))}
                 </>
               )}
+              {/* Sentinel for infinite scroll */}
+              <div ref={sentinelRef} className="h-1" />
+              {isLoading && cards.length > 0 && (
+                <div className="flex items-center justify-center py-4 gap-2 text-sm text-muted-foreground">
+                  <span className="w-4 h-4 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+                  Loading more cards…
+                </div>
+              )}
             </div>
           )}
         </div>
