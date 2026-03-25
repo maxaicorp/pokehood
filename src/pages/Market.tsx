@@ -301,7 +301,7 @@ export default function Market() {
             <span />
           </div>
 
-          {isLoading ? (
+          {isLoading && cards.length === 0 ? (
             <div>
               {Array.from({ length: 12 }).map((_, i) => (
                 <div
@@ -318,13 +318,13 @@ export default function Market() {
                 </div>
               ))}
             </div>
-          ) : pricedCards.length === 0 ? (
+          ) : pricedCards.length === 0 && !isLoading ? (
             <div className="py-16 text-center text-muted-foreground">
               No pricing data available right now.
             </div>
           ) : (
             <div>
-              {pricedCards.map((card, i) => {
+              {visibleCards.map((card, i) => {
                 const price = getMarketPrice(card);
                 const { raw24h, raw7d, raw30d } = getPcts(card);
                 const pct24h = formatPct(raw24h);
