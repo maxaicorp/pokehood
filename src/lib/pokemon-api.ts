@@ -184,9 +184,41 @@ function mapLivePriceVariant(v?: {
   };
 }
 
-/** Fetch pricing for all cards on a page in parallel. */
-export async function enrichPageWithPricing(cards: PokemonCard[]): Promise<PokemonCard[]> {
-  return Promise.all(cards.map(enrichCardWithPricing));
+/** Fetch pricing for cards with concurrency limit to avoid flooding the network. */
+export async function enrichPageWithPricing(
+  cards: PokemonCard[],
+  concurrency = 15,
+): Promise<PokemonCard[]> {
+  const results: PokemonCard[] = new Array(cards.length);
+  let idx = 0;
+
+  async function worker() {
+    while (idx < cards.length) {
+      const i = idx++;
+      results[i] = await enrichCardWithPricing(cards[i]);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, cards.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
+/** Progressive pricing: enrich cards in batches and call onBatch after each chunk. */
+export async function enrichCardsProgressively(
+  cards: PokemonCard[],
+  batchSize = 50,
+  concurrency = 15,
+  onBatch?: (enrichedSoFar: PokemonCard[]) => void,
+): Promise<PokemonCard[]> {
+  const allEnriched: PokemonCard[] = [];
+  for (let i = 0; i < cards.length; i += batchSize) {
+    const batch = cards.slice(i, i + batchSize);
+    const enriched = await enrichPageWithPricing(batch, concurrency);
+    allEnriched.push(...enriched);
+    onBatch?.(allEnriched);
+  }
+  return allEnriched;
 }
 
 // Cache for cardmarket averages (separate from tcgplayer pricing)
