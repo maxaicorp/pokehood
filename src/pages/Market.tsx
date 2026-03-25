@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getTopPricedCards,
@@ -32,6 +32,8 @@ import { motion } from "framer-motion";
 
 type MarketTab = "top" | "trending" | "gainers" | "losers";
 
+const VISIBLE_PAGE_SIZE = 50;
+
 export default function Market() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -42,6 +44,64 @@ export default function Market() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState<MarketTab>("top");
 
+  // Progressive loading state
+  const [cards, setCards] = useState<PokemonCard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(null);
+
+  // Load sets once
+  useEffect(() => {
+    getSets().then((r) => setSetsData(r));
+  }, []);
+
+  // Fetch cards with progressive updates
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setCards([]);
+    setVisibleCount(VISIBLE_PAGE_SIZE);
+
+    const onProgress = (partialCards: PokemonCard[]) => {
+      if (!cancelled) setCards([...partialCards]);
+    };
+
+    const fetchFn =
+      selectedSetId === "recent5"
+        ? () => getRecentSetCards(100, 5, onProgress)
+        : selectedSetId === "recent10"
+          ? () => getRecentSetCards(100, 10, onProgress)
+          : selectedSetId
+            ? () => getSetCardsByPrice(selectedSetId, onProgress)
+            : () => getTopPricedCards(100, onProgress);
+
+    fetchFn().then((finalCards) => {
+      if (!cancelled) {
+        setCards(finalCards);
+        setIsLoading(false);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [selectedSetId]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount((prev) => prev + VISIBLE_PAGE_SIZE);
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [cards.length]);
+
   const handleSort = (col: "price" | "24h" | "7d" | "30d") => {
     if (sortCol === col) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -51,26 +111,6 @@ export default function Market() {
     }
   };
 
-  const { data: setsData } = useQuery({
-    queryKey: ["pokemon-sets"],
-    queryFn: getSets,
-    staleTime: 5 * 60_000,
-  });
-
-  const { data: cards, isLoading } = useQuery({
-    queryKey: ["market-cards", selectedSetId],
-    queryFn: () =>
-      selectedSetId === "recent5"
-        ? getRecentSetCards(100, 5)
-        : selectedSetId === "recent10"
-          ? getRecentSetCards(100, 10)
-          : selectedSetId
-            ? getSetCardsByPrice(selectedSetId)
-            : getTopPricedCards(100),
-    staleTime: 15 * 60_000,
-  });
-
-  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" />
@@ -162,6 +202,7 @@ export default function Market() {
   };
 
   const pricedCards = getTabSortedCards();
+  const visibleCards = pricedCards.slice(0, visibleCount);
 
   const isSingleSet = selectedSetId && !selectedSetId.startsWith("recent");
   const totalValue = rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0);
@@ -260,7 +301,7 @@ export default function Market() {
             <span />
           </div>
 
-          {isLoading ? (
+          {isLoading && cards.length === 0 ? (
             <div>
               {Array.from({ length: 12 }).map((_, i) => (
                 <div
@@ -277,13 +318,13 @@ export default function Market() {
                 </div>
               ))}
             </div>
-          ) : pricedCards.length === 0 ? (
+          ) : pricedCards.length === 0 && !isLoading ? (
             <div className="py-16 text-center text-muted-foreground">
               No pricing data available right now.
             </div>
           ) : (
             <div>
-              {pricedCards.map((card, i) => {
+              {visibleCards.map((card, i) => {
                 const price = getMarketPrice(card);
                 const { raw24h, raw7d, raw30d } = getPcts(card);
                 const pct24h = formatPct(raw24h);
@@ -426,6 +467,14 @@ export default function Market() {
                     </motion.div>
                   ))}
                 </>
+              )}
+              {/* Sentinel for infinite scroll */}
+              <div ref={sentinelRef} className="h-1" />
+              {isLoading && cards.length > 0 && (
+                <div className="flex items-center justify-center py-4 gap-2 text-sm text-muted-foreground">
+                  <span className="w-4 h-4 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+                  Loading more cards…
+                </div>
               )}
             </div>
           )}
