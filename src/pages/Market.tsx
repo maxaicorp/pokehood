@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getTopPricedCards,
@@ -32,6 +32,8 @@ import { motion } from "framer-motion";
 
 type MarketTab = "top" | "trending" | "gainers" | "losers";
 
+const VISIBLE_PAGE_SIZE = 50;
+
 export default function Market() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -42,33 +44,63 @@ export default function Market() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState<MarketTab>("top");
 
-  const handleSort = (col: "price" | "24h" | "7d" | "30d") => {
-    if (sortCol === col) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortCol(col);
-      setSortDir("desc");
-    }
-  };
+  // Progressive loading state
+  const [cards, setCards] = useState<PokemonCard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(null);
 
-  const { data: setsData } = useQuery({
-    queryKey: ["pokemon-sets"],
-    queryFn: getSets,
-    staleTime: 5 * 60_000,
-  });
+  // Load sets once
+  useEffect(() => {
+    getSets().then((r) => setSetsData(r));
+  }, []);
 
-  const { data: cards, isLoading } = useQuery({
-    queryKey: ["market-cards", selectedSetId],
-    queryFn: () =>
+  // Fetch cards with progressive updates
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoading(true);
+    setCards([]);
+    setVisibleCount(VISIBLE_PAGE_SIZE);
+
+    const onProgress = (partialCards: PokemonCard[]) => {
+      if (!cancelled) setCards([...partialCards]);
+    };
+
+    const fetchFn =
       selectedSetId === "recent5"
-        ? getRecentSetCards(100, 5)
+        ? () => getRecentSetCards(100, 5, onProgress)
         : selectedSetId === "recent10"
-          ? getRecentSetCards(100, 10)
+          ? () => getRecentSetCards(100, 10, onProgress)
           : selectedSetId
-            ? getSetCardsByPrice(selectedSetId)
-            : getTopPricedCards(100),
-    staleTime: 15 * 60_000,
-  });
+            ? () => getSetCardsByPrice(selectedSetId, onProgress)
+            : () => getTopPricedCards(100, onProgress);
+
+    fetchFn().then((finalCards) => {
+      if (!cancelled) {
+        setCards(finalCards);
+        setIsLoading(false);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [selectedSetId]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount((prev) => prev + VISIBLE_PAGE_SIZE);
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [cards.length]);
 
   if (loading) {
     return (
