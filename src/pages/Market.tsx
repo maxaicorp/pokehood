@@ -26,12 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package } from "lucide-react";
 import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
-type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited";
+type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
 
 const VISIBLE_PAGE_SIZE = 50;
 
@@ -239,6 +239,7 @@ export default function Market() {
               { key: "gainers", label: "Gainers", icon: TrendingUp },
               { key: "losers", label: "Losers", icon: TrendingDown },
               { key: "most-visited", label: "Most Visited", icon: Eye },
+              { key: "sealed", label: "Sealed", icon: Package },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -309,7 +310,15 @@ export default function Market() {
             <span />
           </div>
 
-          {activeTab === "most-visited" ? (
+          {activeTab === "sealed" ? (
+            <div className="py-16 text-center text-muted-foreground">
+              <Package className="w-12 h-12 mx-auto mb-4 opacity-40" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">Sealed Products</h3>
+              <p className="text-sm max-w-md mx-auto">
+                Sealed product tracking is coming soon. Browse booster boxes, ETBs, and more with live pricing.
+              </p>
+            </div>
+          ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
               <div>
                 {Array.from({ length: 10 }).map((_, i) => (
