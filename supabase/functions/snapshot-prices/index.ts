@@ -29,26 +29,36 @@ interface TcgdexCardPricing {
   name: string;
   set?: { name?: string };
   pricing?: {
-    cardmarket?: {
-      updated?: string;
-      unit?: string;
-      avg?: number;
-      low?: number;
-      trend?: number;
-      avg1?: number;
-      avg7?: number;
-      avg30?: number;
-    };
+    tcgplayer?: Record<string, {
+      lowPrice?: number;
+      midPrice?: number;
+      highPrice?: number;
+      marketPrice?: number;
+    }>;
+    cardmarket?: Record<string, number>;
   };
 }
 
-function extractMarketPrice(data: TcgdexCardPricing): number | null {
+function extractMarketPrice(data: TcgdexCardPricing): { price: number; currency: "USD" | "EUR" } | null {
+  // Prefer TCGPlayer (USD)
+  const tcp = data.pricing?.tcgplayer;
+  if (tcp) {
+    for (const variant of ["holofoil", "normal", "reverseHolofoil", "firstEdition"]) {
+      const v = tcp[variant];
+      if (v?.marketPrice && v.marketPrice > 0) return { price: v.marketPrice, currency: "USD" };
+      if (v?.midPrice && v.midPrice > 0) return { price: v.midPrice, currency: "USD" };
+    }
+  }
+  // Fallback to Cardmarket (EUR) — will be converted to USD
   const cm = data.pricing?.cardmarket;
   if (cm) {
-    // Prefer trend, then avg, then low
-    if (cm.trend != null && cm.trend > 0) return cm.trend;
-    if (cm.avg != null && cm.avg > 0) return cm.avg;
-    if (cm.low != null && cm.low > 0) return cm.low;
+    const isHolo = (cm["avg-holo"] ?? 0) > 0;
+    const trend = isHolo ? cm["trend-holo"] : cm["trend"];
+    const avg = isHolo ? cm["avg-holo"] : cm["avg"];
+    const low = isHolo ? cm["low-holo"] : cm["low"];
+    if (trend != null && trend > 0) return { price: trend, currency: "EUR" };
+    if (avg != null && avg > 0) return { price: avg, currency: "EUR" };
+    if (low != null && low > 0) return { price: low, currency: "EUR" };
   }
   return null;
 }
@@ -68,7 +78,6 @@ async function getEurToUsdRate(): Promise<number> {
   } catch (e) {
     console.warn("Failed to fetch exchange rate, using fallback:", e);
   }
-  // Fallback rate if API fails
   console.log("Using fallback EUR→USD rate: 1.08");
   return 1.08;
 }
