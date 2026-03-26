@@ -238,6 +238,7 @@ export default function Market() {
               { key: "trending", label: "Trending", icon: Flame },
               { key: "gainers", label: "Gainers", icon: TrendingUp },
               { key: "losers", label: "Losers", icon: TrendingDown },
+              { key: "most-visited", label: "Most Visited", icon: Eye },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
