@@ -1,0 +1,1 @@
+DELETE FROM public.price_snapshots WHERE recorded_at = CURRENT_DATE;
