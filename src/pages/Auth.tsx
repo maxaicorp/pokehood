@@ -58,9 +58,9 @@ export default function Auth() {
         <div className="mb-8 flex flex-col items-center text-center">
           <Link to="/" className="inline-flex flex-col items-center gap-2 mb-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-foreground">
-              <img src="/logo.png" alt="PokeVault" className="w-6 h-6 object-contain" />
+              <img src="/logo.jpg" alt="Collectiblez" className="w-6 h-6 object-contain" />
             </div>
-            <span className="font-display font-bold text-lg text-foreground">PokeVault</span>
+            <span className="font-display font-bold text-lg text-foreground">Collectiblez</span>
           </Link>
           <h1 className="font-display font-bold text-2xl text-foreground mt-4">
             {isLogin ? "Welcome back" : "Create your account"}
