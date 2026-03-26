@@ -53,6 +53,26 @@ function extractMarketPrice(data: TcgdexCardPricing): number | null {
   return null;
 }
 
+/** Fetch live EUR→USD exchange rate */
+async function getEurToUsdRate(): Promise<number> {
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/EUR");
+    if (res.ok) {
+      const data = await res.json();
+      const rate = data?.rates?.USD;
+      if (typeof rate === "number" && rate > 0) {
+        console.log(`EUR→USD rate: ${rate}`);
+        return rate;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to fetch exchange rate, using fallback:", e);
+  }
+  // Fallback rate if API fails
+  console.log("Using fallback EUR→USD rate: 1.08");
+  return 1.08;
+}
+
 /** Fetch with timeout + retry */
 async function fetchJson<T>(url: string, retries = 2): Promise<T | null> {
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -89,7 +109,10 @@ serve(async (req) => {
 
     console.log(`Fetched ${allSets.length} sets from TCGdex, fetching details for release dates...`);
 
-    // 2. Fetch details for all sets to get release dates (batch 10 at a time)
+    // 2. Fetch live EUR→USD exchange rate
+    const eurToUsd = await getEurToUsdRate();
+
+    // 3. Fetch details for all sets to get release dates (batch 10 at a time)
     const setDetails: TcgdexSetDetail[] = [];
     const batchSize = 10;
     for (let i = 0; i < allSets.length; i += batchSize) {
@@ -150,8 +173,9 @@ serve(async (req) => {
 
         for (const data of results) {
           if (!data) continue;
-          const price = extractMarketPrice(data);
-          if (price !== null && price > 0) {
+          const priceEur = extractMarketPrice(data);
+          if (priceEur !== null && priceEur > 0) {
+            const price = Math.round(priceEur * eurToUsd * 100) / 100; // Convert EUR → USD
             rows.push({
               card_id: data.id,
               card_name: data.name ?? "",
