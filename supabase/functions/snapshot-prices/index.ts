@@ -109,7 +109,10 @@ serve(async (req) => {
 
     console.log(`Fetched ${allSets.length} sets from TCGdex, fetching details for release dates...`);
 
-    // 2. Fetch details for all sets to get release dates (batch 10 at a time)
+    // 2. Fetch live EUR→USD exchange rate
+    const eurToUsd = await getEurToUsdRate();
+
+    // 3. Fetch details for all sets to get release dates (batch 10 at a time)
     const setDetails: TcgdexSetDetail[] = [];
     const batchSize = 10;
     for (let i = 0; i < allSets.length; i += batchSize) {
