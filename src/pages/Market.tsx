@@ -310,7 +310,15 @@ export default function Market() {
             <span />
           </div>
 
-          {activeTab === "most-visited" ? (
+          {activeTab === "sealed" ? (
+            <div className="py-16 text-center text-muted-foreground">
+              <Package className="w-12 h-12 mx-auto mb-4 opacity-40" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">Sealed Products</h3>
+              <p className="text-sm max-w-md mx-auto">
+                Sealed product tracking is coming soon. Browse booster boxes, ETBs, and more with live pricing.
+              </p>
+            </div>
+          ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
               <div>
                 {Array.from({ length: 10 }).map((_, i) => (
