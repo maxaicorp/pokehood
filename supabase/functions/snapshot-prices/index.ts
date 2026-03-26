@@ -1,12 +1,5 @@
 // Daily price snapshot cron function
 // Fetches current market prices from TCGdex for recent set cards and stores them.
-//
-// Deploy: supabase functions deploy snapshot-prices
-// Schedule: Add a pg_cron job or use Supabase dashboard to invoke daily at ~3 AM UTC
-//   select cron.schedule('daily-price-snapshot', '0 3 * * *',
-//     $$select net.http_post(url := '...',  headers := '...', body := '{}')$$);
-//
-// Or invoke manually: curl -X POST <SUPABASE_URL>/functions/v1/snapshot-prices
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
@@ -17,18 +10,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// TCGdex set list endpoint
 const TCGDEX_SETS_URL = "https://api.tcgdex.net/v2/en/sets";
 
 interface TcgdexSetBrief {
   id: string;
   name: string;
-  releaseDate?: string;
 }
 
 interface TcgdexSetDetail {
   id: string;
   name: string;
+  releaseDate?: string;
   cards?: Array<{ id: string; name: string; image?: string }>;
 }
 
@@ -37,29 +29,26 @@ interface TcgdexCardPricing {
   name: string;
   set?: { name?: string };
   pricing?: {
-    tcgplayer?: Record<
-      string,
-      {
-        lowPrice?: number;
-        midPrice?: number;
-        highPrice?: number;
-        marketPrice?: number;
-      }
-    >;
-    cardmarket?: Record<string, number>;
+    cardmarket?: {
+      updated?: string;
+      unit?: string;
+      avg?: number;
+      low?: number;
+      trend?: number;
+      avg1?: number;
+      avg7?: number;
+      avg30?: number;
+    };
   };
 }
 
 function extractMarketPrice(data: TcgdexCardPricing): number | null {
-  // TCGPlayer only (USD). Cardmarket prices are EUR and would corrupt the
-  // historical chart which uses USD as its currency baseline.
-  const tcp = data.pricing?.tcgplayer;
-  if (tcp) {
-    for (const variant of ["holofoil", "normal", "reverseHolofoil", "firstEdition"]) {
-      const v = tcp[variant];
-      if (v?.marketPrice) return v.marketPrice;
-      if (v?.midPrice) return v.midPrice;
-    }
+  const cm = data.pricing?.cardmarket;
+  if (cm) {
+    // Prefer trend, then avg, then low
+    if (cm.trend != null && cm.trend > 0) return cm.trend;
+    if (cm.avg != null && cm.avg > 0) return cm.avg;
+    if (cm.low != null && cm.low > 0) return cm.low;
   }
   return null;
 }
@@ -94,37 +83,50 @@ serve(async (req) => {
   );
 
   try {
-    // 1. Get all sets, pick the 8 most recent
+    // 1. Get all sets
     const allSets = await fetchJson<TcgdexSetBrief[]>(TCGDEX_SETS_URL);
     if (!allSets) throw new Error("Failed to fetch sets from TCGdex");
 
-    const sorted = allSets
-      .filter((s) => s.releaseDate)
-      .sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""));
-    const recentSets = sorted.slice(0, 8);
+    console.log(`Fetched ${allSets.length} sets from TCGdex, fetching details for release dates...`);
+
+    // 2. Fetch details for all sets to get release dates (batch 10 at a time)
+    const setDetails: TcgdexSetDetail[] = [];
+    const batchSize = 10;
+    for (let i = 0; i < allSets.length; i += batchSize) {
+      const batch = allSets.slice(i, i + batchSize);
+      const results = await Promise.all(
+        batch.map((s) => fetchJson<TcgdexSetDetail>(`${TCGDEX_SETS_URL}/${s.id}`))
+      );
+      for (const r of results) {
+        if (r?.releaseDate) setDetails.push(r);
+      }
+      if (i + batchSize < allSets.length) {
+        await new Promise((r) => setTimeout(r, 100));
+      }
+    }
+
+    // 3. Sort by release date, pick the 8 most recent
+    setDetails.sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""));
+    const recentSets = setDetails.slice(0, 8);
 
     console.log(
       `Snapshotting prices for ${recentSets.length} sets:`,
-      recentSets.map((s) => s.name)
+      recentSets.map((s) => `${s.name} (${s.releaseDate})`)
     );
 
-    // 2. For each set, get its card list
+    // 4. For each set, fetch pricing for each card
     let totalInserted = 0;
     let totalSkipped = 0;
-    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const today = new Date().toISOString().split("T")[0];
 
     for (const set of recentSets) {
-      const setDetail = await fetchJson<TcgdexSetDetail>(
-        `${TCGDEX_SETS_URL}/${set.id}`
-      );
-      if (!setDetail?.cards?.length) {
+      if (!set.cards?.length) {
         console.log(`  ${set.name}: no cards found, skipping`);
         continue;
       }
 
-      console.log(`  ${set.name}: ${setDetail.cards.length} cards`);
+      console.log(`  ${set.name}: ${set.cards.length} cards`);
 
-      // 3. Fetch pricing for each card (batched, 5 at a time to be polite)
       const rows: Array<{
         card_id: string;
         card_name: string;
@@ -133,11 +135,11 @@ serve(async (req) => {
         recorded_at: string;
       }> = [];
 
-      const cardList = setDetail.cards;
-      const batchSize = 5;
+      const cardList = set.cards;
+      const cardBatchSize = 5;
 
-      for (let i = 0; i < cardList.length; i += batchSize) {
-        const batch = cardList.slice(i, i + batchSize);
+      for (let i = 0; i < cardList.length; i += cardBatchSize) {
+        const batch = cardList.slice(i, i + cardBatchSize);
         const results = await Promise.all(
           batch.map((c) =>
             fetchJson<TcgdexCardPricing>(
@@ -160,13 +162,12 @@ serve(async (req) => {
           }
         }
 
-        // Small delay between batches to avoid rate-limiting
-        if (i + batchSize < cardList.length) {
+        if (i + cardBatchSize < cardList.length) {
           await new Promise((r) => setTimeout(r, 200));
         }
       }
 
-      // 4. Upsert into price_snapshots
+      // 5. Upsert into price_snapshots
       if (rows.length > 0) {
         const { error } = await supabase
           .from("price_snapshots")
@@ -182,7 +183,7 @@ serve(async (req) => {
       }
     }
 
-    // 5. Optional cleanup: remove snapshots older than 90 days
+    // 6. Cleanup: remove snapshots older than 90 days
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
     const cutoffStr = cutoff.toISOString().split("T")[0];
