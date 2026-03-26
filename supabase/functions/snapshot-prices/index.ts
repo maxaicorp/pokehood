@@ -173,8 +173,9 @@ serve(async (req) => {
 
         for (const data of results) {
           if (!data) continue;
-          const price = extractMarketPrice(data);
-          if (price !== null && price > 0) {
+          const priceEur = extractMarketPrice(data);
+          if (priceEur !== null && priceEur > 0) {
+            const price = Math.round(priceEur * eurToUsd * 100) / 100; // Convert EUR → USD
             rows.push({
               card_id: data.id,
               card_name: data.name ?? "",
