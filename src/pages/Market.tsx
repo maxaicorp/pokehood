@@ -235,11 +235,11 @@ export default function Market() {
           <div className="flex items-center gap-1 border-b border-border/50 overflow-x-auto">
             {([
               { key: "top", label: "Top", icon: Trophy },
+              { key: "sealed", label: "Sealed", icon: Package },
               { key: "trending", label: "Trending", icon: Flame },
               { key: "gainers", label: "Gainers", icon: TrendingUp },
               { key: "losers", label: "Losers", icon: TrendingDown },
               { key: "most-visited", label: "Most Visited", icon: Eye },
-              { key: "sealed", label: "Sealed", icon: Package },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
