@@ -53,6 +53,26 @@ function extractMarketPrice(data: TcgdexCardPricing): number | null {
   return null;
 }
 
+/** Fetch live EUR→USD exchange rate */
+async function getEurToUsdRate(): Promise<number> {
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/EUR");
+    if (res.ok) {
+      const data = await res.json();
+      const rate = data?.rates?.USD;
+      if (typeof rate === "number" && rate > 0) {
+        console.log(`EUR→USD rate: ${rate}`);
+        return rate;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to fetch exchange rate, using fallback:", e);
+  }
+  // Fallback rate if API fails
+  console.log("Using fallback EUR→USD rate: 1.08");
+  return 1.08;
+}
+
 /** Fetch with timeout + retry */
 async function fetchJson<T>(url: string, retries = 2): Promise<T | null> {
   for (let attempt = 0; attempt <= retries; attempt++) {
