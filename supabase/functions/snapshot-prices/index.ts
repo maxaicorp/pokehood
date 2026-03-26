@@ -182,9 +182,11 @@ serve(async (req) => {
 
         for (const data of results) {
           if (!data) continue;
-          const priceEur = extractMarketPrice(data);
-          if (priceEur !== null && priceEur > 0) {
-            const price = Math.round(priceEur * eurToUsd * 100) / 100; // Convert EUR → USD
+          const result = extractMarketPrice(data);
+          if (result !== null) {
+            const price = result.currency === "EUR"
+              ? Math.round(result.price * eurToUsd * 100) / 100
+              : result.price;
             rows.push({
               card_id: data.id,
               card_name: data.name ?? "",
