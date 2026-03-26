@@ -103,6 +103,33 @@ export type Database = {
           },
         ]
       }
+      price_snapshots: {
+        Row: {
+          card_id: string
+          card_name: string
+          id: string
+          price: number
+          recorded_at: string
+          set_name: string
+        }
+        Insert: {
+          card_id: string
+          card_name?: string
+          id?: string
+          price: number
+          recorded_at?: string
+          set_name?: string
+        }
+        Update: {
+          card_id?: string
+          card_name?: string
+          id?: string
+          price?: number
+          recorded_at?: string
+          set_name?: string
+        }
+        Relationships: []
+      }
       profile_views: {
         Row: {
           id: string
