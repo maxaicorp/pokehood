@@ -26,11 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye } from "lucide-react";
+import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
-type MarketTab = "top" | "trending" | "gainers" | "losers";
+type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited";
 
 const VISIBLE_PAGE_SIZE = 50;
 
@@ -43,6 +44,8 @@ export default function Market() {
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | "30d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState<MarketTab>("top");
+  const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
+  const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
 
   // Progressive loading state
   const [cards, setCards] = useState<PokemonCard[]>([]);
