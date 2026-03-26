@@ -54,6 +54,16 @@ export default function Market() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(null);
 
+  // Load most visited when tab is active
+  useEffect(() => {
+    if (activeTab !== "most-visited") return;
+    setMostVisitedLoading(true);
+    getMostViewed(10).then((rows) => {
+      setMostVisitedCards(rows);
+      setMostVisitedLoading(false);
+    });
+  }, [activeTab]);
+
   // Load sets once
   useEffect(() => {
     getSets().then((r) => setSetsData(r));
