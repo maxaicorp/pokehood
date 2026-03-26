@@ -26,11 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye } from "lucide-react";
+import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
-type MarketTab = "top" | "trending" | "gainers" | "losers";
+type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited";
 
 const VISIBLE_PAGE_SIZE = 50;
 
@@ -43,6 +44,8 @@ export default function Market() {
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | "30d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState<MarketTab>("top");
+  const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
+  const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
 
   // Progressive loading state
   const [cards, setCards] = useState<PokemonCard[]>([]);
@@ -50,6 +53,16 @@ export default function Market() {
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(null);
+
+  // Load most visited when tab is active
+  useEffect(() => {
+    if (activeTab !== "most-visited") return;
+    setMostVisitedLoading(true);
+    getMostViewed(10).then((rows) => {
+      setMostVisitedCards(rows);
+      setMostVisitedLoading(false);
+    });
+  }, [activeTab]);
 
   // Load sets once
   useEffect(() => {
@@ -225,6 +238,7 @@ export default function Market() {
               { key: "trending", label: "Trending", icon: Flame },
               { key: "gainers", label: "Gainers", icon: TrendingUp },
               { key: "losers", label: "Losers", icon: TrendingDown },
+              { key: "most-visited", label: "Most Visited", icon: Eye },
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -295,7 +309,57 @@ export default function Market() {
             <span />
           </div>
 
-          {isLoading && cards.length === 0 ? (
+          {activeTab === "most-visited" ? (
+            mostVisitedLoading ? (
+              <div>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border/50 last:border-0">
+                    <Skeleton className="h-4 w-6 shrink-0" />
+                    <Skeleton className="w-10 h-14 rounded-md shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-3 w-28" />
+                    </div>
+                    <Skeleton className="h-5 w-16 ml-auto" />
+                  </div>
+                ))}
+              </div>
+            ) : mostVisitedCards.length === 0 ? (
+              <div className="py-16 text-center text-muted-foreground">
+                No visit data yet. Browse some cards to populate this list!
+              </div>
+            ) : (
+              <div>
+                {mostVisitedCards.map((stat, i) => (
+                  <motion.div
+                    key={stat.tcg_api_id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: Math.min(i * 0.03, 0.3) }}
+                    className="grid grid-cols-[24px_1fr_auto] sm:grid-cols-[40px_1fr_160px_100px_44px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors"
+                    onClick={() => navigate(`/card/${stat.tcg_api_id}`)}
+                  >
+                    <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      {stat.image_small && (
+                        <img src={stat.image_small} alt={stat.name} className="w-9 sm:w-10 rounded-md shrink-0 shadow-sm" loading="lazy" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{stat.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{stat.set_name}</p>
+                      </div>
+                    </div>
+                    <p className="hidden sm:block text-sm text-muted-foreground truncate">{stat.set_name}</p>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground tabular-nums">{stat.view_count}</span>
+                    </div>
+                    <span />
+                  </motion.div>
+                ))}
+              </div>
+            )
+          ) : isLoading && cards.length === 0 ? (
             <div>
               {Array.from({ length: 12 }).map((_, i) => (
                 <div

@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      card_stats: {
+        Row: {
+          collection_add_count: number
+          image_small: string
+          name: string
+          search_hit_count: number
+          set_name: string
+          tcg_api_id: string
+          updated_at: string
+          view_count: number
+          wishlist_add_count: number
+        }
+        Insert: {
+          collection_add_count?: number
+          image_small?: string
+          name?: string
+          search_hit_count?: number
+          set_name?: string
+          tcg_api_id: string
+          updated_at?: string
+          view_count?: number
+          wishlist_add_count?: number
+        }
+        Update: {
+          collection_add_count?: number
+          image_small?: string
+          name?: string
+          search_hit_count?: number
+          set_name?: string
+          tcg_api_id?: string
+          updated_at?: string
+          view_count?: number
+          wishlist_add_count?: number
+        }
+        Relationships: []
+      }
       collection_cards: {
         Row: {
           added_at: string
@@ -320,6 +356,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_card_stat: {
+        Args: {
+          p_image_small: string
+          p_name: string
+          p_set_name: string
+          p_stat: string
+          p_tcg_api_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
