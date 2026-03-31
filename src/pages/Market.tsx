@@ -226,7 +226,7 @@ export default function Market() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-16 sm:pb-0">
+    <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <AppHeader activePage="market" />
 
       <div className="container py-6 px-4 sm:px-8">

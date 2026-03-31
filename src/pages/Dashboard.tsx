@@ -120,7 +120,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-16 sm:pb-0">
+    <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <AppHeader activePage="dashboard">
         {/* Tabs */}
         <div className="container px-4 sm:px-8">

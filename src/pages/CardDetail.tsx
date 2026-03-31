@@ -228,7 +228,7 @@ export default function CardDetail() {
   ];
 
   return (
-    <div className="min-h-screen bg-background pb-16 sm:pb-0">
+    <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <AppHeader activePage="explore" />
 
       <div className="container py-6 px-4 sm:px-8">
