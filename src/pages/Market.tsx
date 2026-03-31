@@ -231,8 +231,8 @@ export default function Market() {
 
       <div className="container py-6 px-4 sm:px-8">
         {/* Tabs + Set selector */}
-        <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-          <div className="flex items-center gap-1 border-b border-border/50 overflow-x-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+          <div className="flex items-center gap-1 border-b border-border/50 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
             {([
               { key: "top", label: "Top", icon: Trophy },
               { key: "sealed", label: "Sealed", icon: Package },
