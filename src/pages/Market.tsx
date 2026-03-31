@@ -549,7 +549,7 @@ export default function Market() {
           )}
         </div>
 
-        {!isLoading && (
+        {!isLoading && activeTab !== "sealed" && (
           <p className="text-xs text-muted-foreground text-center mt-4">
             {isSingleSet
               ? `${pricedCards.length} of ${(cards || []).length} cards have pricing · Prices sourced from TCGdex`
