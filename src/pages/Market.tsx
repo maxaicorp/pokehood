@@ -258,9 +258,11 @@ export default function Market() {
 
           {activeTab !== "sealed" && (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
-              {!isLoading && (
+              {!isLoading && totalValue > 0 && (
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Total Value</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isSingleSet ? "Set Total" : `Top ${pricedCards.length} Value`}
+                  </p>
                   <p className="text-lg font-bold text-foreground">
                     {formatPrice(totalValue)}
                   </p>
