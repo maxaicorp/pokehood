@@ -556,7 +556,24 @@ export async function getTopPricedCards(
   const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
   const physicalSetIds = new Set(physicalSets.map((s) => s.id));
   const candidates = cards.filter((c) => physicalSetIds.has(c.set.id));
-  const priced = await enrichCardsProgressively(candidates, 50, 15, (soFar) => {
+
+  // Only enrich cards that already have pricing hints (rarity-based heuristic)
+  // to avoid making 22k+ API calls which crashes the browser.
+  const highValueRarities = new Set([
+    "Rare Holo EX", "Rare Holo GX", "Rare VMAX", "Rare V", "Rare VSTAR",
+    "Rare Ultra", "Rare Secret", "Rare Rainbow", "Rare Holo VMAX",
+    "Rare Holo V", "Rare Holo VSTAR", "Illustration Rare", "Special Art Rare",
+    "Hyper Rare", "Double Rare", "Ultra Rare", "ACE SPEC Rare",
+    "Shiny Rare", "Shiny Ultra Rare", "Trainer Gallery Rare Holo",
+    "Art Rare", "Super Rare", "Immersive Art Rare", "Crown Rare",
+  ]);
+  // Prioritise high-rarity cards, then cap to a sane amount for enrichment
+  const prioritised = [
+    ...candidates.filter((c) => c.rarity && highValueRarities.has(c.rarity)),
+    ...candidates.filter((c) => !c.rarity || !highValueRarities.has(c.rarity)),
+  ].slice(0, 800);
+
+  const priced = await enrichCardsProgressively(prioritised, 50, 15, (soFar) => {
     const sorted = soFar
       .filter((c) => getMarketPrice(c) !== null)
       .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
