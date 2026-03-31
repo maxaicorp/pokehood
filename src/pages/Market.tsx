@@ -256,36 +256,38 @@ export default function Market() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3 justify-between sm:justify-end">
-            {!isLoading && (
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Total Value</p>
-                <p className="text-lg font-bold text-foreground">
-                  {formatPrice(totalValue)}
-                </p>
-              </div>
-            )}
-            <Select
-              value={selectedSetId || "all"}
-              onValueChange={(v) => setSelectedSetId(v === "all" ? "" : v)}
-            >
-              <SelectTrigger className="w-[180px] sm:w-[200px] bg-background">
-                <SelectValue placeholder="All Sets" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sets</SelectItem>
-                <SelectItem value="recent5">Recent Sets (5)</SelectItem>
-                <SelectItem value="recent10">Recent Sets (10)</SelectItem>
-                {setsData?.data
-                  ?.filter((s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()))
-                  .map((s: PokemonSet) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {activeTab !== "sealed" && (
+            <div className="flex items-center gap-3 justify-between sm:justify-end">
+              {!isLoading && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Total Value</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {formatPrice(totalValue)}
+                  </p>
+                </div>
+              )}
+              <Select
+                value={selectedSetId || "all"}
+                onValueChange={(v) => setSelectedSetId(v === "all" ? "" : v)}
+              >
+                <SelectTrigger className="w-[180px] sm:w-[200px] bg-background">
+                  <SelectValue placeholder="All Sets" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sets</SelectItem>
+                  <SelectItem value="recent5">Recent Sets (5)</SelectItem>
+                  <SelectItem value="recent10">Recent Sets (10)</SelectItem>
+                  {setsData?.data
+                    ?.filter((s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()))
+                    .map((s: PokemonSet) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {/* Table */}
