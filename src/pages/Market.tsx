@@ -256,7 +256,7 @@ export default function Market() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center gap-3 justify-between sm:justify-end">
             {!isLoading && (
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Total Value</p>

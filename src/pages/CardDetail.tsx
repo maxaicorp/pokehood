@@ -395,7 +395,7 @@ export default function CardDetail() {
               ) : null}
             </div>
 
-            <div className="w-full h-px bg-border" />
+            <div className="hidden lg:block w-full h-px bg-border" />
 
             {/* Buy Now dropdown */}
             <DropdownMenu>
