@@ -130,7 +130,7 @@ export default function CollectionList({ cards, onUpdate }: Props) {
                   className={`h-7 w-7 transition-opacity ${
                     card.forSale
                       ? "bg-green-600 hover:bg-green-700 text-white opacity-100"
-                      : "opacity-0 group-hover:opacity-100 text-muted-foreground"
+                      : "sm:opacity-0 sm:group-hover:opacity-100 text-muted-foreground"
                   }`}
                   onClick={() => handleToggleForSale(card)}
                   disabled={updatingIds.has(card.id)}
