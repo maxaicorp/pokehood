@@ -226,13 +226,13 @@ export default function Market() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-16 sm:pb-0">
+    <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <AppHeader activePage="market" />
 
       <div className="container py-6 px-4 sm:px-8">
         {/* Tabs + Set selector */}
-        <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-          <div className="flex items-center gap-1 border-b border-border/50 overflow-x-auto">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
+          <div className="flex items-center gap-1 border-b border-border/50 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
             {([
               { key: "top", label: "Top", icon: Trophy },
               { key: "sealed", label: "Sealed", icon: Package },
@@ -256,7 +256,7 @@ export default function Market() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center gap-3 justify-between sm:justify-end">
             {!isLoading && (
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Total Value</p>

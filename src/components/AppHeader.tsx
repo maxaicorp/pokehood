@@ -105,7 +105,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
   return (
     <>
       {/* Mobile bottom nav */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50 flex">
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50 flex pb-[env(safe-area-inset-bottom)]">
         <Link to="/dashboard" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground"}`}>
           <LayoutGrid className="w-5 h-5" />
           <span className="text-[10px] font-medium">Dashboard</span>
