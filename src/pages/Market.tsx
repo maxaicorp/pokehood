@@ -259,7 +259,22 @@ export default function Market() {
             ))}
           </div>
 
-          {activeTab !== "sealed" && (
+          {activeTab === "sealed" ? (
+            <div className="flex items-center gap-3 justify-between sm:justify-end">
+              <Select value={sealedType} onValueChange={setSealedType}>
+                <SelectTrigger className="w-[180px] sm:w-[200px] bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEALED_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
               {!isLoading && totalValue > 0 && (
                 <div className="text-right">
