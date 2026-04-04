@@ -6,13 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X, TrendingUp } from "lucide-react";
+import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X, TrendingUp, Layers } from "lucide-react";
 import GlobalSearch from "@/components/GlobalSearch";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
 interface AppHeaderProps {
-  activePage: "dashboard" | "explore" | "market";
+  activePage: "dashboard" | "explore" | "market" | "sets";
   children?: React.ReactNode;
 }
 
@@ -118,6 +118,10 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           <TrendingUp className="w-5 h-5" />
           <span className="text-[10px] font-medium">Market</span>
         </Link>
+        <Link to="/sets" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "sets" ? "text-foreground" : "text-muted-foreground"}`}>
+          <Layers className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Sets</span>
+        </Link>
       </div>
 
       {/* Header */}
@@ -133,6 +137,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Dashboard</Link>
               <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Explore</Link>
               <Link to="/market" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "market" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Market</Link>
+              <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Sets</Link>
             </div>
             {isPro && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">

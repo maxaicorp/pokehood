@@ -47,9 +47,10 @@ export default function Explore() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const urlQuery = searchParams.get("q") || "";
+  const urlSet = searchParams.get("set") || "";
   const [query, setQuery] = useState(urlQuery);
   const [searchTerm, setSearchTerm] = useState(urlQuery);
-  const [selectedSet, setSelectedSet] = useState("");
+  const [selectedSet, setSelectedSet] = useState(urlSet);
   const [selectedRarity, setSelectedRarity] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("-set.releaseDate");
