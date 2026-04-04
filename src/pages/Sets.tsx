@@ -56,7 +56,10 @@ export default function Sets() {
   const groups = useMemo<SeriesGroup[]>(() => {
     if (!setsResult?.data) return [];
 
-    const sets = setsResult.data;
+    // Filter out TCG Pocket sets
+    const sets = setsResult.data.filter(
+      (s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase())
+    );
     const map = new Map<string, PokemonSet[]>();
 
     for (const set of sets) {
