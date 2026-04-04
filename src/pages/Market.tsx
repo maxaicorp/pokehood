@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package } from "lucide-react";
+import SealedTab from "@/components/SealedTab";
 import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -315,13 +316,7 @@ export default function Market() {
           </div>
 
           {activeTab === "sealed" ? (
-            <div className="py-16 text-center text-muted-foreground">
-              <Package className="w-12 h-12 mx-auto mb-4 opacity-40" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Sealed Products</h3>
-              <p className="text-sm max-w-md mx-auto">
-                Sealed product tracking is coming soon. Browse booster boxes, ETBs, and more with live pricing.
-              </p>
-            </div>
+            <SealedTab />
           ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
               <div>
