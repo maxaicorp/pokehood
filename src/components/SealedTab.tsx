@@ -207,11 +207,13 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
                   </div>
                 </div>
                 <p className="hidden sm:block text-sm text-muted-foreground truncate">{product.expansion.name}</p>
-                <p className="text-right text-sm font-semibold text-foreground tabular-nums">
-                  {price !== null ? formatPrice(price) : "—"}
-                </p>
-                <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
-                <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
+                <div className="flex items-center justify-end sm:contents">
+                  <p className="text-right text-sm font-semibold text-foreground tabular-nums">
+                    {price !== null ? formatPrice(price) : "—"}
+                  </p>
+                  <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
+                  <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
+                </div>
               </motion.div>
             );
           })}
