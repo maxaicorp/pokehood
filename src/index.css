@@ -138,13 +138,13 @@
   }
 
   .text-gradient-primary {
-    color: rgb(20, 20, 20);
-    -webkit-text-fill-color: rgb(20, 20, 20);
+    color: hsl(var(--foreground));
+    -webkit-text-fill-color: hsl(var(--foreground));
   }
 
   .text-gradient-accent {
-    color: rgb(20, 20, 20);
-    -webkit-text-fill-color: rgb(20, 20, 20);
+    color: hsl(var(--foreground));
+    -webkit-text-fill-color: hsl(var(--foreground));
   }
 
   .border-rainbow {
