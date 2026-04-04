@@ -138,13 +138,13 @@
   }
 
   .text-gradient-primary {
-    color: rgb(20, 20, 20);
-    -webkit-text-fill-color: rgb(20, 20, 20);
+    color: hsl(var(--foreground));
+    -webkit-text-fill-color: hsl(var(--foreground));
   }
 
   .text-gradient-accent {
-    color: rgb(20, 20, 20);
-    -webkit-text-fill-color: rgb(20, 20, 20);
+    color: hsl(var(--foreground));
+    -webkit-text-fill-color: hsl(var(--foreground));
   }
 
   .border-rainbow {
@@ -197,7 +197,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      hsl(0 0% 0% / 0.03),
+      hsl(var(--foreground) / 0.03),
       transparent
     );
     transition: left 0.5s ease;
