@@ -115,11 +115,17 @@ export async function fetchSealedProducts(opts: {
     return { products: [], page, pageSize, totalCount: 0 };
   }
 
+  // Filter out "Case" products (bulk wholesale items)
+  const allProducts = (response.data ?? []) as SealedProduct[];
+  const filtered = allProducts.filter(
+    (p) => !p.name.toLowerCase().includes("case")
+  );
+
   return {
-    products: (response.data ?? []) as SealedProduct[],
+    products: filtered,
     page: response.page ?? page,
     pageSize: response.page_size ?? pageSize,
-    totalCount: response.total_count ?? 0,
+    totalCount: (response.total_count ?? 0) - (allProducts.length - filtered.length),
   };
 }
 
