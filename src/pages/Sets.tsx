@@ -32,12 +32,6 @@ const SERIES_ORDER = [
   "Trainer kits",
 ];
 
-/** TCGdex logo URLs don't include file extensions — append .png */
-function fixLogoUrl(url: string): string {
-  if (!url) return "";
-  if (/\.\w+$/.test(url)) return url;
-  return url + ".png";
-}
 
 interface SeriesGroup {
   series: string;
@@ -179,7 +173,7 @@ function SetCard({ set, index }: { set: PokemonSet; index: number }) {
         <div className="h-24 sm:h-28 flex items-center justify-center p-4 bg-muted/20 group-hover:bg-muted/40 transition-colors">
           {set.images?.logo ? (
             <img
-              src={fixLogoUrl(set.images.logo)}
+              src={set.images.logo}
               alt={set.name}
               className="max-h-full max-w-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-200"
               loading="lazy"
