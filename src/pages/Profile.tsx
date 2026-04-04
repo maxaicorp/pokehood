@@ -285,7 +285,7 @@ export default function Profile() {
         {/* Footer */}
         <div className="mt-10 sm:mt-12 text-center">
           <p className="text-xs text-muted-foreground">
-            Powered by <span className="font-display font-semibold text-foreground">PokeVault</span>
+            Powered by <span className="font-display font-semibold text-foreground">Collectiblez</span>
           </p>
         </div>
       </div>

@@ -142,7 +142,7 @@ export default function CollectionList({ cards, onUpdate }: Props) {
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-7 w-7 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-destructive"
+                  className="h-7 w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-destructive"
                   onClick={() => handleRemove(card)}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
