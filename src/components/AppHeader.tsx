@@ -125,11 +125,11 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
         <ApiHealthBanner />
         <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link to="/" className="flex items-center gap-2 px-1.5 py-1 rounded-xl bg-foreground h-8">
-              <div className="w-6 h-6 rounded-lg flex items-center justify-center overflow-hidden">
+            <Link to="/" className="flex items-center gap-2 h-8">
+              <div className="w-8 h-8 rounded-xl bg-foreground flex items-center justify-center overflow-hidden">
                 <img src="/logo.jpg" alt="Collectiblez" className="w-5 h-5 object-contain" />
               </div>
-              <span className="font-display font-bold text-sm text-background pr-1.5 hidden sm:inline">Collectiblez</span>
+              <span className="font-display font-bold text-sm text-foreground hidden sm:inline">Collectiblez</span>
             </Link>
             <div className="hidden sm:flex items-center gap-0">
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Dashboard</Link>
