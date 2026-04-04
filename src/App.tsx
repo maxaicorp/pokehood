@@ -14,6 +14,7 @@ import Terms from "./pages/Terms";
 import DemoProfile from "./pages/DemoProfile";
 import CardDetail from "./pages/CardDetail";
 import Market from "./pages/Market";
+import Sets from "./pages/Sets";
 import NotFound from "./pages/NotFound";
 import BackgroundLayer from "@/components/BackgroundLayer";
 
