@@ -65,11 +65,20 @@ function ApiHealthBanner() {
   );
 }
 
+const LOGO_FONTS = [
+  { label: "Futuristic", family: "'Orbitron', sans-serif" },
+  { label: "Bold & Sporty", family: "'Bebas Neue', sans-serif" },
+  { label: "Premium", family: "'Playfair Display', serif" },
+  { label: "Streetwear", family: "'Anton', sans-serif" },
+] as const;
+
 export default function AppHeader({ activePage, children }: AppHeaderProps) {
   const { user, isPro, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const [qrOpen, setQrOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [fontIdx, setFontIdx] = useState(0);
+  const cycleFont = useCallback(() => setFontIdx(i => (i + 1) % LOGO_FONTS.length), []);
 
   const { data: profile } = useQuery({
     queryKey: ["my-profile", user?.id],
