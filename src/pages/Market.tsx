@@ -312,25 +312,27 @@ export default function Market() {
 
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
-          {/* Table header */}
-          <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground`}>
-            <span>#</span>
-            <span>Card</span>
-            {!isSingleSet && <span>Set</span>}
-            <button onClick={() => handleSort("price")} className="flex items-center justify-end hover:text-foreground transition-colors">
-              Market Price <SortIcon col="price" />
-            </button>
-            <button onClick={() => handleSort("24h")} className="flex items-center justify-end hover:text-foreground transition-colors">
-              24h % <SortIcon col="24h" />
-            </button>
-            <button onClick={() => handleSort("7d")} className="flex items-center justify-end hover:text-foreground transition-colors">
-              7d % <SortIcon col="7d" />
-            </button>
-            <button onClick={() => handleSort("30d")} className="flex items-center justify-end hover:text-foreground transition-colors">
-              30d % <SortIcon col="30d" />
-            </button>
-            <span />
-          </div>
+          {/* Table header — hidden when Sealed tab is active (it has its own) */}
+          {activeTab !== "sealed" && (
+            <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground`}>
+              <span>#</span>
+              <span>Card</span>
+              {!isSingleSet && <span>Set</span>}
+              <button onClick={() => handleSort("price")} className="flex items-center justify-end hover:text-foreground transition-colors">
+                Market Price <SortIcon col="price" />
+              </button>
+              <button onClick={() => handleSort("24h")} className="flex items-center justify-end hover:text-foreground transition-colors">
+                24h % <SortIcon col="24h" />
+              </button>
+              <button onClick={() => handleSort("7d")} className="flex items-center justify-end hover:text-foreground transition-colors">
+                7d % <SortIcon col="7d" />
+              </button>
+              <button onClick={() => handleSort("30d")} className="flex items-center justify-end hover:text-foreground transition-colors">
+                30d % <SortIcon col="30d" />
+              </button>
+              <span />
+            </div>
+          )}
 
           {activeTab === "sealed" ? (
             <SealedTab typeFilter={sealedType} />
