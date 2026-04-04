@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   fetchSealedProducts,
   getSealedMarketPrice,
@@ -17,10 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Package, Search, ExternalLink } from "lucide-react";
+import { Package, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { motion } from "framer-motion";
 
 const PAGE_SIZE = 50;
+
+type SortCol = "price" | "1d" | "7d" | null;
 
 export default function SealedTab() {
   const [products, setProducts] = useState<SealedProduct[]>([]);
@@ -33,6 +35,8 @@ export default function SealedTab() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [hasMore, setHasMore] = useState(true);
   const loadingMore = useRef(false);
+  const [sortCol, setSortCol] = useState<SortCol>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // Debounce search input
   useEffect(() => {
@@ -92,7 +96,43 @@ export default function SealedTab() {
     return () => observer.disconnect();
   }, [hasMore, products.length]);
 
+  const handleSort = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("desc");
+    }
+  };
+
+  const sortedProducts = useMemo(() => {
+    if (!sortCol) return products;
+    return [...products].sort((a, b) => {
+      let va: number | null, vb: number | null;
+      if (sortCol === "price") {
+        va = getSealedMarketPrice(a);
+        vb = getSealedMarketPrice(b);
+      } else {
+        const ta = getSealedTrends(a);
+        const tb = getSealedTrends(b);
+        va = sortCol === "1d" ? ta.pct1d : ta.pct7d;
+        vb = sortCol === "1d" ? tb.pct1d : tb.pct7d;
+      }
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      return sortDir === "asc" ? va - vb : vb - va;
+    });
+  }, [products, sortCol, sortDir]);
+
   const totalValue = products.reduce((sum, p) => sum + (getSealedMarketPrice(p) ?? 0), 0);
+
+  const SortIcon = ({ col }: { col: SortCol }) => {
+    if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
+    return sortDir === "asc"
+      ? <ArrowUp className="w-3 h-3 ml-1 text-primary" />
+      : <ArrowDown className="w-3 h-3 ml-1 text-primary" />;
+  };
 
   if (isLoading && products.length === 0) {
     return (
@@ -154,19 +194,25 @@ export default function SealedTab() {
         <span>#</span>
         <span>Product</span>
         <span>Set</span>
-        <span className="text-right">Market Price</span>
-        <span className="text-right">24h %</span>
-        <span className="text-right">7d %</span>
+        <button onClick={() => handleSort("price")} className="flex items-center justify-end hover:text-foreground transition-colors">
+          Market Price <SortIcon col="price" />
+        </button>
+        <button onClick={() => handleSort("1d")} className="flex items-center justify-end hover:text-foreground transition-colors">
+          24h % <SortIcon col="1d" />
+        </button>
+        <button onClick={() => handleSort("7d")} className="flex items-center justify-end hover:text-foreground transition-colors">
+          7d % <SortIcon col="7d" />
+        </button>
       </div>
 
-      {products.length === 0 && !isLoading ? (
+      {sortedProducts.length === 0 && !isLoading ? (
         <div className="py-16 text-center text-muted-foreground">
           <Package className="w-12 h-12 mx-auto mb-4 opacity-40" />
           <p className="text-sm">No sealed products found for this filter.</p>
         </div>
       ) : (
         <div>
-          {products.map((product, i) => {
+          {sortedProducts.map((product, i) => {
             const price = getSealedMarketPrice(product);
             const { pct1d, pct7d } = getSealedTrends(product);
             const f1d = formatPct(pct1d);
