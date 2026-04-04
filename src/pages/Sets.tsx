@@ -164,7 +164,6 @@ export default function Sets() {
 }
 
 function SetCard({ set, index }: { set: PokemonSet; index: number }) {
-  const isPocket = TCGP_SERIES_IDS.includes(set.series.toLowerCase());
 
   return (
     <motion.div
