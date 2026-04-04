@@ -197,7 +197,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      hsl(0 0% 0% / 0.03),
+      hsl(var(--foreground) / 0.03),
       transparent
     );
     transition: left 0.5s ease;

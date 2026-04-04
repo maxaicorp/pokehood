@@ -54,7 +54,7 @@ export default function Auth() {
         color={theme === "dark" ? "#ffffff" : "#000000"}
         refresh
       />
-      <div className="w-full max-w-sm relative z-10 bg-background/80 backdrop-blur-xl p-8 rounded-2xl border border-border/50 shadow-2xl shadow-red-500/20">
+      <div className="w-full max-w-sm relative z-10 bg-background/80 backdrop-blur-xl p-8 rounded-2xl border border-border/50 shadow-2xl shadow-primary/10">
         <div className="mb-8 flex flex-col items-center text-center">
           <Link to="/" className="inline-flex flex-col items-center gap-2 mb-2">
             <img src="/logo.png" alt="Collectiblez" className="w-10 h-10 object-contain" />
