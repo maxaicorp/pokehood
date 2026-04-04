@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package } from "lucide-react";
+import SealedTab from "@/components/SealedTab";
 import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
