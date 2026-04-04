@@ -32,12 +32,6 @@ const SERIES_ORDER = [
   "Trainer kits",
 ];
 
-/** TCGdex logo URLs don't include file extensions — append .png */
-function fixLogoUrl(url: string): string {
-  if (!url) return "";
-  if (/\.\w+$/.test(url)) return url;
-  return url + ".png";
-}
 
 interface SeriesGroup {
   series: string;
