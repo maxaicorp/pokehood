@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package } from "lucide-react";
 import SealedTab from "@/components/SealedTab";
+import { SEALED_TYPES } from "@/lib/sealed-store";
 import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -47,6 +48,7 @@ export default function Market() {
   const [activeTab, setActiveTab] = useState<MarketTab>("top");
   const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
+  const [sealedType, setSealedType] = useState("all");
 
   // Progressive loading state
   const [cards, setCards] = useState<PokemonCard[]>([]);
@@ -257,7 +259,22 @@ export default function Market() {
             ))}
           </div>
 
-          {activeTab !== "sealed" && (
+          {activeTab === "sealed" ? (
+            <div className="flex items-center gap-3 justify-between sm:justify-end">
+              <Select value={sealedType} onValueChange={setSealedType}>
+                <SelectTrigger className="w-[180px] sm:w-[200px] bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SEALED_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
               {!isLoading && totalValue > 0 && (
                 <div className="text-right">
@@ -316,7 +333,7 @@ export default function Market() {
           </div>
 
           {activeTab === "sealed" ? (
-            <SealedTab />
+            <SealedTab typeFilter={sealedType} />
           ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
               <div>

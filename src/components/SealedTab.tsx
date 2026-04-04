@@ -3,54 +3,40 @@ import {
   fetchSealedProducts,
   getSealedMarketPrice,
   getSealedTrends,
-  SEALED_TYPES,
   SealedProduct,
 } from "@/lib/sealed-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import { formatPct } from "@/lib/price-snapshots";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Package, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Package, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { motion } from "framer-motion";
 
 const PAGE_SIZE = 50;
 
 type SortCol = "price" | "1d" | "7d" | null;
 
-export default function SealedTab() {
+interface SealedTabProps {
+  typeFilter: string;
+}
+
+export default function SealedTab({ typeFilter }: SealedTabProps) {
   const [products, setProducts] = useState<SealedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [hasMore, setHasMore] = useState(true);
   const loadingMore = useRef(false);
   const [sortCol, setSortCol] = useState<SortCol>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Debounce search input
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(searchQuery), 400);
-    return () => clearTimeout(t);
-  }, [searchQuery]);
-
-  // Reset when filters change
+  // Reset when filter changes
   useEffect(() => {
     setProducts([]);
     setPage(1);
     setHasMore(true);
     setIsLoading(true);
-  }, [typeFilter, debouncedQuery]);
+  }, [typeFilter]);
 
   // Fetch data
   useEffect(() => {
@@ -61,7 +47,6 @@ export default function SealedTab() {
       page,
       pageSize: PAGE_SIZE,
       type: typeFilter,
-      query: debouncedQuery || undefined,
     }).then((result) => {
       if (cancelled) return;
       loadingMore.current = false;
@@ -78,7 +63,7 @@ export default function SealedTab() {
     });
 
     return () => { cancelled = true; };
-  }, [page, typeFilter, debouncedQuery]);
+  }, [page, typeFilter]);
 
   // Infinite scroll
   useEffect(() => {
@@ -125,8 +110,6 @@ export default function SealedTab() {
     });
   }, [products, sortCol, sortDir]);
 
-  const totalValue = products.reduce((sum, p) => sum + (getSealedMarketPrice(p) ?? 0), 0);
-
   const SortIcon = ({ col }: { col: SortCol }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
     return sortDir === "asc"
@@ -137,10 +120,6 @@ export default function SealedTab() {
   if (isLoading && products.length === 0) {
     return (
       <div>
-        <div className="flex flex-col sm:flex-row gap-3 px-4 py-3 border-b border-border">
-          <Skeleton className="h-9 w-full sm:w-[200px]" />
-          <Skeleton className="h-9 w-full sm:w-[160px]" />
-        </div>
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border/50">
             <Skeleton className="h-4 w-6" />
@@ -158,37 +137,6 @@ export default function SealedTab() {
 
   return (
     <div>
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 border-b border-border bg-muted/30">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search sealed products..."
-            className="pl-9 bg-background"
-          />
-        </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-full sm:w-[180px] bg-background">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {SEALED_TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="text-right sm:ml-auto">
-          <p className="text-xs text-muted-foreground">{totalCount.toLocaleString()} products</p>
-          {totalValue > 0 && (
-            <p className="text-sm font-semibold text-foreground">{formatPrice(totalValue)}</p>
-          )}
-        </div>
-      </div>
-
       {/* Table header */}
       <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
         <span>#</span>
@@ -231,12 +179,7 @@ export default function SealedTab() {
                 transition={{ delay: Math.min(i * 0.008, 0.3) }}
                 className="grid grid-cols-[24px_1fr_auto] sm:grid-cols-[40px_1fr_160px_100px_72px_72px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 transition-colors"
               >
-                {/* Rank */}
-                <span className="text-sm font-mono text-muted-foreground tabular-nums">
-                  {i + 1}
-                </span>
-
-                {/* Product info */}
+                <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   {image ? (
                     <img
@@ -263,33 +206,18 @@ export default function SealedTab() {
                     </div>
                   </div>
                 </div>
-
-                {/* Set (desktop) */}
-                <p className="hidden sm:block text-sm text-muted-foreground truncate">
-                  {product.expansion.name}
-                </p>
-
-                {/* Price */}
+                <p className="hidden sm:block text-sm text-muted-foreground truncate">{product.expansion.name}</p>
                 <p className="text-right text-sm font-semibold text-foreground tabular-nums">
                   {price !== null ? formatPrice(price) : "—"}
                 </p>
-
-                {/* 24h */}
-                <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f1d.className}`}>
-                  {f1d.text}
-                </p>
-
-                {/* 7d */}
-                <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f7d.className}`}>
-                  {f7d.text}
-                </p>
+                <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
+                <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
               </motion.div>
             );
           })}
         </div>
       )}
 
-      {/* Infinite scroll sentinel */}
       <div ref={sentinelRef} className="h-4" />
       {!hasMore && products.length > 0 && (
         <p className="text-center text-xs text-muted-foreground py-4">
