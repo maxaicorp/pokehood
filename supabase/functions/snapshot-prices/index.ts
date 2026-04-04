@@ -40,7 +40,6 @@ interface TcgdexCardPricing {
 }
 
 function extractMarketPrice(data: TcgdexCardPricing): { price: number; currency: "USD" | "EUR" } | null {
-  // Prefer TCGPlayer (USD)
   const tcp = data.pricing?.tcgplayer;
   if (tcp) {
     for (const variant of ["holofoil", "normal", "reverseHolofoil", "firstEdition"]) {
@@ -49,7 +48,6 @@ function extractMarketPrice(data: TcgdexCardPricing): { price: number; currency:
       if (v?.midPrice && v.midPrice > 0) return { price: v.midPrice, currency: "USD" };
     }
   }
-  // Fallback to Cardmarket (EUR) — will be converted to USD
   const cm = data.pricing?.cardmarket;
   if (cm) {
     const isHolo = (cm["avg-holo"] ?? 0) > 0;
@@ -63,7 +61,6 @@ function extractMarketPrice(data: TcgdexCardPricing): { price: number; currency:
   return null;
 }
 
-/** Fetch live EUR→USD exchange rate */
 async function getEurToUsdRate(): Promise<number> {
   try {
     const res = await fetch("https://open.er-api.com/v6/latest/EUR");
@@ -82,7 +79,6 @@ async function getEurToUsdRate(): Promise<number> {
   return 1.08;
 }
 
-/** Fetch with timeout + retry */
 async function fetchJson<T>(url: string, retries = 2): Promise<T | null> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -112,16 +108,13 @@ serve(async (req) => {
   );
 
   try {
-    // 1. Get all sets
     const allSets = await fetchJson<TcgdexSetBrief[]>(TCGDEX_SETS_URL);
     if (!allSets) throw new Error("Failed to fetch sets from TCGdex");
 
     console.log(`Fetched ${allSets.length} sets from TCGdex, fetching details for release dates...`);
 
-    // 2. Fetch live EUR→USD exchange rate
     const eurToUsd = await getEurToUsdRate();
 
-    // 3. Fetch details for all sets to get release dates (batch 10 at a time)
     const setDetails: TcgdexSetDetail[] = [];
     const batchSize = 10;
     for (let i = 0; i < allSets.length; i += batchSize) {
@@ -137,7 +130,6 @@ serve(async (req) => {
       }
     }
 
-    // 3. Sort by release date, pick the 8 most recent
     setDetails.sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""));
     const recentSets = setDetails.slice(0, 8);
 
@@ -146,7 +138,6 @@ serve(async (req) => {
       recentSets.map((s) => `${s.name} (${s.releaseDate})`)
     );
 
-    // 4. For each set, fetch pricing for each card
     let totalInserted = 0;
     let totalSkipped = 0;
     const today = new Date().toISOString().split("T")[0];
@@ -202,7 +193,6 @@ serve(async (req) => {
         }
       }
 
-      // 5. Upsert into price_snapshots
       if (rows.length > 0) {
         const { error } = await supabase
           .from("price_snapshots")
@@ -218,7 +208,7 @@ serve(async (req) => {
       }
     }
 
-    // 6. Cleanup: remove snapshots older than 90 days
+    // Cleanup: remove snapshots older than 90 days
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
     const cutoffStr = cutoff.toISOString().split("T")[0];
