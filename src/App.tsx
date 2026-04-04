@@ -41,6 +41,7 @@ const App = () => (
                 <Route path="/u/:slug" element={<Profile />} />
                 <Route path="/card/:id" element={<CardDetail />} />
                 <Route path="/market" element={<Market />} />
+                <Route path="/sets" element={<Sets />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

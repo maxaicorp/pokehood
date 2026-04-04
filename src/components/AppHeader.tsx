@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
 interface AppHeaderProps {
-  activePage: "dashboard" | "explore" | "market";
+  activePage: "dashboard" | "explore" | "market" | "sets";
   children?: React.ReactNode;
 }
 
