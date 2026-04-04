@@ -133,6 +133,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Dashboard</Link>
               <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Explore</Link>
               <Link to="/market" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "market" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Market</Link>
+              <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Sets</Link>
             </div>
             {isPro && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
