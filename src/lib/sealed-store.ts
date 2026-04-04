@@ -115,10 +115,10 @@ export async function fetchSealedProducts(opts: {
     return { products: [], page, pageSize, totalCount: 0 };
   }
 
-  // Filter out "Case" products (bulk wholesale items)
+  // Filter out "Case" products and items with no price data
   const allProducts = (response.data ?? []) as SealedProduct[];
   const filtered = allProducts.filter(
-    (p) => !p.name.toLowerCase().includes("case")
+    (p) => !p.name.toLowerCase().includes("case") && getSealedMarketPrice(p) !== null
   );
 
   return {
