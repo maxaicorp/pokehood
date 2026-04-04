@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Space Grotesk"', 'Inter', 'system-ui', 'sans-serif'],
-        body: ['"Space Grotesk"', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['"Orbitron"', '"Space Grotesk"', 'system-ui', 'sans-serif'],
+        body: ['"Orbitron"', '"Space Grotesk"', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
