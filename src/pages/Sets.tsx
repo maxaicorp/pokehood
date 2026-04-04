@@ -30,8 +30,14 @@ const SERIES_ORDER = [
   "Miscellaneous",
   "McDonald's Collection",
   "Trainer kits",
-  "Pokémon TCG Pocket",
 ];
+
+/** TCGdex logo URLs don't include file extensions — append .png */
+function fixLogoUrl(url: string): string {
+  if (!url) return "";
+  if (/\.\w+$/.test(url)) return url;
+  return url + ".png";
+}
 
 interface SeriesGroup {
   series: string;
