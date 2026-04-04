@@ -127,7 +127,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/" className="flex items-center gap-2 h-8">
               <div className="w-8 h-8 rounded-xl bg-foreground flex items-center justify-center overflow-hidden">
-                <img src="/logo.jpg" alt="Collectiblez" className="w-5 h-5 object-contain" />
+                <img src="/logo.png" alt="Collectiblez" className="w-6 h-6 object-contain" />
               </div>
               <span className="font-display font-bold text-sm text-foreground hidden sm:inline">Collectiblez</span>
             </Link>
