@@ -95,7 +95,7 @@ export default function Sets() {
   const totalSets = groups.reduce((sum, g) => sum + g.sets.length, 0);
 
   return (
-    <div className="min-h-screen bg-background pb-24 sm:pb-8">
+    <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <AppHeader activePage="market">
         {/* Search bar below header */}
         <div className="border-t border-border/30 bg-muted/20">
