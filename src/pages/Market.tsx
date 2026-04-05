@@ -12,9 +12,10 @@ import {
   PokemonCard,
   PokemonSet,
   TCGP_SERIES_IDS,
+  seedPricingCache,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
-import { formatPct } from "@/lib/price-snapshots";
+import { formatPct, getLatestSnapshotPrices } from "@/lib/price-snapshots";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
 import AppHeader from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,9 +68,12 @@ export default function Market() {
     });
   }, [activeTab]);
 
-  // Load sets once
+  // Load sets + seed pricing cache from database snapshots (instant prices)
   useEffect(() => {
-    getSets().then((r) => setSetsData(r));
+    Promise.all([getSets(), getLatestSnapshotPrices()]).then(([r, prices]) => {
+      setSetsData(r);
+      seedPricingCache(prices);
+    });
   }, []);
 
   // Fetch cards with progressive updates

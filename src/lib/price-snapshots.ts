@@ -89,3 +89,47 @@ export async function getCardPriceHistory(
   if (error || !data) return [];
   return (data as Array<{ recorded_at: string; price: number }>).map((row) => ({ date: row.recorded_at, price: Number(row.price) }));
 }
+
+// ── Bulk latest prices for instant Market page loading ────────────────────────
+
+export interface LatestPrice {
+  cardId: string;
+  cardName: string;
+  setName: string;
+  price: number;
+}
+
+/**
+ * Fetch the most recent snapshot price for every card in one query.
+ * Returns a Map keyed by card_id for O(1) lookups.
+ */
+export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice>> {
+  const map = new Map<string, LatestPrice>();
+
+  // Get the most recent snapshot date first
+  const { data: dateRow } = await (supabase.from as any)("price_snapshots")
+    .select("recorded_at")
+    .order("recorded_at", { ascending: false })
+    .limit(1);
+
+  if (!dateRow?.length) return map;
+  const latestDate = dateRow[0].recorded_at;
+
+  // Fetch all prices for that date
+  const { data, error } = await (supabase.from as any)("price_snapshots")
+    .select("card_id, card_name, set_name, price")
+    .eq("recorded_at", latestDate);
+
+  if (error || !data) return map;
+
+  for (const row of data as Array<{ card_id: string; card_name: string; set_name: string; price: number }>) {
+    map.set(row.card_id, {
+      cardId: row.card_id,
+      cardName: row.card_name,
+      setName: row.set_name,
+      price: Number(row.price),
+    });
+  }
+
+  return map;
+}
