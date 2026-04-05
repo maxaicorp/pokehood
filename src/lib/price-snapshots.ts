@@ -97,37 +97,74 @@ export interface LatestPrice {
   cardName: string;
   setName: string;
   price: number;
+  pricePct24h: number | null;
+  pricePct7d: number | null;
+  pricePct30d: number | null;
 }
 
 /**
- * Fetch the most recent snapshot price for every card in one query.
- * Returns a Map keyed by card_id for O(1) lookups.
+ * Fetch the most recent snapshot price + historical % changes for every card.
+ * Uses at most 4 small DB queries. Returns a Map keyed by card_id.
  */
 export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice>> {
   const map = new Map<string, LatestPrice>();
 
-  // Get the most recent snapshot date first
-  const { data: dateRow } = await (supabase.from as any)("price_snapshots")
+  // 1. Get distinct dates in descending order
+  const { data: dateRows } = await (supabase.from as any)("price_snapshots")
     .select("recorded_at")
     .order("recorded_at", { ascending: false })
     .limit(1);
 
-  if (!dateRow?.length) return map;
-  const latestDate = dateRow[0].recorded_at;
+  if (!dateRows?.length) return map;
+  const latestDate = dateRows[0].recorded_at;
 
-  // Fetch all prices for that date
-  const { data, error } = await (supabase.from as any)("price_snapshots")
-    .select("card_id, card_name, set_name, price")
-    .eq("recorded_at", latestDate);
+  // 2. Compute target dates for 1d, 7d, 30d ago
+  const latest = new Date(latestDate);
+  const fmt = (d: Date) => d.toISOString().split("T")[0];
+  const d1 = new Date(latest); d1.setDate(d1.getDate() - 1);
+  const d7 = new Date(latest); d7.setDate(d7.getDate() - 7);
+  const d30 = new Date(latest); d30.setDate(d30.getDate() - 30);
 
-  if (error || !data) return map;
+  // 3. Fetch current prices + historical prices in parallel
+  const [currentRes, d1Res, d7Res, d30Res] = await Promise.all([
+    (supabase.from as any)("price_snapshots")
+      .select("card_id, card_name, set_name, price")
+      .eq("recorded_at", latestDate),
+    (supabase.from as any)("price_snapshots")
+      .select("card_id, price")
+      .eq("recorded_at", fmt(d1)),
+    (supabase.from as any)("price_snapshots")
+      .select("card_id, price")
+      .eq("recorded_at", fmt(d7)),
+    (supabase.from as any)("price_snapshots")
+      .select("card_id, price")
+      .eq("recorded_at", fmt(d30)),
+  ]);
 
-  for (const row of data as Array<{ card_id: string; card_name: string; set_name: string; price: number }>) {
+  if (!currentRes.data) return map;
+
+  // Build lookup maps for historical prices
+  const priceMap1d = new Map<string, number>();
+  const priceMap7d = new Map<string, number>();
+  const priceMap30d = new Map<string, number>();
+  for (const r of (d1Res.data || []) as Array<{ card_id: string; price: number }>) priceMap1d.set(r.card_id, Number(r.price));
+  for (const r of (d7Res.data || []) as Array<{ card_id: string; price: number }>) priceMap7d.set(r.card_id, Number(r.price));
+  for (const r of (d30Res.data || []) as Array<{ card_id: string; price: number }>) priceMap30d.set(r.card_id, Number(r.price));
+
+  for (const row of currentRes.data as Array<{ card_id: string; card_name: string; set_name: string; price: number }>) {
+    const price = Number(row.price);
+    const p1 = priceMap1d.get(row.card_id);
+    const p7 = priceMap7d.get(row.card_id);
+    const p30 = priceMap30d.get(row.card_id);
+
     map.set(row.card_id, {
       cardId: row.card_id,
       cardName: row.card_name,
       setName: row.set_name,
-      price: Number(row.price),
+      price,
+      pricePct24h: p1 != null && p1 !== 0 ? ((price - p1) / p1) * 100 : null,
+      pricePct7d: p7 != null && p7 !== 0 ? ((price - p7) / p7) * 100 : null,
+      pricePct30d: p30 != null && p30 !== 0 ? ((price - p30) / p30) * 100 : null,
     });
   }
 
