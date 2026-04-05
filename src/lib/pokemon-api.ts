@@ -626,7 +626,8 @@ export async function getSetCardsByPrice(
   onProgress?: (cards: PokemonCard[]) => void,
 ): Promise<PokemonCard[]> {
   const result = await getSetCards(setId, 1, 500);
-  const priced = await enrichCardsProgressively(result.data, 50, 15, (soFar) => {
+  const prioritised = prioritiseByRarity(result.data);
+  const priced = await enrichCardsProgressively(prioritised, 50, 15, (soFar) => {
     const sorted = [...soFar].sort(
       (a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0)
     );
