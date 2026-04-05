@@ -1,22 +1,21 @@
-// Sealed products data layer — fetches from Scrydex API via edge function proxy
+// Sealed products data layer
+// Reads from /data/sealed-products.json (synced once daily via scripts/sync-scrydex-sealed.js)
+// Zero API credits per user visit — all data is pre-cached.
 
-import { supabase } from "@/integrations/supabase/client";
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface SealedProduct {
   id: string;
   name: string;
   type: string;
   description?: string;
-  images: Array<{ type: string; small: string; medium: string; large: string }>;
-  expansion: {
-    id: string;
-    name: string;
-    series: string;
-    code: string;
-    release_date: string;
-    logo?: string;
-    symbol?: string;
-  };
+  imageSmall: string;
+  imageMedium?: string;
+  expansionId: string;
+  expansionName: string;
+  expansionSeries: string;
+  expansionReleaseDate: string;
+  expansionLogo?: string;
   variants: Array<{
     name: string;
     prices: Array<{
@@ -39,6 +38,21 @@ export interface SealedSearchResult {
   pageSize: number;
   totalCount: number;
 }
+
+// ─── In-memory cache ──────────────────────────────────────────────────────────
+
+let sealedCache: SealedProduct[] | null = null;
+
+async function loadSealedProducts(): Promise<SealedProduct[]> {
+  if (sealedCache) return sealedCache;
+  const res = await fetch("/data/sealed-products.json");
+  if (!res.ok) throw new Error("Failed to load sealed-products.json");
+  const json = await res.json();
+  sealedCache = json.products ?? [];
+  return sealedCache;
+}
+
+// ─── Price helpers ────────────────────────────────────────────────────────────
 
 /** Extract the best market price from a sealed product */
 export function getSealedMarketPrice(product: SealedProduct): number | null {
@@ -69,67 +83,31 @@ export function getSealedTrends(product: SealedProduct): {
   return { pct1d: null, pct7d: null };
 }
 
-/** Fetch sealed products from Scrydex via the proxy edge function */
+// ─── Main fetch (reads from cached JSON, no API calls) ────────────────────────
+
 export async function fetchSealedProducts(opts: {
   page?: number;
   pageSize?: number;
-  query?: string;
   type?: string;
-  orderBy?: string;
 }): Promise<SealedSearchResult> {
-  const {
-    page = 1,
-    pageSize = 50,
-    query,
-    type,
-    orderBy = "-expansion.release_date",
-  } = opts;
+  const { page = 1, pageSize = 50, type } = opts;
 
-  const params = new URLSearchParams({
-    page: String(page),
-    pageSize: String(Math.min(pageSize, 100)),
-    include: "prices",
-    orderBy,
-  });
+  const all = await loadSealedProducts();
 
-  // Build search query
-  const qParts: string[] = [];
-  if (query) qParts.push(`name:${query}*`);
-  if (type && type !== "all") qParts.push(`type:"${type}"`);
-  if (qParts.length > 0) params.set("q", qParts.join(" "));
+  // Apply type filter
+  const filtered = type && type !== "all"
+    ? all.filter((p) => p.type === type)
+    : all;
 
-  const endpoint = `/pokemon/v1/sealed?${params.toString()}`;
+  const totalCount = filtered.length;
+  const start = (page - 1) * pageSize;
+  const products = filtered.slice(start, start + pageSize);
 
-  const { data, error } = await supabase.functions.invoke("scrydex-proxy", {
-    body: { endpoint },
-  });
-
-  if (error) {
-    console.error("Scrydex proxy error:", error);
-    return { products: [], page, pageSize, totalCount: 0 };
-  }
-
-  const response = data?.data;
-  if (!response || response.error) {
-    console.error("Scrydex API error:", response?.error);
-    return { products: [], page, pageSize, totalCount: 0 };
-  }
-
-  // Filter out "Case" products and items with no price data
-  const allProducts = (response.data ?? []) as SealedProduct[];
-  const filtered = allProducts.filter(
-    (p) => !p.name.toLowerCase().includes("case") && getSealedMarketPrice(p) !== null
-  );
-
-  return {
-    products: filtered,
-    page: response.page ?? page,
-    pageSize: response.page_size ?? pageSize,
-    totalCount: (response.total_count ?? 0) - (allProducts.length - filtered.length),
-  };
+  return { products, page, pageSize, totalCount };
 }
 
-/** Sealed product type filter options */
+// ─── Sealed product type filter options ──────────────────────────────────────
+
 export const SEALED_TYPES = [
   { value: "all", label: "All Products" },
   { value: "Booster Box", label: "Booster Box" },

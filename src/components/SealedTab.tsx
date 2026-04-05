@@ -165,7 +165,7 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
             const { pct1d, pct7d } = getSealedTrends(product);
             const f1d = formatPct(pct1d);
             const f7d = formatPct(pct7d);
-            const image = product.images?.[0];
+            const image = product.imageSmall;
             const variantLabel =
               product.variants.length > 1
                 ? `${product.variants.length} variants`
@@ -183,7 +183,7 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   {image ? (
                     <img
-                      src={image.small}
+                      src={image}
                       alt={product.name}
                       className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover shrink-0 shadow-sm bg-muted"
                       loading="lazy"
@@ -206,7 +206,7 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
                     </div>
                   </div>
                 </div>
-                <p className="hidden sm:block text-sm text-muted-foreground truncate">{product.expansion.name}</p>
+                <p className="hidden sm:block text-sm text-muted-foreground truncate">{product.expansionName}</p>
                 <div className="flex items-center justify-end sm:contents">
                   <p className="text-right text-sm font-semibold text-foreground tabular-nums">
                     {price !== null ? formatPrice(price) : "—"}
