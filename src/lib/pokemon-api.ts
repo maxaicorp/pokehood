@@ -130,35 +130,58 @@ async function getImageOverrides(): Promise<Record<string, string>> {
 const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
 
+// Secondary index: "cardName|setName" → same data, for cross-ID matching
+const pricingByName = new Map<string, PokemonCard["tcgplayer"]>();
+const avgsByName = new Map<string, PokemonCard["cardmarketAvgs"]>();
+
+function nameKey(cardName: string, setName: string) {
+  return `${cardName}|${setName}`;
+}
+
 /**
  * Pre-populate the pricing cache from database snapshot prices + % changes.
  * Call this once on app init so Market page renders instantly.
  */
 export function seedPricingCache(prices: Map<string, {
   price: number;
+  cardName?: string;
+  setName?: string;
   pricePct24h?: number | null;
   pricePct7d?: number | null;
   pricePct30d?: number | null;
 }>) {
   for (const [cardId, data] of prices) {
+    const tcgplayer: PokemonCard["tcgplayer"] = {
+      url: "",
+      updatedAt: new Date().toISOString().split("T")[0],
+      prices: { normal: { low: data.price, mid: data.price, high: data.price, market: data.price } },
+    };
     if (!pricingCache.has(cardId)) {
-      pricingCache.set(cardId, {
-        url: "",
-        updatedAt: new Date().toISOString().split("T")[0],
-        prices: { normal: { low: data.price, mid: data.price, high: data.price, market: data.price } },
-      });
+      pricingCache.set(cardId, tcgplayer);
     }
+    // Also index by name+set so Scrydex IDs can match TCGdex snapshot IDs
+    if (data.cardName && data.setName) {
+      const nk = nameKey(data.cardName, data.setName);
+      // Keep the highest price when multiple snapshots exist for same name+set
+      const existing = pricingByName.get(nk);
+      if (!existing || data.price > (existing.prices?.normal?.market ?? 0)) {
+        pricingByName.set(nk, tcgplayer);
+      }
+    }
+
     // Store % change data for the Market page columns
     if (data.pricePct24h != null || data.pricePct7d != null || data.pricePct30d != null) {
-      // We store these as pseudo-cardmarket avgs so the existing Market UI picks them up
-      // The UI computes pct from (trend - avg) / avg, so we set values that produce the right pct
-      // Simpler: store the raw pcts and read them in getMarketCards
-      cardmarketAvgsSeeded.set(cardId, {
+      const avgs: PokemonCard["cardmarketAvgs"] = {
         avg1: data.pricePct24h != null && data.price > 0 ? data.price / (1 + data.pricePct24h / 100) : null,
         avg7: data.pricePct7d != null && data.price > 0 ? data.price / (1 + data.pricePct7d / 100) : null,
         avg30: data.pricePct30d != null && data.price > 0 ? data.price / (1 + data.pricePct30d / 100) : null,
         trend: data.price,
-      });
+      };
+      cardmarketAvgsSeeded.set(cardId, avgs);
+      if (data.cardName && data.setName) {
+        const nk = nameKey(data.cardName, data.setName);
+        if (!avgsByName.has(nk)) avgsByName.set(nk, avgs);
+      }
     }
   }
 }
