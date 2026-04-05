@@ -68,9 +68,12 @@ export default function Market() {
     });
   }, [activeTab]);
 
-  // Load sets once
+  // Load sets + seed pricing cache from database snapshots (instant prices)
   useEffect(() => {
-    getSets().then((r) => setSetsData(r));
+    Promise.all([getSets(), getLatestSnapshotPrices()]).then(([r, prices]) => {
+      setSetsData(r);
+      seedPricingCache(prices);
+    });
   }, []);
 
   // Fetch cards with progressive updates
