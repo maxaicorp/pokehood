@@ -579,6 +579,32 @@ export async function fetchCardDetail(id: string): Promise<CardDetailFull | null
 
 // ─── Market leaderboard ───────────────────────────────────────────────────────
 
+/**
+ * Instant market cards — applies cached/seeded prices without any API calls.
+ * Cards with no cached price are excluded (they'll appear once the daily snapshot runs).
+ */
+export async function getMarketCards(opts: {
+  setIds?: Set<string>;
+  limit?: number;
+}): Promise<PokemonCard[]> {
+  const { cards } = await loadCardIndex();
+  let filtered = opts.setIds
+    ? cards.filter((c) => opts.setIds!.has(c.set.id))
+    : cards;
+
+  // Apply cached prices (from DB snapshots seeded at init)
+  const withPrices = filtered.map((card) => {
+    if (card.tcgplayer?.prices) return card;
+    const cached = pricingCache.get(card.id);
+    return cached ? { ...card, tcgplayer: cached } : card;
+  });
+
+  return withPrices
+    .filter((c) => getMarketPrice(c) !== null)
+    .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
+    .slice(0, opts.limit ?? 200);
+}
+
 /** Top cards across ALL sets, sorted by price descending. Progressive callback supported. */
 export async function getTopPricedCards(
   limit = 100,
