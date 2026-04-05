@@ -665,14 +665,15 @@ export async function getMarketCards(opts: {
     : cards;
 
   // Apply cached prices + % change data (from DB snapshots seeded at init)
+  // Try by card ID first (exact match), then fall back to name+set (cross-ID match)
   const withPrices = filtered.map((card) => {
     let enriched = card;
     if (!enriched.tcgplayer?.prices) {
-      const cached = pricingCache.get(card.id);
+      const cached = pricingCache.get(card.id) ?? pricingByName.get(nameKey(card.name, card.set.name));
       if (cached) enriched = { ...enriched, tcgplayer: cached };
     }
     if (!enriched.cardmarketAvgs) {
-      const avgs = cardmarketAvgsSeeded.get(card.id);
+      const avgs = cardmarketAvgsSeeded.get(card.id) ?? avgsByName.get(nameKey(card.name, card.set.name));
       if (avgs) enriched = { ...enriched, cardmarketAvgs: avgs };
     }
     return enriched;
