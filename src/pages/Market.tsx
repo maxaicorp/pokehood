@@ -49,7 +49,7 @@ export default function Market() {
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
   const [sealedType, setSealedType] = useState("all");
 
-  // Progressive loading state
+  // Card state
   const [cards, setCards] = useState<PokemonCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
