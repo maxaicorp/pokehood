@@ -611,11 +611,18 @@ export async function getMarketCards(opts: {
     ? cards.filter((c) => opts.setIds!.has(c.set.id))
     : cards;
 
-  // Apply cached prices (from DB snapshots seeded at init)
+  // Apply cached prices + % change data (from DB snapshots seeded at init)
   const withPrices = filtered.map((card) => {
-    if (card.tcgplayer?.prices) return card;
-    const cached = pricingCache.get(card.id);
-    return cached ? { ...card, tcgplayer: cached } : card;
+    let enriched = card;
+    if (!enriched.tcgplayer?.prices) {
+      const cached = pricingCache.get(card.id);
+      if (cached) enriched = { ...enriched, tcgplayer: cached };
+    }
+    if (!enriched.cardmarketAvgs) {
+      const avgs = cardmarketAvgsSeeded.get(card.id);
+      if (avgs) enriched = { ...enriched, cardmarketAvgs: avgs };
+    }
+    return enriched;
   });
 
   return withPrices
