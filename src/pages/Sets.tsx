@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { getSets, PokemonSet, TCGP_SERIES_IDS } from "@/lib/pokemon-api";
+import { getExpansions, ScrydexExpansion, normalizeDate } from "@/lib/scrydex-api";
 import AppHeader from "@/components/AppHeader";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,30 +32,25 @@ const SERIES_ORDER = [
   "Trainer kits",
 ];
 
-
 interface SeriesGroup {
   series: string;
-  sets: PokemonSet[];
+  sets: ScrydexExpansion[];
 }
 
 export default function Sets() {
   const [search, setSearch] = useState("");
 
-  const { data: setsResult, isLoading } = useQuery({
-    queryKey: ["all-sets"],
-    queryFn: getSets,
-    staleTime: 60_000,
+  const { data: expansions = [], isLoading } = useQuery({
+    queryKey: ["scrydex-expansions"],
+    queryFn: getExpansions,
+    staleTime: 60 * 60 * 1000, // 1 hour — logos don't change often
   });
 
   const groups = useMemo<SeriesGroup[]>(() => {
-    if (!setsResult?.data) return [];
+    // Filter out online-only sets (TCG Pocket)
+    const sets = expansions.filter((s) => !s.is_online_only);
 
-    // Filter out TCG Pocket sets
-    const sets = setsResult.data.filter(
-      (s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase())
-    );
-    const map = new Map<string, PokemonSet[]>();
-
+    const map = new Map<string, ScrydexExpansion[]>();
     for (const set of sets) {
       const series = set.series || "Other";
       if (!map.has(series)) map.set(series, []);
@@ -64,7 +59,9 @@ export default function Sets() {
 
     // Sort sets within each group by release date (newest first)
     for (const [, arr] of map) {
-      arr.sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""));
+      arr.sort((a, b) =>
+        normalizeDate(b.release_date).localeCompare(normalizeDate(a.release_date))
+      );
     }
 
     // Sort groups by preferred order
@@ -75,7 +72,7 @@ export default function Sets() {
     });
 
     return sorted.map(([series, sets]) => ({ series, sets }));
-  }, [setsResult]);
+  }, [expansions]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return groups;
@@ -157,7 +154,8 @@ export default function Sets() {
   );
 }
 
-function SetCard({ set, index }: { set: PokemonSet; index: number }) {
+function SetCard({ set, index }: { set: ScrydexExpansion; index: number }) {
+  const releaseDate = normalizeDate(set.release_date);
 
   return (
     <motion.div
@@ -171,9 +169,9 @@ function SetCard({ set, index }: { set: PokemonSet; index: number }) {
       >
         {/* Logo area */}
         <div className="h-24 sm:h-28 flex items-center justify-center p-4 bg-muted/20 group-hover:bg-muted/40 transition-colors">
-          {set.images?.logo ? (
+          {set.logo ? (
             <img
-              src={set.images.logo}
+              src={set.logo}
               alt={set.name}
               className="max-h-full max-w-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-200"
               loading="lazy"
@@ -193,8 +191,8 @@ function SetCard({ set, index }: { set: PokemonSet; index: number }) {
           </p>
           <div className="flex items-center justify-between mt-1">
             <span className="text-[10px] sm:text-xs text-muted-foreground">
-              {set.releaseDate
-                ? new Date(set.releaseDate + "T00:00:00").toLocaleDateString("en-US", {
+              {releaseDate
+                ? new Date(releaseDate + "T00:00:00").toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "short",
                   })

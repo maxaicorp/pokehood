@@ -93,9 +93,18 @@ interface CardIndexSet {
 interface CardIndexCard {
   id: string;
   name: string;
-  image: string;
+  // Legacy TCGdex format (base URL, /low.webp and /high.webp appended)
+  image?: string;
+  // Scrydex format (full CDN URLs stored directly)
+  imageSmall?: string;
+  imageLarge?: string;
   localId: string;
   setId: string;
+  rarity?: string;
+  supertype?: string;
+  subtypes?: string[];
+  types?: string[];
+  hp?: string | null;
 }
 
 interface CardIndex {
@@ -107,6 +116,17 @@ interface CardIndex {
 
 let allCardsCache: PokemonCard[] | null = null;
 let allSetsCache: PokemonSet[] | null = null;
+let imageOverridesCache: Record<string, string> | null = null;
+
+async function getImageOverrides(): Promise<Record<string, string>> {
+  if (imageOverridesCache) return imageOverridesCache;
+  try {
+    const res = await fetch("/data/card-image-overrides.json");
+    if (res.ok) imageOverridesCache = await res.json();
+  } catch { /* file doesn't exist yet — that's fine */ }
+  imageOverridesCache ??= {};
+  return imageOverridesCache;
+}
 const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
 
@@ -150,7 +170,10 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
     return { cards: allCardsCache, sets: allSetsCache };
   }
 
-  const res = await fetch("/data/all-cards.json");
+  const [res, overrides] = await Promise.all([
+    fetch("/data/all-cards.json"),
+    getImageOverrides(),
+  ]);
   if (!res.ok) throw new Error("Failed to load card index");
   const index: CardIndex = await res.json();
 
@@ -170,10 +193,17 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
   // Map cards
   const cards: PokemonCard[] = index.cards.map((c) => {
     const s = index.sets[c.setId];
+    // Use cached Supabase URL if available (top 1000 cards), else Scrydex CDN, else TCGdex
+    const imageSmall = overrides[c.id] ?? c.imageSmall ?? (c.image ? c.image + "/low.webp" : "");
+    const imageLarge = c.imageLarge ?? (c.image ? c.image + "/high.webp" : "");
     return {
       id: c.id,
       name: c.name,
-      supertype: "Pokémon",
+      supertype: c.supertype ?? "Pokémon",
+      subtypes: c.subtypes,
+      types: c.types?.length ? c.types : undefined,
+      hp: c.hp ?? undefined,
+      rarity: c.rarity || undefined,
       set: {
         id: c.setId,
         name: s?.name ?? c.setId,
@@ -185,8 +215,8 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
       },
       number: c.localId,
       images: {
-        small: c.image + "/low.webp",
-        large: c.image + "/high.webp",
+        small: imageSmall,
+        large: imageLarge,
       },
     };
   });
