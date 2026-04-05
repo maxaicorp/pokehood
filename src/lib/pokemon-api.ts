@@ -109,6 +109,21 @@ let allCardsCache: PokemonCard[] | null = null;
 let allSetsCache: PokemonSet[] | null = null;
 const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 
+/**
+ * Pre-populate the pricing cache from database snapshot prices.
+ * Call this once on app init so Market page renders instantly.
+ */
+export function seedPricingCache(prices: Map<string, { price: number }>) {
+  for (const [cardId, { price }] of prices) {
+    if (pricingCache.has(cardId)) continue; // don't overwrite live data
+    pricingCache.set(cardId, {
+      url: "",
+      updatedAt: new Date().toISOString().split("T")[0],
+      prices: { normal: { low: price, mid: price, high: price, market: price } },
+    });
+  }
+}
+
 // ─── Loader ───────────────────────────────────────────────────────────────────
 
 async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet[] }> {
