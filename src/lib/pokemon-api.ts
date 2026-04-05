@@ -453,6 +453,23 @@ export function formatPrice(price: number | null): string {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+const HIGH_VALUE_RARITIES = new Set([
+  "Rare Holo EX", "Rare Holo GX", "Rare VMAX", "Rare V", "Rare VSTAR",
+  "Rare Ultra", "Rare Secret", "Rare Rainbow", "Rare Holo VMAX",
+  "Rare Holo V", "Rare Holo VSTAR", "Illustration Rare", "Special Art Rare",
+  "Hyper Rare", "Double Rare", "Ultra Rare", "ACE SPEC Rare",
+  "Shiny Rare", "Shiny Ultra Rare", "Trainer Gallery Rare Holo",
+  "Art Rare", "Super Rare", "Immersive Art Rare", "Crown Rare",
+  "Special Illustration Rare",
+]);
+
+/** Reorder cards so high-rarity (likely expensive) cards are enriched first. */
+function prioritiseByRarity(cards: PokemonCard[]): PokemonCard[] {
+  const high = cards.filter((c) => c.rarity && HIGH_VALUE_RARITIES.has(c.rarity));
+  const rest = cards.filter((c) => !c.rarity || !HIGH_VALUE_RARITIES.has(c.rarity));
+  return [...high, ...rest];
+}
+
 export const CARD_RARITIES = [
   "Common", "Uncommon", "Rare", "Rare Holo", "Rare Holo EX", "Rare Holo GX",
   "Rare Holo V", "Rare VMAX", "Rare VSTAR", "Rare Ultra", "Rare Secret",
