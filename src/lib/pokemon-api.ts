@@ -599,6 +599,7 @@ export async function getRecentSetCards(
   const { cards, sets } = await loadCardIndex();
   const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
   const recentSetIds = new Set(physicalSets.slice(0, numSets).map((s) => s.id));
+  const candidates = cards.filter((c) => recentSetIds.has(c.set.id));
   const prioritised = prioritiseByRarity(candidates);
   const priced = await enrichCardsProgressively(prioritised, 50, 15, (soFar) => {
     const sorted = soFar
