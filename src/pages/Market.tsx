@@ -3,9 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  getTopPricedCards,
-  getRecentSetCards,
-  getSetCardsByPrice,
+  getMarketCards,
   getSets,
   getMarketPrice,
   formatPrice,
@@ -51,12 +49,13 @@ export default function Market() {
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
   const [sealedType, setSealedType] = useState("all");
 
-  // Progressive loading state
+  // Card state
   const [cards, setCards] = useState<PokemonCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(null);
+  const [pricesReady, setPricesReady] = useState(false);
 
   // Load most visited when tab is active
   useEffect(() => {
@@ -68,43 +67,48 @@ export default function Market() {
     });
   }, [activeTab]);
 
-  // Load sets + seed pricing cache from database snapshots (instant prices)
+  // Step 1: Load sets + seed pricing cache from DB (runs once)
   useEffect(() => {
     Promise.all([getSets(), getLatestSnapshotPrices()]).then(([r, prices]) => {
       setSetsData(r);
       seedPricingCache(prices);
+      setPricesReady(true);
     });
   }, []);
 
-  // Fetch cards with progressive updates
+  // Step 2: Once prices are seeded, load cards instantly (no API calls)
   useEffect(() => {
+    if (!pricesReady || !setsData) return;
     let cancelled = false;
     setIsLoading(true);
     setCards([]);
     setVisibleCount(VISIBLE_PAGE_SIZE);
 
-    const onProgress = (partialCards: PokemonCard[]) => {
-      if (!cancelled) setCards([...partialCards]);
-    };
+    const physicalSets = setsData.data.filter(
+      (s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase())
+    );
 
-    const fetchFn =
-      selectedSetId === "recent5"
-        ? () => getRecentSetCards(100, 5, onProgress)
-        : selectedSetId === "recent10"
-          ? () => getRecentSetCards(100, 10, onProgress)
-          : selectedSetId
-            ? () => getSetCardsByPrice(selectedSetId, onProgress)
-            : () => getTopPricedCards(100, onProgress);
+    let setIds: Set<string> | undefined;
+    if (selectedSetId === "recent5") {
+      setIds = new Set(physicalSets.slice(0, 5).map((s) => s.id));
+    } else if (selectedSetId === "recent10") {
+      setIds = new Set(physicalSets.slice(0, 10).map((s) => s.id));
+    } else if (selectedSetId) {
+      setIds = new Set([selectedSetId]);
+    } else {
+      // "All Sets" — physical only
+      setIds = new Set(physicalSets.map((s) => s.id));
+    }
 
-    fetchFn().then((finalCards) => {
+    getMarketCards({ setIds, limit: 200 }).then((result) => {
       if (!cancelled) {
-        setCards(finalCards);
+        setCards(result);
         setIsLoading(false);
       }
     });
 
     return () => { cancelled = true; };
-  }, [selectedSetId]);
+  }, [pricesReady, setsData, selectedSetId]);
 
   // Infinite scroll observer
   useEffect(() => {
