@@ -129,7 +129,6 @@ async function getImageOverrides(): Promise<Record<string, string>> {
 }
 const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
-
 // Secondary index: "cardName|setName" → same data, for cross-ID matching
 const pricingByName = new Map<string, PokemonCard["tcgplayer"]>();
 const avgsByName = new Map<string, PokemonCard["cardmarketAvgs"]>();
@@ -140,6 +139,7 @@ function nameKey(cardName: string, setName: string) {
 
 /**
  * Pre-populate the pricing cache from database snapshot prices + % changes.
+ * Also builds a name-based fallback map so Scrydex card IDs match old TCGdex snapshot entries.
  * Call this once on app init so Market page renders instantly.
  */
 export function seedPricingCache(prices: Map<string, {
@@ -156,6 +156,7 @@ export function seedPricingCache(prices: Map<string, {
       updatedAt: new Date().toISOString().split("T")[0],
       prices: { normal: { low: data.price, mid: data.price, high: data.price, market: data.price } },
     };
+
     if (!pricingCache.has(cardId)) {
       pricingCache.set(cardId, tcgplayer);
     }
