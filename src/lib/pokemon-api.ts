@@ -155,6 +155,13 @@ export function seedPricingCache(prices: Map<string, {
   pricePct7d?: number | null;
   pricePct30d?: number | null;
 }>) {
+  // Fresh DB seed should always win over stale in-memory values from earlier navigation.
+  pricingCache.clear();
+  cardmarketAvgsSeeded.clear();
+  pricingByName.clear();
+  avgsByName.clear();
+  cardmarketAvgsCache.clear();
+
   for (const [cardId, data] of prices) {
     const tcgplayer: PokemonCard["tcgplayer"] = {
       url: "",
@@ -162,9 +169,8 @@ export function seedPricingCache(prices: Map<string, {
       prices: { normal: { low: data.price, mid: data.price, high: data.price, market: data.price } },
     };
 
-    if (!pricingCache.has(cardId)) {
-      pricingCache.set(cardId, tcgplayer);
-    }
+    pricingCache.set(cardId, tcgplayer);
+
     // Also index by name+set so Scrydex IDs can match TCGdex snapshot IDs
     if (data.cardName && data.setName) {
       const nk = nameKey(data.cardName, data.setName);
