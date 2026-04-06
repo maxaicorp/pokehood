@@ -668,12 +668,30 @@ export async function getMarketCards(opts: {
     : cards;
 
   // Apply cached prices + % change data (from DB snapshots seeded at init)
-  // Try by card ID first (exact match), then fall back to name+set (cross-ID match)
+  // ID lookup is exact (Scrydex ID → Scrydex snapshot). Name fallback is used only while
+  // price_snapshots still has old TCGdex IDs — but we must deduplicate by name+set when
+  // using it, since multiple Scrydex variants share a name and would all get the same price.
+  const nameUsedForPrice = new Set<string>(); // guards against duplicate name-matched cards
+
   const withPrices = filtered.map((card) => {
     let enriched = card;
     if (!enriched.tcgplayer?.prices) {
-      const cached = pricingCache.get(card.id) ?? pricingByName.get(nameKey(card.name, card.set.name));
-      if (cached) enriched = { ...enriched, tcgplayer: cached };
+      const byId = pricingCache.get(card.id);
+      if (byId) {
+        // Exact Scrydex ID match — always use
+        enriched = { ...enriched, tcgplayer: byId };
+      } else {
+        // Name+set fallback: only apply to the FIRST card with this name+set
+        // (prevents duplicates while DB still holds old TCGdex IDs)
+        const nk = nameKey(card.name, card.set.name);
+        if (!nameUsedForPrice.has(nk)) {
+          const byName = pricingByName.get(nk);
+          if (byName) {
+            nameUsedForPrice.add(nk);
+            enriched = { ...enriched, tcgplayer: byName };
+          }
+        }
+      }
     }
     if (!enriched.cardmarketAvgs) {
       const avgs = cardmarketAvgsSeeded.get(card.id) ?? avgsByName.get(nameKey(card.name, card.set.name));
