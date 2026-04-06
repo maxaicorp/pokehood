@@ -47,8 +47,10 @@ export default function Sets() {
   });
 
   const groups = useMemo<SeriesGroup[]>(() => {
-    // Filter out online-only sets (TCG Pocket)
-    const sets = expansions.filter((s) => !s.is_online_only);
+    // Filter out online-only sets (TCG Pocket only — Mega Evolution is physical TCG)
+    const sets = expansions.filter((s) =>
+      !s.is_online_only || (s.series || "").toLowerCase() === "mega evolution"
+    );
 
     const map = new Map<string, ScrydexExpansion[]>();
     for (const set of sets) {
