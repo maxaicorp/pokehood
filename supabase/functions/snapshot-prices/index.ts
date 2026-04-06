@@ -179,6 +179,7 @@ serve(async (req) => {
     let totalInserted = 0;
     let totalSkipped = 0;
     const buffer: SnapshotRow[] = [];
+    const seenIds = new Set<string>();
 
     do {
       const endpoint = `/pokemon/v1/en/cards?page=${page}&page_size=${PAGE_SIZE}&include=prices&orderBy=-expansion.release_date`;
@@ -204,6 +205,10 @@ serve(async (req) => {
         if (series === "pokémon tcg pocket" || series === "mega evolution") continue;
         const price = extractCardPrice(card);
         if (!price || price <= 0) continue;
+        // Deduplicate: keep first (best) price per card_id per day
+        const key = card.id;
+        if (seenIds.has(key)) continue;
+        seenIds.add(key);
         buffer.push({
           card_id: card.id,
           card_name: card.name ?? "",
