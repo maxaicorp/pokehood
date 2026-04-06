@@ -532,8 +532,8 @@ export const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"] as const;
 export type CardCondition = (typeof CONDITIONS)[number];
 
 // All series names Scrydex uses for TCG Pocket content (lowercased for comparison)
-// "mega evolution" is a TCG Pocket mini-set series (Phantasmal Flames, Ascended Heroes, etc.)
-export const TCGP_SERIES_IDS = ["pokémon tcg pocket", "mega evolution"];
+// Mega Evolution is a physical TCG series and should NOT be filtered out.
+export const TCGP_SERIES_IDS = ["pokémon tcg pocket"];
 
 export const PRODUCT_TYPES = [
   { value: "all", label: "All Products" },

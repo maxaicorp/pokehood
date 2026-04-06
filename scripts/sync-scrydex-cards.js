@@ -98,7 +98,10 @@ async function main() {
           symbol: exp.symbol ?? "",
           releaseDate: (exp.release_date ?? "").replace(/\//g, "-"),
           series: exp.series ?? "",
-          isOnlineOnly: exp.is_online_only ?? false, // true = TCG Pocket / digital-only
+          // Scrydex marks Mega Evolution as online-only, but it's a physical TCG product
+          isOnlineOnly: (exp.series ?? "").toLowerCase() === "mega evolution"
+            ? false
+            : (exp.is_online_only ?? false),
           printedTotal: exp.printed_total ?? exp.total ?? 0,
           total: exp.total ?? 0,
         };
