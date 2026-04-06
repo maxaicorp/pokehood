@@ -46,8 +46,10 @@ interface ScrydexCard {
   expansion?: {
     id: string;
     name: string;
+    series?: string;
     release_date?: string;
     language_code?: string;
+    is_online_only?: boolean;
   };
   variants?: ScrydexVariant[];
 }
@@ -195,8 +197,11 @@ serve(async (req) => {
       }
 
       for (const card of result.data ?? []) {
-        // English only
-        if (card.expansion?.language_code && card.expansion.language_code !== "EN") continue;
+        // English physical TCG only — strict checks (treat missing field as non-EN / non-physical)
+        if (card.expansion?.language_code !== "EN") continue;
+        if (card.expansion?.is_online_only) continue; // skip TCG Pocket
+        const series = (card.expansion?.series ?? "").toLowerCase();
+        if (series === "pokémon tcg pocket" || series === "mega evolution") continue;
         const price = extractCardPrice(card);
         if (!price || price <= 0) continue;
         buffer.push({

@@ -65,18 +65,17 @@ export default function Explore() {
     staleTime: 5 * 60_000,
   });
 
-  const hasFilters = searchTerm || selectedSet || selectedRarity || selectedTypes.length > 0 || productType;
+  // Always pass productType — default to "tcg" so TCG Pocket never shows unless explicitly chosen
+  const effectiveProductType = productType || "tcg";
   const { data: cardsData, isLoading } = useQuery({
-    queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page, productType],
+    queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page, effectiveProductType],
     queryFn: () =>
-      hasFilters
-        ? searchCardsAdvanced(
-            searchTerm,
-            { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: productType || undefined },
-            page,
-            35
-          )
-        : getLatestCards(page, 35),
+      searchCardsAdvanced(
+        searchTerm,
+        { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: effectiveProductType },
+        page,
+        35
+      ),
     staleTime: 60_000,
   });
 
@@ -436,9 +435,8 @@ function FilterControls({
             <SelectItem value="all">All Sets</SelectItem>
             {setsData?.data
               ?.filter((s: any) => {
-                if (!productType) return true;
                 const isPocket = s.isOnlineOnly;
-                return productType === "pocket" ? isPocket : !isPocket;
+                return effectiveProductType === "pocket" ? isPocket : !isPocket;
               })
               .map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
           </SelectContent>

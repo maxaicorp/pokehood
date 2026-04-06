@@ -348,9 +348,10 @@ export async function getLatestCards(
   page = 1,
   pageSize = 35,
 ): Promise<SearchResult> {
-  const { cards } = await loadCardIndex();
-  // Already sorted newest-first after load; just paginate
-  return paginate(cards, page, pageSize);
+  const { cards, sets } = await loadCardIndex();
+  const physicalSetIds = new Set(sets.filter((s) => !s.isOnlineOnly).map((s) => s.id));
+  const physical = cards.filter((c) => physicalSetIds.has(c.set.id));
+  return paginate(physical, page, pageSize);
 }
 
 export async function searchCards(
@@ -377,8 +378,14 @@ export async function searchCardsAdvanced(
   page = 1,
   pageSize = 35,
 ): Promise<SearchResult> {
-  const { cards } = await loadCardIndex();
-  let filtered = cards;
+  const { cards, sets } = await loadCardIndex();
+  const physicalSetIds = new Set(sets.filter((s) => !s.isOnlineOnly).map((s) => s.id));
+  const pocketSetIds = new Set(sets.filter((s) => s.isOnlineOnly).map((s) => s.id));
+
+  // Default: physical TCG only (never show TCG Pocket unless explicitly requested)
+  let filtered = filters.productType === "pocket"
+    ? cards.filter((c) => pocketSetIds.has(c.set.id))
+    : cards.filter((c) => physicalSetIds.has(c.set.id));
 
   if (query) {
     const q = query.toLowerCase();
@@ -386,11 +393,6 @@ export async function searchCardsAdvanced(
   }
   if (filters.setId) {
     filtered = filtered.filter((c) => c.set.id === filters.setId);
-  }
-  if (filters.productType === "pocket") {
-    filtered = filtered.filter((c) => TCGP_SERIES_IDS.includes(c.set.series.toLowerCase()));
-  } else if (filters.productType === "tcg") {
-    filtered = filtered.filter((c) => !TCGP_SERIES_IDS.includes(c.set.series.toLowerCase()));
   }
   if (filters.rarity) {
     filtered = filtered.filter((c) => c.rarity === filters.rarity);
@@ -668,10 +670,13 @@ export async function getMarketCards(opts: {
   setIds?: Set<string>;
   limit?: number;
 }): Promise<PokemonCard[]> {
-  const { cards } = await loadCardIndex();
-  let filtered = opts.setIds
-    ? cards.filter((c) => opts.setIds!.has(c.set.id))
-    : cards;
+  const { cards, sets } = await loadCardIndex();
+  // Always restrict to physical (non-online) sets — never show TCG Pocket on market
+  const physicalSetIds = new Set(sets.filter((s) => !s.isOnlineOnly).map((s) => s.id));
+  const allowedIds = opts.setIds
+    ? new Set([...opts.setIds].filter((id) => physicalSetIds.has(id)))
+    : physicalSetIds;
+  let filtered = cards.filter((c) => allowedIds.has(c.set.id));
 
   // Apply cached prices + % change data (from DB snapshots seeded at init)
   // ID lookup is exact (Scrydex ID → Scrydex snapshot). Name fallback is used only while

@@ -66,8 +66,8 @@ async function main() {
     }
 
     for (const p of data.data ?? []) {
-      // Skip Japanese / non-English products
-      if (p.expansion?.language_code && p.expansion.language_code !== "EN") continue;
+      // English only — treat missing language_code as non-English (strict)
+      if (p.expansion?.language_code !== "EN") continue;
       // Skip "Case" wholesale products
       if (p.name?.toLowerCase().includes("case")) continue;
       // Skip products with no price at all

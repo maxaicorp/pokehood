@@ -1,6 +1,12 @@
 // Sealed product price snapshot function
 // Fetches sealed product prices from Scrydex and stores in price_snapshots.
 // Runs independently from card snapshots to avoid timeout issues.
+//
+// Filters applied:
+//   - English only (language_code === "EN", treat missing as non-EN)
+//   - No "Case" wholesale products
+//   - Must have a market price > 0
+//   - Prefers USD market price first
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -17,18 +23,43 @@ interface ScrydexSealedProduct {
   id: string;
   name: string;
   type: string;
-  expansion: { id: string; name: string; release_date?: string };
+  expansion: {
+    id: string;
+    name: string;
+    release_date?: string;
+    language_code?: string;
+    is_online_only?: boolean;
+  };
   variants: Array<{
     name: string;
-    prices: Array<{ low: number; market: number; currency: string }>;
+    prices: Array<{
+      low: number;
+      market: number;
+      currency: string;
+      condition?: string;
+      type?: string;
+    }>;
   }>;
 }
 
+/** Extract best market price — prefer USD, fall back to any currency */
 function getSealedPrice(product: ScrydexSealedProduct): number | null {
+  // Prefer USD market price
+  for (const variant of product.variants) {
+    for (const price of variant.prices) {
+      if (price.currency === "USD" && price.market > 0) return price.market;
+    }
+  }
+  // Any currency market price
   for (const variant of product.variants) {
     for (const price of variant.prices) {
       if (price.market > 0) return price.market;
-      if (price.low > 0) return price.low;
+    }
+  }
+  // Low price as last resort
+  for (const variant of product.variants) {
+    for (const price of variant.prices) {
+      if (price.currency === "USD" && price.low > 0) return price.low;
     }
   }
   return null;
@@ -92,11 +123,6 @@ serve(async (req) => {
 
       if (!res?.data?.length) break;
 
-      // Filter out "Case" products
-      const products = res.data.filter(
-        (p) => !p.name.toLowerCase().includes("case")
-      );
-
       const rows: Array<{
         card_id: string;
         card_name: string;
@@ -105,17 +131,22 @@ serve(async (req) => {
         recorded_at: string;
       }> = [];
 
-      for (const product of products) {
+      for (const product of res.data) {
+        // English physical only — treat missing language_code as non-English
+        if (product.expansion?.language_code !== "EN") continue;
+        // No "Case" wholesale products
+        if (product.name.toLowerCase().includes("case")) continue;
+
         const price = getSealedPrice(product);
-        if (price != null && price > 0) {
-          rows.push({
-            card_id: `sealed-${product.id}`,
-            card_name: product.name,
-            set_name: product.expansion.name,
-            price,
-            recorded_at: today,
-          });
-        }
+        if (!price || price <= 0) continue;
+
+        rows.push({
+          card_id: `sealed-${product.id}`,
+          card_name: product.name,
+          set_name: product.expansion.name,
+          price,
+          recorded_at: today,
+        });
       }
 
       if (rows.length > 0) {
@@ -131,7 +162,7 @@ serve(async (req) => {
         }
       }
 
-      console.log(`Page ${page}: ${res.data.length} fetched, ${products.length} after case filter, ${rows.length} priced`);
+      console.log(`Page ${page}: ${res.data.length} fetched, ${rows.length} saved`);
 
       if (res.data.length < pageSize) break;
       page++;
