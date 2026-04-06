@@ -9,7 +9,6 @@ import {
   formatPrice,
   PokemonCard,
   PokemonSet,
-  TCGP_SERIES_IDS,
   seedPricingCache,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
@@ -85,7 +84,7 @@ export default function Market() {
     setVisibleCount(VISIBLE_PAGE_SIZE);
 
     const physicalSets = setsData.data.filter(
-      (s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase())
+      (s: PokemonSet) => !s.isOnlineOnly
     );
 
     let setIds: Set<string> | undefined;
@@ -306,7 +305,7 @@ export default function Market() {
                   <SelectItem value="recent5">Recent Sets (5)</SelectItem>
                   <SelectItem value="recent10">Recent Sets (10)</SelectItem>
                   {setsData?.data
-                    ?.filter((s: PokemonSet) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()))
+                    ?.filter((s: PokemonSet) => !s.isOnlineOnly)
                     .map((s: PokemonSet) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}

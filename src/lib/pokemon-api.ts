@@ -61,6 +61,7 @@ export interface PokemonSet {
   total: number;
   releaseDate: string;
   updatedAt: string;
+  isOnlineOnly: boolean; // true = TCG Pocket / digital-only
   images: { symbol: string; logo: string };
 }
 
@@ -88,7 +89,8 @@ interface CardIndexSet {
   symbol: string;
   releaseDate: string;
   series: string;
-  serieId: string;
+  serieId?: string;
+  isOnlineOnly?: boolean; // true = TCG Pocket / digital-only (from Scrydex)
   printedTotal: number;
   total: number;
 }
@@ -213,6 +215,8 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
     total: s.total,
     releaseDate: s.releaseDate,
     updatedAt: s.releaseDate,
+    // Use isOnlineOnly flag if present (from new syncs), otherwise fall back to series name check
+    isOnlineOnly: s.isOnlineOnly ?? TCGP_SERIES_IDS.includes(s.series.toLowerCase()),
     images: { symbol: s.symbol, logo: s.logo },
   }));
   sets.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
@@ -519,7 +523,9 @@ export const SORT_OPTIONS = [
 export const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"] as const;
 export type CardCondition = (typeof CONDITIONS)[number];
 
-export const TCGP_SERIES_IDS = ["pokémon tcg pocket"];
+// All series names Scrydex uses for TCG Pocket content (lowercased for comparison)
+// "mega evolution" is a TCG Pocket mini-set series (Phantasmal Flames, Ascended Heroes, etc.)
+export const TCGP_SERIES_IDS = ["pokémon tcg pocket", "mega evolution"];
 
 export const PRODUCT_TYPES = [
   { value: "all", label: "All Products" },
@@ -712,7 +718,7 @@ export async function getTopPricedCards(
   onProgress?: (cards: PokemonCard[]) => void,
 ): Promise<PokemonCard[]> {
   const { cards, sets } = await loadCardIndex();
-  const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
+  const physicalSets = sets.filter((s) => !s.isOnlineOnly);
   const physicalSetIds = new Set(physicalSets.map((s) => s.id));
   const candidates = cards.filter((c) => physicalSetIds.has(c.set.id));
 
@@ -739,7 +745,7 @@ export async function getRecentSetCards(
   onProgress?: (cards: PokemonCard[]) => void,
 ): Promise<PokemonCard[]> {
   const { cards, sets } = await loadCardIndex();
-  const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
+  const physicalSets = sets.filter((s) => !s.isOnlineOnly);
   const recentSetIds = new Set(physicalSets.slice(0, numSets).map((s) => s.id));
   const candidates = cards.filter((c) => recentSetIds.has(c.set.id));
   const prioritised = prioritiseByRarity(candidates);
@@ -759,7 +765,7 @@ export async function getRecentSetCards(
 /** Get the IDs of the 5 most recent physical sets. */
 export async function getRecentSetIds(): Promise<string[]> {
   const { sets } = await loadCardIndex();
-  const physicalSets = sets.filter((s) => !TCGP_SERIES_IDS.includes(s.series.toLowerCase()));
+  const physicalSets = sets.filter((s) => !s.isOnlineOnly);
   return physicalSets.slice(0, 5).map((s) => s.id);
 }
 

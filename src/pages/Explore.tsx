@@ -20,7 +20,6 @@ import {
   SORT_OPTIONS,
   CONDITIONS,
   PRODUCT_TYPES,
-  TCGP_SERIES_IDS,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import { recordSearchHits, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
@@ -438,7 +437,7 @@ function FilterControls({
             {setsData?.data
               ?.filter((s: any) => {
                 if (!productType) return true;
-                const isPocket = TCGP_SERIES_IDS.includes(s.series.toLowerCase());
+                const isPocket = s.isOnlineOnly;
                 return productType === "pocket" ? isPocket : !isPocket;
               })
               .map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}

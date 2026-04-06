@@ -119,7 +119,7 @@ export async function getExpansions(): Promise<ScrydexExpansion[]> {
 /** Fetch a single card by Scrydex ID with pricing */
 export async function getScrydexCard(id: string): Promise<ScrydexCard | null> {
   try {
-    const data = await proxyFetch(`/pokemon/v1/cards/${id}?include=prices`);
+    const data = await proxyFetch(`/pokemon/v1/en/cards/${id}?include=prices`);
     return data as ScrydexCard;
   } catch {
     return null;

@@ -98,6 +98,7 @@ async function main() {
           symbol: exp.symbol ?? "",
           releaseDate: (exp.release_date ?? "").replace(/\//g, "-"),
           series: exp.series ?? "",
+          isOnlineOnly: exp.is_online_only ?? false, // true = TCG Pocket / digital-only
           printedTotal: exp.printed_total ?? exp.total ?? 0,
           total: exp.total ?? 0,
         };
