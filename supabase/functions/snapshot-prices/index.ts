@@ -31,7 +31,8 @@ interface ScrydexPrice {
   market: number;
   low: number;
   currency: string;
-  condition?: string;
+  condition: string;  // "NM" | "LP" | "MP" | "HP" | "DMG"
+  type: string;       // "raw" | "graded" | etc.
 }
 
 interface ScrydexVariant {
@@ -62,24 +63,38 @@ interface SnapshotRow {
 // ─── Price extraction ─────────────────────────────────────────────────────────
 
 function extractCardPrice(card: ScrydexCard): number | null {
-  // Prefer USD market price
-  for (const variant of card.variants ?? []) {
-    for (const p of variant.prices ?? []) {
-      if (p.currency === "USD" && p.market > 0) return p.market;
-    }
+  const variants = card.variants ?? [];
+
+  // 1. NM raw USD market (most accurate price for a near-mint ungraded card)
+  for (const v of variants) {
+    const p = (v.prices ?? []).find(
+      (x) => x.condition === "NM" && x.type === "raw" && x.currency === "USD" && x.market > 0
+    );
+    if (p) return p.market;
   }
-  // Any currency market price
-  for (const variant of card.variants ?? []) {
-    for (const p of variant.prices ?? []) {
-      if (p.market > 0) return p.market;
-    }
+
+  // 2. NM raw any currency
+  for (const v of variants) {
+    const p = (v.prices ?? []).find(
+      (x) => x.condition === "NM" && x.type === "raw" && x.market > 0
+    );
+    if (p) return p.market;
   }
-  // Fall back to low price
-  for (const variant of card.variants ?? []) {
-    for (const p of variant.prices ?? []) {
-      if (p.low > 0) return p.low;
-    }
+
+  // 3. Any raw USD market (LP/MP/etc. fallback — only if no NM exists)
+  for (const v of variants) {
+    const p = (v.prices ?? []).find(
+      (x) => x.type === "raw" && x.currency === "USD" && x.market > 0
+    );
+    if (p) return p.market;
   }
+
+  // 4. Any raw market (last resort)
+  for (const v of variants) {
+    const p = (v.prices ?? []).find((x) => x.type === "raw" && x.market > 0);
+    if (p) return p.market;
+  }
+
   return null;
 }
 
