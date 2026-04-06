@@ -204,6 +204,10 @@ serve(async (req) => {
         if (series === "pokémon tcg pocket" || series === "mega evolution") continue;
         const price = extractCardPrice(card);
         if (!price || price <= 0) continue;
+        // Deduplicate: keep first (best) price per card_id per day
+        const key = card.id;
+        if (seenIds.has(key)) continue;
+        seenIds.add(key);
         buffer.push({
           card_id: card.id,
           card_name: card.name ?? "",
