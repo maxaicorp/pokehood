@@ -1,226 +1,231 @@
-// Daily price snapshot cron function
-// Fetches current market prices from TCGdex for recent set cards and stores them.
+/**
+ * snapshot-prices edge function — Scrydex edition
+ *
+ * Fetches current card prices from Scrydex and upserts into price_snapshots.
+ *
+ * Modes (pass in POST body):
+ *   {}              → daily: newest 30 pages (~3,000 cards, 30 credits)
+ *   { mode:"full" } → full:  all pages (~23,000 cards, ~235 credits) — run weekly
+ *
+ * Credit budget:
+ *   Daily 30 pages × 30 days  = 900 credits/month
+ *   Full  235 pages × 4 weeks = 940 credits/month
+ *   Total ≈ 1,840 credits/month (well within 5,000 Starter limit)
+ */
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const TCGDEX_SETS_URL = "https://api.tcgdex.net/v2/en/sets";
+const PAGE_SIZE = 100;
+const DAILY_PAGE_LIMIT = 30; // ~3,000 most-recent cards
+const DELAY_MS = 150;        // ~6-7 req/sec, well under 100/sec limit
 
-interface TcgdexSetBrief {
-  id: string;
-  name: string;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ScrydexPrice {
+  market: number;
+  low: number;
+  currency: string;
+  condition?: string;
 }
 
-interface TcgdexSetDetail {
-  id: string;
+interface ScrydexVariant {
   name: string;
-  releaseDate?: string;
-  cards?: Array<{ id: string; name: string; image?: string }>;
+  prices?: ScrydexPrice[];
 }
 
-interface TcgdexCardPricing {
+interface ScrydexCard {
   id: string;
   name: string;
-  set?: { name?: string };
-  pricing?: {
-    tcgplayer?: Record<string, {
-      lowPrice?: number;
-      midPrice?: number;
-      highPrice?: number;
-      marketPrice?: number;
-    }>;
-    cardmarket?: Record<string, number>;
+  expansion?: {
+    id: string;
+    name: string;
+    release_date?: string;
+    language_code?: string;
   };
+  variants?: ScrydexVariant[];
 }
 
-function extractMarketPrice(data: TcgdexCardPricing): { price: number; currency: "USD" | "EUR" } | null {
-  const tcp = data.pricing?.tcgplayer;
-  if (tcp) {
-    for (const variant of ["holofoil", "normal", "reverseHolofoil", "firstEdition"]) {
-      const v = tcp[variant];
-      if (v?.marketPrice && v.marketPrice > 0) return { price: v.marketPrice, currency: "USD" };
-      if (v?.midPrice && v.midPrice > 0) return { price: v.midPrice, currency: "USD" };
+interface SnapshotRow {
+  card_id: string;
+  card_name: string;
+  set_name: string;
+  price: number;
+  recorded_at: string;
+}
+
+// ─── Price extraction ─────────────────────────────────────────────────────────
+
+function extractCardPrice(card: ScrydexCard): number | null {
+  // Prefer USD market price
+  for (const variant of card.variants ?? []) {
+    for (const p of variant.prices ?? []) {
+      if (p.currency === "USD" && p.market > 0) return p.market;
     }
   }
-  const cm = data.pricing?.cardmarket;
-  if (cm) {
-    const isHolo = (cm["avg-holo"] ?? 0) > 0;
-    const trend = isHolo ? cm["trend-holo"] : cm["trend"];
-    const avg = isHolo ? cm["avg-holo"] : cm["avg"];
-    const low = isHolo ? cm["low-holo"] : cm["low"];
-    if (trend != null && trend > 0) return { price: trend, currency: "EUR" };
-    if (avg != null && avg > 0) return { price: avg, currency: "EUR" };
-    if (low != null && low > 0) return { price: low, currency: "EUR" };
+  // Any currency market price
+  for (const variant of card.variants ?? []) {
+    for (const p of variant.prices ?? []) {
+      if (p.market > 0) return p.market;
+    }
+  }
+  // Fall back to low price
+  for (const variant of card.variants ?? []) {
+    for (const p of variant.prices ?? []) {
+      if (p.low > 0) return p.low;
+    }
   }
   return null;
 }
 
-async function getEurToUsdRate(): Promise<number> {
+// ─── Scrydex fetch helper ─────────────────────────────────────────────────────
+
+async function scrydexFetch(
+  endpoint: string,
+  apiKey: string,
+  teamId: string,
+): Promise<{ data: ScrydexCard[]; total_count: number } | null> {
   try {
-    const res = await fetch("https://open.er-api.com/v6/latest/EUR");
-    if (res.ok) {
-      const data = await res.json();
-      const rate = data?.rates?.USD;
-      if (typeof rate === "number" && rate > 0) {
-        console.log(`EUR→USD rate: ${rate}`);
-        return rate;
-      }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    const res = await fetch(`https://api.scrydex.com${endpoint}`, {
+      headers: { "X-Api-Key": apiKey, "X-Team-ID": teamId },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.error(`Scrydex ${res.status} for ${endpoint}`);
+      return null;
     }
+    return await res.json();
   } catch (e) {
-    console.warn("Failed to fetch exchange rate, using fallback:", e);
+    console.error("Scrydex fetch error:", e);
+    return null;
   }
-  console.log("Using fallback EUR→USD rate: 1.08");
-  return 1.08;
 }
 
-async function fetchJson<T>(url: string, retries = 2): Promise<T | null> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10_000);
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-      if (!res.ok) return null;
-      return (await res.json()) as T;
-    } catch {
-      if (attempt === retries) return null;
-      await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
-    }
+// ─── Supabase upsert helper ───────────────────────────────────────────────────
+
+async function flushRows(
+  supabase: ReturnType<typeof createClient>,
+  rows: SnapshotRow[],
+): Promise<{ inserted: number; skipped: number }> {
+  if (rows.length === 0) return { inserted: 0, skipped: 0 };
+  const { error } = await supabase
+    .from("price_snapshots")
+    .upsert(rows, { onConflict: "card_id,recorded_at" });
+  if (error) {
+    console.error("Upsert error:", error.message);
+    return { inserted: 0, skipped: rows.length };
   }
-  return null;
+  return { inserted: rows.length, skipped: 0 };
 }
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const apiKey = Deno.env.get("SCRYDEX_API_KEY") ?? "";
+  const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
+
+  if (!apiKey || !teamId) {
+    return new Response(
+      JSON.stringify({ error: "Missing SCRYDEX_API_KEY or SCRYDEX_TEAM_ID env vars" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
+    );
+  }
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
+    { auth: { persistSession: false } },
   );
 
   try {
-    const allSets = await fetchJson<TcgdexSetBrief[]>(TCGDEX_SETS_URL);
-    if (!allSets) throw new Error("Failed to fetch sets from TCGdex");
-
-    console.log(`Fetched ${allSets.length} sets from TCGdex, fetching details for release dates...`);
-
-    const eurToUsd = await getEurToUsdRate();
-
-    const setDetails: TcgdexSetDetail[] = [];
-    const batchSize = 10;
-    for (let i = 0; i < allSets.length; i += batchSize) {
-      const batch = allSets.slice(i, i + batchSize);
-      const results = await Promise.all(
-        batch.map((s) => fetchJson<TcgdexSetDetail>(`${TCGDEX_SETS_URL}/${s.id}`))
-      );
-      for (const r of results) {
-        if (r?.releaseDate) setDetails.push(r);
-      }
-      if (i + batchSize < allSets.length) {
-        await new Promise((r) => setTimeout(r, 100));
-      }
-    }
-
-    setDetails.sort((a, b) => (b.releaseDate ?? "").localeCompare(a.releaseDate ?? ""));
-    const recentSets = setDetails.slice(0, 8);
-
-    console.log(
-      `Snapshotting prices for ${recentSets.length} sets:`,
-      recentSets.map((s) => `${s.name} (${s.releaseDate})`)
-    );
-
-    let totalInserted = 0;
-    let totalSkipped = 0;
+    const body = await req.json().catch(() => ({}));
+    const mode: "daily" | "full" = body.mode === "full" ? "full" : "daily";
+    const pageLimit = mode === "full" ? Infinity : DAILY_PAGE_LIMIT;
     const today = new Date().toISOString().split("T")[0];
 
-    for (const set of recentSets) {
-      if (!set.cards?.length) {
-        console.log(`  ${set.name}: no cards found, skipping`);
-        continue;
+    console.log(`snapshot-prices [${mode}] starting — ${today}`);
+
+    let page = 1;
+    let totalPages = 1;
+    let totalInserted = 0;
+    let totalSkipped = 0;
+    const buffer: SnapshotRow[] = [];
+
+    do {
+      const endpoint = `/pokemon/v1/en/cards?page=${page}&page_size=${PAGE_SIZE}&include=prices&orderBy=-expansion.release_date`;
+      const result = await scrydexFetch(endpoint, apiKey, teamId);
+
+      if (!result) {
+        console.error(`Page ${page}: fetch failed, stopping`);
+        break;
       }
 
-      console.log(`  ${set.name}: ${set.cards.length} cards`);
-
-      const rows: Array<{
-        card_id: string;
-        card_name: string;
-        set_name: string;
-        price: number;
-        recorded_at: string;
-      }> = [];
-
-      const cardList = set.cards;
-      const cardBatchSize = 5;
-
-      for (let i = 0; i < cardList.length; i += cardBatchSize) {
-        const batch = cardList.slice(i, i + cardBatchSize);
-        const results = await Promise.all(
-          batch.map((c) =>
-            fetchJson<TcgdexCardPricing>(
-              `https://api.tcgdex.net/v2/en/cards/${c.id}`
-            )
-          )
-        );
-
-        for (const data of results) {
-          if (!data) continue;
-          const result = extractMarketPrice(data);
-          if (result !== null) {
-            const price = result.currency === "EUR"
-              ? Math.round(result.price * eurToUsd * 100) / 100
-              : result.price;
-            rows.push({
-              card_id: data.id,
-              card_name: data.name ?? "",
-              set_name: data.set?.name ?? set.name,
-              price,
-              recorded_at: today,
-            });
-          }
-        }
-
-        if (i + cardBatchSize < cardList.length) {
-          await new Promise((r) => setTimeout(r, 200));
-        }
+      if (page === 1) {
+        const total = result.total_count ?? 0;
+        totalPages = Math.ceil(total / PAGE_SIZE);
+        const fetchPages = Math.min(pageLimit, totalPages);
+        console.log(`Total cards: ${total} — ${totalPages} pages total, fetching ${fetchPages}`);
       }
 
-      if (rows.length > 0) {
-        const { error } = await supabase
-          .from("price_snapshots")
-          .upsert(rows, { onConflict: "card_id,recorded_at" });
-
-        if (error) {
-          console.error(`  ${set.name}: insert error:`, error.message);
-          totalSkipped += rows.length;
-        } else {
-          totalInserted += rows.length;
-          console.log(`  ${set.name}: ${rows.length} prices saved`);
-        }
+      for (const card of result.data ?? []) {
+        // English only
+        if (card.expansion?.language_code && card.expansion.language_code !== "EN") continue;
+        const price = extractCardPrice(card);
+        if (!price || price <= 0) continue;
+        buffer.push({
+          card_id: card.id,
+          card_name: card.name ?? "",
+          set_name: card.expansion?.name ?? "",
+          price,
+          recorded_at: today,
+        });
       }
-    }
+
+      // Flush every 500 rows to avoid memory pressure
+      if (buffer.length >= 500) {
+        const { inserted, skipped } = await flushRows(supabase, buffer);
+        totalInserted += inserted;
+        totalSkipped += skipped;
+        buffer.length = 0;
+      }
+
+      console.log(`Page ${page}/${Math.min(pageLimit, totalPages)} — ${totalInserted} saved so far`);
+      page++;
+      if (page <= Math.min(pageLimit, totalPages)) {
+        await new Promise((r) => setTimeout(r, DELAY_MS));
+      }
+    } while (page <= Math.min(pageLimit, totalPages));
+
+    // Final flush
+    const { inserted, skipped } = await flushRows(supabase, buffer);
+    totalInserted += inserted;
+    totalSkipped += skipped;
 
     // Cleanup: remove snapshots older than 90 days
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
-    const cutoffStr = cutoff.toISOString().split("T")[0];
     await supabase
       .from("price_snapshots")
       .delete()
-      .lt("recorded_at", cutoffStr);
+      .lt("recorded_at", cutoff.toISOString().split("T")[0]);
 
     const summary = {
       success: true,
+      mode,
       date: today,
-      sets_processed: recentSets.length,
+      pages_processed: page - 1,
       prices_saved: totalInserted,
       prices_skipped: totalSkipped,
     };
@@ -229,8 +234,8 @@ serve(async (req) => {
     return new Response(JSON.stringify(summary), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
     console.error("Snapshot error:", msg);
     return new Response(JSON.stringify({ success: false, error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1,6 +1,9 @@
 // ─── Data layer ───────────────────────────────────────────────────────────────
 // Card/set metadata: single fetch from /data/all-cards.json (browser-cached)
-// Pricing: TCGdex live API per card on demand (free, no key required)
+// Pricing: DB snapshots (seeded at init via seedPricingCache) — zero live API calls per user
+// Card detail: Scrydex proxy (primary) → TCGdex (fallback)
+
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -253,25 +256,6 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
   return { cards, sets };
 }
 
-// ─── Live pricing ─────────────────────────────────────────────────────────────
-
-function mapLivePriceVariant(v?: {
-  lowPrice?: number; midPrice?: number; highPrice?: number;
-  marketPrice?: number; directLowPrice?: number;
-}): PriceData | undefined {
-  if (!v) return undefined;
-  const hasData = v.lowPrice !== undefined || v.midPrice !== undefined ||
-    v.highPrice !== undefined || v.marketPrice !== undefined;
-  if (!hasData) return undefined;
-  return {
-    low: v.lowPrice ?? 0,
-    mid: v.midPrice ?? 0,
-    high: v.highPrice ?? 0,
-    market: v.marketPrice ?? v.midPrice ?? 0,
-    directLow: v.directLowPrice,
-  };
-}
-
 /** Fetch pricing for cards with concurrency limit to avoid flooding the network. */
 export async function enrichPageWithPricing(
   cards: PokemonCard[],
@@ -313,79 +297,32 @@ export async function enrichCardsProgressively(
 const cardmarketAvgsCache = new Map<string, PokemonCard["cardmarketAvgs"]>();
 
 export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonCard> {
+  // Already has prices
   if (card.tcgplayer?.prices) {
-    // Already has tcgplayer prices but might be missing avgs
     if (!card.cardmarketAvgs && cardmarketAvgsCache.has(card.id)) {
       return { ...card, cardmarketAvgs: cardmarketAvgsCache.get(card.id) ?? undefined };
     }
     return card;
   }
 
+  // Check in-memory cache (populated from DB snapshots via seedPricingCache at app init)
   if (pricingCache.has(card.id)) {
     const cached = pricingCache.get(card.id);
     const avgs = cardmarketAvgsCache.get(card.id);
     return cached ? { ...card, tcgplayer: cached, cardmarketAvgs: avgs ?? undefined } : card;
   }
 
-  try {
-    const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${card.id}`);
-    if (!res.ok) { pricingCache.set(card.id, undefined); return card; }
-    const data = await res.json();
-    const updatedAt = new Date().toISOString().split("T")[0];
+  // Name+set fallback — handles cards whose DB entry still uses the old TCGdex ID
+  const nk = nameKey(card.name, card.set.name);
+  const byName = pricingByName.get(nk);
+  if (byName) {
+    const avgs = avgsByName.get(nk);
+    pricingCache.set(card.id, byName);
+    if (avgs) cardmarketAvgsCache.set(card.id, avgs);
+    return { ...card, tcgplayer: byName, cardmarketAvgs: avgs ?? undefined };
+  }
 
-    // Extract Cardmarket rolling averages (always, even when TCGPlayer is primary)
-    const cm = data.pricing?.cardmarket;
-    if (cm) {
-      const isHoloAvg = (cm["avg1-holo"] ?? 0) > 0;
-      const avgs: PokemonCard["cardmarketAvgs"] = isHoloAvg
-        ? { avg1: cm["avg1-holo"] ?? null, avg7: cm["avg7-holo"] ?? null, avg30: cm["avg30-holo"] ?? null, trend: cm["trend-holo"] ?? null }
-        : { avg1: cm["avg1"] ?? null, avg7: cm["avg7"] ?? null, avg30: cm["avg30"] ?? null, trend: cm["trend"] ?? null };
-      cardmarketAvgsCache.set(card.id, avgs);
-    }
-
-    // Try TCGPlayer first
-    const tcp = data.pricing?.tcgplayer;
-    if (tcp) {
-      const normal = mapLivePriceVariant(tcp.normal);
-      const holofoil = mapLivePriceVariant(tcp.holofoil);
-      const reverseHolofoil = mapLivePriceVariant(tcp.reverseHolofoil);
-      const firstEdition = mapLivePriceVariant(tcp.firstEdition);
-      const hasPrices = normal || holofoil || reverseHolofoil || firstEdition;
-      if (hasPrices) {
-        const tcgplayer: PokemonCard["tcgplayer"] = {
-          url: "",
-          updatedAt,
-          prices: {
-            ...(normal && { normal }),
-            ...(holofoil && { holofoil }),
-            ...(reverseHolofoil && { reverseHolofoil }),
-            ...(firstEdition && { "1stEditionHolofoil": firstEdition }),
-          },
-        };
-        pricingCache.set(card.id, tcgplayer);
-        return { ...card, tcgplayer, cardmarketAvgs: cardmarketAvgsCache.get(card.id) ?? undefined };
-      }
-    }
-
-    // Fall back to Cardmarket for main price (cm already extracted above)
-    if (cm) {
-      const isHolo = (cm["avg-holo"] ?? 0) > 0;
-      const priceData: PriceData = isHolo
-        ? { low: cm["low-holo"] ?? 0, mid: cm["avg-holo"] ?? 0, high: cm["avg-holo"] ?? 0, market: cm["trend-holo"] ?? cm["avg-holo"] ?? 0 }
-        : { low: cm.low ?? 0, mid: cm.avg ?? 0, high: cm.avg ?? 0, market: cm.trend ?? cm.avg ?? 0 };
-
-      if (priceData.market > 0) {
-        const tcgplayer: PokemonCard["tcgplayer"] = {
-          url: "",
-          updatedAt,
-          prices: isHolo ? { holofoil: priceData } : { normal: priceData },
-        };
-        pricingCache.set(card.id, tcgplayer);
-        return { ...card, tcgplayer, cardmarketAvgs: cardmarketAvgsCache.get(card.id) ?? undefined };
-      }
-    }
-  } catch { /* ignore network errors */ }
-
+  // No price in DB — mark as checked so we don't retry this session
   pricingCache.set(card.id, undefined);
   return card;
 }
@@ -640,14 +577,79 @@ export async function getCardById(id: string): Promise<PokemonCard | null> {
   return cards.find((c) => c.id === id) ?? null;
 }
 
+/** Map a Scrydex card response to the CardDetailFull shape used by CardDetail page. */
+function mapScrydexToCardDetail(s: Record<string, unknown>): CardDetailFull {
+  const attacks = (s.attacks as Array<Record<string, unknown>> | undefined)?.map((a) => ({
+    cost: a.cost as string[] | undefined,
+    name: String(a.name ?? ""),
+    damage: a.damage != null ? String(a.damage) : undefined,
+    effect: a.effect != null ? String(a.effect) : undefined,
+  }));
+  const abilities = (s.abilities as Array<Record<string, unknown>> | undefined)?.map((a) => ({
+    type: String(a.type ?? "Ability"),
+    name: String(a.name ?? ""),
+    effect: String(a.effect ?? ""),
+  }));
+  const weaknesses = (s.weaknesses as Array<Record<string, unknown>> | undefined)?.map((w) => ({
+    type: String(w.type ?? ""),
+    value: String(w.value ?? ""),
+  }));
+  const resistances = (s.resistances as Array<Record<string, unknown>> | undefined)?.map((r) => ({
+    type: String(r.type ?? ""),
+    value: String(r.value ?? ""),
+  }));
+
+  // Extract market price from Scrydex variants for the detail page
+  const variants = s.variants as Array<{ name: string; prices?: Array<{ market: number; low: number; currency: string }> }> | undefined;
+  let marketPrice: number | undefined;
+  for (const v of variants ?? []) {
+    for (const p of v.prices ?? []) {
+      if (p.currency === "USD" && p.market > 0) { marketPrice = p.market; break; }
+    }
+    if (marketPrice) break;
+  }
+
+  const exp = s.expansion as Record<string, unknown> | undefined;
+
+  return {
+    id: String(s.id ?? ""),
+    name: String(s.name ?? ""),
+    hp: s.hp != null ? Number(s.hp) : undefined,
+    types: s.types as string[] | undefined,
+    stage: s.stage as string | undefined,
+    rarity: s.rarity as string | undefined,
+    illustrator: s.illustrator as string | undefined,
+    regulationMark: s.regulation_mark as string | undefined,
+    attacks: attacks?.length ? attacks : undefined,
+    abilities: abilities?.length ? abilities : undefined,
+    weaknesses: weaknesses?.length ? weaknesses : undefined,
+    resistances: resistances?.length ? resistances : undefined,
+    retreat: s.retreat_cost != null ? Number(s.retreat_cost) : undefined,
+    set: exp ? { id: String(exp.id ?? ""), name: String(exp.name ?? ""), releaseDate: exp.release_date as string | undefined } : undefined,
+    pricing: marketPrice
+      ? { tcgplayer: { normal: { marketPrice, lowPrice: marketPrice, midPrice: marketPrice, highPrice: marketPrice } } }
+      : undefined,
+  };
+}
+
 export async function fetchCardDetail(id: string): Promise<CardDetailFull | null> {
+  // Try Scrydex first (cards now use Scrydex IDs)
+  try {
+    const { data, error } = await supabase.functions.invoke("scrydex-proxy", {
+      body: { endpoint: `/pokemon/v1/en/cards/${id}` },
+    });
+    if (!error && data?.status === 200 && data.data) {
+      return mapScrydexToCardDetail(data.data as Record<string, unknown>);
+    }
+  } catch { /* fall through to TCGdex */ }
+
+  // Fall back to TCGdex (works for legacy IDs, may still match some cards)
   try {
     const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${id}`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
+    if (res.ok) return await res.json();
+  } catch { /* ignore */ }
+
+  return null;
 }
 
 // ─── Market leaderboard ───────────────────────────────────────────────────────
