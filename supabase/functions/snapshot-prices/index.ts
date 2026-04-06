@@ -202,7 +202,7 @@ serve(async (req) => {
         if (card.expansion?.language_code !== "EN") continue;
         if (card.expansion?.is_online_only) continue; // skip TCG Pocket
         const series = (card.expansion?.series ?? "").toLowerCase();
-        if (series === "pokémon tcg pocket" || series === "mega evolution") continue;
+        if (series === "pokémon tcg pocket") continue;
         const price = extractCardPrice(card);
         if (!price || price <= 0) continue;
         // Deduplicate: keep first (best) price per card_id per day
