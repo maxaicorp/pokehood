@@ -179,6 +179,7 @@ serve(async (req) => {
     let totalInserted = 0;
     let totalSkipped = 0;
     const buffer: SnapshotRow[] = [];
+    const seenIds = new Set<string>();
 
     do {
       const endpoint = `/pokemon/v1/en/cards?page=${page}&page_size=${PAGE_SIZE}&include=prices&orderBy=-expansion.release_date`;
