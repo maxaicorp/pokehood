@@ -129,7 +129,7 @@ async function scrydexFetch(
 // ─── Supabase upsert helper ───────────────────────────────────────────────────
 
 async function flushRows(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   rows: SnapshotRow[],
 ): Promise<{ inserted: number; skipped: number }> {
   if (rows.length === 0) return { inserted: 0, skipped: 0 };

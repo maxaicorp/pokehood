@@ -35,7 +35,7 @@ interface CheckResult {
 }
 
 async function checkPriceSnapshotFreshness(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
 ): Promise<CheckResult> {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
@@ -52,7 +52,7 @@ async function checkPriceSnapshotFreshness(
 }
 
 async function checkCardCoverage(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
 ): Promise<CheckResult> {
   const { count, error } = await supabase
     .from("price_snapshots")
@@ -66,7 +66,7 @@ async function checkCardCoverage(
 }
 
 async function checkSealedFreshness(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
 ): Promise<CheckResult> {
   const twoDaysAgo = new Date();
   twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
@@ -106,11 +106,11 @@ async function checkScrydexProxy(apiKey: string, teamId: string): Promise<CheckR
 }
 
 async function checkCardStatsRpc(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
 ): Promise<CheckResult> {
   try {
     // Call with a test card — fire and forget, we just need it to not throw
-    const { error } = await (supabase.rpc as (...args: unknown[]) => Promise<{ error: unknown }>)(
+    const { error } = await supabase.rpc(
       "increment_card_stat",
       {
         p_tcg_api_id: "__health_check__",
