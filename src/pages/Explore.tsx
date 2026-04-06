@@ -436,7 +436,8 @@ function FilterControls({
             {setsData?.data
               ?.filter((s: any) => {
                 const isPocket = s.isOnlineOnly;
-                return effectiveProductType === "pocket" ? isPocket : !isPocket;
+              const ept = productType || "tcg";
+                return ept === "pocket" ? isPocket : !isPocket;
               })
               .map((s: any) => (<SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>))}
           </SelectContent>
