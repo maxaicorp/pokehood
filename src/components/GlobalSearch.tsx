@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, X, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { getCards, ScrydexCard } from "@/lib/scrydex-api";
 
 interface SearchResult {
   id: string;
@@ -11,6 +12,34 @@ interface SearchResult {
   image?: string;
   set?: { id: string; name: string };
   rarity?: string;
+}
+
+function mapScrydexResult(c: ScrydexCard): SearchResult {
+  const img = c.images?.[0]?.small;
+  return {
+    id: c.id,
+    name: c.name,
+    localId: c.number || c.id,
+    image: img,
+    set: c.expansion ? { id: c.expansion.id, name: c.expansion.name } : undefined,
+    rarity: c.rarity,
+  };
+}
+
+async function searchTcgdexFallback(q: string): Promise<SearchResult[]> {
+  const res = await fetch(
+    `https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(q)}&sort:field=name&sort:order=ASC`
+  );
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data || []).slice(0, 8).map((c: any) => ({
+    id: c.id,
+    name: c.name,
+    localId: c.localId || c.id,
+    image: c.image ? `${c.image}/low.webp` : undefined,
+    set: c.set,
+    rarity: c.rarity,
+  }));
 }
 
 export default function GlobalSearch() {
@@ -24,7 +53,6 @@ export default function GlobalSearch() {
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -35,7 +63,6 @@ export default function GlobalSearch() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Keyboard shortcut: Ctrl+K / Cmd+K
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -53,18 +80,19 @@ export default function GlobalSearch() {
     if (q.length < 2) { setResults([]); return; }
     setLoading(true);
     try {
-      const res = await fetch(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(q)}&sort:field=name&sort:order=ASC`);
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      // TCGdex returns minimal data in list, take first 8
-      const items: SearchResult[] = (data || []).slice(0, 8).map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        localId: c.localId || c.id,
-        image: c.image ? `${c.image}/low.webp` : undefined,
-        set: c.set,
-        rarity: c.rarity,
-      }));
+      // Scrydex primary
+      const { cards } = await getCards({ query: q, pageSize: 8 });
+      if (cards.length > 0) {
+        setResults(cards.map(mapScrydexResult));
+        setSelectedIdx(0);
+        setLoading(false);
+        return;
+      }
+    } catch { /* fall through */ }
+
+    // TCGdex fallback
+    try {
+      const items = await searchTcgdexFallback(q);
       setResults(items);
       setSelectedIdx(0);
     } catch {
@@ -113,7 +141,6 @@ export default function GlobalSearch() {
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Collapsed: icon button on mobile, search bar on desktop */}
       <button
         onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
         className={cn(
@@ -150,48 +177,43 @@ export default function GlobalSearch() {
         )}
       </div>
 
-      {/* Mobile full-width overlay */}
       <AnimatePresence>
         {open && (
-          <>
-            {/* Mobile overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="sm:hidden fixed inset-0 z-[60] bg-background"
-            >
-              <div className="flex items-center gap-2 px-4 h-14 border-b border-border/50 bg-background">
-                <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-                <input
-                  ref={inputRef}
-                  value={query}
-                  onChange={e => handleChange(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Search cards..."
-                  autoFocus
-                  className="bg-transparent outline-none text-sm w-full text-foreground placeholder:text-muted-foreground"
-                />
-                <button onClick={() => { setOpen(false); setQuery(""); setResults([]); }} className="text-muted-foreground hover:text-foreground p-1">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="overflow-y-auto max-h-[calc(100vh-3.5rem)] bg-background">
-                <SearchResults
-                  results={results}
-                  loading={loading}
-                  query={query}
-                  selectedIdx={selectedIdx}
-                  onSelect={handleSelect}
-                  onSearchAll={handleSearchSubmit}
-                />
-              </div>
-            </motion.div>
-          </>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="sm:hidden fixed inset-0 z-[60] bg-background"
+          >
+            <div className="flex items-center gap-2 px-4 h-14 border-b border-border/50 bg-background">
+              <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+              <input
+                ref={inputRef}
+                value={query}
+                onChange={e => handleChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Search cards..."
+                autoFocus
+                className="bg-transparent outline-none text-sm w-full text-foreground placeholder:text-muted-foreground"
+              />
+              <button onClick={() => { setOpen(false); setQuery(""); setResults([]); }} className="text-muted-foreground hover:text-foreground p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(100vh-3.5rem)] bg-background">
+              <SearchResults
+                results={results}
+                loading={loading}
+                query={query}
+                selectedIdx={selectedIdx}
+                onSelect={handleSelect}
+                onSearchAll={handleSearchSubmit}
+              />
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Desktop dropdown */}
       <AnimatePresence>
         {open && (query.length >= 2 || results.length > 0) && (
           <motion.div

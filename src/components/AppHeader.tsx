@@ -25,9 +25,20 @@ function ApiHealthBanner() {
     const check = async () => {
       const start = Date.now();
       try {
-        const res = await fetch("https://api.tcgdex.net/v2/en/sets/swsh1", {
-          signal: AbortSignal.timeout(8000),
-        });
+        // Check Scrydex health via our proxy, fall back to TCGdex
+        let res: Response;
+        try {
+          res = await supabase.functions.invoke("scrydex-proxy", {
+            body: { endpoint: "/pokemon/v1/en/expansions?page=1&page_size=1" },
+          }).then(({ data, error }) => {
+            if (error) throw error;
+            return new Response(JSON.stringify(data), { status: data?.status === 200 ? 200 : 500 });
+          });
+        } catch {
+          res = await fetch("https://api.tcgdex.net/v2/en/sets/swsh1", {
+            signal: AbortSignal.timeout(8000),
+          });
+        }
         if (cancelled) return;
         const ms = Date.now() - start;
         if (!res.ok) setStatus("down");
