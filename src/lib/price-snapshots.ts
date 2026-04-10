@@ -104,12 +104,16 @@ export interface LatestPrice {
 
 /**
  * Fetch the most recent snapshot price + historical % changes for every card.
- * Uses at most 4 small DB queries. Returns a Map keyed by card_id.
+ *
+ * Historical matching strategy:
+ * 1. Try exact card_id match (works when both dates use same ID format)
+ * 2. Fall back to card_name + set_name match (bridges TCGdex→Scrydex ID migration)
+ *    - When multiple variants share a name, pick the one with the closest price to current
  */
 export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice>> {
   const map = new Map<string, LatestPrice>();
 
-  // 1. Get distinct dates in descending order
+  // 1. Get the latest snapshot date
   const { data: dateRows } = await (supabase.from as any)("price_snapshots")
     .select("recorded_at")
     .order("recorded_at", { ascending: false })
@@ -131,31 +135,72 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
       .select("card_id, card_name, set_name, price")
       .eq("recorded_at", latestDate),
     (supabase.from as any)("price_snapshots")
-      .select("card_id, price")
+      .select("card_id, card_name, set_name, price")
       .eq("recorded_at", fmt(d1)),
     (supabase.from as any)("price_snapshots")
-      .select("card_id, price")
+      .select("card_id, card_name, set_name, price")
       .eq("recorded_at", fmt(d7)),
     (supabase.from as any)("price_snapshots")
-      .select("card_id, price")
+      .select("card_id, card_name, set_name, price")
       .eq("recorded_at", fmt(d30)),
   ]);
 
   if (!currentRes.data) return map;
 
-  // Build lookup maps for historical prices
-  const priceMap1d = new Map<string, number>();
-  const priceMap7d = new Map<string, number>();
-  const priceMap30d = new Map<string, number>();
-  for (const r of (d1Res.data || []) as Array<{ card_id: string; price: number }>) priceMap1d.set(r.card_id, Number(r.price));
-  for (const r of (d7Res.data || []) as Array<{ card_id: string; price: number }>) priceMap7d.set(r.card_id, Number(r.price));
-  for (const r of (d30Res.data || []) as Array<{ card_id: string; price: number }>) priceMap30d.set(r.card_id, Number(r.price));
+  type Row = { card_id: string; card_name: string; set_name: string; price: number };
 
-  for (const row of currentRes.data as Array<{ card_id: string; card_name: string; set_name: string; price: number }>) {
+  // Build lookup maps — first by card_id, then by name+set for fallback
+  function buildLookups(rows: Row[]) {
+    const byId = new Map<string, number>();
+    const byName = new Map<string, number[]>(); // name|set → [prices] (multiple variants)
+    for (const r of rows) {
+      const price = Number(r.price);
+      byId.set(r.card_id, price);
+      const key = `${r.card_name}|${r.set_name}`.toLowerCase();
+      const arr = byName.get(key);
+      if (arr) arr.push(price);
+      else byName.set(key, [price]);
+    }
+    return { byId, byName };
+  }
+
+  const lookup1d = buildLookups((d1Res.data || []) as Row[]);
+  const lookup7d = buildLookups((d7Res.data || []) as Row[]);
+  const lookup30d = buildLookups((d30Res.data || []) as Row[]);
+
+  // Find the best historical price: exact ID match first, then name+set with closest price
+  function findHistoricalPrice(
+    lookup: ReturnType<typeof buildLookups>,
+    cardId: string,
+    cardName: string,
+    setName: string,
+    currentPrice: number
+  ): number | undefined {
+    // Exact ID match
+    const byId = lookup.byId.get(cardId);
+    if (byId !== undefined) return byId;
+
+    // Name+set fallback — pick the variant with the closest price to current
+    const key = `${cardName}|${setName}`.toLowerCase();
+    const candidates = lookup.byName.get(key);
+    if (!candidates?.length) return undefined;
+
+    if (candidates.length === 1) return candidates[0];
+    // Pick closest to current price (most likely the same variant)
+    let best = candidates[0];
+    let bestDiff = Math.abs(currentPrice - best);
+    for (let i = 1; i < candidates.length; i++) {
+      const diff = Math.abs(currentPrice - candidates[i]);
+      if (diff < bestDiff) { best = candidates[i]; bestDiff = diff; }
+    }
+    return best;
+  }
+
+  for (const row of currentRes.data as Row[]) {
     const price = Number(row.price);
-    const p1 = priceMap1d.get(row.card_id);
-    const p7 = priceMap7d.get(row.card_id);
-    const p30 = priceMap30d.get(row.card_id);
+    const p1 = findHistoricalPrice(lookup1d, row.card_id, row.card_name, row.set_name, price);
+    const p7 = findHistoricalPrice(lookup7d, row.card_id, row.card_name, row.set_name, price);
+    const p30 = findHistoricalPrice(lookup30d, row.card_id, row.card_name, row.set_name, price);
 
     map.set(row.card_id, {
       cardId: row.card_id,
