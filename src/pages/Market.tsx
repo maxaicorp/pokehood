@@ -41,7 +41,7 @@ export default function Market() {
   const queryClient = useQueryClient();
   const [selectedSetId, setSelectedSetId] = useState("recent5");
   const [addingCards, setAddingCards] = useState(new Set<string>());
-  const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | "30d" | null>(null);
+  const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [activeTab, setActiveTab] = useState<MarketTab>("top");
   const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
@@ -125,7 +125,7 @@ export default function Market() {
     return () => observer.disconnect();
   }, [cards.length]);
 
-  const handleSort = (col: "price" | "24h" | "7d" | "30d") => {
+  const handleSort = (col: "price" | "24h" | "7d") => {
     if (sortCol === col) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -185,8 +185,8 @@ export default function Market() {
         } else {
           const pa = getPcts(a);
           const pb = getPcts(b);
-          va = sortCol === "24h" ? pa.raw24h : sortCol === "7d" ? pa.raw7d : pa.raw30d;
-          vb = sortCol === "24h" ? pb.raw24h : sortCol === "7d" ? pb.raw7d : pb.raw30d;
+          va = sortCol === "24h" ? pa.raw24h : pa.raw7d;
+          vb = sortCol === "24h" ? pb.raw24h : pb.raw7d;
         }
         if (va === null && vb === null) return 0;
         if (va === null) return 1;
@@ -225,10 +225,10 @@ export default function Market() {
   const totalValue = rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0);
 
   const gridClasses = isSingleSet
-    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_72px_44px]"
-    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_72px_44px]";
+    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_44px]"
+    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px]";
 
-  const SortIcon = ({ col }: { col: "price" | "24h" | "7d" | "30d" }) => {
+  const SortIcon = ({ col }: { col: "price" | "24h" | "7d" }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
     return sortDir === "asc"
       ? <ArrowUp className="w-3 h-3 ml-1 text-primary" />
@@ -334,9 +334,7 @@ export default function Market() {
               <button onClick={() => handleSort("7d")} className="flex items-center justify-end hover:text-foreground transition-colors">
                 7d % <SortIcon col="7d" />
               </button>
-              <button onClick={() => handleSort("30d")} className="flex items-center justify-end hover:text-foreground transition-colors">
-                30d % <SortIcon col="30d" />
-              </button>
+              <span />
               <span />
             </div>
           )}
@@ -479,10 +477,6 @@ export default function Market() {
                       {pct7d.text}
                     </p>
 
-                    {/* 30d % */}
-                    <p className={`hidden sm:block text-xs font-medium text-right tabular-nums ${pct30d.className}`}>
-                      {pct30d.text}
-                    </p>
 
                     {/* Mobile price + add button */}
                     <div className="flex items-center justify-end gap-2">
