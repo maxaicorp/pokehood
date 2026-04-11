@@ -335,7 +335,6 @@ export default function Market() {
                 7d % <SortIcon col="7d" />
               </button>
               <span />
-              <span />
             </div>
           )}
 
