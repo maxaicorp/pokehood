@@ -227,13 +227,17 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
   }));
   sets.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
 
-  // Map cards
-  const cards: PokemonCard[] = index.cards.map((c) => {
+  // Map cards (deduplicate by ID — Scrydex can return duplicate entries)
+  const seenIds = new Set<string>();
+  const cards: PokemonCard[] = [];
+  for (const c of index.cards) {
+    if (seenIds.has(c.id)) continue;
+    seenIds.add(c.id);
     const s = index.sets[c.setId];
     // Use cached Supabase URL if available (top 1000 cards), else Scrydex CDN, else TCGdex
     const imageSmall = overrides[c.id] ?? c.imageSmall ?? (c.image ? c.image + "/low.webp" : "");
     const imageLarge = c.imageLarge ?? (c.image ? c.image + "/high.webp" : "");
-    return {
+    cards.push({
       id: c.id,
       name: c.name,
       supertype: c.supertype ?? "Pokémon",
@@ -255,8 +259,8 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
         small: imageSmall,
         large: imageLarge,
       },
-    };
-  });
+    });
+  }
 
   // Sort newest-first so getLatestCards() and default view show recent cards
   cards.sort((a, b) => b.set.releaseDate.localeCompare(a.set.releaseDate));
