@@ -135,8 +135,18 @@ async function main() {
 
   console.log("\n\n✅ All pages fetched.\n");
 
-  // Step 2: Write all-cards.json
-  const output = { sets, cards };
+  // Step 2: Deduplicate cards by ID (Scrydex can return duplicates across pages)
+  const seenIds = new Set();
+  const uniqueCards = cards.filter((c) => {
+    if (seenIds.has(c.id)) return false;
+    seenIds.add(c.id);
+    return true;
+  });
+  const dupeCount = cards.length - uniqueCards.length;
+  if (dupeCount > 0) console.log(`🔄 Removed ${dupeCount} duplicate cards`);
+
+  // Step 3: Write all-cards.json
+  const output = { sets, cards: uniqueCards };
   const outPath = join(__dirname, "../public/data/all-cards.json");
   writeFileSync(outPath, JSON.stringify(output));
 
