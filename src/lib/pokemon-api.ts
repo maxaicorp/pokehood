@@ -237,7 +237,7 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
     // Use cached Supabase URL if available (top 1000 cards), else Scrydex CDN, else TCGdex
     const imageSmall = overrides[c.id] ?? c.imageSmall ?? (c.image ? c.image + "/low.webp" : "");
     const imageLarge = c.imageLarge ?? (c.image ? c.image + "/high.webp" : "");
-    return {
+    cards.push({
       id: c.id,
       name: c.name,
       supertype: c.supertype ?? "Pokémon",
