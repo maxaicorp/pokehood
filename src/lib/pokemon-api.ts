@@ -717,9 +717,17 @@ export async function getMarketCards(opts: {
     return enriched;
   });
 
+  // Deduplicate: keep only one listing per name+set (highest price wins)
+  const seenNameSet = new Set<string>();
   return withPrices
     .filter((c) => getMarketPrice(c) !== null)
     .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
+    .filter((c) => {
+      const nk = nameKey(c.name, c.set.name);
+      if (seenNameSet.has(nk)) return false;
+      seenNameSet.add(nk);
+      return true;
+    })
     .slice(0, opts.limit ?? 200);
 }
 
