@@ -438,8 +438,20 @@ export default function Explore() {
               <CardList cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} isPricingLoading={isPricingLoading} />
             )}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Infinite scroll sentinel (set mode) */}
+            {isSetMode && (
+              <div ref={sentinelRef} className="py-8 flex justify-center">
+                {isFetchingNextPage && (
+                  <span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+                )}
+                {!hasNextPage && cards.length > 0 && (
+                  <p className="text-xs text-muted-foreground">All {cards.length} cards loaded</p>
+                )}
+              </div>
+            )}
+
+            {/* Pagination (non-set mode) */}
+            {!isSetMode && totalPages > 1 && (
               <div className="flex items-center justify-center gap-1 mt-8 flex-wrap">
                 <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>‹</Button>
                 {getPageNumbers(page, totalPages).map((p, i) =>
