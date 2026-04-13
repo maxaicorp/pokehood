@@ -417,26 +417,27 @@ export async function searchCardsAdvanced(
   }
 
   // Sort
-  const sortBy = filters.sortBy || "-set.releaseDate";
+  const sortBy = filters.sortBy || "number";
   const desc = sortBy.startsWith("-");
   const field = sortBy.replace(/^-/, "");
 
-  if (field !== "set.releaseDate" || desc !== true) {
-    // Default sort (newest-first) is already applied at load time; only re-sort when different
-    const sorted = [...filtered];
-    sorted.sort((a, b) => {
-      let valA: string, valB: string;
-      if (field === "set.releaseDate") { valA = a.set.releaseDate; valB = b.set.releaseDate; }
-      else if (field === "name") { valA = a.name; valB = b.name; }
-      else if (field === "number") { valA = a.number.padStart(5, "0"); valB = b.number.padStart(5, "0"); }
-      else { valA = a.name; valB = b.name; }
-      const cmp = valA.localeCompare(valB);
-      return desc ? -cmp : cmp;
-    });
-    return paginate(sorted, page, pageSize);
-  }
-
-  return paginate(filtered, page, pageSize);
+  const sorted = [...filtered];
+  sorted.sort((a, b) => {
+    let cmp: number;
+    if (field === "price") {
+      const pa = getMarketPrice(a) ?? 0;
+      const pb = getMarketPrice(b) ?? 0;
+      cmp = pa - pb;
+    } else if (field === "name") {
+      cmp = a.name.localeCompare(b.name);
+    } else if (field === "number") {
+      cmp = a.number.padStart(5, "0").localeCompare(b.number.padStart(5, "0"));
+    } else {
+      cmp = a.name.localeCompare(b.name);
+    }
+    return desc ? -cmp : cmp;
+  });
+  return paginate(sorted, page, pageSize);
 }
 
 export async function getSetCards(
@@ -525,11 +526,11 @@ export const CARD_TYPES = [
 ];
 
 export const SORT_OPTIONS = [
-  { value: "-set.releaseDate", label: "Newest First" },
-  { value: "set.releaseDate", label: "Oldest First" },
+  { value: "number", label: "Card Number" },
+  { value: "price", label: "Price: Low → High" },
+  { value: "-price", label: "Price: High → Low" },
   { value: "name", label: "Name A-Z" },
   { value: "-name", label: "Name Z-A" },
-  { value: "number", label: "Card Number" },
 ];
 
 export const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"] as const;
