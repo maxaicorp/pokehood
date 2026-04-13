@@ -525,11 +525,11 @@ export const CARD_TYPES = [
 ];
 
 export const SORT_OPTIONS = [
-  { value: "-set.releaseDate", label: "Newest First" },
-  { value: "set.releaseDate", label: "Oldest First" },
+  { value: "number", label: "Card Number" },
+  { value: "price", label: "Price: Low → High" },
+  { value: "-price", label: "Price: High → Low" },
   { value: "name", label: "Name A-Z" },
   { value: "-name", label: "Name Z-A" },
-  { value: "number", label: "Card Number" },
 ];
 
 export const CONDITIONS = ["NM", "LP", "MP", "HP", "DMG"] as const;
