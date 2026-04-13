@@ -60,6 +60,7 @@ const existingCardsById = new Map((existingIndex.cards ?? []).map((card) => [car
 const sets = {};
 const cards = [];
 const seenCardIds = new Set();
+const hasRichIndex = (existingIndex.cards ?? []).some((card) => card?.imageSmall || card?.imageLarge);
 
 for (const file of setFiles) {
   const setData = readJson(path.join(SETS_DIR, file), {});
@@ -70,8 +71,12 @@ for (const file of setFiles) {
 
   for (const legacyCard of setData.cards || []) {
     if (!legacyCard?.id || seenCardIds.has(legacyCard.id)) continue;
+
+    const existingCard = existingCardsById.get(legacyCard.id);
+    if (hasRichIndex && !existingCard) continue;
+
     seenCardIds.add(legacyCard.id);
-    cards.push(mergeCard(existingCardsById.get(legacyCard.id), legacyCard, setId));
+    cards.push(mergeCard(existingCard, legacyCard, setId));
   }
 }
 
