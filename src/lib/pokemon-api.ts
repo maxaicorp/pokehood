@@ -123,6 +123,7 @@ let allCardsCache: PokemonCard[] | null = null;
 let allSetsCache: PokemonSet[] | null = null;
 const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
+const CARD_INDEX_VERSION = "2026-04-13-ascended-heroes-fix";
 // Secondary index: "cardName|setName" → same data, for cross-ID matching
 const pricingByName = new Map<string, PokemonCard["tcgplayer"]>();
 const avgsByName = new Map<string, PokemonCard["cardmarketAvgs"]>();
@@ -198,7 +199,9 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
     return { cards: allCardsCache, sets: allSetsCache };
   }
 
-  const res = await fetch("/data/all-cards.json");
+  const res = await fetch(`/data/all-cards.json?v=${CARD_INDEX_VERSION}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to load card index");
   const index: CardIndex = await res.json();
 
