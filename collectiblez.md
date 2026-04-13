@@ -196,6 +196,12 @@ Collectiblez is a Pokémon TCG collection tracker and market analytics platform.
 - Mega Evolution sets restored (were incorrectly filtered as "online-only" — only TCG Pocket sets are filtered)
 - `TCGP_SERIES_IDS` filter fixed to only exclude `"pokémon tcg pocket"` series
 
+### Card Identity & Pricing — No Name-Based Fallbacks (April 13)
+- **Every card is uniquely identified by its Scrydex ID, not its name.** Cards with the same name but different rarities (e.g. "Charizard ex" Double Rare vs. SIR) are distinct entries with unique IDs, images, and prices.
+- **All name-based fallback logic removed** from pricing cache, market enrichment, and image resolution. Only exact Scrydex ID matches are used.
+- **No deduplication by name** on Market page — every variant appears individually.
+- **Price snapshots repopulated** with correct Scrydex IDs (replacing old TCGdex IDs) so exact-match lookups always succeed.
+
 ### Other Changes
 - Dark mode set as default theme
 - Set logos downloaded locally (no longer pings external APIs for logos)
