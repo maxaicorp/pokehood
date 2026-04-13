@@ -227,18 +227,41 @@ export default function Explore() {
     setPage(1);
   };
 
-  // Second-pass query: fetch live pricing for the current page in parallel
-  const cardIds = (cardsData?.data || []).map((c) => c.id).join(",");
+  // Derive flat card list depending on mode
+  const rawCards = isSetMode
+    ? (infiniteData?.pages ?? []).flatMap((p) => p.data)
+    : (cardsData?.data ?? []);
+
+  // Second-pass query: fetch live pricing for the current visible cards
+  const cardIds = rawCards.map((c) => c.id).join(",");
   const { data: pricedCards, isLoading: isPricingLoading } = useQuery({
     queryKey: ["card-prices", cardIds],
-    queryFn: () => enrichPageWithPricing(cardsData?.data ?? []),
-    enabled: !!cardsData?.data?.length,
+    queryFn: () => enrichPageWithPricing(rawCards),
+    enabled: rawCards.length > 0,
     staleTime: 5 * 60_000,
   });
 
-  const cards = pricedCards || cardsData?.data || [];
-  const totalCount = cardsData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / 35);
+  const cards = pricedCards || rawCards;
+  const totalCount = isSetMode
+    ? (infiniteData?.pages?.[0]?.totalCount ?? 0)
+    : (cardsData?.totalCount ?? 0);
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isSetMode || !sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [isSetMode, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const activeFilterCount = [selectedSet, selectedRarity, ...(selectedTypes.length ? ["t"] : [])].filter(Boolean).length;
 
