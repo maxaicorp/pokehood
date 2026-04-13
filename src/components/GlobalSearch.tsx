@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { getCards, ScrydexCard } from "@/lib/scrydex-api";
+import { searchCardsAdvanced, PokemonCard } from "@/lib/pokemon-api";
 
 interface SearchResult {
   id: string;
@@ -14,32 +14,15 @@ interface SearchResult {
   rarity?: string;
 }
 
-function mapScrydexResult(c: ScrydexCard): SearchResult {
-  const img = c.images?.[0]?.small;
+function mapCard(c: PokemonCard): SearchResult {
   return {
     id: c.id,
     name: c.name,
-    localId: c.number || c.id,
-    image: img,
-    set: c.expansion ? { id: c.expansion.id, name: c.expansion.name } : undefined,
+    localId: c.number,
+    image: c.images.small,
+    set: { id: c.set.id, name: c.set.name },
     rarity: c.rarity,
   };
-}
-
-async function searchTcgdexFallback(q: string): Promise<SearchResult[]> {
-  const res = await fetch(
-    `https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(q)}&sort:field=name&sort:order=ASC`
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-  return (data || []).slice(0, 8).map((c: any) => ({
-    id: c.id,
-    name: c.name,
-    localId: c.localId || c.id,
-    image: c.image ? `${c.image}/low.webp` : undefined,
-    set: c.set,
-    rarity: c.rarity,
-  }));
 }
 
 export default function GlobalSearch() {
@@ -76,35 +59,23 @@ export default function GlobalSearch() {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
-  const searchCards = useCallback(async (q: string) => {
+  const searchCards = async (q: string) => {
     if (q.length < 2) { setResults([]); return; }
     setLoading(true);
     try {
-      // Scrydex primary
-      const { cards } = await getCards({ query: q, pageSize: 8 });
-      if (cards.length > 0) {
-        setResults(cards.map(mapScrydexResult));
-        setSelectedIdx(0);
-        setLoading(false);
-        return;
-      }
-    } catch { /* fall through */ }
-
-    // TCGdex fallback
-    try {
-      const items = await searchTcgdexFallback(q);
-      setResults(items);
+      const { data } = await searchCardsAdvanced(q, {}, 1, 8);
+      setResults(data.map(mapCard));
       setSelectedIdx(0);
     } catch {
       setResults([]);
     }
     setLoading(false);
-  }, []);
+  };
 
   const handleChange = (val: string) => {
     setQuery(val);
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => searchCards(val), 300);
+    debounceRef.current = setTimeout(() => searchCards(val), 150);
   };
 
   const handleSelect = (card: SearchResult) => {
