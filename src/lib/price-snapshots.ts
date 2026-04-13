@@ -129,23 +129,33 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
   const d7 = new Date(latest); d7.setDate(d7.getDate() - 7);
   const d30 = new Date(latest); d30.setDate(d30.getDate() - 30);
 
-  // 3. Fetch current prices + historical prices in parallel
-  const [currentRes, d1Res, d7Res, d30Res] = await Promise.all([
-    (supabase.from as any)("price_snapshots")
-      .select("card_id, card_name, set_name, price")
-      .eq("recorded_at", latestDate),
-    (supabase.from as any)("price_snapshots")
-      .select("card_id, card_name, set_name, price")
-      .eq("recorded_at", fmt(d1)),
-    (supabase.from as any)("price_snapshots")
-      .select("card_id, card_name, set_name, price")
-      .eq("recorded_at", fmt(d7)),
-    (supabase.from as any)("price_snapshots")
-      .select("card_id, card_name, set_name, price")
-      .eq("recorded_at", fmt(d30)),
+  // 3. Paginated fetch helper — Supabase caps at 1000 rows per query
+  async function fetchAllForDate(date: string) {
+    const PAGE = 1000;
+    let all: Array<{ card_id: string; card_name: string; set_name: string; price: number }> = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await (supabase.from as any)("price_snapshots")
+        .select("card_id, card_name, set_name, price")
+        .eq("recorded_at", date)
+        .range(from, from + PAGE - 1);
+      if (error || !data || data.length === 0) break;
+      all = all.concat(data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+    }
+    return all;
+  }
+
+  // Fetch current prices + historical prices in parallel
+  const [currentRows, d1Rows, d7Rows, d30Rows] = await Promise.all([
+    fetchAllForDate(latestDate),
+    fetchAllForDate(fmt(d1)),
+    fetchAllForDate(fmt(d7)),
+    fetchAllForDate(fmt(d30)),
   ]);
 
-  if (!currentRes.data) return map;
+  if (!currentRows.length) return map;
 
   type Row = { card_id: string; card_name: string; set_name: string; price: number };
 
@@ -164,9 +174,9 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
     return { byId, byName };
   }
 
-  const lookup1d = buildLookups((d1Res.data || []) as Row[]);
-  const lookup7d = buildLookups((d7Res.data || []) as Row[]);
-  const lookup30d = buildLookups((d30Res.data || []) as Row[]);
+  const lookup1d = buildLookups(d1Rows as Row[]);
+  const lookup7d = buildLookups(d7Rows as Row[]);
+  const lookup30d = buildLookups(d30Rows as Row[]);
 
   // Find the best historical price: exact ID match first, then name+set with closest price
   function findHistoricalPrice(
@@ -196,7 +206,7 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
     return best;
   }
 
-  for (const row of currentRes.data as Row[]) {
+  for (const row of currentRows as Row[]) {
     const price = Number(row.price);
     const p1 = findHistoricalPrice(lookup1d, row.card_id, row.card_name, row.set_name, price);
     const p7 = findHistoricalPrice(lookup7d, row.card_id, row.card_name, row.set_name, price);
