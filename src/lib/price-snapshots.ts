@@ -107,9 +107,29 @@ export interface LatestPrice {
  *
  * Historical matching strategy:
  * 1. Try exact card_id match (works when both dates use same ID format)
- * 2. Fall back to card_name + set_name match (bridges TCGdex→Scrydex ID migration)
+ * 2. Fall back to card_name + set_name match (bridges TCGdex->Scrydex ID migration)
  *    - When multiple variants share a name, pick the one with the closest price to current
  */
+type Row = { card_id: string; card_name: string; set_name: string; price: number };
+
+/** Fetch all rows for a given snapshot date, paginating past the 1,000-row default limit. */
+async function fetchSnapshotDate(date: string): Promise<Row[]> {
+  const PAGE = 1000;
+  const rows: Row[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await (supabase.from as any)("price_snapshots")
+      .select("card_id, card_name, set_name, price")
+      .eq("recorded_at", date)
+      .range(from, from + PAGE - 1);
+    if (error || !data) break;
+    rows.push(...(data as Row[]));
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+  return rows;
+}
+
 export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice>> {
   const map = new Map<string, LatestPrice>();
 
@@ -129,40 +149,20 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
   const d7 = new Date(latest); d7.setDate(d7.getDate() - 7);
   const d30 = new Date(latest); d30.setDate(d30.getDate() - 30);
 
-  // 3. Paginated fetch helper — Supabase caps at 1000 rows per query
-  async function fetchAllForDate(date: string) {
-    const PAGE = 1000;
-    let all: Array<{ card_id: string; card_name: string; set_name: string; price: number }> = [];
-    let from = 0;
-    while (true) {
-      const { data, error } = await (supabase.from as any)("price_snapshots")
-        .select("card_id, card_name, set_name, price")
-        .eq("recorded_at", date)
-        .range(from, from + PAGE - 1);
-      if (error || !data || data.length === 0) break;
-      all = all.concat(data);
-      if (data.length < PAGE) break;
-      from += PAGE;
-    }
-    return all;
-  }
-
-  // Fetch current prices + historical prices in parallel
+  // 3. Fetch current prices + historical prices in parallel (paginated — bypasses 1,000-row cap)
   const [currentRows, d1Rows, d7Rows, d30Rows] = await Promise.all([
-    fetchAllForDate(latestDate),
-    fetchAllForDate(fmt(d1)),
-    fetchAllForDate(fmt(d7)),
-    fetchAllForDate(fmt(d30)),
+    fetchSnapshotDate(latestDate),
+    fetchSnapshotDate(fmt(d1)),
+    fetchSnapshotDate(fmt(d7)),
+    fetchSnapshotDate(fmt(d30)),
   ]);
 
   if (!currentRows.length) return map;
 
-  type Row = { card_id: string; card_name: string; set_name: string; price: number };
-
   // Build lookup maps — first by card_id, then by name+set for fallback
   function buildLookups(rows: Row[]) {
     const byId = new Map<string, number>();
-    const byName = new Map<string, number[]>(); // name|set → [prices] (multiple variants)
+    const byName = new Map<string, number[]>();
     for (const r of rows) {
       const price = Number(r.price);
       byId.set(r.card_id, price);
@@ -174,9 +174,9 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
     return { byId, byName };
   }
 
-  const lookup1d = buildLookups(d1Rows as Row[]);
-  const lookup7d = buildLookups(d7Rows as Row[]);
-  const lookup30d = buildLookups(d30Rows as Row[]);
+  const lookup1d = buildLookups(d1Rows);
+  const lookup7d = buildLookups(d7Rows);
+  const lookup30d = buildLookups(d30Rows);
 
   // Find the best historical price: exact ID match first, then name+set with closest price
   function findHistoricalPrice(
@@ -186,17 +186,14 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
     setName: string,
     currentPrice: number
   ): number | undefined {
-    // Exact ID match
     const byId = lookup.byId.get(cardId);
     if (byId !== undefined) return byId;
 
-    // Name+set fallback — pick the variant with the closest price to current
     const key = `${cardName}|${setName}`.toLowerCase();
     const candidates = lookup.byName.get(key);
     if (!candidates?.length) return undefined;
 
     if (candidates.length === 1) return candidates[0];
-    // Pick closest to current price (most likely the same variant)
     let best = candidates[0];
     let bestDiff = Math.abs(currentPrice - best);
     for (let i = 1; i < candidates.length; i++) {
@@ -206,7 +203,7 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
     return best;
   }
 
-  for (const row of currentRows as Row[]) {
+  for (const row of currentRows) {
     const price = Number(row.price);
     const p1 = findHistoricalPrice(lookup1d, row.card_id, row.card_name, row.set_name, price);
     const p7 = findHistoricalPrice(lookup7d, row.card_id, row.card_name, row.set_name, price);
