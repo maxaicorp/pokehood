@@ -126,6 +126,9 @@ const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
 // Secondary index: "cardName|setName" → same data, for cross-ID matching
 const pricingByName = new Map<string, PokemonCard["tcgplayer"]>();
 const avgsByName = new Map<string, PokemonCard["cardmarketAvgs"]>();
+// Tracks which name+set keys already have an exact Scrydex ID match,
+// preventing other variants (e.g. Double Rare) from inheriting the SIR's price
+const exactMatchedNameSets = new Set<string>();
 
 function nameKey(cardName: string, setName: string) {
   return `${cardName}|${setName}`;
@@ -150,6 +153,7 @@ export function seedPricingCache(prices: Map<string, {
   pricingByName.clear();
   avgsByName.clear();
   cardmarketAvgsCache.clear();
+  exactMatchedNameSets.clear();
 
   for (const [cardId, data] of prices) {
     const tcgplayer: PokemonCard["tcgplayer"] = {
@@ -309,17 +313,23 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
   if (pricingCache.has(card.id)) {
     const cached = pricingCache.get(card.id);
     const avgs = cardmarketAvgsCache.get(card.id);
+    // Mark this name+set as claimed by exact ID so other variants don't get the fallback price
+    if (cached) exactMatchedNameSets.add(nameKey(card.name, card.set.name));
     return cached ? { ...card, tcgplayer: cached, cardmarketAvgs: avgs ?? undefined } : card;
   }
 
-  // Name+set fallback — handles cards whose DB entry still uses the old TCGdex ID
+  // Name+set fallback — handles cards whose DB entry still uses the old TCGdex ID.
+  // Skip if another variant of the same name+set already got an exact ID match
+  // (prevents a Double Rare inheriting the SIR's price, for example).
   const nk = nameKey(card.name, card.set.name);
-  const byName = pricingByName.get(nk);
-  if (byName) {
-    const avgs = avgsByName.get(nk);
-    pricingCache.set(card.id, byName);
-    if (avgs) cardmarketAvgsCache.set(card.id, avgs);
-    return { ...card, tcgplayer: byName, cardmarketAvgs: avgs ?? undefined };
+  if (!exactMatchedNameSets.has(nk)) {
+    const byName = pricingByName.get(nk);
+    if (byName) {
+      const avgs = avgsByName.get(nk);
+      pricingCache.set(card.id, byName);
+      if (avgs) cardmarketAvgsCache.set(card.id, avgs);
+      return { ...card, tcgplayer: byName, cardmarketAvgs: avgs ?? undefined };
+    }
   }
 
   // No price in DB — mark as checked so we don't retry this session
@@ -566,8 +576,9 @@ export async function getMarketCards(opts: {
     if (!enriched.tcgplayer?.prices) {
       const byId = pricingCache.get(card.id);
       if (byId) {
-        // Exact Scrydex ID match — always use
+        // Exact Scrydex ID match — always use, and block fallback for other variants of same name+set
         enriched = { ...enriched, tcgplayer: byId };
+        nameUsedForPrice.add(nameKey(card.name, card.set.name));
       } else {
         // Name+set fallback: only apply to the FIRST card with this name+set
         // (prevents duplicates while DB still holds old TCGdex IDs)
