@@ -59,6 +59,10 @@ export default function Explore() {
   const [productType, setProductType] = useState("");
   const [addingCards, setAddingCards] = useState(new Set<string>());
 
+  // Infinite scroll mode when a set is selected
+  const isSetMode = !!selectedSet;
+  const PAGE_SIZE = 35;
+
   const { data: setsData } = useQuery({
     queryKey: ["pokemon-sets"],
     queryFn: getSets,
@@ -67,17 +71,47 @@ export default function Explore() {
 
   // Always pass productType — default to "tcg" so TCG Pocket never shows unless explicitly chosen
   const effectiveProductType = productType || "tcg";
-  const { data: cardsData, isLoading } = useQuery({
+
+  // Paginated query (used when NO set is selected)
+  const { data: cardsData, isLoading: isPaginatedLoading } = useQuery({
     queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page, effectiveProductType],
     queryFn: () =>
       searchCardsAdvanced(
         searchTerm,
         { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: effectiveProductType },
         page,
-        35
+        PAGE_SIZE
       ),
     staleTime: 60_000,
+    enabled: !isSetMode,
   });
+
+  // Infinite scroll query (used when a set IS selected)
+  const {
+    data: infiniteData,
+    isLoading: isInfiniteLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["explore-infinite", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, effectiveProductType],
+    queryFn: ({ pageParam = 1 }) =>
+      searchCardsAdvanced(
+        searchTerm,
+        { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: effectiveProductType },
+        pageParam,
+        PAGE_SIZE
+      ),
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.data.length, 0);
+      return loaded < lastPage.totalCount ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+    staleTime: 60_000,
+    enabled: isSetMode,
+  });
+
+  const isLoading = isSetMode ? isInfiniteLoading : isPaginatedLoading;
 
   // Sync from URL query param
   useEffect(() => {
