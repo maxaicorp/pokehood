@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getWishlists, createWishlist, addCardToWishlist, getAllWishlistCardIds,
@@ -59,6 +59,10 @@ export default function Explore() {
   const [productType, setProductType] = useState("");
   const [addingCards, setAddingCards] = useState(new Set<string>());
 
+  // Infinite scroll mode when a set is selected
+  const isSetMode = !!selectedSet;
+  const PAGE_SIZE = 35;
+
   const { data: setsData } = useQuery({
     queryKey: ["pokemon-sets"],
     queryFn: getSets,
@@ -67,17 +71,47 @@ export default function Explore() {
 
   // Always pass productType — default to "tcg" so TCG Pocket never shows unless explicitly chosen
   const effectiveProductType = productType || "tcg";
-  const { data: cardsData, isLoading } = useQuery({
+
+  // Paginated query (used when NO set is selected)
+  const { data: cardsData, isLoading: isPaginatedLoading } = useQuery({
     queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page, effectiveProductType],
     queryFn: () =>
       searchCardsAdvanced(
         searchTerm,
         { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: effectiveProductType },
         page,
-        35
+        PAGE_SIZE
       ),
     staleTime: 60_000,
+    enabled: !isSetMode,
   });
+
+  // Infinite scroll query (used when a set IS selected)
+  const {
+    data: infiniteData,
+    isLoading: isInfiniteLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["explore-infinite", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, effectiveProductType],
+    queryFn: ({ pageParam = 1 }) =>
+      searchCardsAdvanced(
+        searchTerm,
+        { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: effectiveProductType },
+        pageParam,
+        PAGE_SIZE
+      ),
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.data.length, 0);
+      return loaded < lastPage.totalCount ? allPages.length + 1 : undefined;
+    },
+    initialPageParam: 1,
+    staleTime: 60_000,
+    enabled: isSetMode,
+  });
+
+  const isLoading = isSetMode ? isInfiniteLoading : isPaginatedLoading;
 
   // Sync from URL query param
   useEffect(() => {
@@ -193,18 +227,41 @@ export default function Explore() {
     setPage(1);
   };
 
-  // Second-pass query: fetch live pricing for the current page in parallel
-  const cardIds = (cardsData?.data || []).map((c) => c.id).join(",");
+  // Derive flat card list depending on mode
+  const rawCards = isSetMode
+    ? (infiniteData?.pages ?? []).flatMap((p) => p.data)
+    : (cardsData?.data ?? []);
+
+  // Second-pass query: fetch live pricing for the current visible cards
+  const cardIds = rawCards.map((c) => c.id).join(",");
   const { data: pricedCards, isLoading: isPricingLoading } = useQuery({
     queryKey: ["card-prices", cardIds],
-    queryFn: () => enrichPageWithPricing(cardsData?.data ?? []),
-    enabled: !!cardsData?.data?.length,
+    queryFn: () => enrichPageWithPricing(rawCards),
+    enabled: rawCards.length > 0,
     staleTime: 5 * 60_000,
   });
 
-  const cards = pricedCards || cardsData?.data || [];
-  const totalCount = cardsData?.totalCount || 0;
-  const totalPages = Math.ceil(totalCount / 35);
+  const cards = pricedCards || rawCards;
+  const totalCount = isSetMode
+    ? (infiniteData?.pages?.[0]?.totalCount ?? 0)
+    : (cardsData?.totalCount ?? 0);
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isSetMode || !sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [isSetMode, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const activeFilterCount = [selectedSet, selectedRarity, ...(selectedTypes.length ? ["t"] : [])].filter(Boolean).length;
 
@@ -381,8 +438,20 @@ export default function Explore() {
               <CardList cards={cards} onAdd={handleAdd} onWishlist={handleWishlist} wishlistedIds={wishlistedIds} isPricingLoading={isPricingLoading} />
             )}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Infinite scroll sentinel (set mode) */}
+            {isSetMode && (
+              <div ref={sentinelRef} className="py-8 flex justify-center">
+                {isFetchingNextPage && (
+                  <span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+                )}
+                {!hasNextPage && cards.length > 0 && (
+                  <p className="text-xs text-muted-foreground">All {cards.length} cards loaded</p>
+                )}
+              </div>
+            )}
+
+            {/* Pagination (non-set mode) */}
+            {!isSetMode && totalPages > 1 && (
               <div className="flex items-center justify-center gap-1 mt-8 flex-wrap">
                 <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>‹</Button>
                 {getPageNumbers(page, totalPages).map((p, i) =>
