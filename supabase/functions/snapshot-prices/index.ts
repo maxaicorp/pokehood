@@ -4,13 +4,17 @@
  * Fetches current card prices from Scrydex and upserts into price_snapshots.
  *
  * Modes (pass in POST body):
- *   {}              → daily: newest 30 pages (~3,000 cards, 30 credits)
+ *   {}              → daily: newest 60 pages + oldest 60 pages (~12,000 cards, 120 credits)
  *   { mode:"full" } → full:  all pages (~23,000 cards, ~235 credits) — run weekly
  *
  * Credit budget:
- *   Daily 30 pages × 30 days  = 900 credits/month
- *   Full  235 pages × 4 weeks = 940 credits/month
- *   Total ≈ 1,840 credits/month (well within 5,000 Starter limit)
+ *   Daily 120 pages × 30 days  = 3,600 credits/month
+ *   Full  235 pages × 4 weeks  =   940 credits/month
+ *   Total ≈ 4,540 credits/month (460 buffer under 5,000 Starter limit)
+ *
+ * Scheduling:
+ *   - Daily job: POST {} every day (covers newest + oldest ~6k each)
+ *   - Weekly job: POST { mode:"full" } once/week (covers all middle cards too)
  */
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
@@ -22,7 +26,7 @@ const corsHeaders = {
 };
 
 const PAGE_SIZE = 100;
-const DAILY_PAGE_LIMIT = 30; // ~3,000 most-recent cards
+const DAILY_PAGE_LIMIT = 60; // 60 pages newest + 60 pages oldest = 120 credits/day
 const DELAY_MS = 150;        // ~6-7 req/sec, well under 100/sec limit
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -143,9 +147,83 @@ async function flushRows(
   return { inserted: rows.length, skipped: 0 };
 }
 
+// ─── Fetch pass helper ────────────────────────────────────────────────────────
+
+async function runPass(opts: {
+  label: string;
+  orderBy: string;
+  pageLimit: number;
+  apiKey: string;
+  teamId: string;
+  supabase: any;
+  today: string;
+  seenIds: Set<string>;
+  buffer: SnapshotRow[];
+  counters: { inserted: number; skipped: number };
+}): Promise<number> {
+  const { label, orderBy, pageLimit, apiKey, teamId, supabase, today, seenIds, buffer, counters } = opts;
+  let page = 1;
+  let totalPages = 1;
+  let pagesProcessed = 0;
+
+  do {
+    const endpoint = `/pokemon/v1/en/cards?page=${page}&page_size=${PAGE_SIZE}&include=prices&orderBy=${orderBy}`;
+    const result = await scrydexFetch(endpoint, apiKey, teamId);
+
+    if (!result) {
+      console.error(`[${label}] Page ${page}: fetch failed, stopping pass`);
+      break;
+    }
+
+    if (page === 1) {
+      const total = result.total_count ?? 0;
+      totalPages = Math.ceil(total / PAGE_SIZE);
+      const fetchPages = Math.min(pageLimit, totalPages);
+      console.log(`[${label}] Total cards: ${total} — ${totalPages} pages total, fetching ${fetchPages}`);
+    }
+
+    for (const card of result.data ?? []) {
+      // English physical TCG only
+      if (card.expansion?.language_code !== "EN") continue;
+      if (card.expansion?.is_online_only) continue; // skip TCG Pocket
+      const series = (card.expansion?.series ?? "").toLowerCase();
+      if (series === "pokémon tcg pocket") continue;
+      const price = extractCardPrice(card);
+      if (!price || price <= 0) continue;
+      // Deduplicate across both passes: skip if another pass already captured this card
+      if (seenIds.has(card.id)) continue;
+      seenIds.add(card.id);
+      buffer.push({
+        card_id: card.id,
+        card_name: card.name ?? "",
+        set_name: card.expansion?.name ?? "",
+        price,
+        recorded_at: today,
+      });
+    }
+
+    // Flush every 500 rows to avoid memory pressure
+    if (buffer.length >= 500) {
+      const { inserted, skipped } = await flushRows(supabase, buffer);
+      counters.inserted += inserted;
+      counters.skipped += skipped;
+      buffer.length = 0;
+    }
+
+    pagesProcessed++;
+    console.log(`[${label}] Page ${page}/${Math.min(pageLimit, totalPages)} — ${counters.inserted} saved so far`);
+    page++;
+    if (page <= Math.min(pageLimit, totalPages)) {
+      await new Promise((r) => setTimeout(r, DELAY_MS));
+    }
+  } while (page <= Math.min(pageLimit, totalPages));
+
+  return pagesProcessed;
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -169,74 +247,45 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const mode: "daily" | "full" = body.mode === "full" ? "full" : "daily";
-    const pageLimit = mode === "full" ? Infinity : DAILY_PAGE_LIMIT;
     const today = new Date().toISOString().split("T")[0];
 
     console.log(`snapshot-prices [${mode}] starting — ${today}`);
 
-    let page = 1;
-    let totalPages = 1;
-    let totalInserted = 0;
-    let totalSkipped = 0;
-    const buffer: SnapshotRow[] = [];
     const seenIds = new Set<string>();
+    const buffer: SnapshotRow[] = [];
+    const counters = { inserted: 0, skipped: 0 };
+    let pagesProcessed = 0;
 
-    do {
-      const endpoint = `/pokemon/v1/en/cards?page=${page}&page_size=${PAGE_SIZE}&include=prices&orderBy=-expansion.release_date`;
-      const result = await scrydexFetch(endpoint, apiKey, teamId);
+    if (mode === "full") {
+      // Full mode: single pass newest-first through all pages (~235 credits)
+      pagesProcessed += await runPass({
+        label: "full",
+        orderBy: "-expansion.release_date",
+        pageLimit: Infinity,
+        apiKey, teamId, supabase, today, seenIds, buffer, counters,
+      });
+    } else {
+      // Daily mode: pass 1 — newest 60 pages (~6,000 most-recent cards)
+      pagesProcessed += await runPass({
+        label: "newest",
+        orderBy: "-expansion.release_date",
+        pageLimit: DAILY_PAGE_LIMIT,
+        apiKey, teamId, supabase, today, seenIds, buffer, counters,
+      });
 
-      if (!result) {
-        console.error(`Page ${page}: fetch failed, stopping`);
-        break;
-      }
-
-      if (page === 1) {
-        const total = result.total_count ?? 0;
-        totalPages = Math.ceil(total / PAGE_SIZE);
-        const fetchPages = Math.min(pageLimit, totalPages);
-        console.log(`Total cards: ${total} — ${totalPages} pages total, fetching ${fetchPages}`);
-      }
-
-      for (const card of result.data ?? []) {
-        // English physical TCG only — strict checks (treat missing field as non-EN / non-physical)
-        if (card.expansion?.language_code !== "EN") continue;
-        if (card.expansion?.is_online_only) continue; // skip TCG Pocket
-        const series = (card.expansion?.series ?? "").toLowerCase();
-        if (series === "pokémon tcg pocket") continue;
-        const price = extractCardPrice(card);
-        if (!price || price <= 0) continue;
-        // Deduplicate: keep first (best) price per card_id per day
-        const key = card.id;
-        if (seenIds.has(key)) continue;
-        seenIds.add(key);
-        buffer.push({
-          card_id: card.id,
-          card_name: card.name ?? "",
-          set_name: card.expansion?.name ?? "",
-          price,
-          recorded_at: today,
-        });
-      }
-
-      // Flush every 500 rows to avoid memory pressure
-      if (buffer.length >= 500) {
-        const { inserted, skipped } = await flushRows(supabase, buffer);
-        totalInserted += inserted;
-        totalSkipped += skipped;
-        buffer.length = 0;
-      }
-
-      console.log(`Page ${page}/${Math.min(pageLimit, totalPages)} — ${totalInserted} saved so far`);
-      page++;
-      if (page <= Math.min(pageLimit, totalPages)) {
-        await new Promise((r) => setTimeout(r, DELAY_MS));
-      }
-    } while (page <= Math.min(pageLimit, totalPages));
+      // Daily mode: pass 2 — oldest 60 pages (~6,000 oldest cards), skip any already seen
+      pagesProcessed += await runPass({
+        label: "oldest",
+        orderBy: "expansion.release_date",
+        pageLimit: DAILY_PAGE_LIMIT,
+        apiKey, teamId, supabase, today, seenIds, buffer, counters,
+      });
+    }
 
     // Final flush
     const { inserted, skipped } = await flushRows(supabase, buffer);
-    totalInserted += inserted;
-    totalSkipped += skipped;
+    counters.inserted += inserted;
+    counters.skipped += skipped;
 
     // Cleanup: remove snapshots older than 90 days
     const cutoff = new Date();
@@ -250,9 +299,9 @@ serve(async (req) => {
       success: true,
       mode,
       date: today,
-      pages_processed: page - 1,
-      prices_saved: totalInserted,
-      prices_skipped: totalSkipped,
+      pages_processed: pagesProcessed,
+      prices_saved: counters.inserted,
+      prices_skipped: counters.skipped,
     };
     console.log("Done:", summary);
 
