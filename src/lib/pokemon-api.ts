@@ -121,17 +121,6 @@ interface CardIndex {
 
 let allCardsCache: PokemonCard[] | null = null;
 let allSetsCache: PokemonSet[] | null = null;
-let imageOverridesCache: Record<string, string> | null = null;
-
-async function getImageOverrides(): Promise<Record<string, string>> {
-  if (imageOverridesCache) return imageOverridesCache;
-  try {
-    const res = await fetch("/data/card-image-overrides.json");
-    if (res.ok) imageOverridesCache = await res.json();
-  } catch { /* file doesn't exist yet — that's fine */ }
-  imageOverridesCache ??= {};
-  return imageOverridesCache;
-}
 const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
 // Secondary index: "cardName|setName" → same data, for cross-ID matching
@@ -205,10 +194,7 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
     return { cards: allCardsCache, sets: allSetsCache };
   }
 
-  const [res, overrides] = await Promise.all([
-    fetch("/data/all-cards.json"),
-    getImageOverrides(),
-  ]);
+  const res = await fetch("/data/all-cards.json");
   if (!res.ok) throw new Error("Failed to load card index");
   const index: CardIndex = await res.json();
 
@@ -234,8 +220,8 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
     if (seenIds.has(c.id)) continue;
     seenIds.add(c.id);
     const s = index.sets[c.setId];
-    // Use cached Supabase URL if available (top 1000 cards), else Scrydex CDN, else TCGdex
-    const imageSmall = overrides[c.id] ?? c.imageSmall ?? (c.image ? c.image + "/low.webp" : "");
+    // Scrydex CDN images — imageSmall/imageLarge stored directly in all-cards.json
+    const imageSmall = c.imageSmall ?? (c.image ? c.image + "/low.webp" : "");
     const imageLarge = c.imageLarge ?? (c.image ? c.image + "/high.webp" : "");
     cards.push({
       id: c.id,
@@ -546,129 +532,9 @@ export const PRODUCT_TYPES = [
   { value: "pocket", label: "TCG Pocket" },
 ];
 
-// ─── Card detail (full TCGdex card shape) ─────────────────────────────────────
-
-export interface CardDetailFull {
-  id: string;
-  name: string;
-  hp?: number;
-  types?: string[];
-  stage?: string;
-  suffix?: string;
-  illustrator?: string;
-  rarity?: string;
-  regulationMark?: string;
-  attacks?: Array<{
-    cost?: string[];
-    name: string;
-    damage?: string;
-    effect?: string;
-  }>;
-  abilities?: Array<{
-    type: string;
-    name: string;
-    effect: string;
-  }>;
-  weaknesses?: Array<{ type: string; value: string }>;
-  resistances?: Array<{ type: string; value: string }>;
-  retreat?: number;
-  variants?: {
-    firstEdition?: boolean;
-    holo?: boolean;
-    normal?: boolean;
-    reverse?: boolean;
-  };
-  legal?: { standard?: boolean; expanded?: boolean };
-  pricing?: {
-    tcgplayer?: Record<string, {
-      lowPrice?: number;
-      midPrice?: number;
-      highPrice?: number;
-      marketPrice?: number;
-    }>;
-    cardmarket?: Record<string, number>;
-  };
-  set?: { id: string; name: string; releaseDate?: string };
-}
-
 export async function getCardById(id: string): Promise<PokemonCard | null> {
   const { cards } = await loadCardIndex();
   return cards.find((c) => c.id === id) ?? null;
-}
-
-/** Map a Scrydex card response to the CardDetailFull shape used by CardDetail page. */
-function mapScrydexToCardDetail(s: Record<string, unknown>): CardDetailFull {
-  const attacks = (s.attacks as Array<Record<string, unknown>> | undefined)?.map((a) => ({
-    cost: a.cost as string[] | undefined,
-    name: String(a.name ?? ""),
-    damage: a.damage != null ? String(a.damage) : undefined,
-    effect: a.effect != null ? String(a.effect) : undefined,
-  }));
-  const abilities = (s.abilities as Array<Record<string, unknown>> | undefined)?.map((a) => ({
-    type: String(a.type ?? "Ability"),
-    name: String(a.name ?? ""),
-    effect: String(a.effect ?? ""),
-  }));
-  const weaknesses = (s.weaknesses as Array<Record<string, unknown>> | undefined)?.map((w) => ({
-    type: String(w.type ?? ""),
-    value: String(w.value ?? ""),
-  }));
-  const resistances = (s.resistances as Array<Record<string, unknown>> | undefined)?.map((r) => ({
-    type: String(r.type ?? ""),
-    value: String(r.value ?? ""),
-  }));
-
-  // Extract market price from Scrydex variants for the detail page
-  const variants = s.variants as Array<{ name: string; prices?: Array<{ market: number; low: number; currency: string }> }> | undefined;
-  let marketPrice: number | undefined;
-  for (const v of variants ?? []) {
-    for (const p of v.prices ?? []) {
-      if (p.currency === "USD" && p.market > 0) { marketPrice = p.market; break; }
-    }
-    if (marketPrice) break;
-  }
-
-  const exp = s.expansion as Record<string, unknown> | undefined;
-
-  return {
-    id: String(s.id ?? ""),
-    name: String(s.name ?? ""),
-    hp: s.hp != null ? Number(s.hp) : undefined,
-    types: s.types as string[] | undefined,
-    stage: s.stage as string | undefined,
-    rarity: s.rarity as string | undefined,
-    illustrator: s.illustrator as string | undefined,
-    regulationMark: s.regulation_mark as string | undefined,
-    attacks: attacks?.length ? attacks : undefined,
-    abilities: abilities?.length ? abilities : undefined,
-    weaknesses: weaknesses?.length ? weaknesses : undefined,
-    resistances: resistances?.length ? resistances : undefined,
-    retreat: s.retreat_cost != null ? Number(s.retreat_cost) : undefined,
-    set: exp ? { id: String(exp.id ?? ""), name: String(exp.name ?? ""), releaseDate: exp.release_date as string | undefined } : undefined,
-    pricing: marketPrice
-      ? { tcgplayer: { normal: { marketPrice, lowPrice: marketPrice, midPrice: marketPrice, highPrice: marketPrice } } }
-      : undefined,
-  };
-}
-
-export async function fetchCardDetail(id: string): Promise<CardDetailFull | null> {
-  // Try Scrydex first (cards now use Scrydex IDs)
-  try {
-    const { data, error } = await supabase.functions.invoke("scrydex-proxy", {
-      body: { endpoint: `/pokemon/v1/en/cards/${id}` },
-    });
-    if (!error && data?.status === 200 && data.data) {
-      return mapScrydexToCardDetail(data.data as Record<string, unknown>);
-    }
-  } catch { /* fall through to TCGdex */ }
-
-  // Fall back to TCGdex (works for legacy IDs, may still match some cards)
-  try {
-    const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${id}`);
-    if (res.ok) return await res.json();
-  } catch { /* ignore */ }
-
-  return null;
 }
 
 // ─── Market leaderboard ───────────────────────────────────────────────────────

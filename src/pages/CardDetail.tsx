@@ -4,12 +4,10 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getCardById,
-  fetchCardDetail,
   getSetCards,
   getMarketPrice,
   enrichCardWithPricing,
   formatPrice,
-  CardDetailFull,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import { recordCardView, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
@@ -50,40 +48,6 @@ const TYPE_COLORS: Record<string, string> = {
   Colorless: "bg-gray-400/15 text-gray-400 border border-gray-400/30",
 };
 
-const ENERGY_COLORS: Record<string, string> = {
-  Fire: "bg-orange-500",
-  Water: "bg-blue-500",
-  Grass: "bg-green-500",
-  Lightning: "bg-yellow-400",
-  Psychic: "bg-purple-500",
-  Fighting: "bg-amber-700",
-  Darkness: "bg-slate-700",
-  Metal: "bg-slate-400",
-  Dragon: "bg-indigo-500",
-  Fairy: "bg-pink-400",
-  Colorless: "bg-gray-400",
-  Free: "bg-gray-400",
-};
-
-const VARIANT_LABELS: Record<string, string> = {
-  normal: "Normal",
-  holofoil: "Holofoil",
-  reverseHolofoil: "Reverse Holo",
-  firstEdition: "1st Edition",
-};
-
-function EnergyCost({ type }: { type: string }) {
-  const color = ENERGY_COLORS[type] || "bg-gray-400";
-  return (
-    <span
-      title={type}
-      className={`w-4 h-4 rounded-full ${color} inline-flex items-center justify-center text-[8px] font-bold text-white shrink-0`}
-    >
-      {type[0]}
-    </span>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CardDetail() {
@@ -98,13 +62,6 @@ export default function CardDetail() {
     queryFn: () => getCardById(id!),
     enabled: !!id,
     staleTime: Infinity,
-  });
-
-  const { data: detail, isLoading: detailLoading } = useQuery({
-    queryKey: ["card-detail", id],
-    queryFn: () => fetchCardDetail(id!),
-    enabled: !!id,
-    staleTime: 5 * 60_000,
   });
 
   const { data: enrichedCard } = useQuery({
@@ -194,12 +151,6 @@ export default function CardDetail() {
 
   const isWishlisted = card ? wishlistedIds.has(card.id) : false;
 
-  const pricingRows = detail?.pricing?.tcgplayer
-    ? Object.entries(detail.pricing.tcgplayer).filter(
-        ([, v]) => v?.marketPrice || v?.lowPrice
-      )
-    : [];
-
   const marketPrice = enrichedCard ? getMarketPrice(enrichedCard) : null;
   const avgs = enrichedCard?.cardmarketAvgs;
   const trend = avgs?.trend ?? null;
@@ -281,9 +232,9 @@ export default function CardDetail() {
                   <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
                     {card.name}
                   </h1>
-                  {(card.rarity || detail?.rarity) && (
+                  {card.rarity && (
                     <Badge variant="secondary" className="shrink-0 text-xs mt-1">
-                      {card.rarity || detail?.rarity}
+                      {card.rarity}
                     </Badge>
                   )}
                 </div>
@@ -294,34 +245,19 @@ export default function CardDetail() {
                   <span>·</span>
                   <span>{card.set.releaseDate}</span>
                 </div>
-                {(detail?.types?.length || detail?.hp || detail?.stage) && (
+                {(card.types?.length || card.hp) && (
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    {detail?.types?.map((t) => (
+                    {card.types?.map((t) => (
                       <span key={t} className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[t] || "bg-muted text-muted-foreground border border-border"}`}>
                         {t}
                       </span>
                     ))}
-                    {detail?.hp && (
+                    {card.hp && (
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
-                        HP {detail.hp}
-                      </span>
-                    )}
-                    {detail?.stage && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
-                        {detail.stage}
+                        HP {card.hp}
                       </span>
                     )}
                   </div>
-                )}
-                {detail?.illustrator && (
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    Illus. <span className="text-foreground/70">{detail.illustrator}</span>
-                    {detail.regulationMark && (
-                      <span className="ml-3 font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">
-                        {detail.regulationMark}
-                      </span>
-                    )}
-                  </p>
                 )}
               </div>
             ) : (
@@ -360,38 +296,17 @@ export default function CardDetail() {
             {/* Price display — desktop only (mobile version lives in Col 2) */}
             <div className="hidden lg:block">
               {marketPrice !== null ? (
-                <>
-                  <div className="flex items-baseline gap-3 flex-wrap">
-                    <span className="text-3xl font-bold text-foreground tabular-nums">
-                      {formatPrice(marketPrice)}
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="text-3xl font-bold text-foreground tabular-nums">
+                    {formatPrice(marketPrice)}
+                  </span>
+                  {pct24h !== null && (
+                    <span className={`flex items-center gap-1 text-sm font-semibold ${pct24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {pct24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                      {pct24h >= 0 ? "+" : ""}{pct24h.toFixed(2)}% (24h)
                     </span>
-                    {pct24h !== null && (
-                      <span className={`flex items-center gap-1 text-sm font-semibold ${pct24h >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {pct24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                        {pct24h >= 0 ? "+" : ""}{pct24h.toFixed(2)}% (24h)
-                      </span>
-                    )}
-                  </div>
-                  {pricingRows.length > 0 && (
-                    <div className="mt-2 flex flex-col gap-1.5">
-                      {pricingRows.map(([variant, v]) => (
-                        <div key={variant} className="text-xs text-muted-foreground">
-                          <span className="font-medium text-foreground/70">{VARIANT_LABELS[variant] || variant}</span>
-                          <span className="mx-1.5">·</span>
-                          <span>Low {v?.lowPrice ? formatPrice(v.lowPrice) : "—"}</span>
-                          <span className="mx-1">·</span>
-                          <span className="font-semibold text-foreground">
-                            {v?.marketPrice ? formatPrice(v.marketPrice) : v?.midPrice ? formatPrice(v.midPrice) : "—"}
-                          </span>
-                          <span className="mx-1">·</span>
-                          <span>High {v?.highPrice ? formatPrice(v.highPrice) : "—"}</span>
-                        </div>
-                      ))}
-                    </div>
                   )}
-                </>
-              ) : detailLoading ? (
-                <Skeleton className="h-9 w-32" />
+                </div>
               ) : null}
             </div>
 
@@ -437,96 +352,6 @@ export default function CardDetail() {
             </Button>
           </div>
         </div>
-
-        {/* ── Game data ── */}
-        {(detail?.attacks?.length || detail?.abilities?.length || detail?.weaknesses?.length || detail?.retreat !== undefined) && (
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {detail?.attacks && detail.attacks.length > 0 && (
-              <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <h3 className="font-display font-semibold text-foreground mb-4">Attacks</h3>
-                <div className="space-y-4">
-                  {detail.attacks.map((attack, i) => (
-                    <div key={i} className="space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-0.5">
-                          {attack.cost?.map((c, j) => <EnergyCost key={j} type={c} />)}
-                        </div>
-                        <span className="font-semibold text-foreground text-sm flex-1">{attack.name}</span>
-                        {attack.damage && (
-                          <span className="font-bold text-foreground tabular-nums">{attack.damage}</span>
-                        )}
-                      </div>
-                      {attack.effect && (
-                        <p className="text-xs text-muted-foreground leading-relaxed pl-1">{attack.effect}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {detail?.abilities && detail.abilities.length > 0 && (
-              <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <h3 className="font-display font-semibold text-foreground mb-4">Abilities</h3>
-                <div className="space-y-3">
-                  {detail.abilities.map((ability, i) => (
-                    <div key={i}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{ability.type}</Badge>
-                        <span className="font-semibold text-sm text-foreground">{ability.name}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{ability.effect}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {(detail?.weaknesses?.length || detail?.resistances?.length || detail?.retreat !== undefined) && (
-              <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <h3 className="font-display font-semibold text-foreground mb-4">Battle Stats</h3>
-                {detail?.weaknesses && detail.weaknesses.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs text-muted-foreground mb-1.5">Weakness</p>
-                    <div className="flex gap-2 flex-wrap">
-                      {detail.weaknesses.map((w, i) => (
-                        <span key={i} className={`px-2.5 py-1 rounded-full text-xs font-medium ${TYPE_COLORS[w.type] || "bg-muted text-muted-foreground border border-border"}`}>
-                          {w.type} {w.value}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {detail?.resistances && detail.resistances.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-xs text-muted-foreground mb-1.5">Resistance</p>
-                    <div className="flex gap-2 flex-wrap">
-                      {detail.resistances.map((r, i) => (
-                        <span key={i} className={`px-2.5 py-1 rounded-full text-xs font-medium ${TYPE_COLORS[r.type] || "bg-muted text-muted-foreground border border-border"}`}>
-                          {r.type} {r.value}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {detail?.retreat !== undefined && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">Retreat Cost</p>
-                    {detail.retreat === 0 ? (
-                      <span className="text-xs text-green-400">Free</span>
-                    ) : (
-                      <div className="flex gap-0.5">
-                        {Array.from({ length: detail.retreat }).map((_, i) => (
-                          <span key={i} className="w-4 h-4 rounded-full bg-gray-400 inline-block" />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── More from this set ── */}
         {suggestions.length > 0 && (
