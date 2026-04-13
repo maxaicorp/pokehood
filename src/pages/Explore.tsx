@@ -52,7 +52,7 @@ export default function Explore() {
   const [selectedSet, setSelectedSet] = useState(urlSet);
   const [selectedRarity, setSelectedRarity] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState("-set.releaseDate");
+  const [sortBy, setSortBy] = useState("number");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
@@ -107,7 +107,7 @@ export default function Explore() {
     setSelectedSet("");
     setSelectedRarity("");
     setSelectedTypes([]);
-    setSortBy("-set.releaseDate");
+    setSortBy("number");
     setPage(1);
   };
 
