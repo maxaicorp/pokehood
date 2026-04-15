@@ -125,10 +125,6 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           <Search className="w-5 h-5" />
           <span className="text-[10px] font-medium">Explore</span>
         </Link>
-        <Link to="/market" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "market" ? "text-foreground" : "text-muted-foreground"}`}>
-          <TrendingUp className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Market</span>
-        </Link>
         <Link to="/sets" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "sets" ? "text-foreground" : "text-muted-foreground"}`}>
           <Layers className="w-5 h-5" />
           <span className="text-[10px] font-medium">Sets</span>
@@ -151,7 +147,6 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
             <div className="hidden sm:flex items-center gap-0">
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Dashboard</Link>
               <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Explore</Link>
-              <Link to="/market" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "market" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Market</Link>
               <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Sets</Link>
               <Link to="/onchain" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Onchain</Link>
             </div>
