@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package } from "lucide-react";
 import SealedTab from "@/components/SealedTab";
-import { SEALED_TYPES } from "@/lib/sealed-store";
+import { SEALED_TYPES, seedSealedPriceMap } from "@/lib/sealed-store";
 import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -71,6 +71,7 @@ export default function Market() {
     Promise.all([getSets(), getLatestSnapshotPrices()]).then(([r, prices]) => {
       setSetsData(r);
       seedPricingCache(prices);
+      seedSealedPriceMap(prices);
       setPricesReady(true);
     });
   }, []);
