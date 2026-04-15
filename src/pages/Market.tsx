@@ -417,6 +417,16 @@ export default function Market() {
             <div className="py-16 text-center text-muted-foreground">
               No pricing data available right now.
             </div>
+          ) : viewMode === "grid" ? (
+            <div>
+              <CardGridView
+                cards={visibleCards}
+                getPcts={getPcts}
+                onAdd={handleAdd}
+                addingCards={addingCards}
+              />
+              <div ref={sentinelRef} className="h-1" />
+            </div>
           ) : (
             <div>
               {visibleCards.map((card, i) => {
