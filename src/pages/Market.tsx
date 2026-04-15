@@ -318,6 +318,7 @@ export default function Market() {
                   ))}
                 </SelectContent>
               </Select>
+              <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
           )}
         </div>
