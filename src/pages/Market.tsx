@@ -272,9 +272,12 @@ export default function Market() {
       : <ArrowDown className="w-3 h-3 ml-1 text-primary" />;
   };
 
-  // Helper: get sentiment for a card's set
+  // Helper: get sentiment for a card's set — only return for the FIRST card of each set
+  const shownSentimentSets = new Set<string>();
   const getCardSentiment = (card: PokemonCard): SetSentiment | undefined => {
     if (!isRecentFilter) return undefined;
+    if (shownSentimentSets.has(card.set.id)) return undefined;
+    shownSentimentSets.add(card.set.id);
     return sentimentMap.get(card.set.id);
   };
 
