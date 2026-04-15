@@ -4,15 +4,19 @@ import { formatPct } from "@/lib/price-snapshots";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SetSentimentBadge from "@/components/SetSentimentBadge";
+import type { SetSentiment, VoteType } from "@/lib/sentiment-store";
 
 interface CardGridViewProps {
   cards: PokemonCard[];
   getPcts: (card: PokemonCard) => { raw24h: number | null; raw7d: number | null; raw30d: number | null };
   onAdd?: (e: React.MouseEvent, card: PokemonCard) => void;
   addingCards?: Set<string>;
+  sentimentMap?: Map<string, SetSentiment>;
+  onVote?: (setId: string, voteType: VoteType) => void;
 }
 
-export default function CardGridView({ cards, getPcts, onAdd, addingCards }: CardGridViewProps) {
+export default function CardGridView({ cards, getPcts, onAdd, addingCards, sentimentMap, onVote }: CardGridViewProps) {
   const navigate = useNavigate();
 
   return (
@@ -21,6 +25,7 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards }: Car
         const price = getMarketPrice(card);
         const { raw24h } = getPcts(card);
         const pct = formatPct(raw24h);
+        const sentiment = sentimentMap?.get(card.set.id);
 
         return (
           <motion.div
@@ -31,7 +36,6 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards }: Car
             className="group relative rounded-xl overflow-hidden bg-card border border-border/50 hover:border-primary/40 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
             onClick={() => navigate(`/card/${card.id}`)}
           >
-            {/* Card image */}
             <div className="aspect-[5/7] relative overflow-hidden bg-muted">
               <img
                 src={card.images.small}
@@ -40,7 +44,6 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards }: Car
                 loading="lazy"
               />
 
-              {/* Price badge — bottom left */}
               {price !== null && (
                 <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-background/90 backdrop-blur-sm border border-border/50">
                   <span className="text-xs font-bold text-foreground tabular-nums">
@@ -49,7 +52,6 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards }: Car
                 </div>
               )}
 
-              {/* Trend badge — top right */}
               {raw24h !== null && (
                 <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md backdrop-blur-sm text-[10px] font-semibold tabular-nums ${
                   raw24h > 0
@@ -62,7 +64,6 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards }: Car
                 </div>
               )}
 
-              {/* Add button — top left, shows on hover */}
               {onAdd && (
                 <Button
                   size="icon"
@@ -76,10 +77,21 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards }: Car
               )}
             </div>
 
-            {/* Card info — below image */}
             <div className="p-2">
               <p className="text-xs font-semibold text-foreground truncate">{card.name}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{card.set.name}</p>
+              <div className="flex items-center justify-between gap-1">
+                <p className="text-[10px] text-muted-foreground truncate">{card.set.name}</p>
+                {sentiment && onVote && (
+                  <SetSentimentBadge
+                    upvotes={sentiment.upvotes}
+                    downvotes={sentiment.downvotes}
+                    score={sentiment.score}
+                    currentUserVote={sentiment.currentUserVote}
+                    onVote={(vt) => onVote(card.set.id, vt)}
+                    compact
+                  />
+                )}
+              </div>
             </div>
           </motion.div>
         );
