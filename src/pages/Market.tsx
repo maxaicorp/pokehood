@@ -498,6 +498,50 @@ export default function Market() {
                       {pct7d.text}
                     </p>
 
+  // Fetch sentiment for visible sets when filter is recent5/recent10
+  useEffect(() => {
+    if (!isRecentFilter || !setsData) return;
+    const physicalSets = setsData.data.filter((s: PokemonSet) => !s.isOnlineOnly);
+    const count = selectedSetId === "recent5" ? 5 : 10;
+    const setIds = physicalSets.slice(0, count).map((s) => s.id);
+    getSetSentiment(setIds).then(setSentimentMap);
+  }, [isRecentFilter, selectedSetId, setsData]);
+
+  const handleVote = async (setId: string, voteType: VoteType) => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    const current = sentimentMap.get(setId);
+    const currentVote = current?.currentUserVote ?? null;
+
+    // Optimistic update
+    const newVote = currentVote === voteType ? null : voteType;
+    const upDelta = voteType === "up"
+      ? (currentVote === "up" ? -1 : 1) + (currentVote === "down" ? 0 : 0)
+      : currentVote === "down" ? -1 : 0;
+    const downDelta = voteType === "down"
+      ? (currentVote === "down" ? -1 : 1)
+      : currentVote === "up" ? -1 : 0;
+
+    setSentimentMap((prev) => {
+      const next = new Map(prev);
+      const old = prev.get(setId) || { setId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
+      const upvotes = Math.max(0, old.upvotes + (voteType === "up" ? (currentVote === "up" ? -1 : 1) : (currentVote === "up" ? -1 : 0)));
+      const downvotes = Math.max(0, old.downvotes + (voteType === "down" ? (currentVote === "down" ? -1 : 1) : (currentVote === "down" ? -1 : 0)));
+      next.set(setId, {
+        ...old,
+        upvotes,
+        downvotes,
+        score: upvotes - downvotes,
+        currentUserVote: newVote,
+      });
+      return next;
+    });
+
+    // Persist
+    await castVote(setId, user.id, currentVote, voteType);
+  };
 
                     {/* Mobile price + add button */}
                     <div className="flex items-center justify-end gap-2">
