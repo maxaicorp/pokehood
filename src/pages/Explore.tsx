@@ -13,6 +13,7 @@ import {
   getLowPrice,
   formatPrice,
   enrichPageWithPricing,
+  seedPricingCache,
   PokemonCard,
   PokemonSet,
   CARD_RARITIES,
@@ -21,6 +22,7 @@ import {
   CONDITIONS,
   PRODUCT_TYPES,
 } from "@/lib/pokemon-api";
+import { getLatestSnapshotPrices } from "@/lib/price-snapshots";
 import { addToCollection } from "@/lib/collection-store";
 import { recordSearchHits, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
 import AppHeader from "@/components/AppHeader";
@@ -58,6 +60,7 @@ export default function Explore() {
   const [page, setPage] = useState(1);
   const [productType, setProductType] = useState("");
   const [addingCards, setAddingCards] = useState(new Set<string>());
+  const [pricesReady, setPricesReady] = useState(false);
 
   // Infinite scroll mode when a set is selected
   const isSetMode = !!selectedSet;
@@ -71,6 +74,24 @@ export default function Explore() {
 
   // Always pass productType — default to "tcg" so TCG Pocket never shows unless explicitly chosen
   const effectiveProductType = productType || "tcg";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getLatestSnapshotPrices()
+      .then((prices) => {
+        if (cancelled) return;
+        seedPricingCache(prices);
+        setPricesReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setPricesReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Paginated query (used when NO set is selected)
   const { data: cardsData, isLoading: isPaginatedLoading } = useQuery({
@@ -235,9 +256,9 @@ export default function Explore() {
   // Second-pass query: fetch live pricing for the current visible cards
   const cardIds = rawCards.map((c) => c.id).join(",");
   const { data: pricedCards, isLoading: isPricingLoading } = useQuery({
-    queryKey: ["card-prices", cardIds],
+    queryKey: ["card-prices", cardIds, pricesReady],
     queryFn: () => enrichPageWithPricing(rawCards),
-    enabled: rawCards.length > 0,
+    enabled: rawCards.length > 0 && pricesReady,
     staleTime: 5 * 60_000,
   });
 
