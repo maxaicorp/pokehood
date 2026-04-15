@@ -13,6 +13,8 @@ interface CardGridViewProps {
   onAdd?: (e: React.MouseEvent, card: PokemonCard) => void;
   addingCards?: Set<string>;
   sentimentMap?: Map<string, SetSentiment>;
+  /** When true, sentimentMap keys are card IDs instead of set IDs */
+  sentimentKeyIsCardId?: boolean;
   onVote?: (setId: string, voteType: VoteType) => void;
 }
 

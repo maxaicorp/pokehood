@@ -523,7 +523,8 @@ export default function Market() {
                 getPcts={getPcts}
                 onAdd={handleAdd}
                 addingCards={addingCards}
-                sentimentMap={isRecentFilter ? sentimentMap : undefined}
+                sentimentMap={isRecentFilter ? gridSentimentMap : undefined}
+                sentimentKeyIsCardId
                 onVote={handleVote}
               />
               <div ref={sentinelRef} className="h-1" />
