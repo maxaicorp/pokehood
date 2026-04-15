@@ -4,6 +4,7 @@
 // Card detail: Scrydex proxy
 
 import { supabase } from "@/integrations/supabase/client";
+import { getScrydexCard, getScrydexCardPrice } from "@/lib/scrydex-api";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
