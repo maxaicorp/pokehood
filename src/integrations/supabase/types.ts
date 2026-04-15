@@ -220,6 +220,33 @@ export type Database = {
         }
         Relationships: []
       }
+      set_sentiment_votes: {
+        Row: {
+          created_at: string
+          id: string
+          set_id: string
+          updated_at: string
+          user_id: string
+          vote_type: Database["public"]["Enums"]["set_sentiment_vote"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          set_id: string
+          updated_at?: string
+          user_id: string
+          vote_type: Database["public"]["Enums"]["set_sentiment_vote"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          set_id?: string
+          updated_at?: string
+          user_id?: string
+          vote_type?: Database["public"]["Enums"]["set_sentiment_vote"]
+        }
+        Relationships: []
+      }
       user_links: {
         Row: {
           created_at: string
@@ -350,6 +377,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_set_sentiment: {
+        Args: { p_set_ids: string[] }
+        Returns: {
+          current_user_vote: Database["public"]["Enums"]["set_sentiment_vote"]
+          downvotes: number
+          score: number
+          set_id: string
+          upvotes: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -370,6 +407,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      set_sentiment_vote: "up" | "down"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -498,6 +536,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      set_sentiment_vote: ["up", "down"],
     },
   },
 } as const
