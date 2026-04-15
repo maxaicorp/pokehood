@@ -30,6 +30,8 @@ import { SEALED_TYPES, seedSealedPriceMap } from "@/lib/sealed-store";
 import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import ViewToggle, { type ViewMode } from "@/components/ViewToggle";
+import CardGridView from "@/components/CardGridView";
 
 type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
 
@@ -47,6 +49,7 @@ export default function Market() {
   const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
   const [sealedType, setSealedType] = useState("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   // Card state
   const [cards, setCards] = useState<PokemonCard[]>([]);
@@ -254,7 +257,7 @@ export default function Market() {
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
-                onClick={() => { setActiveTab(key); setSortCol(null); }}
+                onClick={() => { setActiveTab(key); setSortCol(null); setViewMode("list"); }}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === key
                     ? "border-primary text-foreground"
@@ -281,6 +284,7 @@ export default function Market() {
                   ))}
                 </SelectContent>
               </Select>
+              <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
           ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
@@ -314,14 +318,15 @@ export default function Market() {
                   ))}
                 </SelectContent>
               </Select>
+              <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
           )}
         </div>
 
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
-          {/* Table header — hidden when Sealed tab is active (it has its own) */}
-          {activeTab !== "sealed" && (
+          {/* Table header — hidden when Sealed tab is active or grid mode */}
+          {activeTab !== "sealed" && viewMode === "list" && (
             <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
               <span>#</span>
               <span>Card</span>
@@ -340,7 +345,7 @@ export default function Market() {
           )}
 
           {activeTab === "sealed" ? (
-            <SealedTab typeFilter={sealedType} />
+            <SealedTab typeFilter={sealedType} viewMode={viewMode} />
           ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
               <div>
@@ -411,6 +416,16 @@ export default function Market() {
           ) : pricedCards.length === 0 && !isLoading ? (
             <div className="py-16 text-center text-muted-foreground">
               No pricing data available right now.
+            </div>
+          ) : viewMode === "grid" ? (
+            <div>
+              <CardGridView
+                cards={visibleCards}
+                getPcts={getPcts}
+                onAdd={handleAdd}
+                addingCards={addingCards}
+              />
+              <div ref={sentinelRef} className="h-1" />
             </div>
           ) : (
             <div>
