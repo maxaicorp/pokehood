@@ -325,8 +325,8 @@ export default function Market() {
 
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
-          {/* Table header — hidden when Sealed tab is active (it has its own) */}
-          {activeTab !== "sealed" && (
+          {/* Table header — hidden when Sealed tab is active or grid mode */}
+          {activeTab !== "sealed" && viewMode === "list" && (
             <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
               <span>#</span>
               <span>Card</span>
