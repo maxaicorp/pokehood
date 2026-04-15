@@ -30,6 +30,8 @@ import { SEALED_TYPES, seedSealedPriceMap } from "@/lib/sealed-store";
 import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import ViewToggle, { type ViewMode } from "@/components/ViewToggle";
+import CardGridView from "@/components/CardGridView";
 
 type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
 
