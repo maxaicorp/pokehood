@@ -43,6 +43,7 @@ Collectiblez is a Pokémon TCG collection tracker and market analytics platform.
 | `/market` | `Market` | Same as above (alias) |
 | `/explore` | `Explore` | Card search with filters (set, rarity, type, etc.) |
 | `/sets` | `Sets` | Browse all TCG expansions grouped by series |
+| `/onchain` | `Onchain` | Live onchain trading activity for tokenized Pokémon cards (Collector Crypt / Solana) |
 | `/card/:id` | `CardDetail` | Individual card detail — image, price chart, related cards |
 | `/dashboard` | `Dashboard` | Authenticated user dashboard — collection, wishlists, profile editor, analytics |
 | `/auth` | `Auth` | Login/signup page |
