@@ -222,25 +222,25 @@ export type Database = {
       }
       set_sentiment_votes: {
         Row: {
+          card_id: string
           created_at: string
           id: string
-          set_id: string
           updated_at: string
           user_id: string
           vote_type: Database["public"]["Enums"]["set_sentiment_vote"]
         }
         Insert: {
+          card_id: string
           created_at?: string
           id?: string
-          set_id: string
           updated_at?: string
           user_id: string
           vote_type: Database["public"]["Enums"]["set_sentiment_vote"]
         }
         Update: {
+          card_id?: string
           created_at?: string
           id?: string
-          set_id?: string
           updated_at?: string
           user_id?: string
           vote_type?: Database["public"]["Enums"]["set_sentiment_vote"]
