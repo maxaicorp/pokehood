@@ -345,7 +345,7 @@ export default function Market() {
           )}
 
           {activeTab === "sealed" ? (
-            <SealedTab typeFilter={sealedType} />
+            <SealedTab typeFilter={sealedType} viewMode={viewMode} />
           ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
               <div>
