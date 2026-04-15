@@ -10,6 +10,8 @@ import { formatPct } from "@/lib/price-snapshots";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { motion } from "framer-motion";
+import SealedGridView from "@/components/SealedGridView";
+import type { ViewMode } from "@/components/ViewToggle";
 
 const PAGE_SIZE = 50;
 
@@ -17,9 +19,10 @@ type SortCol = "price" | "1d" | "7d";
 
 interface SealedTabProps {
   typeFilter: string;
+  viewMode?: ViewMode;
 }
 
-export default function SealedTab({ typeFilter }: SealedTabProps) {
+export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabProps) {
   const [products, setProducts] = useState<SealedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
