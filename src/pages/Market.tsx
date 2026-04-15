@@ -49,6 +49,7 @@ export default function Market() {
   const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
   const [sealedType, setSealedType] = useState("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   // Card state
   const [cards, setCards] = useState<PokemonCard[]>([]);
