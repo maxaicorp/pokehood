@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   fetchSealedProducts,
   getSealedMarketPrice,
@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 
 const PAGE_SIZE = 50;
 
-type SortCol = "price" | "1d" | "7d" | null;
+type SortCol = "price" | "1d" | "7d";
 
 interface SealedTabProps {
   typeFilter: string;
@@ -27,18 +27,18 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [hasMore, setHasMore] = useState(true);
   const loadingMore = useRef(false);
-  const [sortCol, setSortCol] = useState<SortCol>(null);
+  const [sortCol, setSortCol] = useState<SortCol>("price");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Reset when filter changes
+  // Reset when filter or sort changes
   useEffect(() => {
     setProducts([]);
     setPage(1);
     setHasMore(true);
     setIsLoading(true);
-  }, [typeFilter]);
+  }, [typeFilter, sortCol, sortDir]);
 
-  // Fetch data
+  // Fetch data (sorting happens server-side in sealed-store)
   useEffect(() => {
     let cancelled = false;
     loadingMore.current = true;
@@ -47,6 +47,8 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
       page,
       pageSize: PAGE_SIZE,
       type: typeFilter,
+      sortCol,
+      sortDir,
     }).then((result) => {
       if (cancelled) return;
       loadingMore.current = false;
@@ -63,7 +65,7 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
     });
 
     return () => { cancelled = true; };
-  }, [page, typeFilter]);
+  }, [page, typeFilter, sortCol, sortDir]);
 
   // Infinite scroll
   useEffect(() => {
@@ -89,26 +91,6 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
       setSortDir("desc");
     }
   };
-
-  const sortedProducts = useMemo(() => {
-    if (!sortCol) return products;
-    return [...products].sort((a, b) => {
-      let va: number | null, vb: number | null;
-      if (sortCol === "price") {
-        va = getSealedMarketPrice(a);
-        vb = getSealedMarketPrice(b);
-      } else {
-        const ta = getSealedTrends(a);
-        const tb = getSealedTrends(b);
-        va = sortCol === "1d" ? ta.pct1d : ta.pct7d;
-        vb = sortCol === "1d" ? tb.pct1d : tb.pct7d;
-      }
-      if (va === null && vb === null) return 0;
-      if (va === null) return 1;
-      if (vb === null) return -1;
-      return sortDir === "asc" ? va - vb : vb - va;
-    });
-  }, [products, sortCol, sortDir]);
 
   const SortIcon = ({ col }: { col: SortCol }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
@@ -143,7 +125,7 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
         <span>Product</span>
         <span>Set</span>
         <button onClick={() => handleSort("price")} className="flex items-center justify-end hover:text-foreground transition-colors">
-          Market Price <SortIcon col="price" />
+          Price <SortIcon col="price" />
         </button>
         <button onClick={() => handleSort("1d")} className="flex items-center justify-end hover:text-foreground transition-colors">
           24h % <SortIcon col="1d" />
@@ -153,14 +135,14 @@ export default function SealedTab({ typeFilter }: SealedTabProps) {
         </button>
       </div>
 
-      {sortedProducts.length === 0 && !isLoading ? (
+      {products.length === 0 && !isLoading ? (
         <div className="py-16 text-center text-muted-foreground">
           <Package className="w-12 h-12 mx-auto mb-4 opacity-40" />
           <p className="text-sm">No sealed products found for this filter.</p>
         </div>
       ) : (
         <div>
-          {sortedProducts.map((product, i) => {
+          {products.map((product, i) => {
             const price = getSealedMarketPrice(product);
             const { pct1d, pct7d } = getSealedTrends(product);
             const f1d = formatPct(pct1d);
