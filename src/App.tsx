@@ -15,6 +15,7 @@ import DemoProfile from "./pages/DemoProfile";
 import CardDetail from "./pages/CardDetail";
 import Market from "./pages/Market";
 import Sets from "./pages/Sets";
+import Onchain from "./pages/Onchain";
 import NotFound from "./pages/NotFound";
 import BackgroundLayer from "@/components/BackgroundLayer";
 
@@ -42,6 +43,7 @@ const App = () => (
                 <Route path="/card/:id" element={<CardDetail />} />
                 <Route path="/market" element={<Market />} />
                 <Route path="/sets" element={<Sets />} />
+                <Route path="/onchain" element={<Onchain />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
