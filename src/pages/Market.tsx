@@ -260,8 +260,8 @@ export default function Market() {
   const totalValue = rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0);
 
   const gridClasses = isSingleSet
-    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_44px]"
-    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px]";
+    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_44px_auto]"
+    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px_auto]";
 
   const SortIcon = ({ col }: { col: "price" | "24h" | "7d" }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
@@ -382,6 +382,7 @@ export default function Market() {
                 7d % <SortIcon col="7d" />
               </button>
               <span />
+              {isRecentFilter && <span className="text-right">Vote</span>}
             </div>
           )}
 
@@ -523,7 +524,7 @@ export default function Market() {
                       {i + 1}
                     </span>
 
-                    {/* Card image + name + sentiment */}
+                    {/* Card image + name */}
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <img
                         src={card.images.small}
@@ -535,46 +536,20 @@ export default function Market() {
                         <p className="text-sm font-semibold text-foreground truncate">
                           {card.name}
                         </p>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs text-muted-foreground truncate sm:hidden">
-                            {card.set.name}
-                          </p>
-                          {sentiment && (
-                            <div className="sm:hidden">
-                              <SetSentimentBadge
-                                upvotes={sentiment.upvotes}
-                                downvotes={sentiment.downvotes}
-                                score={sentiment.score}
-                                currentUserVote={sentiment.currentUserVote}
-                                onVote={(vt) => handleVote(card.set.id, vt)}
-                                compact
-                              />
-                            </div>
-                          )}
-                        </div>
+                        <p className="text-xs text-muted-foreground truncate sm:hidden">
+                          {card.set.name}
+                        </p>
                         <p className="text-[10px] text-muted-foreground/60 truncate">
                           #{card.number}/{card.set.printedTotal || card.set.total}
                         </p>
                       </div>
                     </div>
 
-                    {/* Set + sentiment — desktop only */}
+                    {/* Set — desktop only */}
                     {!isSingleSet && (
-                      <div className="hidden sm:flex items-center gap-2 min-w-0">
-                        <p className="text-sm text-muted-foreground truncate">
-                          {card.set.name}
-                        </p>
-                        {sentiment && (
-                          <SetSentimentBadge
-                            upvotes={sentiment.upvotes}
-                            downvotes={sentiment.downvotes}
-                            score={sentiment.score}
-                            currentUserVote={sentiment.currentUserVote}
-                            onVote={(vt) => handleVote(card.set.id, vt)}
-                            compact
-                          />
-                        )}
-                      </div>
+                      <p className="hidden sm:block text-sm text-muted-foreground truncate">
+                        {card.set.name}
+                      </p>
                     )}
 
                     {/* Price */}
@@ -597,6 +572,18 @@ export default function Market() {
                       <span className="text-sm font-bold text-foreground sm:hidden tabular-nums">
                         {formatPrice(price)}
                       </span>
+                      {sentiment && (
+                        <div className="sm:hidden">
+                          <SetSentimentBadge
+                            upvotes={sentiment.upvotes}
+                            downvotes={sentiment.downvotes}
+                            score={sentiment.score}
+                            currentUserVote={sentiment.currentUserVote}
+                            onVote={(vt) => handleVote(card.id, vt)}
+                            compact
+                          />
+                        </div>
+                      )}
                       <Button
                         size="icon"
                         variant="ghost"
@@ -607,6 +594,31 @@ export default function Market() {
                         <Plus className="w-3.5 h-3.5" />
                       </Button>
                     </div>
+
+                    {/* Sentiment — desktop, far right */}
+                    {isRecentFilter && (
+                      <div className="hidden sm:flex justify-end">
+                        {sentiment ? (
+                          <SetSentimentBadge
+                            upvotes={sentiment.upvotes}
+                            downvotes={sentiment.downvotes}
+                            score={sentiment.score}
+                            currentUserVote={sentiment.currentUserVote}
+                            onVote={(vt) => handleVote(card.id, vt)}
+                            compact
+                          />
+                        ) : (
+                          <SetSentimentBadge
+                            upvotes={0}
+                            downvotes={0}
+                            score={0}
+                            currentUserVote={null}
+                            onVote={(vt) => handleVote(card.id, vt)}
+                            compact
+                          />
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}
