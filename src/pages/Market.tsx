@@ -53,6 +53,10 @@ export default function Market() {
   const [sealedType, setSealedType] = useState("all");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
+  // Sentiment voting state
+  const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
+  const isRecentFilter = selectedSetId === "recent5" || selectedSetId === "recent10";
+
   // Card state
   const [cards, setCards] = useState<PokemonCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
