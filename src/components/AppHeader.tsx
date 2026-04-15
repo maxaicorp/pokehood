@@ -133,6 +133,10 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           <Layers className="w-5 h-5" />
           <span className="text-[10px] font-medium">Sets</span>
         </Link>
+        <Link to="/onchain" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "onchain" ? "text-foreground" : "text-muted-foreground"}`}>
+          <Link2 className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Onchain</span>
+        </Link>
       </div>
 
       {/* Header */}
@@ -149,6 +153,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Explore</Link>
               <Link to="/market" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "market" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Market</Link>
               <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Sets</Link>
+              <Link to="/onchain" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Onchain</Link>
             </div>
             {isPro && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
