@@ -284,6 +284,7 @@ export default function Market() {
                   ))}
                 </SelectContent>
               </Select>
+              <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
           ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
