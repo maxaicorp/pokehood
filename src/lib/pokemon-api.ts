@@ -355,7 +355,11 @@ export async function searchCardsAdvanced(
 
   if (query) {
     const q = query.toLowerCase();
-    filtered = filtered.filter((c) => c.name.toLowerCase().includes(q));
+    filtered = filtered.filter((c) =>
+      c.name.toLowerCase().includes(q) ||
+      c.set.name.toLowerCase().includes(q) ||
+      c.set.id.toLowerCase().includes(q)
+    );
   }
   if (filters.setId) {
     filtered = filtered.filter((c) => c.set.id === filters.setId);
