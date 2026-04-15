@@ -13,12 +13,10 @@ interface CardGridViewProps {
   onAdd?: (e: React.MouseEvent, card: PokemonCard) => void;
   addingCards?: Set<string>;
   sentimentMap?: Map<string, SetSentiment>;
-  /** When true, sentimentMap keys are card IDs instead of set IDs */
-  sentimentKeyIsCardId?: boolean;
-  onVote?: (setId: string, voteType: VoteType) => void;
+  onVote?: (cardId: string, voteType: VoteType) => void;
 }
 
-export default function CardGridView({ cards, getPcts, onAdd, addingCards, sentimentMap, sentimentKeyIsCardId, onVote }: CardGridViewProps) {
+export default function CardGridView({ cards, getPcts, onAdd, addingCards, sentimentMap, onVote }: CardGridViewProps) {
   const navigate = useNavigate();
 
   return (
@@ -27,7 +25,7 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards, senti
         const price = getMarketPrice(card);
         const { raw24h } = getPcts(card);
         const pct = formatPct(raw24h);
-        const sentiment = sentimentKeyIsCardId ? sentimentMap?.get(card.id) : sentimentMap?.get(card.set.id);
+        const sentiment = sentimentMap?.get(card.id);
 
         return (
           <motion.div
@@ -89,7 +87,7 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards, senti
                     downvotes={sentiment.downvotes}
                     score={sentiment.score}
                     currentUserVote={sentiment.currentUserVote}
-                    onVote={(vt) => onVote(card.set.id, vt)}
+                    onVote={(vt) => onVote(card.id, vt)}
                     compact
                   />
                 )}
