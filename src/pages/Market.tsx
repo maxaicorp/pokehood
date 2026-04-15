@@ -119,6 +119,37 @@ export default function Market() {
     return () => { cancelled = true; };
   }, [pricesReady, setsData, selectedSetId]);
 
+  // Fetch sentiment for visible sets when filter is recent5/recent10
+  useEffect(() => {
+    if (!isRecentFilter || !setsData) return;
+    const physicalSets = setsData.data.filter((s: PokemonSet) => !s.isOnlineOnly);
+    const count = selectedSetId === "recent5" ? 5 : 10;
+    const setIds = physicalSets.slice(0, count).map((s) => s.id);
+    getSetSentiment(setIds).then(setSentimentMap);
+  }, [isRecentFilter, selectedSetId, setsData]);
+
+  const handleVote = async (setId: string, voteType: VoteType) => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    const current = sentimentMap.get(setId);
+    const currentVote = current?.currentUserVote ?? null;
+    const newVote = currentVote === voteType ? null : voteType;
+
+    // Optimistic update
+    setSentimentMap((prev) => {
+      const next = new Map(prev);
+      const old = prev.get(setId) || { setId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
+      const upvotes = Math.max(0, old.upvotes + (voteType === "up" ? (currentVote === "up" ? -1 : 1) : (currentVote === "up" ? -1 : 0)));
+      const downvotes = Math.max(0, old.downvotes + (voteType === "down" ? (currentVote === "down" ? -1 : 1) : (currentVote === "down" ? -1 : 0)));
+      next.set(setId, { ...old, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote });
+      return next;
+    });
+
+    await castVote(setId, user.id, currentVote, voteType);
+  };
+
   // Infinite scroll observer
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -185,7 +216,6 @@ export default function Market() {
   const getTabSortedCards = () => {
     let sorted = [...rawPricedCards];
 
-    // If user clicked a column header, that takes priority
     if (sortCol) {
       return sorted.sort((a, b) => {
         let va: number | null, vb: number | null;
@@ -205,16 +235,13 @@ export default function Market() {
       });
     }
 
-    // Tab-based default sorting
     switch (activeTab) {
       case "top":
         return sorted.sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0));
-      case "trending": {
-        // Cards with highest absolute 24h movement (either direction = activity)
+      case "trending":
         return sorted
           .filter((c) => getPcts(c).raw24h !== null)
           .sort((a, b) => Math.abs(getPcts(b).raw24h ?? 0) - Math.abs(getPcts(a).raw24h ?? 0));
-      }
       case "gainers":
         return sorted
           .filter((c) => (getPcts(c).raw24h ?? 0) > 0)
@@ -243,6 +270,12 @@ export default function Market() {
     return sortDir === "asc"
       ? <ArrowUp className="w-3 h-3 ml-1 text-primary" />
       : <ArrowDown className="w-3 h-3 ml-1 text-primary" />;
+  };
+
+  // Helper: get sentiment for a card's set
+  const getCardSentiment = (card: PokemonCard): SetSentiment | undefined => {
+    if (!isRecentFilter) return undefined;
+    return sentimentMap.get(card.set.id);
   };
 
   return (
@@ -292,6 +325,10 @@ export default function Market() {
               </Select>
               <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
+          ) : activeTab === "most-visited" ? (
+            <div className="flex items-center gap-3 justify-between sm:justify-end">
+              <ViewToggle value={viewMode} onChange={setViewMode} />
+            </div>
           ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
               {!isLoading && totalValue > 0 && (
@@ -331,8 +368,8 @@ export default function Market() {
 
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
-          {/* Table header — hidden when Sealed tab is active or grid mode */}
-          {activeTab !== "sealed" && viewMode === "list" && (
+          {/* Table header — hidden when Sealed/Most Visited tab is active or grid mode */}
+          {activeTab !== "sealed" && activeTab !== "most-visited" && viewMode === "list" && (
             <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
               <span>#</span>
               <span>Card</span>
@@ -370,6 +407,37 @@ export default function Market() {
             ) : mostVisitedCards.length === 0 ? (
               <div className="py-16 text-center text-muted-foreground">
                 No visit data yet. Browse some cards to populate this list!
+              </div>
+            ) : viewMode === "grid" ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-3">
+                {mostVisitedCards.map((stat, i) => (
+                  <motion.div
+                    key={stat.tcg_api_id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: Math.min(i * 0.02, 0.3) }}
+                    className="group relative rounded-xl overflow-hidden bg-card border border-border/50 hover:border-primary/40 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
+                    onClick={() => navigate(`/card/${stat.tcg_api_id}`)}
+                  >
+                    <div className="aspect-[5/7] relative overflow-hidden bg-muted">
+                      {stat.image_small ? (
+                        <img src={stat.image_small} alt={stat.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Eye className="w-8 h-8 text-muted-foreground/30" />
+                        </div>
+                      )}
+                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-background/90 backdrop-blur-sm border border-border/50 flex items-center gap-1">
+                        <Eye className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-xs font-bold text-foreground tabular-nums">{stat.view_count}</span>
+                      </div>
+                    </div>
+                    <div className="p-2">
+                      <p className="text-xs font-semibold text-foreground truncate">{stat.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{stat.set_name}</p>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             ) : (
               <div>
@@ -430,6 +498,8 @@ export default function Market() {
                 getPcts={getPcts}
                 onAdd={handleAdd}
                 addingCards={addingCards}
+                sentimentMap={isRecentFilter ? sentimentMap : undefined}
+                onVote={handleVote}
               />
               <div ref={sentinelRef} className="h-1" />
             </div>
@@ -437,10 +507,10 @@ export default function Market() {
             <div>
               {visibleCards.map((card, i) => {
                 const price = getMarketPrice(card);
-                const { raw24h, raw7d, raw30d } = getPcts(card);
+                const { raw24h, raw7d } = getPcts(card);
                 const pct24h = formatPct(raw24h);
                 const pct7d = formatPct(raw7d);
-                const pct30d = formatPct(raw30d);
+                const sentiment = getCardSentiment(card);
                 return (
                   <motion.div
                     key={card.id}
@@ -455,7 +525,7 @@ export default function Market() {
                       {i + 1}
                     </span>
 
-                    {/* Card image + name */}
+                    {/* Card image + name + sentiment */}
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <img
                         src={card.images.small}
@@ -467,20 +537,46 @@ export default function Market() {
                         <p className="text-sm font-semibold text-foreground truncate">
                           {card.name}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate sm:hidden">
-                          {card.set.name}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs text-muted-foreground truncate sm:hidden">
+                            {card.set.name}
+                          </p>
+                          {sentiment && (
+                            <div className="sm:hidden">
+                              <SetSentimentBadge
+                                upvotes={sentiment.upvotes}
+                                downvotes={sentiment.downvotes}
+                                score={sentiment.score}
+                                currentUserVote={sentiment.currentUserVote}
+                                onVote={(vt) => handleVote(card.set.id, vt)}
+                                compact
+                              />
+                            </div>
+                          )}
+                        </div>
                         <p className="text-[10px] text-muted-foreground/60 truncate">
                           #{card.number}/{card.set.printedTotal || card.set.total}
                         </p>
                       </div>
                     </div>
 
-                    {/* Set — desktop only, not rendered in set-specific view */}
+                    {/* Set + sentiment — desktop only */}
                     {!isSingleSet && (
-                      <p className="hidden sm:block text-sm text-muted-foreground truncate">
-                        {card.set.name}
-                      </p>
+                      <div className="hidden sm:flex items-center gap-2 min-w-0">
+                        <p className="text-sm text-muted-foreground truncate">
+                          {card.set.name}
+                        </p>
+                        {sentiment && (
+                          <SetSentimentBadge
+                            upvotes={sentiment.upvotes}
+                            downvotes={sentiment.downvotes}
+                            score={sentiment.score}
+                            currentUserVote={sentiment.currentUserVote}
+                            onVote={(vt) => handleVote(card.set.id, vt)}
+                            compact
+                          />
+                        )}
+                      </div>
                     )}
 
                     {/* Price */}
@@ -497,51 +593,6 @@ export default function Market() {
                     <p className={`hidden sm:block text-xs font-medium text-right tabular-nums ${pct7d.className}`}>
                       {pct7d.text}
                     </p>
-
-  // Fetch sentiment for visible sets when filter is recent5/recent10
-  useEffect(() => {
-    if (!isRecentFilter || !setsData) return;
-    const physicalSets = setsData.data.filter((s: PokemonSet) => !s.isOnlineOnly);
-    const count = selectedSetId === "recent5" ? 5 : 10;
-    const setIds = physicalSets.slice(0, count).map((s) => s.id);
-    getSetSentiment(setIds).then(setSentimentMap);
-  }, [isRecentFilter, selectedSetId, setsData]);
-
-  const handleVote = async (setId: string, voteType: VoteType) => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    const current = sentimentMap.get(setId);
-    const currentVote = current?.currentUserVote ?? null;
-
-    // Optimistic update
-    const newVote = currentVote === voteType ? null : voteType;
-    const upDelta = voteType === "up"
-      ? (currentVote === "up" ? -1 : 1) + (currentVote === "down" ? 0 : 0)
-      : currentVote === "down" ? -1 : 0;
-    const downDelta = voteType === "down"
-      ? (currentVote === "down" ? -1 : 1)
-      : currentVote === "up" ? -1 : 0;
-
-    setSentimentMap((prev) => {
-      const next = new Map(prev);
-      const old = prev.get(setId) || { setId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
-      const upvotes = Math.max(0, old.upvotes + (voteType === "up" ? (currentVote === "up" ? -1 : 1) : (currentVote === "up" ? -1 : 0)));
-      const downvotes = Math.max(0, old.downvotes + (voteType === "down" ? (currentVote === "down" ? -1 : 1) : (currentVote === "down" ? -1 : 0)));
-      next.set(setId, {
-        ...old,
-        upvotes,
-        downvotes,
-        score: upvotes - downvotes,
-        currentUserVote: newVote,
-      });
-      return next;
-    });
-
-    // Persist
-    await castVote(setId, user.id, currentVote, voteType);
-  };
 
                     {/* Mobile price + add button */}
                     <div className="flex items-center justify-end gap-2">
@@ -577,30 +628,16 @@ export default function Market() {
                       className={`grid grid-cols-[24px_1fr_auto] ${gridClasses} gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50`}
                       onClick={() => navigate(`/card/${card.id}`)}
                     >
-                      <span className="text-sm font-mono text-muted-foreground">
-                        —
-                      </span>
+                      <span className="text-sm font-mono text-muted-foreground">—</span>
                       <div className="flex items-center gap-3 min-w-0">
-                        <img
-                          src={card.images.small}
-                          alt={card.name}
-                          className="w-9 sm:w-10 rounded-md shrink-0 shadow-sm"
-                          loading="lazy"
-                        />
+                        <img src={card.images.small} alt={card.name} className="w-9 sm:w-10 rounded-md shrink-0 shadow-sm" loading="lazy" />
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">
-                            {card.name}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground/60 truncate">
-                            #{card.number}/{card.set.printedTotal || card.set.total}
-                          </p>
+                          <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
+                          <p className="text-[10px] text-muted-foreground/60 truncate">#{card.number}/{card.set.printedTotal || card.set.total}</p>
                         </div>
                       </div>
                       {!isSingleSet && <p className="hidden sm:block text-sm text-muted-foreground truncate">{card.set.name}</p>}
-                      <p className="hidden sm:block text-sm text-muted-foreground text-right">
-                        N/A
-                      </p>
-                      <p className="hidden sm:block text-xs text-muted-foreground text-right">—</p>
+                      <p className="hidden sm:block text-sm text-muted-foreground text-right">N/A</p>
                       <p className="hidden sm:block text-xs text-muted-foreground text-right">—</p>
                       <p className="hidden sm:block text-xs text-muted-foreground text-right">—</p>
                       <div className="flex items-center justify-end gap-2">
