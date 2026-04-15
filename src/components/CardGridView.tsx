@@ -18,7 +18,7 @@ interface CardGridViewProps {
   onVote?: (setId: string, voteType: VoteType) => void;
 }
 
-export default function CardGridView({ cards, getPcts, onAdd, addingCards, sentimentMap, onVote }: CardGridViewProps) {
+export default function CardGridView({ cards, getPcts, onAdd, addingCards, sentimentMap, sentimentKeyIsCardId, onVote }: CardGridViewProps) {
   const navigate = useNavigate();
 
   return (
