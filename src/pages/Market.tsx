@@ -119,35 +119,33 @@ export default function Market() {
     return () => { cancelled = true; };
   }, [pricesReady, setsData, selectedSetId]);
 
-  // Fetch sentiment for visible sets when filter is recent5/recent10
+  // Fetch sentiment for visible cards when filter is recent5/recent10
   useEffect(() => {
-    if (!isRecentFilter || !setsData) return;
-    const physicalSets = setsData.data.filter((s: PokemonSet) => !s.isOnlineOnly);
-    const count = selectedSetId === "recent5" ? 5 : 10;
-    const setIds = physicalSets.slice(0, count).map((s) => s.id);
-    getSetSentiment(setIds).then(setSentimentMap);
-  }, [isRecentFilter, selectedSetId, setsData]);
+    if (!isRecentFilter || cards.length === 0) return;
+    const cardIds = cards.map((c) => c.id);
+    getSetSentiment(cardIds).then(setSentimentMap);
+  }, [isRecentFilter, cards]);
 
-  const handleVote = async (setId: string, voteType: VoteType) => {
+  const handleVote = async (cardId: string, voteType: VoteType) => {
     if (!user) {
       navigate("/auth");
       return;
     }
-    const current = sentimentMap.get(setId);
+    const current = sentimentMap.get(cardId);
     const currentVote = current?.currentUserVote ?? null;
     const newVote = currentVote === voteType ? null : voteType;
 
     // Optimistic update
     setSentimentMap((prev) => {
       const next = new Map(prev);
-      const old = prev.get(setId) || { setId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
+      const old = prev.get(cardId) || { setId: cardId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
       const upvotes = Math.max(0, old.upvotes + (voteType === "up" ? (currentVote === "up" ? -1 : 1) : (currentVote === "up" ? -1 : 0)));
       const downvotes = Math.max(0, old.downvotes + (voteType === "down" ? (currentVote === "down" ? -1 : 1) : (currentVote === "down" ? -1 : 0)));
-      next.set(setId, { ...old, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote });
+      next.set(cardId, { ...old, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote });
       return next;
     });
 
-    await castVote(setId, user.id, currentVote, voteType);
+    await castVote(cardId, user.id, currentVote, voteType);
   };
 
   // Infinite scroll observer
@@ -262,8 +260,8 @@ export default function Market() {
   const totalValue = rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0);
 
   const gridClasses = isSingleSet
-    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_44px]"
-    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px]";
+    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_44px_auto]"
+    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px_auto]";
 
   const SortIcon = ({ col }: { col: "price" | "24h" | "7d" }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
@@ -272,36 +270,11 @@ export default function Market() {
       : <ArrowDown className="w-3 h-3 ml-1 text-primary" />;
   };
 
-  // Build a set of set IDs that should show sentiment (first occurrence only)
-  const firstOccurrenceSetIds = new Set<string>();
-  const sentimentCardIds = new Set<string>();
-  if (isRecentFilter) {
-    for (const card of visibleCards) {
-      if (!firstOccurrenceSetIds.has(card.set.id)) {
-        firstOccurrenceSetIds.add(card.set.id);
-        sentimentCardIds.add(card.id);
-      }
-    }
-  }
-
-  // Helper: get sentiment for a card — only for the first card per set
+  // Helper: get sentiment for a card
   const getCardSentiment = (card: PokemonCard): SetSentiment | undefined => {
-    if (!sentimentCardIds.has(card.id)) return undefined;
-    return sentimentMap.get(card.set.id);
+    if (!isRecentFilter) return undefined;
+    return sentimentMap.get(card.id);
   };
-
-  // Build a filtered sentimentMap for grid view (first card per set only)
-  const gridSentimentMap = new Map<string, SetSentiment>();
-  if (isRecentFilter) {
-    const seenSets = new Set<string>();
-    for (const card of visibleCards) {
-      if (!seenSets.has(card.set.id) && sentimentMap.has(card.set.id)) {
-        seenSets.add(card.set.id);
-        // Map it by card ID so only that card renders the badge
-        gridSentimentMap.set(card.id, sentimentMap.get(card.set.id)!);
-      }
-    }
-  }
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
@@ -409,6 +382,7 @@ export default function Market() {
                 7d % <SortIcon col="7d" />
               </button>
               <span />
+              {isRecentFilter && <span className="text-right">Vote</span>}
             </div>
           )}
 
@@ -523,8 +497,7 @@ export default function Market() {
                 getPcts={getPcts}
                 onAdd={handleAdd}
                 addingCards={addingCards}
-                sentimentMap={isRecentFilter ? gridSentimentMap : undefined}
-                sentimentKeyIsCardId
+                sentimentMap={isRecentFilter ? sentimentMap : undefined}
                 onVote={handleVote}
               />
               <div ref={sentinelRef} className="h-1" />
@@ -551,7 +524,7 @@ export default function Market() {
                       {i + 1}
                     </span>
 
-                    {/* Card image + name + sentiment */}
+                    {/* Card image + name */}
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <img
                         src={card.images.small}
@@ -563,46 +536,20 @@ export default function Market() {
                         <p className="text-sm font-semibold text-foreground truncate">
                           {card.name}
                         </p>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs text-muted-foreground truncate sm:hidden">
-                            {card.set.name}
-                          </p>
-                          {sentiment && (
-                            <div className="sm:hidden">
-                              <SetSentimentBadge
-                                upvotes={sentiment.upvotes}
-                                downvotes={sentiment.downvotes}
-                                score={sentiment.score}
-                                currentUserVote={sentiment.currentUserVote}
-                                onVote={(vt) => handleVote(card.set.id, vt)}
-                                compact
-                              />
-                            </div>
-                          )}
-                        </div>
+                        <p className="text-xs text-muted-foreground truncate sm:hidden">
+                          {card.set.name}
+                        </p>
                         <p className="text-[10px] text-muted-foreground/60 truncate">
                           #{card.number}/{card.set.printedTotal || card.set.total}
                         </p>
                       </div>
                     </div>
 
-                    {/* Set + sentiment — desktop only */}
+                    {/* Set — desktop only */}
                     {!isSingleSet && (
-                      <div className="hidden sm:flex items-center gap-2 min-w-0">
-                        <p className="text-sm text-muted-foreground truncate">
-                          {card.set.name}
-                        </p>
-                        {sentiment && (
-                          <SetSentimentBadge
-                            upvotes={sentiment.upvotes}
-                            downvotes={sentiment.downvotes}
-                            score={sentiment.score}
-                            currentUserVote={sentiment.currentUserVote}
-                            onVote={(vt) => handleVote(card.set.id, vt)}
-                            compact
-                          />
-                        )}
-                      </div>
+                      <p className="hidden sm:block text-sm text-muted-foreground truncate">
+                        {card.set.name}
+                      </p>
                     )}
 
                     {/* Price */}
@@ -625,6 +572,18 @@ export default function Market() {
                       <span className="text-sm font-bold text-foreground sm:hidden tabular-nums">
                         {formatPrice(price)}
                       </span>
+                      {sentiment && (
+                        <div className="sm:hidden">
+                          <SetSentimentBadge
+                            upvotes={sentiment.upvotes}
+                            downvotes={sentiment.downvotes}
+                            score={sentiment.score}
+                            currentUserVote={sentiment.currentUserVote}
+                            onVote={(vt) => handleVote(card.id, vt)}
+                            compact
+                          />
+                        </div>
+                      )}
                       <Button
                         size="icon"
                         variant="ghost"
@@ -635,6 +594,31 @@ export default function Market() {
                         <Plus className="w-3.5 h-3.5" />
                       </Button>
                     </div>
+
+                    {/* Sentiment — desktop, far right */}
+                    {isRecentFilter && (
+                      <div className="hidden sm:flex justify-end">
+                        {sentiment ? (
+                          <SetSentimentBadge
+                            upvotes={sentiment.upvotes}
+                            downvotes={sentiment.downvotes}
+                            score={sentiment.score}
+                            currentUserVote={sentiment.currentUserVote}
+                            onVote={(vt) => handleVote(card.id, vt)}
+                            compact
+                          />
+                        ) : (
+                          <SetSentimentBadge
+                            upvotes={0}
+                            downvotes={0}
+                            score={0}
+                            currentUserVote={null}
+                            onVote={(vt) => handleVote(card.id, vt)}
+                            compact
+                          />
+                        )}
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}

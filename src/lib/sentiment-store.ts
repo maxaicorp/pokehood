@@ -1,4 +1,4 @@
-// Set sentiment voting — per-user up/down votes on sets
+// Card sentiment voting — per-user up/down votes on individual cards
 // Aggregates are fetched via a SECURITY DEFINER RPC that hides individual voters.
 
 import { supabase } from "@/integrations/supabase/client";
@@ -13,13 +13,13 @@ export interface SetSentiment {
   currentUserVote: VoteType | null;
 }
 
-/** Fetch aggregate sentiment + current user's vote for a list of set IDs */
-export async function getSetSentiment(setIds: string[]): Promise<Map<string, SetSentiment>> {
+/** Fetch aggregate sentiment + current user's vote for a list of card IDs */
+export async function getSetSentiment(cardIds: string[]): Promise<Map<string, SetSentiment>> {
   const map = new Map<string, SetSentiment>();
-  if (setIds.length === 0) return map;
+  if (cardIds.length === 0) return map;
 
   const { data, error } = await (supabase.rpc as any)("get_set_sentiment", {
-    p_set_ids: setIds,
+    p_set_ids: cardIds,
   });
 
   if (error || !data) return map;
@@ -45,27 +45,25 @@ export async function getSetSentiment(setIds: string[]): Promise<Map<string, Set
 
 /** Cast or toggle a vote. Returns the new vote state (null if removed). */
 export async function castVote(
-  setId: string,
+  cardId: string,
   userId: string,
   currentVote: VoteType | null,
   newVote: VoteType
 ): Promise<VoteType | null> {
   // If clicking the same vote type, remove the vote (toggle off)
   if (currentVote === newVote) {
-    await supabase
-      .from("set_sentiment_votes")
+    await (supabase.from("set_sentiment_votes") as any)
       .delete()
       .eq("user_id", userId)
-      .eq("set_id", setId);
+      .eq("card_id", cardId);
     return null;
   }
 
   // Upsert the vote
-  const { error } = await supabase
-    .from("set_sentiment_votes")
+  const { error } = await (supabase.from("set_sentiment_votes") as any)
     .upsert(
-      { user_id: userId, set_id: setId, vote_type: newVote },
-      { onConflict: "user_id,set_id" }
+      { user_id: userId, card_id: cardId, vote_type: newVote },
+      { onConflict: "user_id,card_id" }
     );
 
   if (error) {
