@@ -272,14 +272,36 @@ export default function Market() {
       : <ArrowDown className="w-3 h-3 ml-1 text-primary" />;
   };
 
-  // Helper: get sentiment for a card's set — only return for the FIRST card of each set
-  const shownSentimentSets = new Set<string>();
+  // Build a set of set IDs that should show sentiment (first occurrence only)
+  const firstOccurrenceSetIds = new Set<string>();
+  const sentimentCardIds = new Set<string>();
+  if (isRecentFilter) {
+    for (const card of visibleCards) {
+      if (!firstOccurrenceSetIds.has(card.set.id)) {
+        firstOccurrenceSetIds.add(card.set.id);
+        sentimentCardIds.add(card.id);
+      }
+    }
+  }
+
+  // Helper: get sentiment for a card — only for the first card per set
   const getCardSentiment = (card: PokemonCard): SetSentiment | undefined => {
-    if (!isRecentFilter) return undefined;
-    if (shownSentimentSets.has(card.set.id)) return undefined;
-    shownSentimentSets.add(card.set.id);
+    if (!sentimentCardIds.has(card.id)) return undefined;
     return sentimentMap.get(card.set.id);
   };
+
+  // Build a filtered sentimentMap for grid view (first card per set only)
+  const gridSentimentMap = new Map<string, SetSentiment>();
+  if (isRecentFilter) {
+    const seenSets = new Set<string>();
+    for (const card of visibleCards) {
+      if (!seenSets.has(card.set.id) && sentimentMap.has(card.set.id)) {
+        seenSets.add(card.set.id);
+        // Map it by card ID so only that card renders the badge
+        gridSentimentMap.set(card.id, sentimentMap.get(card.set.id)!);
+      }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
