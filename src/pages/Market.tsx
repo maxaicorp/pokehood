@@ -71,6 +71,7 @@ export default function Market() {
     Promise.all([getSets(), getLatestSnapshotPrices()]).then(([r, prices]) => {
       setSetsData(r);
       seedPricingCache(prices);
+      seedSealedPriceMap(prices);
       setPricesReady(true);
     });
   }, []);
