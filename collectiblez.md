@@ -135,6 +135,7 @@ Collectiblez is a Pokémon TCG collection tracker and market analytics platform.
 | `check-subscription` | Verifies Stripe subscription status |
 | `create-checkout` | Creates Stripe checkout sessions for Pro upgrade |
 | `customer-portal` | Redirects to Stripe customer portal |
+| `onchain-activity` | Proxies Magic Eden collection activities API for Collector Crypt (Solana) |
 
 ---
 
