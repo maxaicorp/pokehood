@@ -44,9 +44,13 @@ function rowToCard(row: any): CollectionCard {
 
 /** Fetch the authenticated user's collection */
 export async function getCollection(): Promise<CollectionCard[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from("collection_cards")
     .select("*")
+    .eq("user_id", user.id)
     .order("added_at", { ascending: false });
 
   if (error) {
