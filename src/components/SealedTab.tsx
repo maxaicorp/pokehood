@@ -120,6 +120,20 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
     );
   }
 
+  if (viewMode === "grid") {
+    return (
+      <div>
+        <SealedGridView products={products} />
+        <div ref={sentinelRef} className="h-4" />
+        {!hasMore && products.length > 0 && (
+          <p className="text-center text-xs text-muted-foreground py-4">
+            All {totalCount.toLocaleString()} products loaded
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* Table header */}
