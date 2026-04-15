@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,10 +32,10 @@ const TYPE_FILTERS = [
 
 const typeIcon = (type: string) => {
   switch (type) {
-    case "buyNow": return <ArrowUpRight className="w-4 h-4 text-green-400" />;
-    case "list": return <Tag className="w-4 h-4 text-blue-400" />;
+    case "buyNow": return <ArrowUpRight className="w-4 h-4 text-emerald-500" />;
+    case "list": return <Tag className="w-4 h-4 text-sky-500" />;
     case "delist": return <XCircle className="w-4 h-4 text-muted-foreground" />;
-    case "bid": return <Gavel className="w-4 h-4 text-amber-400" />;
+    case "bid": return <Gavel className="w-4 h-4 text-yellow-500" />;
     case "cancelBid": return <XCircle className="w-4 h-4 text-muted-foreground" />;
     default: return <ArrowDownLeft className="w-4 h-4 text-muted-foreground" />;
   }
@@ -72,11 +71,6 @@ export default function Onchain() {
   const { data: activities, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["onchain-activity", typeFilter, page],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("onchain-activity", {
-        body: null,
-        method: "GET",
-      });
-      // Use fetch directly since we need query params
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onchain-activity`;
       const params = new URLSearchParams({
         collection: "collector_crypt",
@@ -93,7 +87,7 @@ export default function Onchain() {
       if (!res.ok) throw new Error("Failed to fetch activity");
       return (await res.json()) as Activity[];
     },
-    refetchInterval: 30000, // Auto-refresh every 30s
+    refetchInterval: 30000,
   });
 
   return (
