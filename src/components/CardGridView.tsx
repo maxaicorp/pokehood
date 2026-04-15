@@ -27,7 +27,7 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards, senti
         const price = getMarketPrice(card);
         const { raw24h } = getPcts(card);
         const pct = formatPct(raw24h);
-        const sentiment = sentimentMap?.get(card.set.id);
+        const sentiment = sentimentKeyIsCardId ? sentimentMap?.get(card.id) : sentimentMap?.get(card.set.id);
 
         return (
           <motion.div
