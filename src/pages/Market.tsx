@@ -14,7 +14,9 @@ import {
 import { addToCollection } from "@/lib/collection-store";
 import { formatPct, getLatestSnapshotPrices } from "@/lib/price-snapshots";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
+import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import AppHeader from "@/components/AppHeader";
+import SetSentimentBadge from "@/components/SetSentimentBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
