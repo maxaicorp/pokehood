@@ -119,35 +119,33 @@ export default function Market() {
     return () => { cancelled = true; };
   }, [pricesReady, setsData, selectedSetId]);
 
-  // Fetch sentiment for visible sets when filter is recent5/recent10
+  // Fetch sentiment for visible cards when filter is recent5/recent10
   useEffect(() => {
-    if (!isRecentFilter || !setsData) return;
-    const physicalSets = setsData.data.filter((s: PokemonSet) => !s.isOnlineOnly);
-    const count = selectedSetId === "recent5" ? 5 : 10;
-    const setIds = physicalSets.slice(0, count).map((s) => s.id);
-    getSetSentiment(setIds).then(setSentimentMap);
-  }, [isRecentFilter, selectedSetId, setsData]);
+    if (!isRecentFilter || cards.length === 0) return;
+    const cardIds = cards.map((c) => c.id);
+    getSetSentiment(cardIds).then(setSentimentMap);
+  }, [isRecentFilter, cards]);
 
-  const handleVote = async (setId: string, voteType: VoteType) => {
+  const handleVote = async (cardId: string, voteType: VoteType) => {
     if (!user) {
       navigate("/auth");
       return;
     }
-    const current = sentimentMap.get(setId);
+    const current = sentimentMap.get(cardId);
     const currentVote = current?.currentUserVote ?? null;
     const newVote = currentVote === voteType ? null : voteType;
 
     // Optimistic update
     setSentimentMap((prev) => {
       const next = new Map(prev);
-      const old = prev.get(setId) || { setId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
+      const old = prev.get(cardId) || { setId: cardId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
       const upvotes = Math.max(0, old.upvotes + (voteType === "up" ? (currentVote === "up" ? -1 : 1) : (currentVote === "up" ? -1 : 0)));
       const downvotes = Math.max(0, old.downvotes + (voteType === "down" ? (currentVote === "down" ? -1 : 1) : (currentVote === "down" ? -1 : 0)));
-      next.set(setId, { ...old, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote });
+      next.set(cardId, { ...old, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote });
       return next;
     });
 
-    await castVote(setId, user.id, currentVote, voteType);
+    await castVote(cardId, user.id, currentVote, voteType);
   };
 
   // Infinite scroll observer
