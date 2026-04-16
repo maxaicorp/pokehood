@@ -516,109 +516,83 @@ export default function Market() {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(i * 0.008, 0.3) }}
-                    className={`grid grid-cols-[24px_1fr_auto] ${gridClasses} gap-2 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors`}
+                    className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
                     onClick={() => navigate(`/card/${card.id}`)}
                   >
-                    {/* Rank */}
-                    <span className="text-sm font-mono text-muted-foreground tabular-nums">
-                      {i + 1}
-                    </span>
-
-                    {/* Card image + name */}
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                      <img
-                        src={card.images.small}
-                        alt={card.name}
-                        className="w-9 sm:w-10 rounded-md shrink-0 shadow-sm"
-                        loading="lazy"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">
-                          {card.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate sm:hidden">
-                          {card.set.name}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/60 truncate">
-                          #{card.number}/{card.set.printedTotal || card.set.total}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Set — desktop only */}
-                    {!isSingleSet && (
-                      <p className="hidden sm:block text-sm text-muted-foreground truncate">
-                        {card.set.name}
-                      </p>
-                    )}
-
-                    {/* Price */}
-                    <p className="hidden sm:block text-sm font-bold text-foreground text-right tabular-nums">
-                      {formatPrice(price)}
-                    </p>
-
-                    {/* 24h % */}
-                    <p className={`hidden sm:block text-xs font-medium text-right tabular-nums ${pct24h.className}`}>
-                      {pct24h.text}
-                    </p>
-
-                    {/* 7d % */}
-                    <p className={`hidden sm:block text-xs font-medium text-right tabular-nums ${pct7d.className}`}>
-                      {pct7d.text}
-                    </p>
-
-                    {/* Mobile price + add button */}
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="text-sm font-bold text-foreground sm:hidden tabular-nums">
-                        {formatPrice(price)}
-                      </span>
-                      {sentiment && (
-                        <div className="sm:hidden">
-                          <SetSentimentBadge
-                            upvotes={sentiment.upvotes}
-                            downvotes={sentiment.downvotes}
-                            score={sentiment.score}
-                            currentUserVote={sentiment.currentUserVote}
-                            onVote={(vt) => handleVote(card.id, vt)}
-                            compact
-                          />
+                    {/* Desktop: grid row */}
+                    <div className={`hidden sm:grid ${gridClasses} gap-2 px-4 py-2.5 items-center`}>
+                      <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <img src={card.images.small} alt={card.name} className="w-10 rounded-md shrink-0 shadow-sm" loading="lazy" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
+                          <p className="text-[10px] text-muted-foreground/60 truncate">#{card.number}/{card.set.printedTotal || card.set.total}</p>
                         </div>
-                      )}
+                      </div>
+                      {!isSingleSet && <p className="text-sm text-muted-foreground truncate">{card.set.name}</p>}
+                      <p className="text-sm font-bold text-foreground text-right tabular-nums">{formatPrice(price)}</p>
+                      <p className={`text-xs font-medium text-right tabular-nums ${pct24h.className}`}>{pct24h.text}</p>
+                      <p className={`text-xs font-medium text-right tabular-nums ${pct7d.className}`}>{pct7d.text}</p>
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
+                        className="h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
                         disabled={addingCards.has(card.id)}
                         onClick={(e) => handleAdd(e, card)}
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </Button>
+                      {isRecentFilter && (
+                        <div className="flex justify-end">
+                          <SetSentimentBadge
+                            upvotes={sentiment?.upvotes ?? 0}
+                            downvotes={sentiment?.downvotes ?? 0}
+                            score={sentiment?.score ?? 0}
+                            currentUserVote={sentiment?.currentUserVote ?? null}
+                            onVote={(vt) => handleVote(card.id, vt)}
+                            compact
+                          />
+                        </div>
+                      )}
                     </div>
 
-                    {/* Sentiment — desktop, far right */}
-                    {isRecentFilter && (
-                      <div className="hidden sm:flex justify-end">
-                        {sentiment ? (
-                          <SetSentimentBadge
-                            upvotes={sentiment.upvotes}
-                            downvotes={sentiment.downvotes}
-                            score={sentiment.score}
-                            currentUserVote={sentiment.currentUserVote}
-                            onVote={(vt) => handleVote(card.id, vt)}
-                            compact
-                          />
-                        ) : (
-                          <SetSentimentBadge
-                            upvotes={0}
-                            downvotes={0}
-                            score={0}
-                            currentUserVote={null}
-                            onVote={(vt) => handleVote(card.id, vt)}
-                            compact
-                          />
-                        )}
+                    {/* Mobile: stacked layout */}
+                    <div className="sm:hidden px-3 py-2.5">
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm font-mono text-muted-foreground tabular-nums mt-1 shrink-0">{i + 1}</span>
+                        <img src={card.images.small} alt={card.name} className="w-12 rounded-md shrink-0 shadow-sm" loading="lazy" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-foreground">{card.name}</p>
+                          <p className="text-xs text-muted-foreground">{card.set.name} · #{card.number}/{card.set.printedTotal || card.set.total}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-sm font-bold text-foreground tabular-nums">{formatPrice(price)}</span>
+                            <span className={`text-[10px] font-medium tabular-nums ${pct24h.className}`}>{pct24h.text}</span>
+                            <span className={`text-[10px] font-medium tabular-nums ${pct7d.className}`}>{pct7d.text}</span>
+                          </div>
+                          <div className="flex items-center justify-between mt-1.5">
+                            {isRecentFilter ? (
+                              <SetSentimentBadge
+                                upvotes={sentiment?.upvotes ?? 0}
+                                downvotes={sentiment?.downvotes ?? 0}
+                                score={sentiment?.score ?? 0}
+                                currentUserVote={sentiment?.currentUserVote ?? null}
+                                onVote={(vt) => handleVote(card.id, vt)}
+                                compact
+                              />
+                            ) : <span />}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
+                              disabled={addingCards.has(card.id)}
+                              onClick={(e) => handleAdd(e, card)}
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    )}
+                    </div>
                   </motion.div>
                 );
               })}
