@@ -560,37 +560,39 @@ export default function Market() {
 
                     {/* Mobile: stacked layout */}
                     <div className="sm:hidden px-3 py-2.5">
-                      <div className="flex items-start gap-2">
-                        <span className="text-sm font-mono text-muted-foreground tabular-nums mt-1 shrink-0">{i + 1}</span>
-                        <img src={card.images.small} alt={card.name} className="w-12 rounded-md shrink-0 shadow-sm" loading="lazy" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-muted-foreground tabular-nums w-4 shrink-0 text-right">{i + 1}</span>
+                        <img src={card.images.small} alt={card.name} className="w-11 rounded-md shrink-0 shadow-sm" loading="lazy" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-foreground">{card.name}</p>
-                          <p className="text-xs text-muted-foreground">{card.set.name} · #{card.number}/{card.set.printedTotal || card.set.total}</p>
+                          <div className="flex items-start justify-between gap-1">
+                            <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
+                              disabled={addingCards.has(card.id)}
+                              onClick={(e) => handleAdd(e, card)}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{card.set.name} · #{card.number}/{card.set.printedTotal || card.set.total}</p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <span className="text-xs font-bold text-foreground tabular-nums">{formatPrice(price)}</span>
+                            <span className={`text-[10px] font-medium tabular-nums ${pct24h.className}`}>{pct24h.text}</span>
+                            <span className={`text-[10px] font-medium tabular-nums ${pct7d.className}`}>{pct7d.text}</span>
+                            {isRecentFilter && (
+                              <SetSentimentBadge
+                                upvotes={sentiment?.upvotes ?? 0}
+                                downvotes={sentiment?.downvotes ?? 0}
+                                score={sentiment?.score ?? 0}
+                                currentUserVote={sentiment?.currentUserVote ?? null}
+                                onVote={(vt) => handleVote(card.id, vt)}
+                                compact
+                              />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 mt-2 w-full">
-                        <span className="text-sm font-bold text-foreground tabular-nums">{formatPrice(price)}</span>
-                        <span className={`text-[10px] font-medium tabular-nums ${pct24h.className}`}>{pct24h.text}</span>
-                        <span className={`text-[10px] font-medium tabular-nums ${pct7d.className}`}>{pct7d.text}</span>
-                        {isRecentFilter && (
-                          <SetSentimentBadge
-                            upvotes={sentiment?.upvotes ?? 0}
-                            downvotes={sentiment?.downvotes ?? 0}
-                            score={sentiment?.score ?? 0}
-                            currentUserVote={sentiment?.currentUserVote ?? null}
-                            onVote={(vt) => handleVote(card.id, vt)}
-                            compact
-                          />
-                        )}
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0 ml-auto"
-                          disabled={addingCards.has(card.id)}
-                          onClick={(e) => handleAdd(e, card)}
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </Button>
                       </div>
                     </div>
                   </motion.div>
