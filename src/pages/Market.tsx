@@ -566,33 +566,31 @@ export default function Market() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-foreground">{card.name}</p>
                           <p className="text-xs text-muted-foreground">{card.set.name} · #{card.number}/{card.set.printedTotal || card.set.total}</p>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-sm font-bold text-foreground tabular-nums">{formatPrice(price)}</span>
-                            <span className={`text-[10px] font-medium tabular-nums ${pct24h.className}`}>{pct24h.text}</span>
-                            <span className={`text-[10px] font-medium tabular-nums ${pct7d.className}`}>{pct7d.text}</span>
-                          </div>
-                          <div className="flex items-center justify-between mt-1.5">
-                            {isRecentFilter ? (
-                              <SetSentimentBadge
-                                upvotes={sentiment?.upvotes ?? 0}
-                                downvotes={sentiment?.downvotes ?? 0}
-                                score={sentiment?.score ?? 0}
-                                currentUserVote={sentiment?.currentUserVote ?? null}
-                                onVote={(vt) => handleVote(card.id, vt)}
-                                compact
-                              />
-                            ) : <span />}
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
-                              disabled={addingCards.has(card.id)}
-                              onClick={(e) => handleAdd(e, card)}
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
                         </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 mt-2 w-full">
+                        <span className="text-sm font-bold text-foreground tabular-nums">{formatPrice(price)}</span>
+                        <span className={`text-[10px] font-medium tabular-nums ${pct24h.className}`}>{pct24h.text}</span>
+                        <span className={`text-[10px] font-medium tabular-nums ${pct7d.className}`}>{pct7d.text}</span>
+                        {isRecentFilter && (
+                          <SetSentimentBadge
+                            upvotes={sentiment?.upvotes ?? 0}
+                            downvotes={sentiment?.downvotes ?? 0}
+                            score={sentiment?.score ?? 0}
+                            currentUserVote={sentiment?.currentUserVote ?? null}
+                            onVote={(vt) => handleVote(card.id, vt)}
+                            compact
+                          />
+                        )}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0 ml-auto"
+                          disabled={addingCards.has(card.id)}
+                          onClick={(e) => handleAdd(e, card)}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
                     </div>
                   </motion.div>
