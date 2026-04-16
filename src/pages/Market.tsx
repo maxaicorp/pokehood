@@ -260,8 +260,8 @@ export default function Market() {
   const totalValue = rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0);
 
   const gridClasses = isSingleSet
-    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_44px_auto]"
-    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px_auto]";
+    ? "sm:grid-cols-[32px_1fr_100px_80px_80px_36px_auto]"
+    : "sm:grid-cols-[32px_1fr_140px_100px_80px_80px_36px_auto]";
 
   const SortIcon = ({ col }: { col: "price" | "24h" | "7d" }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
