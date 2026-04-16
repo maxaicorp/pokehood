@@ -22,7 +22,7 @@ export default function SealedGridView({ products }: SealedGridViewProps) {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: Math.min(i * 0.01, 0.3) }}
-            className="group relative rounded-xl overflow-hidden bg-card border border-border/50 hover:border-primary/40 transition-all hover:shadow-lg hover:shadow-primary/5"
+            className="relative rounded-xl overflow-hidden bg-card border border-border/50"
           >
             {/* Product image */}
             <div className="aspect-square relative overflow-hidden bg-muted">
@@ -30,7 +30,7 @@ export default function SealedGridView({ products }: SealedGridViewProps) {
                 <img
                   src={product.imageSmall}
                   alt={product.name}
-                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  className="w-full h-full object-cover"
                   loading="lazy"
                 />
               ) : (

@@ -18,7 +18,7 @@ export async function getSetSentiment(cardIds: string[]): Promise<Map<string, Se
   const map = new Map<string, SetSentiment>();
   if (cardIds.length === 0) return map;
 
-  const { data, error } = await (supabase.rpc as any)("get_set_sentiment", {
+  const { data, error } = await supabase.rpc("get_set_sentiment", {
     p_set_ids: cardIds,
   });
 
@@ -52,7 +52,8 @@ export async function castVote(
 ): Promise<VoteType | null> {
   // If clicking the same vote type, remove the vote (toggle off)
   if (currentVote === newVote) {
-    await (supabase.from("set_sentiment_votes") as any)
+    await supabase
+      .from("set_sentiment_votes")
       .delete()
       .eq("user_id", userId)
       .eq("card_id", cardId);
@@ -60,7 +61,8 @@ export async function castVote(
   }
 
   // Upsert the vote
-  const { error } = await (supabase.from("set_sentiment_votes") as any)
+  const { error } = await supabase
+    .from("set_sentiment_votes")
     .upsert(
       { user_id: userId, card_id: cardId, vote_type: newVote },
       { onConflict: "user_id,card_id" }

@@ -4,7 +4,7 @@ import AppHeader from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, RefreshCw } from "lucide-react";
+import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
 
 interface Activity {
   signature: string;
@@ -68,14 +68,14 @@ export default function Onchain() {
   const [page, setPage] = useState(0);
   const limit = 20;
 
-  const { data: activities, isLoading, isFetching, refetch } = useQuery({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery({
     queryKey: ["onchain-activity", typeFilter, page],
     queryFn: async () => {
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onchain-activity`;
       const params = new URLSearchParams({
         collection: "collector_crypt",
         offset: String(page * limit),
-        limit: String(limit),
+        limit: String(limit + 1), // fetch one extra to detect if there's a next page
       });
       if (typeFilter) params.set("type", typeFilter);
 
@@ -84,11 +84,18 @@ export default function Onchain() {
           "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
       });
-      if (!res.ok) throw new Error("Failed to fetch activity");
-      return (await res.json()) as Activity[];
+      if (!res.ok) throw new Error(`Activity feed unavailable (${res.status})`);
+      const raw = (await res.json()) as Activity[];
+      return {
+        activities: raw.slice(0, limit),
+        hasMore: raw.length > limit,
+      };
     },
     refetchInterval: 30000,
   });
+
+  const activities = data?.activities;
+  const hasMore = data?.hasMore ?? false;
 
   return (
     <div className="min-h-screen pb-20">
@@ -143,6 +150,20 @@ export default function Onchain() {
             </button>
           ))}
         </div>
+
+        {/* Error state */}
+        {isError && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive mb-4">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Failed to load activity</p>
+              <p className="text-xs opacity-80 mt-0.5">The onchain feed is temporarily unavailable. Try refreshing.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10">
+              Retry
+            </Button>
+          </div>
+        )}
 
         {/* Activity Feed */}
         <div className="space-y-2">
@@ -224,7 +245,7 @@ export default function Onchain() {
         </div>
 
         {/* Pagination */}
-        {activities && activities.length > 0 && (
+        {(page > 0 || hasMore) && !isError && (
           <div className="flex justify-center gap-3 mt-6">
             <Button
               variant="outline"
@@ -237,7 +258,7 @@ export default function Onchain() {
             <Button
               variant="outline"
               size="sm"
-              disabled={activities.length < limit}
+              disabled={!hasMore}
               onClick={() => setPage((p) => p + 1)}
             >
               Next

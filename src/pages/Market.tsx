@@ -294,7 +294,7 @@ export default function Market() {
             ] as const).map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
-                onClick={() => { setActiveTab(key); setSortCol(null); setViewMode("list"); }}
+                onClick={() => { setActiveTab(key); setSortCol(null); }}
                 className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === key
                     ? "border-primary text-foreground"
