@@ -262,7 +262,7 @@ export default function Market() {
   const gridClasses = isSingleSet
     ? "sm:grid-cols-[32px_1fr_100px_80px_80px_36px]"
     : isRecentFilter
-      ? "sm:grid-cols-[32px_1fr_160px_100px_80px_80px_36px_96px]"
+      ? "sm:grid-cols-[32px_1fr_160px_100px_80px_80px_96px_36px]"
       : "sm:grid-cols-[32px_1fr_160px_100px_80px_80px_36px]";
 
   const SortIcon = ({ col }: { col: "price" | "24h" | "7d" }) => {
@@ -383,8 +383,8 @@ export default function Market() {
               <button onClick={() => handleSort("7d")} className="flex items-center justify-end gap-1 whitespace-nowrap hover:text-foreground transition-colors">
                 7d % <SortIcon col="7d" />
               </button>
-              <span />
               {isRecentFilter && <span className="text-right">Vote</span>}
+              <span />
             </div>
           )}
 
@@ -535,15 +535,6 @@ export default function Market() {
                       <p className="text-sm font-bold text-foreground text-right tabular-nums">{formatPrice(price)}</p>
                       <p className={`text-xs font-medium text-right tabular-nums ${pct24h.className}`}>{pct24h.text}</p>
                       <p className={`text-xs font-medium text-right tabular-nums ${pct7d.className}`}>{pct7d.text}</p>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
-                        disabled={addingCards.has(card.id)}
-                        onClick={(e) => handleAdd(e, card)}
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </Button>
                       {isRecentFilter && (
                         <div className="flex justify-end">
                           <SetSentimentBadge
@@ -556,6 +547,15 @@ export default function Market() {
                           />
                         </div>
                       )}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
+                        disabled={addingCards.has(card.id)}
+                        onClick={(e) => handleAdd(e, card)}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
 
                     {/* Mobile: stacked layout */}
