@@ -260,8 +260,8 @@ export default function Market() {
   const totalValue = rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0);
 
   const gridClasses = isSingleSet
-    ? "sm:grid-cols-[40px_1fr_100px_72px_72px_44px_auto]"
-    : "sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px_auto]";
+    ? "sm:grid-cols-[32px_1fr_100px_80px_80px_36px_auto]"
+    : "sm:grid-cols-[32px_1fr_140px_100px_80px_80px_36px_auto]";
 
   const SortIcon = ({ col }: { col: "price" | "24h" | "7d" }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
@@ -368,7 +368,7 @@ export default function Market() {
         <div className="rounded-xl border border-border overflow-hidden">
           {/* Table header — hidden when Sealed/Most Visited tab is active or grid mode */}
           {activeTab !== "sealed" && activeTab !== "most-visited" && viewMode === "list" && (
-            <div className={`hidden sm:grid ${gridClasses} gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
+            <div className={`hidden sm:grid ${gridClasses} gap-2 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
               <span>#</span>
               <span>Card</span>
               {!isSingleSet && <span>Set</span>}
@@ -516,7 +516,7 @@ export default function Market() {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(i * 0.008, 0.3) }}
-                    className={`grid grid-cols-[24px_1fr_auto] ${gridClasses} gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors`}
+                    className={`grid grid-cols-[24px_1fr_auto] ${gridClasses} gap-2 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors`}
                     onClick={() => navigate(`/card/${card.id}`)}
                   >
                     {/* Rank */}
