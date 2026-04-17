@@ -14,6 +14,7 @@ import Terms from "./pages/Terms";
 import DemoProfile from "./pages/DemoProfile";
 import CardDetail from "./pages/CardDetail";
 import SealedDetail from "./pages/SealedDetail";
+import Games from "./pages/Games";
 import Market from "./pages/Market";
 import Sets from "./pages/Sets";
 import Onchain from "./pages/Onchain";
@@ -46,6 +47,7 @@ const App = () => (
                 <Route path="/market" element={<Market />} />
                 <Route path="/sets" element={<Sets />} />
                 <Route path="/onchain" element={<Onchain />} />
+                <Route path="/games" element={<Games />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
