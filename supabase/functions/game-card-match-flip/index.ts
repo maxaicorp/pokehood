@@ -32,7 +32,9 @@ interface Slot {
 }
 
 function computeScore(durationMs: number, wrongFlips: number): number {
-  const raw = 10_000 - Math.floor(durationMs / 10) - wrongFlips * 200;
+  // Base 10,000. Time penalty: -100/sec. Miss penalty: -100 each.
+  // Examples: 45s/0 misses = 9,550 · 90s/5 = 8,600 · 122s/15 = 7,280
+  const raw = 10_000 - Math.floor(durationMs / 100) - wrongFlips * 100;
   return Math.max(0, raw);
 }
 
