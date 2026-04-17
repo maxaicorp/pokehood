@@ -178,11 +178,11 @@ async function runPass(opts: {
       break;
     }
 
-    if (page === 1) {
+    if (page === startPage) {
       const total = result.total_count ?? 0;
       totalPages = Math.ceil(total / PAGE_SIZE);
-      const fetchPages = Math.min(pageLimit, totalPages);
-      console.log(`[${label}] Total cards: ${total} — ${totalPages} pages total, fetching ${fetchPages}`);
+      const lastPage = Math.min(endPage, totalPages);
+      console.log(`[${label}] Total cards: ${total} — ${totalPages} pages total, fetching ${startPage}..${lastPage}`);
     }
 
     for (const card of result.data ?? []) {
@@ -214,12 +214,13 @@ async function runPass(opts: {
     }
 
     pagesProcessed++;
-    console.log(`[${label}] Page ${page}/${Math.min(pageLimit, totalPages)} — ${counters.inserted} saved so far`);
+    const lastPage = Math.min(endPage, totalPages);
+    console.log(`[${label}] Page ${page}/${lastPage} — ${counters.inserted} saved so far`);
     page++;
-    if (page <= Math.min(pageLimit, totalPages)) {
+    if (page <= lastPage) {
       await new Promise((r) => setTimeout(r, DELAY_MS));
     }
-  } while (page <= Math.min(pageLimit, totalPages));
+  } while (page <= Math.min(endPage, totalPages));
 
   return pagesProcessed;
 }
