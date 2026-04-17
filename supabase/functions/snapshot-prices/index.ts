@@ -246,8 +246,12 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const mode: "daily" | "full" = body.mode === "full" ? "full" : "daily";
+    const mode: "daily" | "full" | "chunk" = body.mode === "full" ? "full" : body.mode === "chunk" ? "chunk" : "daily";
     const today = new Date().toISOString().split("T")[0];
+    // Optional chunking: { mode:"chunk", startPage:1, pageLimit:50, orderBy:"-expansion.release_date" }
+    const startPage: number = Math.max(1, Number(body.startPage) || 1);
+    const chunkPageLimit: number = Math.max(1, Number(body.pageLimit) || 50);
+    const orderBy: string = typeof body.orderBy === "string" ? body.orderBy : "-expansion.release_date";
 
     console.log(`snapshot-prices [${mode}] starting — ${today}`);
 
@@ -256,12 +260,22 @@ serve(async (req: Request) => {
     const counters = { inserted: 0, skipped: 0 };
     let pagesProcessed = 0;
 
-    if (mode === "full") {
+    if (mode === "chunk") {
+      // Chunk mode: fetch a specific page range (caller orchestrates pagination)
+      pagesProcessed += await runPass({
+        label: `chunk@${startPage}+${chunkPageLimit}`,
+        orderBy,
+        pageLimit: chunkPageLimit,
+        startPage,
+        apiKey, teamId, supabase, today, seenIds, buffer, counters,
+      });
+    } else if (mode === "full") {
       // Full mode: single pass newest-first through all pages (~235 credits)
       pagesProcessed += await runPass({
         label: "full",
         orderBy: "-expansion.release_date",
         pageLimit: Infinity,
+        startPage: 1,
         apiKey, teamId, supabase, today, seenIds, buffer, counters,
       });
     } else {
