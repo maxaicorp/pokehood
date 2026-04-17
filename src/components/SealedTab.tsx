@@ -8,7 +8,14 @@ import {
 import { formatPrice } from "@/lib/pokemon-api";
 import { formatPct } from "@/lib/price-snapshots";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Package, ArrowUpDown, ArrowUp, ArrowDown, ShoppingCart, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import SealedGridView from "@/components/SealedGridView";
 import type { ViewMode } from "@/components/ViewToggle";
@@ -137,7 +144,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
   return (
     <div>
       {/* Table header */}
-      <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
+      <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_36px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
         <span>#</span>
         <span>Product</span>
         <span>Set</span>
@@ -150,6 +157,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
         <button onClick={() => handleSort("7d")} className="flex items-center justify-end hover:text-foreground transition-colors">
           7d % <SortIcon col="7d" />
         </button>
+        <span />
       </div>
 
       {products.length === 0 && !isLoading ? (
@@ -170,13 +178,20 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                 ? `${product.variants.length} variants`
                 : product.variants[0]?.name ?? "";
 
+            const buyQuery = encodeURIComponent(`${product.name} pokemon`);
+            const buyLinks = [
+              { label: "TCGPlayer", url: `https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(product.name)}` },
+              { label: "eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${buyQuery}` },
+              { label: "Amazon", url: `https://www.amazon.com/s?k=${buyQuery}` },
+            ];
+
             return (
               <motion.div
                 key={product.id}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: Math.min(i * 0.008, 0.3) }}
-                className="grid grid-cols-[24px_1fr_auto] sm:grid-cols-[40px_1fr_160px_100px_72px_72px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 transition-colors"
+                className="grid grid-cols-[24px_1fr_auto_auto] sm:grid-cols-[40px_1fr_160px_100px_72px_72px_36px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 transition-colors"
               >
                 <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -213,6 +228,28 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                   <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
                   <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
                 </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {buyLinks.map((link) => (
+                      <DropdownMenuItem key={link.label} asChild>
+                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-4">
+                          {link.label}
+                          <ExternalLink className="w-3.5 h-3.5 opacity-50" />
+                        </a>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </motion.div>
             );
           })}
