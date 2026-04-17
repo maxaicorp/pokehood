@@ -79,7 +79,11 @@ export async function getLeaderboard(
   period: LeaderboardPeriod,
 ): Promise<LeaderboardRow[]> {
   const { start, end } = periodRange(period);
-  const { data, error } = await supabase.rpc("get_game_leaderboard", {
+  // Cast RPC name — types.ts regenerates after migration deploys
+  const { data, error } = await (supabase.rpc as unknown as (
+    fn: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: Error | null }>)("get_game_leaderboard", {
     p_game: game,
     p_start: start,
     p_end: end,

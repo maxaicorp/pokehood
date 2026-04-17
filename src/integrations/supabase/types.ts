@@ -110,6 +110,78 @@ export type Database = {
         }
         Relationships: []
       }
+      game_card_pool: {
+        Row: {
+          added_at: string
+          card_id: string
+          image_small: string
+          name: string
+        }
+        Insert: {
+          added_at?: string
+          card_id: string
+          image_small: string
+          name: string
+        }
+        Update: {
+          added_at?: string
+          card_id?: string
+          image_small?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      game_sessions: {
+        Row: {
+          completed_at: string | null
+          flips_count: number
+          game: string
+          id: string
+          last_flip_at: string | null
+          matched_slots: number[]
+          pending_flip: number | null
+          period_key: string | null
+          score: number | null
+          slots: Json
+          started_at: string
+          status: string
+          user_id: string
+          wrong_flips: number
+        }
+        Insert: {
+          completed_at?: string | null
+          flips_count?: number
+          game?: string
+          id?: string
+          last_flip_at?: string | null
+          matched_slots?: number[]
+          pending_flip?: number | null
+          period_key?: string | null
+          score?: number | null
+          slots: Json
+          started_at?: string
+          status?: string
+          user_id: string
+          wrong_flips?: number
+        }
+        Update: {
+          completed_at?: string | null
+          flips_count?: number
+          game?: string
+          id?: string
+          last_flip_at?: string | null
+          matched_slots?: number[]
+          pending_flip?: number | null
+          period_key?: string | null
+          score?: number | null
+          slots?: Json
+          started_at?: string
+          status?: string
+          user_id?: string
+          wrong_flips?: number
+        }
+        Relationships: []
+      }
       link_clicks: {
         Row: {
           clicked_at: string
@@ -163,6 +235,104 @@ export type Database = {
           price?: number
           recorded_at?: string
           set_name?: string
+        }
+        Relationships: []
+      }
+      prize_winners: {
+        Row: {
+          admin_notes: string | null
+          announced_at: string
+          carrier: string | null
+          claimed_at: string | null
+          delivered_at: string | null
+          id: string
+          prize_id: string
+          ship_to: Json | null
+          shipped_at: string | null
+          tracking_number: string | null
+          tracking_url: string | null
+          user_id: string
+          winning_score: number
+        }
+        Insert: {
+          admin_notes?: string | null
+          announced_at?: string
+          carrier?: string | null
+          claimed_at?: string | null
+          delivered_at?: string | null
+          id?: string
+          prize_id: string
+          ship_to?: Json | null
+          shipped_at?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          user_id: string
+          winning_score: number
+        }
+        Update: {
+          admin_notes?: string | null
+          announced_at?: string
+          carrier?: string | null
+          claimed_at?: string | null
+          delivered_at?: string | null
+          id?: string
+          prize_id?: string
+          ship_to?: Json | null
+          shipped_at?: string | null
+          tracking_number?: string | null
+          tracking_url?: string | null
+          user_id?: string
+          winning_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prize_winners_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: true
+            referencedRelation: "prizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prizes: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          estimated_value_usd: number | null
+          game: string
+          id: string
+          image_url: string | null
+          status: string
+          title: string
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          estimated_value_usd?: number | null
+          game?: string
+          id?: string
+          image_url?: string | null
+          status?: string
+          title: string
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          estimated_value_usd?: number | null
+          game?: string
+          id?: string
+          image_url?: string | null
+          status?: string
+          title?: string
+          week_end?: string
+          week_start?: string
         }
         Relationships: []
       }
@@ -377,6 +547,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_week_start: { Args: never; Returns: string }
+      get_game_leaderboard: {
+        Args: { p_end: string; p_game: string; p_start: string }
+        Returns: {
+          completed_at: string
+          rank: number
+          score: number
+          user_id: string
+          username: string
+        }[]
+      }
       get_set_sentiment: {
         Args: { p_set_ids: string[] }
         Returns: {
@@ -385,6 +566,18 @@ export type Database = {
           score: number
           set_id: string
           upvotes: number
+        }[]
+      }
+      get_unclaimed_wins: {
+        Args: never
+        Returns: {
+          announced_at: string
+          description: string
+          image_url: string
+          prize_id: string
+          prize_winner_id: string
+          title: string
+          winning_score: number
         }[]
       }
       has_role: {
