@@ -284,6 +284,7 @@ serve(async (req: Request) => {
         label: "newest",
         orderBy: "-expansion.release_date",
         pageLimit: DAILY_PAGE_LIMIT,
+        startPage: 1,
         apiKey, teamId, supabase, today, seenIds, buffer, counters,
       });
 
@@ -292,6 +293,7 @@ serve(async (req: Request) => {
         label: "oldest",
         orderBy: "expansion.release_date",
         pageLimit: DAILY_PAGE_LIMIT,
+        startPage: 1,
         apiKey, teamId, supabase, today, seenIds, buffer, counters,
       });
     }
