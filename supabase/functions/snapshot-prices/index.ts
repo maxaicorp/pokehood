@@ -153,6 +153,7 @@ async function runPass(opts: {
   label: string;
   orderBy: string;
   pageLimit: number;
+  startPage?: number;
   apiKey: string;
   teamId: string;
   supabase: any;
@@ -162,9 +163,11 @@ async function runPass(opts: {
   counters: { inserted: number; skipped: number };
 }): Promise<number> {
   const { label, orderBy, pageLimit, apiKey, teamId, supabase, today, seenIds, buffer, counters } = opts;
-  let page = 1;
+  const startPage = Math.max(1, opts.startPage ?? 1);
+  let page = startPage;
   let totalPages = 1;
   let pagesProcessed = 0;
+  const endPage = startPage + pageLimit - 1;
 
   do {
     const endpoint = `/pokemon/v1/en/cards?page=${page}&page_size=${PAGE_SIZE}&include=prices&orderBy=${orderBy}`;
