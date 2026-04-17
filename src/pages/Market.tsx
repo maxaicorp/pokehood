@@ -50,7 +50,7 @@ export default function Market() {
   const [activeTab, setActiveTab] = useState<MarketTab>("top");
   const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
-  const [sealedType, setSealedType] = useState("all");
+  const [sealedType, setSealedType] = useState("latest");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   // Sentiment voting state

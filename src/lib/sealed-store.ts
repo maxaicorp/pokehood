@@ -123,6 +123,22 @@ export function getSealedTrends(product: SealedProduct): {
   return { pct1d: null, pct7d: null };
 }
 
+// ─── Latest-expansions helper ─────────────────────────────────────────────────
+
+function getLatestExpansionIds(products: SealedProduct[], count: number): Set<string> {
+  const byId = new Map<string, string>(); // expansionId -> expansionReleaseDate
+  for (const p of products) {
+    if (!byId.has(p.expansionId) && p.expansionReleaseDate) {
+      byId.set(p.expansionId, p.expansionReleaseDate);
+    }
+  }
+  const sorted = [...byId.entries()]
+    .sort(([, a], [, b]) => b.localeCompare(a))
+    .slice(0, count)
+    .map(([id]) => id);
+  return new Set(sorted);
+}
+
 // ─── Main fetch (reads from cached JSON, sorted by price desc) ────────────────
 
 export async function fetchSealedProducts(opts: {
@@ -139,10 +155,17 @@ export async function fetchSealedProducts(opts: {
 
   const all = await loadSealedProducts();
 
-  // Apply type filter
-  let filtered = type && type !== "all"
-    ? all.filter((p) => p.type === type)
-    : [...all];
+  // Apply filter: "latest" = products from the 15 most-recent expansions;
+  // "all" (or falsy) = everything; otherwise match by product.type
+  let filtered: SealedProduct[];
+  if (type === "latest") {
+    const latestIds = getLatestExpansionIds(all, 15);
+    filtered = all.filter((p) => latestIds.has(p.expansionId));
+  } else if (type && type !== "all") {
+    filtered = all.filter((p) => p.type === type);
+  } else {
+    filtered = [...all];
+  }
 
   // Sort: use user-selected column, or default to price desc
   const effectiveCol = sortCol ?? "price";
@@ -173,6 +196,7 @@ export async function fetchSealedProducts(opts: {
 // ─── Sealed product type filter options ──────────────────────────────────────
 
 export const SEALED_TYPES = [
+  { value: "latest", label: "Latest (15 Sets)" },
   { value: "all", label: "All Products" },
   { value: "Booster Box", label: "Booster Box" },
   { value: "Booster Pack", label: "Booster Pack" },
