@@ -39,7 +39,6 @@ interface SeriesGroup {
 
 export default function Sets() {
   const [search, setSearch] = useState("");
-  const [showLatest, setShowLatest] = useState(false);
 
   const { data: setsResult, isLoading } = useQuery({
     queryKey: ["all-sets"],
@@ -73,20 +72,10 @@ export default function Sets() {
     return sorted.map(([series, sets]) => ({ series, sets }));
   }, [setsResult]);
 
-  // Latest: top 10 newest sets across all series, auto-updates as new sets release
-  const latestSets = useMemo<SeriesGroup[]>(() => {
-    const all = (setsResult?.data ?? []).filter((s) => !s.isOnlineOnly);
-    const top10 = [...all]
-      .sort((a, b) => b.releaseDate.localeCompare(a.releaseDate))
-      .slice(0, 10);
-    return [{ series: "Latest", sets: top10 }];
-  }, [setsResult]);
-
   const filtered = useMemo(() => {
-    const source = showLatest ? latestSets : groups;
-    if (!search.trim()) return source;
+    if (!search.trim()) return groups;
     const q = search.toLowerCase();
-    return source
+    return groups
       .map((g) => ({
         ...g,
         sets: g.sets.filter(
@@ -96,7 +85,7 @@ export default function Sets() {
         ),
       }))
       .filter((g) => g.sets.length > 0);
-  }, [groups, latestSets, showLatest, search]);
+  }, [groups, search]);
 
   const totalSets = groups.reduce((sum, g) => sum + g.sets.length, 0);
 
@@ -115,23 +104,11 @@ export default function Sets() {
                 className="pl-9 bg-background"
               />
             </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowLatest((v) => !v)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  showLatest
-                    ? "bg-primary/15 border-primary/40 text-primary"
-                    : "border-border/50 text-muted-foreground hover:text-foreground hover:border-border"
-                }`}
-              >
-                Latest
-              </button>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Layers className="w-4 h-4" />
-                <span>{totalSets} expansions</span>
-                <span className="text-border">·</span>
-                <span>{groups.length} series</span>
-              </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Layers className="w-4 h-4" />
+              <span>{totalSets} expansions</span>
+              <span className="text-border">·</span>
+              <span>{groups.length} series</span>
             </div>
           </div>
         </div>
