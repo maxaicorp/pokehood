@@ -1,4 +1,4 @@
-import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +17,8 @@ import {
   addCardToWishlist,
   getAllWishlistCardIds,
 } from "@/lib/wishlist-store";
+import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
+import CardSentimentWidget from "@/components/CardSentimentWidget";
 import AppHeader from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +58,7 @@ export default function CardDetail() {
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
   const [addingToCollection, setAddingToCollection] = useState(false);
+  const [sentiment, setSentiment] = useState<SetSentiment | null>(null);
 
   const { data: card, isLoading: cardLoading } = useQuery({
     queryKey: ["card-base", id],
@@ -82,6 +85,15 @@ export default function CardDetail() {
     }
   }, [card?.id]);
 
+  useEffect(() => {
+    if (!card) return;
+    getSetSentiment([card.id]).then((map) => {
+      setSentiment(
+        map.get(card.id) ?? { setId: card.id, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null }
+      );
+    });
+  }, [card?.id]);
+
   const { data: setCardsResult } = useQuery({
     queryKey: ["set-cards-suggestions", card?.set.id],
     queryFn: () => getSetCards(card!.set.id, 1, 20),
@@ -101,6 +113,25 @@ export default function CardDetail() {
     enabled: !!user,
   });
 
+  const handleVote = async (voteType: VoteType) => {
+    if (!user) {
+      toast.info("Sign in to vote");
+      navigate("/auth");
+      return;
+    }
+    if (!card) return;
+    const current = sentiment?.currentUserVote ?? null;
+    const newVote = current === voteType ? null : voteType;
+    // Optimistic update
+    setSentiment((prev) => {
+      const base = prev ?? { setId: card.id, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
+      const upvotes = Math.max(0, base.upvotes + (voteType === "up" ? (current === "up" ? -1 : 1) : (current === "up" ? -1 : 0)));
+      const downvotes = Math.max(0, base.downvotes + (voteType === "down" ? (current === "down" ? -1 : 1) : (current === "down" ? -1 : 0)));
+      return { ...base, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote };
+    });
+    await castVote(card.id, user.id, current, voteType);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -108,10 +139,10 @@ export default function CardDetail() {
       </div>
     );
   }
-  if (!user) return <Navigate to="/auth" replace />;
 
   const handleAddToCollection = async () => {
-    if (!card || !user) return;
+    if (!card) return;
+    if (!user) { toast.info("Sign in to add to your collection"); navigate("/auth"); return; }
     setAddingToCollection(true);
     const result = await addToCollection(card, user.id, "NM");
     if (result) {
@@ -124,7 +155,8 @@ export default function CardDetail() {
   };
 
   const handleWishlist = async () => {
-    if (!card || !user) return;
+    if (!card) return;
+    if (!user) { toast.info("Sign in to add to your wishlist"); navigate("/auth"); return; }
     let target = wishlists[0];
     if (!target) {
       try {
@@ -350,6 +382,9 @@ export default function CardDetail() {
             >
               {isWishlisted ? "Wishlisted" : "Wishlist"}
             </Button>
+
+            {/* Sentiment */}
+            <CardSentimentWidget sentiment={sentiment} onVote={handleVote} />
           </div>
         </div>
 
