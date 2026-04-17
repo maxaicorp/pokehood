@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   getSealedProductById,
+  getSealedByExpansion,
   getSealedMarketPrice,
   getSealedTrends,
   type SealedProduct,
 } from "@/lib/sealed-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import { formatPct } from "@/lib/price-snapshots";
+import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
+import CardSentimentWidget from "@/components/CardSentimentWidget";
 import AppHeader from "@/components/AppHeader";
 import PriceChart from "@/components/PriceChart";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,29 +25,74 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, ChevronRight, ChevronDown, ExternalLink, Package, TrendingUp, TrendingDown } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 export default function SealedDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [product, setProduct] = useState<SealedProduct | null>(null);
   const [loading, setLoading] = useState(true);
+  const [related, setRelated] = useState<SealedProduct[]>([]);
+  const [activeVariantIdx, setActiveVariantIdx] = useState(0);
+  const [sentiment, setSentiment] = useState<SetSentiment | null>(null);
+
+  const sentimentKey = id ? `sealed-${id}` : "";
 
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
     setLoading(true);
-    getSealedProductById(id).then((p) => {
+    setActiveVariantIdx(0);
+    getSealedProductById(id).then(async (p) => {
       if (cancelled) return;
       setProduct(p);
       setLoading(false);
+      if (p) {
+        const others = await getSealedByExpansion(p.expansionId, p.id, 12);
+        if (!cancelled) setRelated(others);
+      }
     });
     return () => { cancelled = true; };
   }, [id]);
 
+  useEffect(() => {
+    if (!sentimentKey) return;
+    getSetSentiment([sentimentKey]).then((map) => {
+      setSentiment(
+        map.get(sentimentKey) ??
+          { setId: sentimentKey, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null }
+      );
+    });
+  }, [sentimentKey]);
+
   const price = product ? getSealedMarketPrice(product) : null;
-  const { pct1d, pct7d } = product ? getSealedTrends(product) : { pct1d: null, pct7d: null };
+  const { pct1d } = product ? getSealedTrends(product) : { pct1d: null };
   const f1d = formatPct(pct1d);
-  const f7d = formatPct(pct7d);
+
+  const handleVote = async (voteType: VoteType) => {
+    if (!user) { toast.info("Sign in to vote"); navigate("/auth"); return; }
+    if (!product) return;
+    const current = sentiment?.currentUserVote ?? null;
+    const newVote = current === voteType ? null : voteType;
+    setSentiment((prev) => {
+      const base = prev ?? { setId: sentimentKey, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
+      const upvotes = Math.max(0, base.upvotes + (voteType === "up" ? (current === "up" ? -1 : 1) : (current === "up" ? -1 : 0)));
+      const downvotes = Math.max(0, base.downvotes + (voteType === "down" ? (current === "down" ? -1 : 1) : (current === "down" ? -1 : 0)));
+      return { ...base, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote };
+    });
+    await castVote(sentimentKey, user.id, current, voteType);
+  };
+
+  const handleAddToCollection = () => {
+    if (!user) { toast.info("Sign in to track sealed products"); navigate("/auth"); return; }
+    toast.info("Sealed product collections coming soon");
+  };
+
+  const handleWishlist = () => {
+    if (!user) { toast.info("Sign in to wishlist sealed products"); navigate("/auth"); return; }
+    toast.info("Sealed product wishlist coming soon");
+  };
 
   const buyQuery = product ? encodeURIComponent(`${product.name} ${product.expansionName} pokemon`) : "";
   const buyLinks = [
@@ -51,6 +100,14 @@ export default function SealedDetail() {
     { label: "eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${buyQuery}&_sacat=0` },
     { label: "Amazon", url: `https://www.amazon.com/s?k=${buyQuery}` },
   ];
+
+  const variantPrice = (v: SealedProduct["variants"][number]): number | null => {
+    for (const p of v.prices) {
+      if (p.market > 0) return p.market;
+      if (p.low > 0) return p.low;
+    }
+    return null;
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
@@ -95,7 +152,7 @@ export default function SealedDetail() {
             )}
           </div>
 
-          {/* Col 2 — Info + chart */}
+          {/* Col 2 — Info + (variant tabs) + chart */}
           <div className="flex flex-col gap-4 min-w-0">
             {loading ? (
               <div className="space-y-2">
@@ -120,24 +177,13 @@ export default function SealedDetail() {
                       <span>{product.expansionReleaseDate}</span>
                     </>
                   )}
-                  {product.variants.length > 1 && (
-                    <>
-                      <span>·</span>
-                      <span>{product.variants.length} variants</span>
-                    </>
-                  )}
                 </div>
-                {product.description && (
-                  <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
-                    {product.description}
-                  </p>
-                )}
               </div>
             ) : (
               <p className="text-muted-foreground">Product not found.</p>
             )}
 
-            {/* Price — mobile only */}
+            {/* Mobile price */}
             {price !== null && (
               <div className="lg:hidden">
                 <div className="flex items-baseline gap-3 flex-wrap">
@@ -154,7 +200,33 @@ export default function SealedDetail() {
               </div>
             )}
 
-            {/* Price chart (price_snapshots uses sealed-* prefix) */}
+            {/* Variant tabs (only when there are multiple variants) */}
+            {product && product.variants.length > 1 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {product.variants.map((v, idx) => {
+                  const vp = variantPrice(v);
+                  const isActive = idx === activeVariantIdx;
+                  return (
+                    <button
+                      key={v.name + idx}
+                      onClick={() => setActiveVariantIdx(idx)}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                        isActive
+                          ? "border-primary/60 bg-primary/10 text-foreground"
+                          : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
+                      }`}
+                    >
+                      <span className="capitalize">{v.name || "default"}</span>
+                      {vp !== null && (
+                        <span className="ml-2 tabular-nums opacity-80">{formatPrice(vp)}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Price chart */}
             {product && (
               <div className="rounded-xl border border-border bg-card p-4 sm:p-5 flex-1">
                 <PriceChart
@@ -185,7 +257,7 @@ export default function SealedDetail() {
 
             <div className="hidden lg:block w-full h-px bg-border" />
 
-            {/* Buy Now dropdown */}
+            {/* Buy Now */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="w-full h-12 text-base" size="lg">
@@ -205,22 +277,63 @@ export default function SealedDetail() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Trends summary card */}
-            {product && (
-              <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-                <p className="text-sm font-semibold text-foreground mb-2">Price Trends</p>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">24h</span>
-                  <span className={`font-medium tabular-nums ${f1d.className}`}>{f1d.text}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">7d</span>
-                  <span className={`font-medium tabular-nums ${f7d.className}`}>{f7d.text}</span>
-                </div>
-              </div>
-            )}
+            <Button
+              onClick={handleAddToCollection}
+              variant="outline"
+              className="w-full h-12 text-base"
+            >
+              Add to Collection
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleWishlist}
+              className="w-full h-12 text-base"
+            >
+              Wishlist
+            </Button>
+
+            <CardSentimentWidget sentiment={sentiment} onVote={handleVote} />
           </div>
         </div>
+
+        {/* ── More from this expansion ── */}
+        {related.length > 0 && product && (
+          <div className="mt-10">
+            <h3 className="font-display font-semibold text-foreground mb-4">
+              More from {product.expansionName}
+            </h3>
+            <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+              {related.map((r) => {
+                const rp = getSealedMarketPrice(r);
+                return (
+                  <Link key={r.id} to={`/sealed/${r.id}`} className="shrink-0 group w-28 sm:w-32">
+                    <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }}>
+                      {r.imageSmall ? (
+                        <img
+                          src={r.imageSmall}
+                          alt={r.name}
+                          className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg shadow-md object-cover group-hover:shadow-lg transition-shadow bg-muted"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg bg-muted flex items-center justify-center">
+                          <Package className="w-8 h-8 text-muted-foreground/40" />
+                        </div>
+                      )}
+                      <p className="text-[11px] text-foreground font-medium mt-1 truncate w-28 sm:w-32">
+                        {r.name}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground tabular-nums">
+                        {rp !== null ? formatPrice(rp) : "—"}
+                      </p>
+                    </motion.div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

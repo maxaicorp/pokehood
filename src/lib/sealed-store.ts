@@ -61,6 +61,18 @@ export async function getSealedProductById(id: string): Promise<SealedProduct | 
   return all.find((p) => p.id === id) ?? null;
 }
 
+/** Get other sealed products from the same expansion (excludes the source product). */
+export async function getSealedByExpansion(
+  expansionId: string,
+  excludeId: string,
+  limit = 12
+): Promise<SealedProduct[]> {
+  const all = await loadSealedProducts();
+  return all
+    .filter((p) => p.expansionId === expansionId && p.id !== excludeId)
+    .slice(0, limit);
+}
+
 // ─── Price helpers ────────────────────────────────────────────────────────────
 
 /** Extract the best market price from a sealed product */
