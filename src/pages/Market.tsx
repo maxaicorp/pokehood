@@ -43,7 +43,7 @@ export default function Market() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedSetId, setSelectedSetId] = useState("latest");
+  const [selectedSetId, setSelectedSetId] = useState("recent5");
   const [addingCards, setAddingCards] = useState(new Set<string>());
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -55,7 +55,7 @@ export default function Market() {
 
   // Sentiment voting state
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
-  const isRecentFilter = selectedSetId === "recent5" || selectedSetId === "recent10" || selectedSetId === "latest";
+  const isRecentFilter = selectedSetId === "recent5" || selectedSetId === "recent10";
 
   // Card state
   const [cards, setCards] = useState<PokemonCard[]>([]);
@@ -98,9 +98,7 @@ export default function Market() {
     );
 
     let setIds: Set<string> | undefined;
-    if (selectedSetId === "latest") {
-      setIds = new Set(physicalSets.slice(0, 10).map((s) => s.id));
-    } else if (selectedSetId === "recent5") {
+    if (selectedSetId === "recent5") {
       setIds = new Set(physicalSets.slice(0, 5).map((s) => s.id));
     } else if (selectedSetId === "recent10") {
       setIds = new Set(physicalSets.slice(0, 10).map((s) => s.id));
@@ -351,7 +349,6 @@ export default function Market() {
                   <SelectValue placeholder="All Sets" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="latest">Latest</SelectItem>
                   <SelectItem value="all">All Sets</SelectItem>
                   <SelectItem value="recent5">Recent Sets (5)</SelectItem>
                   <SelectItem value="recent10">Recent Sets (10)</SelectItem>
