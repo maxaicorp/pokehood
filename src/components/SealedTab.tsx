@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   fetchSealedProducts,
   getSealedMarketPrice,
@@ -176,6 +177,9 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: Math.min(i * 0.008, 0.3) }}
+              >
+              <Link
+                to={`/sealed/${product.id}`}
                 className="grid grid-cols-[24px_1fr_auto] sm:grid-cols-[40px_1fr_160px_100px_72px_72px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 transition-colors"
               >
                 <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
@@ -213,6 +217,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                   <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
                   <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
                 </div>
+              </Link>
               </motion.div>
             );
           })}

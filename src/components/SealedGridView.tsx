@@ -3,6 +3,7 @@ import { formatPrice } from "@/lib/pokemon-api";
 import { formatPct } from "@/lib/price-snapshots";
 import { motion } from "framer-motion";
 import { Package } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface SealedGridViewProps {
   products: SealedProduct[];
@@ -22,7 +23,10 @@ export default function SealedGridView({ products }: SealedGridViewProps) {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: Math.min(i * 0.01, 0.3) }}
-            className="relative rounded-xl overflow-hidden bg-card border border-border/50"
+          >
+          <Link
+            to={`/sealed/${product.id}`}
+            className="relative rounded-xl overflow-hidden bg-card border border-border/50 block hover:border-primary/40 transition-colors"
           >
             {/* Product image */}
             <div className="aspect-square relative overflow-hidden bg-muted">
@@ -67,6 +71,7 @@ export default function SealedGridView({ products }: SealedGridViewProps) {
               <p className="text-xs font-semibold text-foreground truncate">{product.name}</p>
               <p className="text-[10px] text-muted-foreground truncate">{product.expansionName}</p>
             </div>
+          </Link>
           </motion.div>
         );
       })}

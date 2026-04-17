@@ -13,6 +13,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import DemoProfile from "./pages/DemoProfile";
 import CardDetail from "./pages/CardDetail";
+import SealedDetail from "./pages/SealedDetail";
 import Market from "./pages/Market";
 import Sets from "./pages/Sets";
 import Onchain from "./pages/Onchain";
@@ -41,6 +42,7 @@ const App = () => (
                 <Route path="/demo" element={<DemoProfile />} />
                 <Route path="/u/:slug" element={<Profile />} />
                 <Route path="/card/:id" element={<CardDetail />} />
+                <Route path="/sealed/:id" element={<SealedDetail />} />
                 <Route path="/market" element={<Market />} />
                 <Route path="/sets" element={<Sets />} />
                 <Route path="/onchain" element={<Onchain />} />

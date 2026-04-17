@@ -54,6 +54,13 @@ async function loadSealedProducts(): Promise<SealedProduct[]> {
   return sealedCache;
 }
 
+/** Find a single sealed product by id. Ensures price map is loaded so trends work. */
+export async function getSealedProductById(id: string): Promise<SealedProduct | null> {
+  await loadSealedPriceMap();
+  const all = await loadSealedProducts();
+  return all.find((p) => p.id === id) ?? null;
+}
+
 // ─── Price helpers ────────────────────────────────────────────────────────────
 
 /** Extract the best market price from a sealed product */
