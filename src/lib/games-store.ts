@@ -33,13 +33,25 @@ export interface LeaderboardRow {
 
 export type LeaderboardPeriod = "daily" | "weekly" | "alltime";
 
+// supabase-js doesn't expose the response body on non-2xx by default, so we
+// reach into the FunctionsHttpError context (which holds the Response) and
+// read the body to surface the real { error: "..." } message.
+async function extractEdgeError(error: unknown, data: unknown): Promise<string> {
+  const fromData = (data as { error?: string } | null)?.error;
+  if (fromData) return fromData;
+  const ctx = (error as { context?: Response })?.context;
+  if (ctx && typeof ctx.json === "function") {
+    try {
+      const body = await ctx.clone().json();
+      if (body?.error) return String(body.error);
+    } catch { /* fall through */ }
+  }
+  return (error as Error)?.message || "Edge function failed";
+}
+
 export async function startCardMatch(): Promise<CardMatchSession> {
   const { data, error } = await supabase.functions.invoke("game-card-match-start");
-  if (error) {
-    // Edge function returns 403 with { error: "..." } body; surface that
-    const msg = (data as { error?: string } | null)?.error || error.message;
-    throw new Error(msg);
-  }
+  if (error) throw new Error(await extractEdgeError(error, data));
   if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
   return data as CardMatchSession;
 }
@@ -48,10 +60,7 @@ export async function flipCard(sessionId: string, slotIndex: number): Promise<Fl
   const { data, error } = await supabase.functions.invoke("game-card-match-flip", {
     body: { session_id: sessionId, slot_index: slotIndex },
   });
-  if (error) {
-    const msg = (data as { error?: string } | null)?.error || error.message;
-    throw new Error(msg);
-  }
+  if (error) throw new Error(await extractEdgeError(error, data));
   if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
   return data as FlipResult;
 }

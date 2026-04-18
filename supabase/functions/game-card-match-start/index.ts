@@ -55,13 +55,15 @@ serve(async (req) => {
 
     const game = "card-match";
 
-    // Expire any prior active sessions for this user+game
-    await supabase
+    // Expire any prior active sessions for this user+game (must succeed —
+    // otherwise the unique partial index will reject the new insert).
+    const { error: expireErr } = await supabase
       .from("game_sessions")
       .update({ status: "expired" })
       .eq("user_id", user.id)
       .eq("game", game)
       .eq("status", "active");
+    if (expireErr) throw expireErr;
 
     // Pick 10 random cards from the pool
     const { data: pool, error: poolErr } = await supabase
@@ -103,11 +105,27 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error("game-card-match-start error:", msg);
+    const msg = describeError(err);
+    console.error("game-card-match-start error:", msg, err);
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+
+function describeError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object") {
+    const e = err as { message?: string; code?: string; details?: string; hint?: string };
+    const parts = [
+      e.code ? `[${e.code}]` : null,
+      e.message ?? null,
+      e.details ?? null,
+      e.hint ? `(hint: ${e.hint})` : null,
+    ].filter(Boolean);
+    if (parts.length) return parts.join(" ");
+    try { return JSON.stringify(err); } catch { /* fall through */ }
+  }
+  return "Unknown error";
+}

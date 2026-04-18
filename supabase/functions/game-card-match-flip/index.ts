@@ -221,11 +221,27 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error("game-card-match-flip error:", msg);
+    const msg = describeError(err);
+    console.error("game-card-match-flip error:", msg, err);
     return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+
+function describeError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object") {
+    const e = err as { message?: string; code?: string; details?: string; hint?: string };
+    const parts = [
+      e.code ? `[${e.code}]` : null,
+      e.message ?? null,
+      e.details ?? null,
+      e.hint ? `(hint: ${e.hint})` : null,
+    ].filter(Boolean);
+    if (parts.length) return parts.join(" ");
+    try { return JSON.stringify(err); } catch { /* fall through */ }
+  }
+  return "Unknown error";
+}
