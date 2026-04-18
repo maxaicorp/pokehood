@@ -261,14 +261,14 @@ function SlotTile({
     <button
       onClick={onClick}
       disabled={disabled || state.matched || showCard}
-      className={`relative aspect-[2.5/3.5] rounded-lg overflow-hidden transition-all ${
+      className={`group relative aspect-[2.5/3.5] rounded-lg overflow-hidden transition-all ${
         state.matched
           ? "ring-2 ring-emerald-500/60 opacity-90"
           : state.flashing
             ? "ring-2 ring-red-500/60"
             : showCard
               ? "ring-1 ring-border"
-              : "bg-gradient-to-br from-primary/20 via-primary/10 to-background border border-border hover:border-primary/40"
+              : "ring-1 ring-primary/30 hover:ring-primary/60 hover:scale-[1.02] active:scale-[0.98]"
       }`}
     >
       {showCard && state.card ? (
@@ -279,9 +279,28 @@ function SlotTile({
           loading="lazy"
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/40" />
-        </div>
+        <>
+          {/* Card back — radial primary glow with centered logo */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/10 to-background" />
+          <div
+            className="absolute inset-0 opacity-60"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.25) 0%, transparent 65%)",
+            }}
+          />
+          {/* Inset frame for a card-like edge */}
+          <div className="absolute inset-1.5 rounded-md border border-primary/25 group-hover:border-primary/50 transition-colors" />
+          {/* Logo */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <img
+              src="/logo.png"
+              alt=""
+              className="w-1/2 h-1/2 object-contain opacity-80 drop-shadow-[0_2px_6px_hsl(var(--primary)/0.4)] group-hover:opacity-100 transition-opacity"
+              draggable={false}
+            />
+          </div>
+        </>
       )}
     </button>
   );
