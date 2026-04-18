@@ -231,17 +231,32 @@ serve(async (req) => {
 });
 
 function describeError(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (err && typeof err === "object") {
-    const e = err as { message?: string; code?: string; details?: string; hint?: string };
-    const parts = [
-      e.code ? `[${e.code}]` : null,
-      e.message ?? null,
-      e.details ?? null,
-      e.hint ? `(hint: ${e.hint})` : null,
-    ].filter(Boolean);
-    if (parts.length) return parts.join(" ");
-    try { return JSON.stringify(err); } catch { /* fall through */ }
+  try {
+    if (err === null) return "thrown: null";
+    if (err === undefined) return "thrown: undefined";
+    const t = typeof err;
+    if (t === "string" || t === "number" || t === "boolean") return `thrown ${t}: ${String(err)}`;
+    if (err instanceof Error) {
+      const name = err.name || "Error";
+      const msg = err.message || "(no message)";
+      return `${name}: ${msg}`;
+    }
+    if (t === "object") {
+      const e = err as Record<string, unknown>;
+      const parts: string[] = [];
+      if (e.code) parts.push(`[${String(e.code)}]`);
+      if (e.message) parts.push(String(e.message));
+      if (e.details) parts.push(String(e.details));
+      if (e.hint) parts.push(`(hint: ${String(e.hint)})`);
+      if (e.status) parts.push(`status=${String(e.status)}`);
+      if (parts.length) return parts.join(" ");
+      const keys = Object.keys(e);
+      if (keys.length) return `object with keys: ${keys.join(", ")}`;
+      const ctor = (err as { constructor?: { name?: string } })?.constructor?.name;
+      return ctor ? `empty ${ctor}` : "empty object";
+    }
+    return `thrown ${t}: ${String(err)}`;
+  } catch (_inner) {
+    return "describeError failed";
   }
-  return "Unknown error";
 }
