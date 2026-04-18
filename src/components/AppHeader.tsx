@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X, TrendingUp, Layers, Link2, Gamepad2 } from "lucide-react";
+import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X, TrendingUp, Layers, Link2, Gamepad2, BarChart3 } from "lucide-react";
 import GlobalSearch from "@/components/GlobalSearch";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -196,6 +196,11 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                   )}
                   <DropdownMenuItem onClick={() => setQrOpen(true)}>
                     <QrCode className="w-4 h-4 mr-2" /> Share QR Code
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/stats">
+                      <BarChart3 className="w-4 h-4 mr-2" /> My Stats
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
                     {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
