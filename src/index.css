@@ -252,8 +252,11 @@
 /* Card Match 3-column desktop layout (Tailwind JIT chokes on commas inside arbitrary minmax) */
 @media (min-width: 1024px) {
   .cm-layout {
-    grid-template-columns: minmax(0, 580px) minmax(240px, 320px) minmax(240px, 320px);
-    justify-content: start;
+    grid-template-columns: minmax(0, 580px) minmax(240px, 1fr) minmax(280px, 1fr);
     column-gap: 1.5rem;
+    align-items: stretch;
+  }
+  .cm-layout > * {
+    height: 100%;
   }
 }

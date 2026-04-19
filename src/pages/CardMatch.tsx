@@ -172,7 +172,7 @@ export default function CardMatch() {
           Games
         </button>
 
-        <div className="cm-layout grid grid-cols-1 gap-6 items-start">
+        <div className="cm-layout grid grid-cols-1 gap-6 lg:items-stretch">
           {/* Game */}
           <div>
             <div className="mb-4">
@@ -225,13 +225,13 @@ export default function CardMatch() {
           </div>
 
           {/* Leaderboard column */}
-          <div className="space-y-4">
-            <GameLeaderboard game="card-match" />
+          <div className="space-y-4 lg:h-full">
+            <GameLeaderboard game="card-match" className="lg:h-full" />
           </div>
 
           {/* Prize column */}
-          <div className="space-y-4">
-            <CurrentPrizeCard game="card-match" />
+          <div className="space-y-4 lg:h-full">
+            <CurrentPrizeCard game="card-match" className="lg:h-full lg:flex lg:flex-col" />
           </div>
         </div>
       </div>
