@@ -113,50 +113,47 @@ serve(async (req) => {
       return fail(`Card pool too small (${pool?.length ?? 0}); seed game_card_pool first`);
     }
 
-    // Self-host card images: prefer cards already cached in the Supabase
-    // 'card-images' bucket. List the bucket once (cheap) and intersect with
-    // the pool so we never serve from Scrydex/TCGdex CDN at runtime.
+    // Self-host card images from the Supabase 'card-images' bucket. If a
+    // picked card hasn't been cached yet, fetch from the upstream CDN once
+    // and upload to storage so future games serve directly from Supabase.
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const storagePrefix = `${supabaseUrl}/storage/v1/object/public/card-images/`;
 
-    const cachedIds = new Set<string>();
-    // Bucket layout: <card_id>/small.webp — list root with limit large enough
-    // to cover all cached cards.
-    const { data: rootEntries } = await supabase.storage
-      .from("card-images")
-      .list("", { limit: 1000 });
-    if (rootEntries) {
-      // Folders appear as entries with id === null.
-      const folders = rootEntries.filter((e) => e.id === null).map((e) => e.name);
-      // Probe each folder for small.webp in parallel batches.
-      const concurrency = 24;
-      for (let i = 0; i < folders.length; i += concurrency) {
-        const batch = folders.slice(i, i + concurrency);
-        const results = await Promise.all(
-          batch.map((f) =>
-            supabase.storage
-              .from("card-images")
-              .list(f, { limit: 1, search: "small.webp" })
-              .then((r) => !!(r.data && r.data.length > 0))
-              .catch(() => false),
-          ),
-        );
-        batch.forEach((f, idx) => {
-          if (results[idx]) cachedIds.add(f);
-        });
+    const picked = shuffle([...pool]).slice(0, PAIRS);
+
+    async function ensureCached(cardId: string, sourceUrl: string): Promise<string> {
+      const objectPath = `${cardId}/small.webp`;
+      const publicUrl = `${storagePrefix}${objectPath}`;
+      // Probe existence cheaply.
+      const { data: existing } = await supabase.storage
+        .from("card-images")
+        .list(cardId, { limit: 1, search: "small.webp" });
+      if (existing && existing.length > 0) return publicUrl;
+
+      // Cache miss — fetch + upload. On any failure, fall back to source URL
+      // so the game still plays (we just won't be self-hosted for this card).
+      try {
+        const res = await fetch(sourceUrl);
+        if (!res.ok) return sourceUrl;
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const contentType = res.headers.get("content-type") || "image/webp";
+        const { error: upErr } = await supabase.storage
+          .from("card-images")
+          .upload(objectPath, bytes, { contentType, upsert: true });
+        if (upErr) return sourceUrl;
+        return publicUrl;
+      } catch {
+        return sourceUrl;
       }
     }
 
-    const eligible = pool.filter((c) => cachedIds.has(c.card_id));
-    const useStorage = eligible.length >= PAIRS;
-    const sourcePool = useStorage ? eligible : pool;
+    const resolvedImages = await Promise.all(
+      picked.map((c) => ensureCached(c.card_id, c.image_small)),
+    );
 
-    const picked = shuffle([...sourcePool]).slice(0, PAIRS);
     const slots = shuffle(
-      picked.flatMap((c) => {
-        const image = useStorage
-          ? `${storagePrefix}${c.card_id}/small.webp`
-          : c.image_small;
+      picked.flatMap((c, i) => {
+        const image = resolvedImages[i];
         return [
           { card_id: c.card_id, name: c.name, image_small: image },
           { card_id: c.card_id, name: c.name, image_small: image },
