@@ -86,9 +86,9 @@ export default function CurrentPrizeCard({ game, className = "" }: Props) {
           </p>
         </div>
       ) : (
-        <div className="p-4 space-y-3">
+        <div className="p-4 space-y-3 flex-1 flex flex-col">
           {prize.image_url ? (
-            <div className="relative aspect-[4/3] rounded-lg overflow-hidden border border-border bg-background/40">
+            <div className="relative w-full rounded-lg overflow-hidden border border-border bg-background/40 aspect-[4/3] lg:aspect-auto lg:flex-1 lg:min-h-[260px]">
               <img
                 src={prize.image_url}
                 alt={prize.title}
@@ -97,7 +97,7 @@ export default function CurrentPrizeCard({ game, className = "" }: Props) {
               />
             </div>
           ) : (
-            <div className="aspect-[4/3] rounded-lg border border-border bg-gradient-to-br from-primary/15 to-background flex items-center justify-center">
+            <div className="aspect-[4/3] lg:aspect-auto lg:flex-1 lg:min-h-[260px] rounded-lg border border-border bg-gradient-to-br from-primary/15 to-background flex items-center justify-center">
               <Gift className="w-10 h-10 text-primary/50" />
             </div>
           )}
