@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import AppHeader from "@/components/AppHeader";
 import GameLeaderboard from "@/components/GameLeaderboard";
+import CurrentPrizeCard from "@/components/CurrentPrizeCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { startCardMatch, flipCard, type SlotCard } from "@/lib/games-store";
@@ -171,7 +172,7 @@ export default function CardMatch() {
           Games
         </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,560px)_320px] gap-6 lg:gap-8 lg:justify-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,560px)_280px_280px] gap-6 lg:gap-6 lg:justify-start">
           {/* Game */}
           <div>
             <div className="mb-4">
@@ -223,9 +224,14 @@ export default function CardMatch() {
             </div>
           </div>
 
-          {/* Side panel */}
+          {/* Leaderboard column */}
           <div className="space-y-4">
             <GameLeaderboard game="card-match" />
+          </div>
+
+          {/* Prize column */}
+          <div className="space-y-4">
+            <CurrentPrizeCard game="card-match" />
           </div>
         </div>
       </div>
