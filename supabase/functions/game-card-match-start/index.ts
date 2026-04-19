@@ -1,11 +1,11 @@
 /**
  * game-card-match-start
  *
- * Creates a new Card Match session for the authenticated user.
- * - Requires confirmed email
- * - Expires any prior 'active' session for this user+game
- * - Picks 10 random cards from game_card_pool, duplicates + shuffles to 20 slots
- * - Returns session_id + slot count (NEVER returns card info — flips reveal)
+ * Always returns HTTP 200 with { ok: true, ... } or { ok: false, error: "..." }.
+ * Lovable's runtime tends to swallow non-2xx response bodies and substitute a
+ * generic "Unknown error" placeholder, which makes 500s impossible to debug.
+ * The 200-with-envelope pattern guarantees our diagnostic message reaches the
+ * client.
  */
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -27,92 +27,18 @@ function shuffle<T>(arr: T[]): T[] {
   return arr;
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+function ok(payload: Record<string, unknown>): Response {
+  return new Response(JSON.stringify({ ok: true, ...payload }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
-  try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-
-    // Auth
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError) throw new Error(`Auth error: ${userError.message}`);
-    const user = userData.user;
-    if (!user) throw new Error("Not authenticated");
-    if (!user.email_confirmed_at) {
-      return new Response(
-        JSON.stringify({ error: "Please verify your email to play." }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const game = "card-match";
-
-    // Expire any prior active sessions for this user+game (must succeed —
-    // otherwise the unique partial index will reject the new insert).
-    const { error: expireErr } = await supabase
-      .from("game_sessions")
-      .update({ status: "expired" })
-      .eq("user_id", user.id)
-      .eq("game", game)
-      .eq("status", "active");
-    if (expireErr) throw expireErr;
-
-    // Pick 10 random cards from the pool
-    const { data: pool, error: poolErr } = await supabase
-      .from("game_card_pool")
-      .select("card_id, name, image_small");
-    if (poolErr) throw poolErr;
-    if (!pool || pool.length < PAIRS) {
-      throw new Error(`Card pool too small (${pool?.length ?? 0}); seed game_card_pool first`);
-    }
-
-    const picked = shuffle([...pool]).slice(0, PAIRS);
-
-    // Duplicate + shuffle into 20 slots
-    const slots = shuffle(
-      picked.flatMap((c) => [
-        { card_id: c.card_id, name: c.name, image_small: c.image_small },
-        { card_id: c.card_id, name: c.name, image_small: c.image_small },
-      ]),
-    );
-
-    const { data: session, error: insertErr } = await supabase
-      .from("game_sessions")
-      .insert({
-        user_id: user.id,
-        game,
-        slots,
-        status: "active",
-      })
-      .select("id, started_at")
-      .single();
-    if (insertErr) throw insertErr;
-
-    return new Response(
-      JSON.stringify({
-        session_id: session.id,
-        started_at: session.started_at,
-        slots: SLOTS,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (err) {
-    const msg = describeError(err);
-    console.error("game-card-match-start error:", msg, err);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
+function fail(error: string, extra: Record<string, unknown> = {}): Response {
+  // Always 200 so the response body reaches the client.
+  return new Response(JSON.stringify({ ok: false, error, ...extra }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
 
 function describeError(err: unknown): string {
   try {
@@ -140,7 +66,81 @@ function describeError(err: unknown): string {
       return ctor ? `empty ${ctor}` : "empty object";
     }
     return `thrown ${t}: ${String(err)}`;
-  } catch (_inner) {
+  } catch {
     return "describeError failed";
   }
 }
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) return fail("No authorization header");
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError) return fail(`Auth: ${userError.message}`);
+    const user = userData.user;
+    if (!user) return fail("Not authenticated");
+    if (!user.email_confirmed_at) {
+      return fail("Please verify your email to play.");
+    }
+
+    const game = "card-match";
+
+    // DELETE prior active sessions instead of UPDATE — eliminates any
+    // read-your-writes race against the unique partial index when we insert.
+    const { error: delErr } = await supabase
+      .from("game_sessions")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("game", game)
+      .eq("status", "active");
+    if (delErr) return fail(`Delete prior actives: ${describeError(delErr)}`);
+
+    const { data: pool, error: poolErr } = await supabase
+      .from("game_card_pool")
+      .select("card_id, name, image_small");
+    if (poolErr) return fail(`Read pool: ${describeError(poolErr)}`);
+    if (!pool || pool.length < PAIRS) {
+      return fail(`Card pool too small (${pool?.length ?? 0}); seed game_card_pool first`);
+    }
+
+    const picked = shuffle([...pool]).slice(0, PAIRS);
+    const slots = shuffle(
+      picked.flatMap((c) => [
+        { card_id: c.card_id, name: c.name, image_small: c.image_small },
+        { card_id: c.card_id, name: c.name, image_small: c.image_small },
+      ]),
+    );
+
+    const { data: session, error: insertErr } = await supabase
+      .from("game_sessions")
+      .insert({
+        user_id: user.id,
+        game,
+        slots,
+        status: "active",
+      })
+      .select("id, started_at")
+      .single();
+    if (insertErr) return fail(`Insert session: ${describeError(insertErr)}`);
+
+    return ok({
+      session_id: session.id,
+      started_at: session.started_at,
+      slots: SLOTS,
+    });
+  } catch (err) {
+    const msg = describeError(err);
+    console.error("game-card-match-start unhandled:", msg, err);
+    return fail(msg);
+  }
+});

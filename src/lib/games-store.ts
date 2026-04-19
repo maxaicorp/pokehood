@@ -33,36 +33,45 @@ export interface LeaderboardRow {
 
 export type LeaderboardPeriod = "daily" | "weekly" | "alltime";
 
-// supabase-js doesn't expose the response body on non-2xx by default, so we
-// reach into the FunctionsHttpError context (which holds the Response) and
-// read the body to surface the real { error: "..." } message.
-async function extractEdgeError(error: unknown, data: unknown): Promise<string> {
-  const fromData = (data as { error?: string } | null)?.error;
-  if (fromData) return fromData;
-  const ctx = (error as { context?: Response })?.context;
-  if (ctx && typeof ctx.json === "function") {
-    try {
-      const body = await ctx.clone().json();
-      if (body?.error) return String(body.error);
-    } catch { /* fall through */ }
+// Edge functions return { ok: true, ...payload } or { ok: false, error }.
+// Always 200 status so the body reaches us reliably.
+async function unwrap<T>(
+  invoke: Promise<{ data: unknown; error: unknown }>,
+  fallback: string,
+): Promise<T> {
+  const { data, error } = await invoke;
+  // Network/transport-level error.
+  if (error) {
+    const ctx = (error as { context?: Response })?.context;
+    if (ctx && typeof ctx.clone === "function") {
+      try {
+        const body = await ctx.clone().json();
+        if (body?.error) throw new Error(String(body.error));
+      } catch (e) {
+        if (e instanceof Error && e.message) throw e;
+      }
+    }
+    throw new Error((error as Error)?.message || fallback);
   }
-  return (error as Error)?.message || "Edge function failed";
+  const env = data as { ok?: boolean; error?: string } | null;
+  if (!env || env.ok === false) throw new Error(env?.error || fallback);
+  return env as unknown as T;
 }
 
 export async function startCardMatch(): Promise<CardMatchSession> {
-  const { data, error } = await supabase.functions.invoke("game-card-match-start");
-  if (error) throw new Error(await extractEdgeError(error, data));
-  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
-  return data as CardMatchSession;
+  return unwrap<CardMatchSession>(
+    supabase.functions.invoke("game-card-match-start"),
+    "Failed to start game",
+  );
 }
 
 export async function flipCard(sessionId: string, slotIndex: number): Promise<FlipResult> {
-  const { data, error } = await supabase.functions.invoke("game-card-match-flip", {
-    body: { session_id: sessionId, slot_index: slotIndex },
-  });
-  if (error) throw new Error(await extractEdgeError(error, data));
-  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
-  return data as FlipResult;
+  return unwrap<FlipResult>(
+    supabase.functions.invoke("game-card-match-flip", {
+      body: { session_id: sessionId, slot_index: slotIndex },
+    }),
+    "Flip failed",
+  );
 }
 
 function periodRange(period: LeaderboardPeriod): { start: string; end: string } {

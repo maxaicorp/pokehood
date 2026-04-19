@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,12 +37,27 @@ export default function CardMatch() {
   const [matchedCount, setMatchedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  // Tracks the active flip-back timer so we can cancel on unmount/restart.
+  const flipBackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Locks input during a no-match flip-back so the UI stays coherent.
+  const animatingRef = useRef(false);
+
+  const cancelFlipBack = useCallback(() => {
+    if (flipBackTimer.current) {
+      clearTimeout(flipBackTimer.current);
+      flipBackTimer.current = null;
+    }
+    animatingRef.current = false;
+  }, []);
+
   const startNewGame = useCallback(async () => {
+    cancelFlipBack();
     setError(null);
     setCompletion(null);
     setSlots(emptySlots());
     setMatchedCount(0);
     setElapsed(0);
+    setSessionId(null);
     try {
       const session = await startCardMatch();
       setSessionId(session.session_id);
@@ -52,7 +67,7 @@ export default function CardMatch() {
       setError(msg);
       toast.error(msg);
     }
-  }, []);
+  }, [cancelFlipBack]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -64,7 +79,10 @@ export default function CardMatch() {
     startNewGame();
   }, [user, authLoading, navigate, startNewGame]);
 
-  // Elapsed clock
+  // Cleanup on unmount.
+  useEffect(() => () => cancelFlipBack(), [cancelFlipBack]);
+
+  // Elapsed clock.
   useEffect(() => {
     if (!startedAt || completion) return;
     const id = setInterval(() => setElapsed(Date.now() - startedAt), 250);
@@ -72,20 +90,15 @@ export default function CardMatch() {
   }, [startedAt, completion]);
 
   const onFlip = async (slotIdx: number) => {
-    if (!sessionId || busy || completion) return;
+    if (!sessionId || busy || completion || animatingRef.current) return;
     if (slots[slotIdx].matched || slots[slotIdx].card) return;
+
     setBusy(true);
     try {
       const res = await flipCard(sessionId, slotIdx);
-      // Reveal the clicked slot
-      setSlots((prev) => {
-        const next = [...prev];
-        next[slotIdx] = { ...next[slotIdx], card: res.card };
-        return next;
-      });
 
       if (res.match === true) {
-        // Mark both as matched
+        // Single state update: reveal + mark both matched.
         setSlots((prev) => {
           const next = [...prev];
           next[slotIdx] = { card: res.card, matched: true };
@@ -97,11 +110,12 @@ export default function CardMatch() {
         setMatchedCount((c) => c + 2);
         if (res.completed) {
           setCompletion(res.completed);
-          // Refresh leaderboard
           queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
         }
       } else if (res.match === false) {
-        // Flash both, then flip back
+        // Reveal both with flashing state, then schedule flip-back.
+        // Lock input until the animation finishes.
+        animatingRef.current = true;
         setSlots((prev) => {
           const next = [...prev];
           next[slotIdx] = { card: res.card, matched: false, flashing: true };
@@ -110,16 +124,26 @@ export default function CardMatch() {
           }
           return next;
         });
-        setTimeout(() => {
+        const otherSlot = res.otherSlot;
+        flipBackTimer.current = setTimeout(() => {
+          flipBackTimer.current = null;
           setSlots((prev) => {
             const next = [...prev];
             if (!next[slotIdx].matched) next[slotIdx] = { card: null, matched: false };
-            if (res.otherSlot != null && !next[res.otherSlot].matched) {
-              next[res.otherSlot] = { card: null, matched: false };
+            if (otherSlot != null && !next[otherSlot].matched) {
+              next[otherSlot] = { card: null, matched: false };
             }
             return next;
           });
+          animatingRef.current = false;
         }, FLIP_BACK_DELAY_MS);
+      } else {
+        // First-of-pair: just reveal the clicked slot.
+        setSlots((prev) => {
+          const next = [...prev];
+          next[slotIdx] = { ...next[slotIdx], card: res.card };
+          return next;
+        });
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Flip failed";
@@ -169,26 +193,34 @@ export default function CardMatch() {
               </div>
             </div>
 
-            {error ? (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
-                <p className="text-sm text-destructive font-medium">{error}</p>
-                <Button onClick={startNewGame} variant="outline" className="mt-3">
-                  Try again
-                </Button>
-              </div>
-            ) : !sessionId ? (
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-3">
-                {Array.from({ length: SLOT_COUNT }).map((_, i) => (
-                  <Skeleton key={i} className="aspect-[2.5/3.5] rounded-lg" />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-3">
-                {slots.map((s, i) => (
-                  <SlotTile key={i} state={s} onClick={() => onFlip(i)} disabled={busy || !!completion} />
-                ))}
-              </div>
-            )}
+            {/* Cap board width so cards stay readable and all 4 rows fit on a laptop. */}
+            <div className="max-w-[640px] mx-auto lg:mx-0">
+              {error ? (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+                  <p className="text-sm text-destructive font-medium break-words">{error}</p>
+                  <Button onClick={startNewGame} variant="outline" className="mt-3">
+                    Try again
+                  </Button>
+                </div>
+              ) : !sessionId ? (
+                <div className="grid grid-cols-5 gap-2 sm:gap-3">
+                  {Array.from({ length: SLOT_COUNT }).map((_, i) => (
+                    <Skeleton key={i} className="aspect-[2.5/3.5] rounded-lg" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-5 gap-2 sm:gap-3">
+                  {slots.map((s, i) => (
+                    <SlotTile
+                      key={i}
+                      state={s}
+                      onClick={() => onFlip(i)}
+                      disabled={busy || !!completion || animatingRef.current}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Side panel */}
@@ -280,7 +312,6 @@ function SlotTile({
         />
       ) : (
         <>
-          {/* Card back — radial primary glow with centered logo */}
           <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/10 to-background" />
           <div
             className="absolute inset-0 opacity-60"
@@ -289,9 +320,7 @@ function SlotTile({
                 "radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.25) 0%, transparent 65%)",
             }}
           />
-          {/* Inset frame for a card-like edge */}
           <div className="absolute inset-1.5 rounded-md border border-primary/25 group-hover:border-primary/50 transition-colors" />
-          {/* Logo */}
           <div className="absolute inset-0 flex items-center justify-center">
             <img
               src="/logo.png"

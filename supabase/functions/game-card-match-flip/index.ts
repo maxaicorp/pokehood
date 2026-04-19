@@ -1,15 +1,8 @@
 /**
  * game-card-match-flip
  *
- * Records one click on a slot. Server owns:
- *   - which card lives in which slot
- *   - the pending flip (1st of a pair)
- *   - timing, score, completion
- *
- * Body: { session_id: string, slot_index: number }
- *
- * Returns:
- *   { slot, card, match?: boolean, otherSlot?, otherCard?, completed?: { score, duration_ms, wrong_flips } }
+ * Always returns HTTP 200 with { ok: true, ... } or { ok: false, error: "..." }.
+ * See start function for the rationale.
  */
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -31,6 +24,49 @@ interface Slot {
   image_small: string;
 }
 
+function ok(payload: Record<string, unknown>): Response {
+  return new Response(JSON.stringify({ ok: true, ...payload }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function fail(error: string, extra: Record<string, unknown> = {}): Response {
+  return new Response(JSON.stringify({ ok: false, error, ...extra }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function describeError(err: unknown): string {
+  try {
+    if (err === null) return "thrown: null";
+    if (err === undefined) return "thrown: undefined";
+    const t = typeof err;
+    if (t === "string" || t === "number" || t === "boolean") return `thrown ${t}: ${String(err)}`;
+    if (err instanceof Error) {
+      const name = err.name || "Error";
+      const msg = err.message || "(no message)";
+      return `${name}: ${msg}`;
+    }
+    if (t === "object") {
+      const e = err as Record<string, unknown>;
+      const parts: string[] = [];
+      if (e.code) parts.push(`[${String(e.code)}]`);
+      if (e.message) parts.push(String(e.message));
+      if (e.details) parts.push(String(e.details));
+      if (e.hint) parts.push(`(hint: ${String(e.hint)})`);
+      if (e.status) parts.push(`status=${String(e.status)}`);
+      if (parts.length) return parts.join(" ");
+      const keys = Object.keys(e);
+      if (keys.length) return `object with keys: ${keys.join(", ")}`;
+      const ctor = (err as { constructor?: { name?: string } })?.constructor?.name;
+      return ctor ? `empty ${ctor}` : "empty object";
+    }
+    return `thrown ${t}: ${String(err)}`;
+  } catch {
+    return "describeError failed";
+  }
+}
+
 function computeScore(durationMs: number, wrongFlips: number): number {
   // Base 10,000. Time penalty: -100/sec. Miss penalty: -100 each.
   // Examples: 45s/0 misses = 9,550 · 90s/5 = 8,600 · 122s/15 = 7,280
@@ -49,81 +85,46 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Auth
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    if (!authHeader) return fail("No authorization header");
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError) throw new Error(`Auth error: ${userError.message}`);
+    if (userError) return fail(`Auth: ${userError.message}`);
     const user = userData.user;
-    if (!user) throw new Error("Not authenticated");
+    if (!user) return fail("Not authenticated");
 
     const body = await req.json().catch(() => ({}));
     const sessionId = String(body.session_id ?? "");
     const slotIndex = Number(body.slot_index);
     if (!sessionId || !Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= SLOT_COUNT) {
-      return new Response(JSON.stringify({ error: "Invalid input" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return fail("Invalid input");
     }
 
-    // Load session
     const { data: session, error: loadErr } = await supabase
       .from("game_sessions")
       .select("*")
       .eq("id", sessionId)
       .eq("user_id", user.id)
       .maybeSingle();
-    if (loadErr) throw loadErr;
-    if (!session) {
-      return new Response(JSON.stringify({ error: "Session not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (session.status !== "active") {
-      return new Response(JSON.stringify({ error: "Session not active" }), {
-        status: 410,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (loadErr) return fail(`Load session: ${describeError(loadErr)}`);
+    if (!session) return fail("Session not found");
+    if (session.status !== "active") return fail("Session not active");
 
     const now = new Date();
     const startedAt = new Date(session.started_at);
     const elapsedMs = now.getTime() - startedAt.getTime();
     if (elapsedMs > SESSION_MAX_DURATION_MS) {
       await supabase.from("game_sessions").update({ status: "expired" }).eq("id", sessionId);
-      return new Response(JSON.stringify({ error: "Session expired" }), {
-        status: 410,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return fail("Session expired");
     }
 
-    // Validate slot is clickable
     const matched: number[] = session.matched_slots ?? [];
-    if (matched.includes(slotIndex)) {
-      return new Response(JSON.stringify({ error: "Slot already matched" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (session.pending_flip === slotIndex) {
-      return new Response(JSON.stringify({ error: "Slot already showing" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (matched.includes(slotIndex)) return fail("Slot already matched");
+    if (session.pending_flip === slotIndex) return fail("Slot already showing");
 
-    // Rate limit
     if (session.last_flip_at) {
       const since = now.getTime() - new Date(session.last_flip_at).getTime();
-      if (since < MIN_FLIP_INTERVAL_MS) {
-        return new Response(JSON.stringify({ error: "Too fast" }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (since < MIN_FLIP_INTERVAL_MS) return fail("Too fast");
     }
 
     const slots: Slot[] = session.slots;
@@ -131,7 +132,6 @@ serve(async (req) => {
 
     // Branch: first or second flip of the pair?
     if (session.pending_flip === null || session.pending_flip === undefined) {
-      // First flip — set pending
       const { error: upErr } = await supabase
         .from("game_sessions")
         .update({
@@ -140,15 +140,11 @@ serve(async (req) => {
           last_flip_at: now.toISOString(),
         })
         .eq("id", sessionId);
-      if (upErr) throw upErr;
+      if (upErr) return fail(`Update pending: ${describeError(upErr)}`);
 
-      return new Response(
-        JSON.stringify({ slot: slotIndex, card }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return ok({ slot: slotIndex, card });
     }
 
-    // Second flip — check match
     const pendingSlot: number = session.pending_flip;
     const pendingCard = slots[pendingSlot];
     const isMatch = pendingCard.card_id === card.card_id;
@@ -183,22 +179,19 @@ serve(async (req) => {
         .from("game_sessions")
         .update(update)
         .eq("id", sessionId);
-      if (upErr) throw upErr;
+      if (upErr) return fail(`Update match: ${describeError(upErr)}`);
 
-      return new Response(
-        JSON.stringify({
-          slot: slotIndex,
-          card,
-          match: true,
-          otherSlot: pendingSlot,
-          otherCard: pendingCard,
-          completed,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return ok({
+        slot: slotIndex,
+        card,
+        match: true,
+        otherSlot: pendingSlot,
+        otherCard: pendingCard,
+        completed,
+      });
     }
 
-    // No match — increment wrong_flips, clear pending
+    // No match.
     const { error: upErr } = await supabase
       .from("game_sessions")
       .update({
@@ -208,55 +201,18 @@ serve(async (req) => {
         last_flip_at: now.toISOString(),
       })
       .eq("id", sessionId);
-    if (upErr) throw upErr;
+    if (upErr) return fail(`Update no-match: ${describeError(upErr)}`);
 
-    return new Response(
-      JSON.stringify({
-        slot: slotIndex,
-        card,
-        match: false,
-        otherSlot: pendingSlot,
-        otherCard: pendingCard,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return ok({
+      slot: slotIndex,
+      card,
+      match: false,
+      otherSlot: pendingSlot,
+      otherCard: pendingCard,
+    });
   } catch (err) {
     const msg = describeError(err);
-    console.error("game-card-match-flip error:", msg, err);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("game-card-match-flip unhandled:", msg, err);
+    return fail(msg);
   }
 });
-
-function describeError(err: unknown): string {
-  try {
-    if (err === null) return "thrown: null";
-    if (err === undefined) return "thrown: undefined";
-    const t = typeof err;
-    if (t === "string" || t === "number" || t === "boolean") return `thrown ${t}: ${String(err)}`;
-    if (err instanceof Error) {
-      const name = err.name || "Error";
-      const msg = err.message || "(no message)";
-      return `${name}: ${msg}`;
-    }
-    if (t === "object") {
-      const e = err as Record<string, unknown>;
-      const parts: string[] = [];
-      if (e.code) parts.push(`[${String(e.code)}]`);
-      if (e.message) parts.push(String(e.message));
-      if (e.details) parts.push(String(e.details));
-      if (e.hint) parts.push(`(hint: ${String(e.hint)})`);
-      if (e.status) parts.push(`status=${String(e.status)}`);
-      if (parts.length) return parts.join(" ");
-      const keys = Object.keys(e);
-      if (keys.length) return `object with keys: ${keys.join(", ")}`;
-      const ctor = (err as { constructor?: { name?: string } })?.constructor?.name;
-      return ctor ? `empty ${ctor}` : "empty object";
-    }
-    return `thrown ${t}: ${String(err)}`;
-  } catch (_inner) {
-    return "describeError failed";
-  }
-}
