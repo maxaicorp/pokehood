@@ -13,16 +13,25 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SLOT_COUNT = 20;
-const FLIP_BACK_DELAY_MS = 1600;
+const FLIP_ANIM_MS = 480; // keep in sync with .cm-flipper transition in index.css
+const FLIP_BACK_DELAY_MS = 1100;
 
 interface SlotState {
-  card: SlotCard | null; // null = face-down
+  card: SlotCard | null; // card data persists across flip-back so the image renders during rotation
+  revealed: boolean;     // controls the rotateY(180deg) flip
   matched: boolean;
   flashing?: boolean;
 }
 
 function emptySlots(): SlotState[] {
-  return Array.from({ length: SLOT_COUNT }, () => ({ card: null, matched: false }));
+  return Array.from({ length: SLOT_COUNT }, () => ({ card: null, revealed: false, matched: false }));
+}
+
+function preloadImages(urls: string[]) {
+  for (const url of urls) {
+    const img = new Image();
+    img.src = url;
+  }
 }
 
 export default function CardMatch() {
@@ -40,15 +49,15 @@ export default function CardMatch() {
 
   // Tracks the active flip-back timer so we can cancel on unmount/restart.
   const flipBackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Locks input during a no-match flip-back so the UI stays coherent.
-  const animatingRef = useRef(false);
+  // State (not ref) so the disabled prop on the buttons actually re-renders.
+  const [animating, setAnimating] = useState(false);
 
   const cancelFlipBack = useCallback(() => {
     if (flipBackTimer.current) {
       clearTimeout(flipBackTimer.current);
       flipBackTimer.current = null;
     }
-    animatingRef.current = false;
+    setAnimating(false);
   }, []);
 
   const startNewGame = useCallback(async () => {
@@ -91,20 +100,25 @@ export default function CardMatch() {
   }, [startedAt, completion]);
 
   const onFlip = async (slotIdx: number) => {
-    if (!sessionId || busy || completion || animatingRef.current) return;
-    if (slots[slotIdx].matched || slots[slotIdx].card) return;
+    if (!sessionId || busy || completion || animating) return;
+    if (slots[slotIdx].matched || slots[slotIdx].revealed) return;
 
     setBusy(true);
     try {
       const res = await flipCard(sessionId, slotIdx);
+      // Preload returned images so the flip rotation isn't racing the network.
+      preloadImages(
+        [res.card?.image_small, res.otherCard?.image_small].filter(
+          (u): u is string => typeof u === "string",
+        ),
+      );
 
       if (res.match === true) {
-        // Single state update: reveal + mark both matched.
         setSlots((prev) => {
           const next = [...prev];
-          next[slotIdx] = { card: res.card, matched: true };
+          next[slotIdx] = { card: res.card, revealed: true, matched: true };
           if (res.otherSlot != null && res.otherCard) {
-            next[res.otherSlot] = { card: res.otherCard, matched: true };
+            next[res.otherSlot] = { card: res.otherCard, revealed: true, matched: true };
           }
           return next;
         });
@@ -114,35 +128,44 @@ export default function CardMatch() {
           queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
         }
       } else if (res.match === false) {
-        // Reveal both with flashing state, then schedule flip-back.
-        // Lock input until the animation finishes.
-        animatingRef.current = true;
+        // Reveal both face-up with red flash, lock input, then flip back.
+        setAnimating(true);
         setSlots((prev) => {
           const next = [...prev];
-          next[slotIdx] = { card: res.card, matched: false, flashing: true };
+          next[slotIdx] = { card: res.card, revealed: true, matched: false, flashing: true };
           if (res.otherSlot != null && res.otherCard) {
-            next[res.otherSlot] = { card: res.otherCard, matched: false, flashing: true };
+            next[res.otherSlot] = {
+              card: res.otherCard,
+              revealed: true,
+              matched: false,
+              flashing: true,
+            };
           }
           return next;
         });
         const otherSlot = res.otherSlot;
         flipBackTimer.current = setTimeout(() => {
           flipBackTimer.current = null;
+          // Drop the red flash + start rotating back. Keep `card` data so the
+          // image stays visible on the back face during the rotation.
           setSlots((prev) => {
             const next = [...prev];
-            if (!next[slotIdx].matched) next[slotIdx] = { card: null, matched: false };
+            if (!next[slotIdx].matched) {
+              next[slotIdx] = { ...next[slotIdx], revealed: false, flashing: false };
+            }
             if (otherSlot != null && !next[otherSlot].matched) {
-              next[otherSlot] = { card: null, matched: false };
+              next[otherSlot] = { ...next[otherSlot], revealed: false, flashing: false };
             }
             return next;
           });
-          animatingRef.current = false;
+          // Release the input lock once the rotation has finished.
+          setTimeout(() => setAnimating(false), FLIP_ANIM_MS);
         }, FLIP_BACK_DELAY_MS);
       } else {
-        // First-of-pair: just reveal the clicked slot.
+        // First-of-pair: reveal the clicked slot.
         setSlots((prev) => {
           const next = [...prev];
-          next[slotIdx] = { ...next[slotIdx], card: res.card };
+          next[slotIdx] = { ...next[slotIdx], card: res.card, revealed: true };
           return next;
         });
       }
@@ -216,7 +239,7 @@ export default function CardMatch() {
                       key={i}
                       state={s}
                       onClick={() => onFlip(i)}
-                      disabled={busy || !!completion || animatingRef.current}
+                      disabled={busy || !!completion || animating}
                     />
                   ))}
                 </div>
@@ -294,30 +317,25 @@ function SlotTile({
   onClick: () => void;
   disabled: boolean;
 }) {
-  const showCard = state.card !== null;
+  const { revealed, matched, flashing, card } = state;
+  const ringClass = matched
+    ? "ring-2 ring-emerald-500/60"
+    : flashing
+      ? "ring-2 ring-red-500/60"
+      : revealed
+        ? "ring-1 ring-border"
+        : "ring-1 ring-primary/30 hover:ring-primary/60";
+  const hoverClass = revealed || matched ? "" : "hover:scale-[1.02] active:scale-[0.98]";
+
   return (
     <button
       onClick={onClick}
-      disabled={disabled || state.matched || showCard}
-      className={`group relative aspect-[2.5/3.5] rounded-lg overflow-hidden transition-all ${
-        state.matched
-          ? "ring-2 ring-emerald-500/60 opacity-90"
-          : state.flashing
-            ? "ring-2 ring-red-500/60"
-            : showCard
-              ? "ring-1 ring-border"
-              : "ring-1 ring-primary/30 hover:ring-primary/60 hover:scale-[1.02] active:scale-[0.98]"
-      }`}
+      disabled={disabled || matched || revealed}
+      className={`cm-slot group relative aspect-[2.5/3.5] rounded-lg transition-transform ${ringClass} ${hoverClass}`}
     >
-      {showCard && state.card ? (
-        <img
-          src={state.card.image_small}
-          alt={state.card.name}
-          className="absolute inset-0 w-full h-full object-cover"
-          loading="lazy"
-        />
-      ) : (
-        <>
+      <div className={`cm-flipper ${revealed ? "is-flipped" : ""}`}>
+        {/* Front face: card back with logo */}
+        <div className="cm-face">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/10 to-background" />
           <div
             className="absolute inset-0 opacity-60"
@@ -335,8 +353,19 @@ function SlotTile({
               draggable={false}
             />
           </div>
-        </>
-      )}
+        </div>
+        {/* Back face: the actual card image (kept mounted during flip-back so it stays visible during rotation) */}
+        <div className="cm-face cm-face-back">
+          {card && (
+            <img
+              src={card.image_small}
+              alt={card.name}
+              className="absolute inset-0 w-full h-full object-cover"
+              draggable={false}
+            />
+          )}
+        </div>
+      </div>
     </button>
   );
 }

@@ -260,3 +260,29 @@
     height: 100%;
   }
 }
+
+/* Card Match 3D flip animation */
+.cm-slot {
+  perspective: 900px;
+}
+.cm-flipper {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 480ms cubic-bezier(0.2, 0.8, 0.25, 1);
+  transform: rotateY(0deg);
+}
+.cm-flipper.is-flipped {
+  transform: rotateY(180deg);
+}
+.cm-face {
+  position: absolute;
+  inset: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.cm-face-back {
+  transform: rotateY(180deg);
+}
