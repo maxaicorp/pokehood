@@ -174,27 +174,27 @@ export default function CardMatch() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,560px)_320px] gap-6 lg:gap-8 lg:justify-start">
           {/* Game */}
           <div>
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-              <div>
-                <h1 className="font-display font-bold text-2xl text-foreground">Card Match</h1>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Find all 10 pairs. Faster + fewer mistakes = higher score.
-                </p>
-              </div>
-              <div className="flex items-center gap-4 text-sm">
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span className="tabular-nums font-medium text-foreground">{fmtTime(elapsed)}</span>
-                </span>
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <Target className="w-3.5 h-3.5" />
-                  <span className="tabular-nums font-medium text-foreground">{matchedCount / 2}/10</span>
-                </span>
-              </div>
+            <div className="mb-4">
+              <h1 className="font-display font-bold text-2xl text-foreground">Card Match</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Find all 10 pairs. Faster + fewer mistakes = higher score.
+              </p>
             </div>
 
             {/* Mobile: 4 cols × 5 rows. Desktop: 5 cols × 4 rows. */}
             <div className="max-w-[420px] sm:max-w-[560px] mx-auto lg:mx-0">
+              {/* Live stats sit directly above the board so they read as part of it. */}
+              <div className="flex items-center justify-between mb-2.5 px-1">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span className="tabular-nums font-semibold text-foreground">{fmtTime(elapsed)}</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Target className="w-3.5 h-3.5" />
+                  <span className="tabular-nums font-semibold text-foreground">{matchedCount / 2}/10</span>
+                </span>
+              </div>
+
               {error ? (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
                   <p className="text-sm text-destructive font-medium break-words">{error}</p>
