@@ -171,7 +171,7 @@ export default function CardMatch() {
           Games
         </button>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,560px)_320px] gap-6 lg:gap-8 lg:justify-start">
           {/* Game */}
           <div>
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -193,8 +193,8 @@ export default function CardMatch() {
               </div>
             </div>
 
-            {/* Cap board width so cards stay readable and all 4 rows fit on a laptop. */}
-            <div className="max-w-[640px] mx-auto lg:mx-0">
+            {/* Mobile: 4 cols × 5 rows. Desktop: 5 cols × 4 rows. */}
+            <div className="max-w-[420px] sm:max-w-[560px] mx-auto lg:mx-0">
               {error ? (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
                   <p className="text-sm text-destructive font-medium break-words">{error}</p>
@@ -203,13 +203,13 @@ export default function CardMatch() {
                   </Button>
                 </div>
               ) : !sessionId ? (
-                <div className="grid grid-cols-5 gap-2 sm:gap-3">
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-3">
                   {Array.from({ length: SLOT_COUNT }).map((_, i) => (
                     <Skeleton key={i} className="aspect-[2.5/3.5] rounded-lg" />
                   ))}
                 </div>
               ) : (
-                <div className="grid grid-cols-5 gap-2 sm:gap-3">
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-3">
                   {slots.map((s, i) => (
                     <SlotTile
                       key={i}
