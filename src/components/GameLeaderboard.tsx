@@ -12,9 +12,9 @@ interface Props {
 }
 
 const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
-  { value: "daily", label: "Today" },
-  { value: "weekly", label: "This Week" },
-  { value: "alltime", label: "All Time" },
+  { value: "daily", label: "Day" },
+  { value: "weekly", label: "Week" },
+  { value: "alltime", label: "All" },
 ];
 
 export default function GameLeaderboard({ game, defaultPeriod = "weekly", className = "" }: Props) {

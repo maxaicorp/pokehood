@@ -20,8 +20,10 @@ SELECT
   '/data/card-pool/sv8pt5-145.png',
   250.00,
   'active',
-  id
-FROM auth.users
-WHERE email = 'collectiblezxyz@gmail.com'
-LIMIT 1
+  -- Prefer the owner email; fall back to any user so the seed never inserts NULL
+  COALESCE(
+    (SELECT id FROM auth.users WHERE email = 'collectiblezxyz@gmail.com' LIMIT 1),
+    (SELECT id FROM auth.users ORDER BY created_at ASC LIMIT 1)
+  )
+WHERE EXISTS (SELECT 1 FROM auth.users)
 ON CONFLICT (game, week_start) DO NOTHING;
