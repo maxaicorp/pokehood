@@ -172,7 +172,7 @@ export default function CardMatch() {
           Games
         </button>
 
-        <div className="cm-layout grid grid-cols-1 gap-6 items-start">
+        <div className="cm-layout grid grid-cols-1 gap-6 lg:items-stretch">
           {/* Game */}
           <div>
             <div className="mb-4">
