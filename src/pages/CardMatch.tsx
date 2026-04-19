@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SLOT_COUNT = 20;
-const FLIP_BACK_DELAY_MS = 900;
+const FLIP_BACK_DELAY_MS = 1600;
 
 interface SlotState {
   card: SlotCard | null; // null = face-down

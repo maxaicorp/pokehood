@@ -113,12 +113,52 @@ serve(async (req) => {
       return fail(`Card pool too small (${pool?.length ?? 0}); seed game_card_pool first`);
     }
 
+    // Self-host card images from the Supabase 'card-images' bucket. If a
+    // picked card hasn't been cached yet, fetch from the upstream CDN once
+    // and upload to storage so future games serve directly from Supabase.
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const storagePrefix = `${supabaseUrl}/storage/v1/object/public/card-images/`;
+
     const picked = shuffle([...pool]).slice(0, PAIRS);
+
+    async function ensureCached(cardId: string, sourceUrl: string): Promise<string> {
+      const objectPath = `${cardId}/small.webp`;
+      const publicUrl = `${storagePrefix}${objectPath}`;
+      // Probe existence cheaply.
+      const { data: existing } = await supabase.storage
+        .from("card-images")
+        .list(cardId, { limit: 1, search: "small.webp" });
+      if (existing && existing.length > 0) return publicUrl;
+
+      // Cache miss — fetch + upload. On any failure, fall back to source URL
+      // so the game still plays (we just won't be self-hosted for this card).
+      try {
+        const res = await fetch(sourceUrl);
+        if (!res.ok) return sourceUrl;
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const contentType = res.headers.get("content-type") || "image/webp";
+        const { error: upErr } = await supabase.storage
+          .from("card-images")
+          .upload(objectPath, bytes, { contentType, upsert: true });
+        if (upErr) return sourceUrl;
+        return publicUrl;
+      } catch {
+        return sourceUrl;
+      }
+    }
+
+    const resolvedImages = await Promise.all(
+      picked.map((c) => ensureCached(c.card_id, c.image_small)),
+    );
+
     const slots = shuffle(
-      picked.flatMap((c) => [
-        { card_id: c.card_id, name: c.name, image_small: c.image_small },
-        { card_id: c.card_id, name: c.name, image_small: c.image_small },
-      ]),
+      picked.flatMap((c, i) => {
+        const image = resolvedImages[i];
+        return [
+          { card_id: c.card_id, name: c.name, image_small: image },
+          { card_id: c.card_id, name: c.name, image_small: image },
+        ];
+      }),
     );
 
     const { data: session, error: insertErr } = await supabase
