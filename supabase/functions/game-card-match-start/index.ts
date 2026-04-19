@@ -113,12 +113,55 @@ serve(async (req) => {
       return fail(`Card pool too small (${pool?.length ?? 0}); seed game_card_pool first`);
     }
 
-    const picked = shuffle([...pool]).slice(0, PAIRS);
+    // Self-host card images: prefer cards already cached in the Supabase
+    // 'card-images' bucket. List the bucket once (cheap) and intersect with
+    // the pool so we never serve from Scrydex/TCGdex CDN at runtime.
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const storagePrefix = `${supabaseUrl}/storage/v1/object/public/card-images/`;
+
+    const cachedIds = new Set<string>();
+    // Bucket layout: <card_id>/small.webp — list root with limit large enough
+    // to cover all cached cards.
+    const { data: rootEntries } = await supabase.storage
+      .from("card-images")
+      .list("", { limit: 1000 });
+    if (rootEntries) {
+      // Folders appear as entries with id === null.
+      const folders = rootEntries.filter((e) => e.id === null).map((e) => e.name);
+      // Probe each folder for small.webp in parallel batches.
+      const concurrency = 24;
+      for (let i = 0; i < folders.length; i += concurrency) {
+        const batch = folders.slice(i, i + concurrency);
+        const results = await Promise.all(
+          batch.map((f) =>
+            supabase.storage
+              .from("card-images")
+              .list(f, { limit: 1, search: "small.webp" })
+              .then((r) => !!(r.data && r.data.length > 0))
+              .catch(() => false),
+          ),
+        );
+        batch.forEach((f, idx) => {
+          if (results[idx]) cachedIds.add(f);
+        });
+      }
+    }
+
+    const eligible = pool.filter((c) => cachedIds.has(c.card_id));
+    const useStorage = eligible.length >= PAIRS;
+    const sourcePool = useStorage ? eligible : pool;
+
+    const picked = shuffle([...sourcePool]).slice(0, PAIRS);
     const slots = shuffle(
-      picked.flatMap((c) => [
-        { card_id: c.card_id, name: c.name, image_small: c.image_small },
-        { card_id: c.card_id, name: c.name, image_small: c.image_small },
-      ]),
+      picked.flatMap((c) => {
+        const image = useStorage
+          ? `${storagePrefix}${c.card_id}/small.webp`
+          : c.image_small;
+        return [
+          { card_id: c.card_id, name: c.name, image_small: image },
+          { card_id: c.card_id, name: c.name, image_small: image },
+        ];
+      }),
     );
 
     const { data: session, error: insertErr } = await supabase
