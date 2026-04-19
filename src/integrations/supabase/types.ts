@@ -558,6 +558,7 @@ export type Database = {
           username: string
         }[]
       }
+      get_my_game_stats: { Args: { p_game: string }; Returns: Json }
       get_set_sentiment: {
         Args: { p_set_ids: string[] }
         Returns: {
