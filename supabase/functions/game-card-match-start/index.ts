@@ -131,7 +131,33 @@ serve(async (req) => {
       })
       .select("id, started_at")
       .single();
-    if (insertErr) return fail(`Insert session: ${describeError(insertErr)}`);
+
+    if (insertErr) {
+      // Race: a concurrent start call won. Reuse its active session so the
+      // client gets a usable session instead of a hard error.
+      const code = (insertErr as { code?: string })?.code;
+      if (code === "23505") {
+        const { data: existing, error: reuseErr } = await supabase
+          .from("game_sessions")
+          .select("id, started_at")
+          .eq("user_id", user.id)
+          .eq("game", game)
+          .eq("status", "active")
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (reuseErr || !existing) {
+          return fail(`Insert session: ${describeError(insertErr)}`);
+        }
+        return ok({
+          session_id: existing.id,
+          started_at: existing.started_at,
+          slots: SLOTS,
+          reused: true,
+        });
+      }
+      return fail(`Insert session: ${describeError(insertErr)}`);
+    }
 
     return ok({
       session_id: session.id,
