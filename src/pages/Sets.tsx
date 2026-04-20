@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getSets, PokemonSet } from "@/lib/pokemon-api";
@@ -153,6 +153,13 @@ export default function Sets() {
 }
 
 function SetCard({ set, index }: { set: PokemonSet; index: number }) {
+  // Prefer the locally bundled logo (public/data/logos/{id}.png) so the page
+  // renders without hitting the Scrydex CDN. Fall back to the remote URL only
+  // if the local PNG 404s, then to the icon if both fail.
+  const localLogo = `/data/logos/${set.id}.png`;
+  const [logoSrc, setLogoSrc] = useState<string | null>(localLogo);
+  const triedRemote = useRef(false);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -165,12 +172,20 @@ function SetCard({ set, index }: { set: PokemonSet; index: number }) {
       >
         {/* Logo area */}
         <div className="h-24 sm:h-28 flex items-center justify-center p-4 bg-muted/20 group-hover:bg-muted/40 transition-colors">
-          {set.images.logo ? (
+          {logoSrc ? (
             <img
-              src={set.images.logo}
+              src={logoSrc}
               alt={set.name}
               className="max-h-full max-w-full object-contain drop-shadow-sm group-hover:scale-105 transition-transform duration-200"
               loading="lazy"
+              onError={() => {
+                if (!triedRemote.current && set.images.logo) {
+                  triedRemote.current = true;
+                  setLogoSrc(set.images.logo);
+                } else {
+                  setLogoSrc(null);
+                }
+              }}
             />
           ) : (
             <div className="text-center">
