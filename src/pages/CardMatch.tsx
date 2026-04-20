@@ -14,7 +14,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const SLOT_COUNT = 20;
 const FLIP_ANIM_MS = 480; // keep in sync with .cm-flipper transition in index.css
-const FLIP_BACK_DELAY_MS = 1100;
+// Time both no-match cards stay revealed before rotating back. Generous on
+// purpose so the second card is comfortably readable even when the network
+// roundtrip ate a chunk of perceived time.
+const FLIP_BACK_DELAY_MS = 1800;
 
 interface SlotState {
   card: SlotCard | null; // card data persists across flip-back so the image renders during rotation
@@ -32,6 +35,31 @@ function preloadImages(urls: string[]) {
     const img = new Image();
     img.src = url;
   }
+}
+
+// Awaits decode() on each URL with a hard cap so a slow image can't stall the
+// flip. Used in the per-flip handler so the back face is paint-ready by the
+// time the rotation begins — otherwise the card "barely shows up".
+function decodeImagesCapped(urls: string[], capMs: number): Promise<void> {
+  if (urls.length === 0) return Promise.resolve();
+  const decodes = urls.map(
+    (url) =>
+      new Promise<void>((resolve) => {
+        const img = new Image();
+        img.src = url;
+        const done = () => resolve();
+        if (typeof img.decode === "function") {
+          img.decode().then(done, done);
+        } else {
+          img.onload = done;
+          img.onerror = done;
+        }
+      }),
+  );
+  return Promise.race([
+    Promise.all(decodes).then(() => undefined),
+    new Promise<void>((resolve) => setTimeout(resolve, capMs)),
+  ]);
 }
 
 // Resolves once every URL has either loaded or errored. Prevents the board
@@ -175,11 +203,14 @@ export default function CardMatch() {
     setBusy(true);
     try {
       const res = await flipCard(sessionId, slotIdx);
-      // Preload returned images so the flip rotation isn't racing the network.
-      preloadImages(
+      // Make sure the back-face images are paint-ready BEFORE we trigger the
+      // CSS flip; otherwise the rotation finishes against a blank face.
+      // Capped at 300ms so a slow CDN can't stall the click indefinitely.
+      await decodeImagesCapped(
         [res.card?.image_small, res.otherCard?.image_small].filter(
           (u): u is string => typeof u === "string",
         ),
+        300,
       );
 
       if (res.match === true) {
