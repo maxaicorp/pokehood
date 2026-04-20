@@ -4,8 +4,11 @@
  * Fetches current card prices from Scrydex and upserts into price_snapshots.
  *
  * Modes (pass in POST body):
- *   {}              → daily: newest 60 pages + oldest 60 pages (~12,000 cards, 120 credits)
- *   { mode:"full" } → full:  all pages (~23,000 cards, ~235 credits) — run weekly
+ *   {}                                    → daily: newest 60 pages + oldest 60 pages (~12,000 cards, 120 credits)
+ *   { mode:"full" }                       → full:  all pages (~23,000 cards, ~235 credits) — run weekly
+ *   { mode:"sets", setIds:["me3",...] }   → backfill specific sets only (1-2 credits per set,
+ *                                            paginated at page_size=250). Use this to fix gaps
+ *                                            in middle-numbered cards that the daily passes miss.
  *
  * Credit budget:
  *   Daily 120 pages × 30 days  = 3,600 credits/month
@@ -225,6 +228,72 @@ async function runPass(opts: {
   return pagesProcessed;
 }
 
+// ─── Per-set backfill helper ──────────────────────────────────────────────────
+//
+// Queries Scrydex for one set at a time using q=expansion.id:{id}. page_size=250
+// is Scrydex's max, so the largest current set (~295 cards) needs 2 pages.
+
+async function runSetBackfill(opts: {
+  setId: string;
+  apiKey: string;
+  teamId: string;
+  supabase: any;
+  today: string;
+  seenIds: Set<string>;
+  buffer: SnapshotRow[];
+  counters: { inserted: number; skipped: number };
+}): Promise<{ pages: number; cardsWithPrice: number }> {
+  const { setId, apiKey, teamId, supabase, today, seenIds, buffer, counters } = opts;
+  const pageSize = 250;
+  let page = 1;
+  let totalPages = 1;
+  let cardsWithPrice = 0;
+
+  do {
+    const endpoint =
+      `/pokemon/v1/en/cards?q=${encodeURIComponent(`expansion.id:${setId}`)}` +
+      `&page=${page}&page_size=${pageSize}&include=prices`;
+    const result = await scrydexFetch(endpoint, apiKey, teamId);
+    if (!result) {
+      console.error(`[set:${setId}] Page ${page}: fetch failed, stopping`);
+      break;
+    }
+    if (page === 1) {
+      const total = result.total_count ?? 0;
+      totalPages = Math.max(1, Math.ceil(total / pageSize));
+      console.log(`[set:${setId}] Total cards: ${total} — ${totalPages} pages`);
+    }
+
+    for (const card of result.data ?? []) {
+      const price = extractCardPrice(card);
+      if (!price || price <= 0) continue;
+      if (seenIds.has(card.id)) continue;
+      seenIds.add(card.id);
+      cardsWithPrice++;
+      buffer.push({
+        card_id: card.id,
+        card_name: card.name ?? "",
+        set_name: card.expansion?.name ?? "",
+        price,
+        recorded_at: today,
+      });
+    }
+
+    if (buffer.length >= 500) {
+      const { inserted, skipped } = await flushRows(supabase, buffer);
+      counters.inserted += inserted;
+      counters.skipped += skipped;
+      buffer.length = 0;
+    }
+
+    console.log(`[set:${setId}] Page ${page}/${totalPages} — ${cardsWithPrice} priced so far`);
+    page++;
+    if (page <= totalPages) await new Promise((r) => setTimeout(r, DELAY_MS));
+  } while (page <= totalPages);
+
+  return { pages: page - 1, cardsWithPrice };
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
@@ -250,12 +319,19 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const mode: "daily" | "full" | "chunk" = body.mode === "full" ? "full" : body.mode === "chunk" ? "chunk" : "daily";
+    const mode: "daily" | "full" | "chunk" | "sets" =
+      body.mode === "full" ? "full"
+      : body.mode === "chunk" ? "chunk"
+      : body.mode === "sets" ? "sets"
+      : "daily";
     const today = new Date().toISOString().split("T")[0];
     // Optional chunking: { mode:"chunk", startPage:1, pageLimit:50, orderBy:"-expansion.release_date" }
     const startPage: number = Math.max(1, Number(body.startPage) || 1);
     const chunkPageLimit: number = Math.max(1, Number(body.pageLimit) || 50);
     const orderBy: string = typeof body.orderBy === "string" ? body.orderBy : "-expansion.release_date";
+    const setIds: string[] = Array.isArray(body.setIds)
+      ? body.setIds.filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
+      : [];
 
     console.log(`snapshot-prices [${mode}] starting — ${today}`);
 
@@ -264,7 +340,24 @@ serve(async (req: Request) => {
     const counters = { inserted: 0, skipped: 0 };
     let pagesProcessed = 0;
 
-    if (mode === "chunk") {
+    const setSummaries: Array<{ setId: string; pages: number; priced: number }> = [];
+
+    if (mode === "sets") {
+      if (setIds.length === 0) {
+        return new Response(
+          JSON.stringify({ success: false, error: "mode=sets requires setIds: string[]" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+        );
+      }
+      for (const setId of setIds) {
+        const { pages, cardsWithPrice } = await runSetBackfill({
+          setId, apiKey, teamId, supabase, today, seenIds, buffer, counters,
+        });
+        pagesProcessed += pages;
+        setSummaries.push({ setId, pages, priced: cardsWithPrice });
+        await new Promise((r) => setTimeout(r, DELAY_MS));
+      }
+    } else if (mode === "chunk") {
       // Chunk mode: fetch a specific page range (caller orchestrates pagination)
       pagesProcessed += await runPass({
         label: `chunk@${startPage}+${chunkPageLimit}`,
@@ -315,7 +408,7 @@ serve(async (req: Request) => {
       .delete()
       .lt("recorded_at", cutoff.toISOString().split("T")[0]);
 
-    const summary = {
+    const summary: Record<string, unknown> = {
       success: true,
       mode,
       date: today,
@@ -323,6 +416,7 @@ serve(async (req: Request) => {
       prices_saved: counters.inserted,
       prices_skipped: counters.skipped,
     };
+    if (mode === "sets") summary.sets = setSummaries;
     console.log("Done:", summary);
 
     return new Response(JSON.stringify(summary), {
