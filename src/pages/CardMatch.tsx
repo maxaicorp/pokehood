@@ -8,7 +8,7 @@ import CurrentPrizeCard from "@/components/CurrentPrizeCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { startCardMatch, flipCard, type SlotCard } from "@/lib/games-store";
-import { ArrowLeft, RotateCcw, Trophy, Clock, Target } from "lucide-react";
+import { ArrowLeft, RotateCcw, Trophy, Clock, Target, Play, Pause, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -34,6 +34,27 @@ function preloadImages(urls: string[]) {
   }
 }
 
+// Resolves once every URL has either loaded or errored. Prevents the board
+// from rendering before the network has the images cached.
+function preloadImagesAwait(urls: string[]): Promise<void> {
+  if (urls.length === 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    let remaining = urls.length;
+    const done = () => {
+      remaining--;
+      if (remaining === 0) resolve();
+    };
+    for (const url of urls) {
+      const img = new Image();
+      img.onload = done;
+      img.onerror = done;
+      img.src = url;
+    }
+  });
+}
+
+type Phase = "idle" | "loading" | "playing";
+
 export default function CardMatch() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -46,6 +67,12 @@ export default function CardMatch() {
   const [completion, setCompletion] = useState<{ score: number; duration_ms: number; wrong_flips: number } | null>(null);
   const [matchedCount, setMatchedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [paused, setPaused] = useState(false);
+  // Wall-clock time when the current pause began (used to shift startedAt
+  // forward by the pause duration on resume so the displayed timer continues
+  // from where it stopped).
+  const pauseStartRef = useRef<number | null>(null);
 
   // Tracks the active flip-back timer so we can cancel on unmount/restart.
   const flipBackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,39 +95,81 @@ export default function CardMatch() {
     setMatchedCount(0);
     setElapsed(0);
     setSessionId(null);
+    setPaused(false);
+    pauseStartRef.current = null;
+    setPhase("loading");
     try {
       const session = await startCardMatch();
+      // Preload all 10 unique card images before revealing the board so flips
+      // don't race the network. Best-effort: we don't block on preload errors.
+      if (session.image_urls && session.image_urls.length > 0) {
+        await preloadImagesAwait(session.image_urls);
+      }
       setSessionId(session.session_id);
-      setStartedAt(new Date(session.started_at).getTime());
+      // Use a CLIENT-side start timestamp so the displayed timer begins at 0:00
+      // the moment the board is revealed (after preload), not at session-insert
+      // time on the server. The server still scores against its own clock.
+      setStartedAt(Date.now());
+      setPhase("playing");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to start";
       setError(msg);
+      setPhase("idle");
       toast.error(msg);
     }
   }, [cancelFlipBack]);
 
+  const togglePause = useCallback(() => {
+    if (phase !== "playing" || completion) return;
+    setPaused((prev) => {
+      if (!prev) {
+        // Pausing: capture wall-clock now to compute elapsed pause duration.
+        pauseStartRef.current = Date.now();
+        return true;
+      }
+      // Resuming: shift startedAt forward by the pause duration so the
+      // displayed elapsed time continues from where it left off.
+      if (pauseStartRef.current != null && startedAt != null) {
+        const pausedFor = Date.now() - pauseStartRef.current;
+        setStartedAt(startedAt + pausedFor);
+      }
+      pauseStartRef.current = null;
+      return false;
+    });
+  }, [phase, completion, startedAt]);
+
+  // Redirect unauthenticated users; do NOT auto-start the game — show the
+  // idle overlay so the player chooses when the timer begins.
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
       toast.info("Sign in to play");
       navigate("/auth");
-      return;
     }
-    startNewGame();
-  }, [user, authLoading, navigate, startNewGame]);
+  }, [user, authLoading, navigate]);
+
+  const quitToGames = useCallback(() => {
+    cancelFlipBack();
+    setPhase("idle");
+    setSessionId(null);
+    setSlots(emptySlots());
+    setMatchedCount(0);
+    setElapsed(0);
+    navigate("/games");
+  }, [cancelFlipBack, navigate]);
 
   // Cleanup on unmount.
   useEffect(() => () => cancelFlipBack(), [cancelFlipBack]);
 
-  // Elapsed clock.
+  // Elapsed clock — frozen while paused.
   useEffect(() => {
-    if (!startedAt || completion) return;
+    if (!startedAt || completion || paused) return;
     const id = setInterval(() => setElapsed(Date.now() - startedAt), 250);
     return () => clearInterval(id);
-  }, [startedAt, completion]);
+  }, [startedAt, completion, paused]);
 
   const onFlip = async (slotIdx: number) => {
-    if (!sessionId || busy || completion || animating) return;
+    if (!sessionId || busy || completion || animating || paused) return;
     if (slots[slotIdx].matched || slots[slotIdx].revealed) return;
 
     setBusy(true);
@@ -207,43 +276,125 @@ export default function CardMatch() {
 
             {/* Mobile: 4 cols × 5 rows. Desktop: 5 cols × 4 rows. */}
             <div className="max-w-[420px] sm:max-w-[560px] mx-auto lg:mx-0">
-              {/* Live stats sit directly above the board so they read as part of it. */}
-              <div className="flex items-center justify-between mb-2.5 px-1">
-                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span className="tabular-nums font-semibold text-foreground">{fmtTime(elapsed)}</span>
-                </span>
-                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Target className="w-3.5 h-3.5" />
-                  <span className="tabular-nums font-semibold text-foreground">{matchedCount / 2}/10</span>
-                </span>
+              {/* Live stats + controls sit directly above the board so they read as part of it. */}
+              <div className="flex items-center justify-between mb-2.5 px-1 gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span className="tabular-nums font-semibold text-foreground">{fmtTime(elapsed)}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <Target className="w-3.5 h-3.5" />
+                    <span className="tabular-nums font-semibold text-foreground">{matchedCount / 2}/10</span>
+                  </span>
+                </div>
+                {phase === "playing" && !completion && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={togglePause}
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                      aria-label={paused ? "Resume" : "Pause"}
+                      title={paused ? "Resume" : "Pause"}
+                    >
+                      {paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+                      <span className="hidden sm:inline">{paused ? "Resume" : "Pause"}</span>
+                    </button>
+                    <button
+                      onClick={startNewGame}
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                      aria-label="Restart"
+                      title="Restart"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Restart</span>
+                    </button>
+                    <button
+                      onClick={quitToGames}
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      aria-label="Quit"
+                      title="Quit"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Quit</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {error ? (
-                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
-                  <p className="text-sm text-destructive font-medium break-words">{error}</p>
-                  <Button onClick={startNewGame} variant="outline" className="mt-3">
-                    Try again
-                  </Button>
-                </div>
-              ) : !sessionId ? (
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-3">
-                  {Array.from({ length: SLOT_COUNT }).map((_, i) => (
-                    <Skeleton key={i} className="aspect-[2.5/3.5] rounded-lg" />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-3">
-                  {slots.map((s, i) => (
-                    <SlotTile
-                      key={i}
-                      state={s}
-                      onClick={() => onFlip(i)}
-                      disabled={busy || !!completion || animating}
-                    />
-                  ))}
-                </div>
-              )}
+              {/* Board area: always renders the grid so the overlay can sit on top of it. */}
+              <div className="relative">
+                {error ? (
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center">
+                    <p className="text-sm text-destructive font-medium break-words">{error}</p>
+                    <Button onClick={startNewGame} variant="outline" className="mt-3">
+                      Try again
+                    </Button>
+                  </div>
+                ) : phase !== "playing" || !sessionId ? (
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-3">
+                    {Array.from({ length: SLOT_COUNT }).map((_, i) => (
+                      <Skeleton key={i} className="aspect-[2.5/3.5] rounded-lg" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-3">
+                    {slots.map((s, i) => (
+                      <SlotTile
+                        key={i}
+                        state={s}
+                        onClick={() => onFlip(i)}
+                        disabled={busy || !!completion || animating || paused}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Idle overlay: sits over the skeleton until the player presses Play. */}
+                {!error && phase === "idle" && !completion && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
+                    <div className="text-center px-4">
+                      <div className="w-14 h-14 rounded-full bg-primary/15 text-primary flex items-center justify-center mx-auto mb-3">
+                        <Play className="w-7 h-7 ml-0.5" />
+                      </div>
+                      <h2 className="font-display font-bold text-lg text-foreground">Ready to play?</h2>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-[260px] mx-auto">
+                        Match all 10 pairs. The clock starts when you press Play.
+                      </p>
+                      <Button onClick={startNewGame} className="mt-4 px-6">
+                        <Play className="w-4 h-4 mr-2" />
+                        Play Now
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading overlay: while images preload after Play is pressed. */}
+                {!error && phase === "loading" && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm">
+                    <div className="text-center">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto" />
+                      <p className="text-xs text-muted-foreground mt-3">Preparing cards…</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pause overlay: dims the board so the player can't read positions. */}
+                {phase === "playing" && paused && !completion && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/85 backdrop-blur-md">
+                    <div className="text-center">
+                      <div className="w-14 h-14 rounded-full bg-primary/15 text-primary flex items-center justify-center mx-auto mb-3">
+                        <Pause className="w-7 h-7" />
+                      </div>
+                      <h2 className="font-display font-bold text-lg text-foreground">Paused</h2>
+                      <p className="text-xs text-muted-foreground mt-1">Timer is stopped.</p>
+                      <Button onClick={togglePause} className="mt-4 px-6">
+                        <Play className="w-4 h-4 mr-2" />
+                        Resume
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

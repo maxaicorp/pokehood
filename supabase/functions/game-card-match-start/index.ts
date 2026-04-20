@@ -161,6 +161,11 @@ serve(async (req) => {
       }),
     );
 
+    // Independently-shuffled list of just the unique image URLs. Sent to the
+    // client so it can preload images before play starts. Safe because the
+    // ordering conveys no information about slot positions.
+    const imageUrls = shuffle([...resolvedImages]);
+
     const { data: session, error: insertErr } = await supabase
       .from("game_sessions")
       .insert({
@@ -193,6 +198,7 @@ serve(async (req) => {
           session_id: existing.id,
           started_at: existing.started_at,
           slots: SLOTS,
+          image_urls: imageUrls,
           reused: true,
         });
       }
@@ -203,6 +209,7 @@ serve(async (req) => {
       session_id: session.id,
       started_at: session.started_at,
       slots: SLOTS,
+      image_urls: imageUrls,
     });
   } catch (err) {
     const msg = describeError(err);
