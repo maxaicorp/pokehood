@@ -37,30 +37,8 @@ function preloadImages(urls: string[]) {
   }
 }
 
-// Awaits decode() on each URL with a hard cap so a slow image can't stall the
-// flip. Used in the per-flip handler so the back face is paint-ready by the
-// time the rotation begins — otherwise the card "barely shows up".
-function decodeImagesCapped(urls: string[], capMs: number): Promise<void> {
-  if (urls.length === 0) return Promise.resolve();
-  const decodes = urls.map(
-    (url) =>
-      new Promise<void>((resolve) => {
-        const img = new Image();
-        img.src = url;
-        const done = () => resolve();
-        if (typeof img.decode === "function") {
-          img.decode().then(done, done);
-        } else {
-          img.onload = done;
-          img.onerror = done;
-        }
-      }),
-  );
-  return Promise.race([
-    Promise.all(decodes).then(() => undefined),
-    new Promise<void>((resolve) => setTimeout(resolve, capMs)),
-  ]);
-}
+// (decodeImagesCapped removed — images are preloaded at session start so the
+// back face is always paint-ready, and the flip is now optimistic anyway.)
 
 // Resolves once every URL has either loaded or errored. Prevents the board
 // from rendering before the network has the images cached.
