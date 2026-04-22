@@ -218,7 +218,7 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
     return best;
   }
 
-  for (const row of currentRows) {
+  for (const row of effectiveCurrent) {
     const price = Number(row.price);
     const p1 = findHistoricalPrice(lookup1d, row.card_id, row.card_name, row.set_name, price);
     const p7 = findHistoricalPrice(lookup7d, row.card_id, row.card_name, row.set_name, price);
