@@ -95,7 +95,7 @@ export default function Explore() {
 
   // Paginated query (used when NO set is selected)
   const { data: cardsData, isLoading: isPaginatedLoading } = useQuery({
-    queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page, effectiveProductType],
+    queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page, effectiveProductType, pricesReady],
     queryFn: () =>
       searchCardsAdvanced(
         searchTerm,
@@ -115,7 +115,7 @@ export default function Explore() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["explore-infinite", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, effectiveProductType],
+    queryKey: ["explore-infinite", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, effectiveProductType, pricesReady],
     queryFn: ({ pageParam = 1 }) =>
       searchCardsAdvanced(
         searchTerm,
