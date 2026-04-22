@@ -547,13 +547,17 @@ function SlotTile({
         </div>
         {/* Back face: the actual card image (kept mounted during flip-back so it stays visible during rotation) */}
         <div className="cm-face cm-face-back">
-          {card && (
+          {card ? (
             <img
               src={card.image_small}
               alt={card.name}
               className="absolute inset-0 w-full h-full object-cover"
               draggable={false}
             />
+          ) : (
+            // Placeholder while the server response is in flight after an
+            // optimistic flip. Shimmer hints "loading" without blocking input.
+            <div className="absolute inset-0 bg-gradient-to-br from-secondary/40 to-secondary/20 animate-pulse" />
           )}
         </div>
       </div>
