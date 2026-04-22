@@ -200,18 +200,19 @@ export default function CardMatch() {
     if (!sessionId || busy || completion || animating || paused) return;
     if (slots[slotIdx].matched || slots[slotIdx].revealed) return;
 
+    // OPTIMISTIC FLIP: start the rotation immediately so the user sees instant
+    // feedback. The back face renders a loading shimmer until the server
+    // returns the actual card, then we swap the image in (already preloaded
+    // at session start, so the swap is paint-instant).
+    setSlots((prev) => {
+      const next = [...prev];
+      next[slotIdx] = { ...next[slotIdx], revealed: true };
+      return next;
+    });
+
     setBusy(true);
     try {
       const res = await flipCard(sessionId, slotIdx);
-      // Make sure the back-face images are paint-ready BEFORE we trigger the
-      // CSS flip; otherwise the rotation finishes against a blank face.
-      // Capped at 300ms so a slow CDN can't stall the click indefinitely.
-      await decodeImagesCapped(
-        [res.card?.image_small, res.otherCard?.image_small].filter(
-          (u): u is string => typeof u === "string",
-        ),
-        300,
-      );
 
       if (res.match === true) {
         setSlots((prev) => {
@@ -262,7 +263,7 @@ export default function CardMatch() {
           setTimeout(() => setAnimating(false), FLIP_ANIM_MS);
         }, FLIP_BACK_DELAY_MS);
       } else {
-        // First-of-pair: reveal the clicked slot.
+        // First-of-pair: server returned the card — fill it in (slot is already revealed).
         setSlots((prev) => {
           const next = [...prev];
           next[slotIdx] = { ...next[slotIdx], card: res.card, revealed: true };
@@ -270,6 +271,14 @@ export default function CardMatch() {
         });
       }
     } catch (e) {
+      // Rollback the optimistic reveal on error.
+      setSlots((prev) => {
+        const next = [...prev];
+        if (!next[slotIdx].matched) {
+          next[slotIdx] = { ...next[slotIdx], revealed: false };
+        }
+        return next;
+      });
       const msg = e instanceof Error ? e.message : "Flip failed";
       toast.error(msg);
     } finally {
