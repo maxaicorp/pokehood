@@ -349,14 +349,32 @@ serve(async (req: Request) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
         );
       }
-      for (const setId of setIds) {
-        const { pages, cardsWithPrice } = await runSetBackfill({
-          setId, apiKey, teamId, supabase, today, seenIds, buffer, counters,
-        });
-        pagesProcessed += pages;
-        setSummaries.push({ setId, pages, priced: cardsWithPrice });
-        await new Promise((r) => setTimeout(r, DELAY_MS));
+      // Run in background so proxy timeout doesn't kill the function mid-backfill.
+      const work = (async () => {
+        for (const setId of setIds) {
+          const { pages, cardsWithPrice } = await runSetBackfill({
+            setId, apiKey, teamId, supabase, today, seenIds, buffer, counters,
+          });
+          pagesProcessed += pages;
+          setSummaries.push({ setId, pages, priced: cardsWithPrice });
+          await new Promise((r) => setTimeout(r, DELAY_MS));
+        }
+        const { inserted, skipped } = await flushRows(supabase, buffer);
+        counters.inserted += inserted;
+        counters.skipped += skipped;
+        console.log(`[sets] BACKGROUND DONE — sets=${setIds.length} inserted=${counters.inserted} skipped=${counters.skipped}`, setSummaries);
+      })();
+      // @ts-ignore — EdgeRuntime is available in Supabase Edge runtime
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(work);
+      } else {
+        work.catch((e) => console.error("[sets] background error", e));
       }
+      return new Response(
+        JSON.stringify({ success: true, mode: "sets", queued: setIds.length, setIds, note: "Running in background — see logs for completion." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
+      );
     } else if (mode === "chunk") {
       // Chunk mode: fetch a specific page range (caller orchestrates pagination)
       pagesProcessed += await runPass({
