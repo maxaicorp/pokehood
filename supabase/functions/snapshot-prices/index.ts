@@ -244,10 +244,13 @@ async function runSetBackfill(opts: {
   counters: { inserted: number; skipped: number };
 }): Promise<{ pages: number; cardsWithPrice: number }> {
   const { setId, apiKey, teamId, supabase, today, seenIds, buffer, counters } = opts;
-  const pageSize = 250;
+  // Scrydex caps page_size at 100 for the cards endpoint; asking for 250 silently truncates
+  // and reports total_count == returned, leading to "page 1/1" with missing cards.
+  const pageSize = 100;
   let page = 1;
   let totalPages = 1;
   let cardsWithPrice = 0;
+  const MAX_PAGES = 10; // hard ceiling — no real set has 1000+ cards
 
   do {
     const endpoint =
@@ -260,11 +263,12 @@ async function runSetBackfill(opts: {
     }
     if (page === 1) {
       const total = result.total_count ?? 0;
-      totalPages = Math.max(1, Math.ceil(total / pageSize));
+      totalPages = Math.max(1, Math.min(MAX_PAGES, Math.ceil(total / pageSize)));
       console.log(`[set:${setId}] Total cards: ${total} — ${totalPages} pages`);
     }
 
-    for (const card of result.data ?? []) {
+    const rows = result.data ?? [];
+    for (const card of rows) {
       const price = extractCardPrice(card);
       if (!price || price <= 0) continue;
       if (seenIds.has(card.id)) continue;
@@ -286,12 +290,14 @@ async function runSetBackfill(opts: {
       buffer.length = 0;
     }
 
-    console.log(`[set:${setId}] Page ${page}/${totalPages} — ${cardsWithPrice} priced so far`);
+    console.log(`[set:${setId}] Page ${page}/${totalPages} (rows:${rows.length}) — ${cardsWithPrice} priced so far`);
+    // Stop early if Scrydex returned a short page (true end of data) even if totalPages claims more
+    if (rows.length < pageSize) break;
     page++;
     if (page <= totalPages) await new Promise((r) => setTimeout(r, DELAY_MS));
   } while (page <= totalPages);
 
-  return { pages: page - 1, cardsWithPrice };
+  return { pages: page, cardsWithPrice };
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
