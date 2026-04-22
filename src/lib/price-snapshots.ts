@@ -142,22 +142,37 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
   if (!dateRows?.length) return map;
   const latestDate = dateRows[0].recorded_at;
 
-  // 2. Compute target dates for 1d, 7d, 30d ago
+  // 2. Compute target dates for 1d, 7d, 30d ago + 2 fallback days.
+  //    The daily cron sometimes skips middle pages, so we fetch the last 3 days
+  //    and merge them (today wins, then yesterday, then 2-days-ago) so cards
+  //    that weren't priced today still surface a recent price instead of N/A.
   const latest = new Date(latestDate);
   const fmt = (d: Date) => d.toISOString().split("T")[0];
+  const dPrev1 = new Date(latest); dPrev1.setDate(dPrev1.getDate() - 1);
+  const dPrev2 = new Date(latest); dPrev2.setDate(dPrev2.getDate() - 2);
   const d1 = new Date(latest); d1.setDate(d1.getDate() - 1);
   const d7 = new Date(latest); d7.setDate(d7.getDate() - 7);
   const d30 = new Date(latest); d30.setDate(d30.getDate() - 30);
 
-  // 3. Fetch current prices + historical prices in parallel (paginated — bypasses 1,000-row cap)
-  const [currentRows, d1Rows, d7Rows, d30Rows] = await Promise.all([
+  // 3. Fetch current + fallback days + historical comparison days in parallel
+  const [currentRows, prev1Rows, prev2Rows, d1Rows, d7Rows, d30Rows] = await Promise.all([
     fetchSnapshotDate(latestDate),
+    fetchSnapshotDate(fmt(dPrev1)),
+    fetchSnapshotDate(fmt(dPrev2)),
     fetchSnapshotDate(fmt(d1)),
     fetchSnapshotDate(fmt(d7)),
     fetchSnapshotDate(fmt(d30)),
   ]);
 
-  if (!currentRows.length) return map;
+  // Merge by card_id: today wins, then yesterday fills gaps, then 2-days-ago fills the rest.
+  // Same merge by name+set so name-fallback also benefits from the rolling window.
+  const mergedById = new Map<string, Row>();
+  for (const r of prev2Rows) mergedById.set(r.card_id, r);
+  for (const r of prev1Rows) mergedById.set(r.card_id, r);
+  for (const r of currentRows) mergedById.set(r.card_id, r);
+  const effectiveCurrent: Row[] = Array.from(mergedById.values());
+
+  if (!effectiveCurrent.length) return map;
 
   // Build lookup maps — first by card_id, then by name+set for fallback
   function buildLookups(rows: Row[]) {
