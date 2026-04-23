@@ -129,10 +129,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           <Layers className="w-5 h-5" />
           <span className="text-[10px] font-medium">Sets</span>
         </Link>
-        <Link to="/onchain" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "onchain" ? "text-foreground" : "text-muted-foreground"}`}>
-          <Link2 className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Onchain</span>
-        </Link>
+        {/* Onchain hidden for now */}
         <Link to="/games" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "games" ? "text-foreground" : "text-muted-foreground"}`}>
           <Gamepad2 className="w-5 h-5" />
           <span className="text-[10px] font-medium">Games</span>
@@ -152,7 +149,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Dashboard</Link>
               <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Explore</Link>
               <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Sets</Link>
-              <Link to="/onchain" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Onchain</Link>
+              {/* Onchain hidden for now */}
               <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Games</Link>
             </div>
             {isPro && (
