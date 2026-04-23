@@ -7,7 +7,7 @@ import GameLeaderboard from "@/components/GameLeaderboard";
 import CurrentPrizeCard from "@/components/CurrentPrizeCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { startCardMatch, flipCard, type SlotCard } from "@/lib/games-store";
+import { startCardMatch, flipCard, type CardMatchSession, type SlotCard } from "@/lib/games-store";
 import { ArrowLeft, RotateCcw, Trophy, Clock, Target, Play, Pause, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +28,11 @@ interface SlotState {
 
 function emptySlots(): SlotState[] {
   return Array.from({ length: SLOT_COUNT }, () => ({ card: null, revealed: false, matched: false }));
+}
+
+function hydrateSlots(slotCards?: SlotCard[]): SlotState[] {
+  if (!slotCards || slotCards.length !== SLOT_COUNT) return emptySlots();
+  return slotCards.map((card) => ({ card, revealed: false, matched: false }));
 }
 
 function preloadImages(urls: string[]) {
@@ -105,12 +110,13 @@ export default function CardMatch() {
     pauseStartRef.current = null;
     setPhase("loading");
     try {
-      const session = await startCardMatch();
+      const session: CardMatchSession = await startCardMatch();
       // Preload all 10 unique card images before revealing the board so flips
       // don't race the network. Best-effort: we don't block on preload errors.
       if (session.image_urls && session.image_urls.length > 0) {
         await preloadImagesAwait(session.image_urls);
       }
+      setSlots(hydrateSlots(session.slot_cards));
       setSessionId(session.session_id);
       // Use a CLIENT-side start timestamp so the displayed timer begins at 0:00
       // the moment the board is revealed (after preload), not at session-insert
@@ -179,9 +185,8 @@ export default function CardMatch() {
     if (slots[slotIdx].matched || slots[slotIdx].revealed) return;
 
     // OPTIMISTIC FLIP: start the rotation immediately so the user sees instant
-    // feedback. The back face renders a loading shimmer until the server
-    // returns the actual card, then we swap the image in (already preloaded
-    // at session start, so the swap is paint-instant).
+    // feedback. The actual back-face image is already known from session start,
+    // so the tile flips straight to the loaded card without a loading redraw.
     setSlots((prev) => {
       const next = [...prev];
       next[slotIdx] = { ...next[slotIdx], revealed: true };
@@ -240,13 +245,6 @@ export default function CardMatch() {
           // Release the input lock once the rotation has finished.
           setTimeout(() => setAnimating(false), FLIP_ANIM_MS);
         }, FLIP_BACK_DELAY_MS);
-      } else {
-        // First-of-pair: server returned the card — fill it in (slot is already revealed).
-        setSlots((prev) => {
-          const next = [...prev];
-          next[slotIdx] = { ...next[slotIdx], card: res.card, revealed: true };
-          return next;
-        });
       }
     } catch (e) {
       // Rollback the optimistic reveal on error.
@@ -525,17 +523,13 @@ function SlotTile({
         </div>
         {/* Back face: the actual card image (kept mounted during flip-back so it stays visible during rotation) */}
         <div className="cm-face cm-face-back">
-          {card ? (
+          {card && (
             <img
               src={card.image_small}
               alt={card.name}
               className="absolute inset-0 w-full h-full object-cover"
               draggable={false}
             />
-          ) : (
-            // Placeholder while the server response is in flight after an
-            // optimistic flip. Shimmer hints "loading" without blocking input.
-            <div className="absolute inset-0 bg-gradient-to-br from-secondary/40 to-secondary/20 animate-pulse" />
           )}
         </div>
       </div>
