@@ -6,6 +6,7 @@ export interface CardMatchSession {
   session_id: string;
   started_at: string;
   slots: number;
+  slot_cards?: SlotCard[];
   // Independently shuffled list of unique image URLs (one per pair) so the
   // client can preload images before play starts. Order conveys no slot info.
   image_urls?: string[];

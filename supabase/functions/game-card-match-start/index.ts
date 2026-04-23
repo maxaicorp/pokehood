@@ -173,6 +173,7 @@ serve(async (req) => {
       session_id: session.id,
       started_at: session.started_at,
       slots: SLOTS,
+      slot_cards: slots,
       image_urls: imageUrls,
     });
   } catch (err) {
