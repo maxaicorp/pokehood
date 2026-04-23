@@ -236,6 +236,81 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
   return { cards, sets };
 }
 
+function formatVariantName(variant: string): string {
+  if (!variant) return "";
+  switch (variant) {
+    case "holofoil": return "Holo";
+    case "reverseHolofoil": return "Reverse Holo";
+    case "1stEditionNormal": return "1st Edition";
+    case "1stEditionHolofoil": return "1st Edition Holo";
+    case "1stEdition": return "1st Edition";
+    case "unlimitedHolofoil": return "Unlimited Holo";
+    default: return variant.replace(/([A-Z])/g, ' $1').trim();
+  }
+}
+
+function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): PokemonCard[] {
+  const expanded: PokemonCard[] = [];
+  const requestedVariantSets = new Set<string>();
+  const requestedBaseSets = new Set<string>();
+
+  if (allowedSetIds) {
+    for (const sid of allowedSetIds) {
+      if (sid.includes("::")) {
+        requestedVariantSets.add(sid);
+      } else {
+        requestedBaseSets.add(sid);
+      }
+    }
+  }
+
+  for (const card of cards) {
+    const potentialSuffixes = ["", "::holofoil", "::reverseHolofoil", "::1stEditionNormal", "::1stEditionHolofoil", "::1stEdition", "::unlimitedHolofoil"];
+    let foundAny = false;
+
+    for (const suffix of potentialSuffixes) {
+      const variantId = `${card.id}${suffix}`;
+      const priceData = pricingCache.get(variantId);
+      
+      if (priceData) {
+        foundAny = true;
+        const variantName = suffix.replace("::", "");
+        const is1stEdition = variantName.toLowerCase().includes("1stedition");
+        
+        let isRequestedVariant = true;
+        if (allowedSetIds) {
+           const matches1stEditionSet = requestedVariantSets.has(`${card.set.id}::1stEdition`);
+           const matchesBaseSet = requestedBaseSets.has(card.set.id);
+           
+           if (is1stEdition && !matches1stEditionSet) isRequestedVariant = false;
+           if (!is1stEdition && !matchesBaseSet) isRequestedVariant = false;
+        }
+
+        if (isRequestedVariant) {
+          let enriched = { ...card, id: variantId, tcgplayer: priceData };
+          if (variantName) {
+             enriched.name = `${card.name} (${formatVariantName(variantName)})`;
+             if (is1stEdition) {
+               enriched.set = { ...card.set, id: `${card.set.id}::1stEdition`, name: `${card.set.name} (1st Edition)` };
+             }
+          }
+          const avgs = cardmarketAvgsSeeded.get(variantId) ?? cardmarketAvgsCache.get(variantId);
+          if (avgs) enriched.cardmarketAvgs = avgs;
+          expanded.push(enriched);
+        }
+      }
+    }
+
+    if (!foundAny) {
+      if (!allowedSetIds || requestedBaseSets.has(card.set.id) || allowedSetIds.has(card.set.id)) {
+        expanded.push(card);
+      }
+    }
+  }
+  
+  return expanded;
+}
+
 /** Fetch pricing for cards with concurrency limit to avoid flooding the network. */
 export async function enrichPageWithPricing(
   cards: PokemonCard[],
@@ -301,13 +376,40 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
 // ─── Public API functions ─────────────────────────────────────────────────────
 
 export async function getSets(): Promise<SetSearchResult> {
-  const { sets } = await loadCardIndex();
+  const { sets, cards } = await loadCardIndex();
+  
+  // Dynamically inject virtual sets for 1st Edition
+  const firstEditionSetIds = new Set<string>();
+  for (const [cardId] of pricingCache) {
+    if (cardId.toLowerCase().includes("1stedition")) {
+      const baseCardId = cardId.split("::")[0];
+      const baseCard = cards.find(c => c.id === baseCardId);
+      if (baseCard) {
+        firstEditionSetIds.add(baseCard.set.id);
+      }
+    }
+  }
+
+  const virtualSets: PokemonSet[] = [];
+  for (const setId of firstEditionSetIds) {
+    const baseSet = sets.find(s => s.id === setId);
+    if (baseSet) {
+      virtualSets.push({
+        ...baseSet,
+        id: `${baseSet.id}::1stEdition`,
+        name: `${baseSet.name} (1st Edition)`,
+      });
+    }
+  }
+
+  const combinedSets = [...sets, ...virtualSets].sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+
   return {
-    data: sets,
+    data: combinedSets,
     page: 1,
-    pageSize: sets.length,
-    count: sets.length,
-    totalCount: sets.length,
+    pageSize: combinedSets.length,
+    count: combinedSets.length,
+    totalCount: combinedSets.length,
   };
 }
 
@@ -362,8 +464,11 @@ export async function searchCardsAdvanced(
       c.set.id.toLowerCase().includes(q)
     );
   }
+  // Filter by sets
   if (filters.setId) {
-    filtered = filtered.filter((c) => c.set.id === filters.setId);
+    let baseSetId = filters.setId;
+    if (filters.setId.includes("::")) baseSetId = filters.setId.split("::")[0];
+    filtered = filtered.filter((c) => c.set.id === baseSetId);
   }
   if (filters.rarity) {
     filtered = filtered.filter((c) => c.rarity === filters.rarity);
@@ -377,12 +482,15 @@ export async function searchCardsAdvanced(
     );
   }
 
+  // Expand variants
+  const expanded = expandVariants(filtered, filters.setId ? new Set([filters.setId]) : undefined);
+
   // Sort
   const sortBy = filters.sortBy || "number";
   const desc = sortBy.startsWith("-");
   const field = sortBy.replace(/^-/, "");
 
-  const sorted = [...filtered];
+  const sorted = [...expanded];
   sorted.sort((a, b) => {
     let cmp: number;
     if (field === "price") {
@@ -407,10 +515,14 @@ export async function getSetCards(
   pageSize = 20,
 ): Promise<SearchResult> {
   const { cards } = await loadCardIndex();
-  const filtered = cards
-    .filter((c) => c.set.id === setId)
-    .sort((a, b) => a.number.padStart(5, "0").localeCompare(b.number.padStart(5, "0")));
-  return paginate(filtered, page, pageSize);
+  let baseSetId = setId;
+  if (setId.includes("::")) baseSetId = setId.split("::")[0];
+
+  const filtered = cards.filter((c) => c.set.id === baseSetId);
+  const expanded = expandVariants(filtered, new Set([setId]));
+
+  expanded.sort((a, b) => a.number.padStart(5, "0").localeCompare(b.number.padStart(5, "0")));
+  return paginate(expanded, page, pageSize);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -430,23 +542,16 @@ function paginate(cards: PokemonCard[], page: number, pageSize: number): SearchR
 export function getMarketPrice(card: PokemonCard): number | null {
   const prices = card.tcgplayer?.prices ?? pricingCache.get(card.id)?.prices;
   if (!prices) return null;
-  // Prefer normal/Unlimited over holofoil/1st Edition for consistent default pricing
-  const priceData =
-    prices.normal ||
-    prices.holofoil ||
-    prices.reverseHolofoil ||
-    prices["1stEditionHolofoil"];
+  // Because variants now have their own IDs (e.g. base1-4::holofoil) and are loaded
+  // into the normal price field in DB, the 'normal' field holds the actual variant price.
+  const priceData = prices.normal || prices.holofoil || prices.reverseHolofoil || prices["1stEditionHolofoil"];
   return priceData?.market ?? priceData?.mid ?? null;
 }
 
 export function getLowPrice(card: PokemonCard): number | null {
   const prices = card.tcgplayer?.prices ?? pricingCache.get(card.id)?.prices;
   if (!prices) return null;
-  const priceData =
-    prices.normal ||
-    prices.holofoil ||
-    prices.reverseHolofoil ||
-    prices["1stEditionHolofoil"];
+  const priceData = prices.normal || prices.holofoil || prices.reverseHolofoil || prices["1stEditionHolofoil"];
   return priceData?.low ?? null;
 }
 
@@ -524,28 +629,21 @@ export async function getMarketCards(opts: {
   limit?: number;
 }): Promise<PokemonCard[]> {
   const { cards, sets } = await loadCardIndex();
-  // Always restrict to physical (non-online) sets — never show TCG Pocket on market
   const physicalSetIds = new Set(sets.filter((s) => !s.isOnlineOnly).map((s) => s.id));
-  const allowedIds = opts.setIds
-    ? new Set([...opts.setIds].filter((id) => physicalSetIds.has(id)))
-    : physicalSetIds;
-  const filtered = cards.filter((c) => allowedIds.has(c.set.id));
-
-  // Apply cached prices + % change data strictly by exact Scrydex card ID.
-  const withPrices = filtered.map((card) => {
-    let enriched = card;
-    if (!enriched.tcgplayer?.prices) {
-      const byId = pricingCache.get(card.id);
-      if (byId) {
-        enriched = { ...enriched, tcgplayer: byId };
-      }
+  
+  let allowedBaseIds = physicalSetIds;
+  if (opts.setIds) {
+    const requestedBaseSetIds = new Set<string>();
+    for (const sid of opts.setIds) {
+      requestedBaseSetIds.add(sid.split("::")[0]);
     }
-    if (!enriched.cardmarketAvgs) {
-      const avgs = cardmarketAvgsSeeded.get(card.id) ?? cardmarketAvgsCache.get(card.id);
-      if (avgs) enriched = { ...enriched, cardmarketAvgs: avgs };
-    }
-    return enriched;
-  });
+    allowedBaseIds = new Set([...requestedBaseSetIds].filter((id) => physicalSetIds.has(id)));
+  }
+  
+  const filtered = cards.filter((c) => allowedBaseIds.has(c.set.id));
+  
+  // Expand into variant rows based on cache
+  const withPrices = expandVariants(filtered, opts.setIds);
 
   return withPrices
     .filter((c) => getMarketPrice(c) !== null)

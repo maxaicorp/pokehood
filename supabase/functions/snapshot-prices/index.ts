@@ -71,62 +71,22 @@ interface SnapshotRow {
 
 // ─── Price extraction ─────────────────────────────────────────────────────────
 
-// Variant priority: prefer Unlimited/Normal prints over 1st Edition.
-// Older sets (Base, Jungle, Fossil, etc.) have variants like "normal",
-// "holofoil", "1stEditionHolofoil" with wildly different prices.
-// Most collectors own Unlimited, so that should be the default display price.
-const VARIANT_PRIORITY = [
-  "normal",
-  "holofoil",
-  "reverseHolofoil",
-  "1stEditionNormal",
-  "1stEditionHolofoil",
-  "1stEdition",
-  "unlimitedHolofoil",
-];
+function extractAllVariantPrices(card: ScrydexCard): { variant: string; price: number }[] {
+  const results: { variant: string; price: number }[] = [];
+  const variants = card.variants ?? [];
 
-function sortVariantsByPriority(variants: ScrydexVariant[]): ScrydexVariant[] {
-  return [...variants].sort((a, b) => {
-    const ai = VARIANT_PRIORITY.indexOf(a.name);
-    const bi = VARIANT_PRIORITY.indexOf(b.name);
-    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-  });
-}
-
-function extractCardPrice(card: ScrydexCard): number | null {
-  const sorted = sortVariantsByPriority(card.variants ?? []);
-
-  // 1. NM raw USD market — sorted so Unlimited/Normal is checked first
-  for (const v of sorted) {
-    const p = (v.prices ?? []).find(
-      (x) => x.condition === "NM" && x.type === "raw" && x.currency === "USD" && x.market > 0
-    );
-    if (p) return p.market;
+  for (const v of variants) {
+    let price = v.prices?.find((x) => x.condition === "NM" && x.type === "raw" && x.currency === "USD" && x.market > 0)?.market;
+    if (!price) price = v.prices?.find((x) => x.condition === "NM" && x.type === "raw" && x.market > 0)?.market;
+    if (!price) price = v.prices?.find((x) => x.type === "raw" && x.currency === "USD" && x.market > 0)?.market;
+    if (!price) price = v.prices?.find((x) => x.type === "raw" && x.market > 0)?.market;
+    
+    if (price && price > 0) {
+      results.push({ variant: v.name, price });
+    }
   }
 
-  // 2. NM raw any currency
-  for (const v of sorted) {
-    const p = (v.prices ?? []).find(
-      (x) => x.condition === "NM" && x.type === "raw" && x.market > 0
-    );
-    if (p) return p.market;
-  }
-
-  // 3. Any raw USD market (LP/MP/etc. fallback — only if no NM exists)
-  for (const v of sorted) {
-    const p = (v.prices ?? []).find(
-      (x) => x.type === "raw" && x.currency === "USD" && x.market > 0
-    );
-    if (p) return p.market;
-  }
-
-  // 4. Any raw market (last resort)
-  for (const v of sorted) {
-    const p = (v.prices ?? []).find((x) => x.type === "raw" && x.market > 0);
-    if (p) return p.market;
-  }
-
-  return null;
+  return results;
 }
 
 // ─── Scrydex fetch helper ─────────────────────────────────────────────────────
@@ -216,18 +176,24 @@ async function runPass(opts: {
       if (card.expansion?.is_online_only) continue; // skip TCG Pocket
       const series = (card.expansion?.series ?? "").toLowerCase();
       if (series === "pokémon tcg pocket") continue;
-      const price = extractCardPrice(card);
-      if (!price || price <= 0) continue;
-      // Deduplicate across both passes: skip if another pass already captured this card
+      const variantPrices = extractAllVariantPrices(card);
+      if (variantPrices.length === 0) continue;
+      
+      // We only deduplicate based on base card.id
       if (seenIds.has(card.id)) continue;
       seenIds.add(card.id);
-      buffer.push({
-        card_id: card.id,
-        card_name: card.name ?? "",
-        set_name: card.expansion?.name ?? "",
-        price,
-        recorded_at: today,
-      });
+      
+      for (const vp of variantPrices) {
+        // We append the variant name to make it unique in the DB
+        const suffix = vp.variant !== "normal" ? `::${vp.variant}` : "";
+        buffer.push({
+          card_id: `${card.id}${suffix}`,
+          card_name: card.name ?? "",
+          set_name: card.expansion?.name ?? "",
+          price: vp.price,
+          recorded_at: today,
+        });
+      }
     }
 
     // Flush every 500 rows to avoid memory pressure
@@ -291,18 +257,22 @@ async function runSetBackfill(opts: {
 
     const rows = result.data ?? [];
     for (const card of rows) {
-      const price = extractCardPrice(card);
-      if (!price || price <= 0) continue;
+      const variantPrices = extractAllVariantPrices(card);
+      if (variantPrices.length === 0) continue;
       if (seenIds.has(card.id)) continue;
       seenIds.add(card.id);
       cardsWithPrice++;
-      buffer.push({
-        card_id: card.id,
-        card_name: card.name ?? "",
-        set_name: card.expansion?.name ?? "",
-        price,
-        recorded_at: today,
-      });
+      
+      for (const vp of variantPrices) {
+        const suffix = vp.variant !== "normal" ? `::${vp.variant}` : "";
+        buffer.push({
+          card_id: `${card.id}${suffix}`,
+          card_name: card.name ?? "",
+          set_name: card.expansion?.name ?? "",
+          price: vp.price,
+          recorded_at: today,
+        });
+      }
     }
 
     if (buffer.length >= 500) {
