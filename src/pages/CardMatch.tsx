@@ -87,6 +87,7 @@ export default function CardMatch() {
 
   // Tracks the active flip-back timer so we can cancel on unmount/restart.
   const flipBackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animLockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // State (not ref) so the disabled prop on the buttons actually re-renders.
   const [animating, setAnimating] = useState(false);
 
@@ -94,6 +95,10 @@ export default function CardMatch() {
     if (flipBackTimer.current) {
       clearTimeout(flipBackTimer.current);
       flipBackTimer.current = null;
+    }
+    if (animLockTimer.current) {
+      clearTimeout(animLockTimer.current);
+      animLockTimer.current = null;
     }
     setAnimating(false);
   }, []);
@@ -198,15 +203,16 @@ export default function CardMatch() {
       const res = await flipCard(sessionId, slotIdx);
 
       if (res.match === true) {
+        const bothMatched = res.otherSlot != null && !!res.otherCard;
         setSlots((prev) => {
           const next = [...prev];
           next[slotIdx] = { card: res.card, revealed: true, matched: true };
-          if (res.otherSlot != null && res.otherCard) {
-            next[res.otherSlot] = { card: res.otherCard, revealed: true, matched: true };
+          if (bothMatched) {
+            next[res.otherSlot!] = { card: res.otherCard!, revealed: true, matched: true };
           }
           return next;
         });
-        setMatchedCount((c) => c + 2);
+        setMatchedCount((c) => c + (bothMatched ? 2 : 1));
         if (res.completed) {
           setCompletion(res.completed);
           queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
@@ -243,7 +249,10 @@ export default function CardMatch() {
             return next;
           });
           // Release the input lock once the rotation has finished.
-          setTimeout(() => setAnimating(false), FLIP_ANIM_MS);
+          animLockTimer.current = setTimeout(() => {
+            animLockTimer.current = null;
+            setAnimating(false);
+          }, FLIP_ANIM_MS);
         }, FLIP_BACK_DELAY_MS);
       }
     } catch (e) {
