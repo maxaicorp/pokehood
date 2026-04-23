@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,25 +6,33 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
-import Dashboard from "./pages/Dashboard";
-import Explore from "./pages/Explore";
-import Profile from "./pages/Profile";
-import Auth from "./pages/Auth";
-import Privacy from "./pages/Privacy";
-import Terms from "./pages/Terms";
-import DemoProfile from "./pages/DemoProfile";
-import CardDetail from "./pages/CardDetail";
-import SealedDetail from "./pages/SealedDetail";
-import Games from "./pages/Games";
-import CardMatch from "./pages/CardMatch";
-import Stats from "./pages/Stats";
-import Market from "./pages/Market";
-import Sets from "./pages/Sets";
-import Onchain from "./pages/Onchain";
-import NotFound from "./pages/NotFound";
 import BackgroundLayer from "@/components/BackgroundLayer";
 
+// Lazy-loaded pages for code splitting
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Explore = lazy(() => import("./pages/Explore"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const DemoProfile = lazy(() => import("./pages/DemoProfile"));
+const CardDetail = lazy(() => import("./pages/CardDetail"));
+const SealedDetail = lazy(() => import("./pages/SealedDetail"));
+const Games = lazy(() => import("./pages/Games"));
+const CardMatch = lazy(() => import("./pages/CardMatch"));
+const Stats = lazy(() => import("./pages/Stats"));
+const Market = lazy(() => import("./pages/Market"));
+const Sets = lazy(() => import("./pages/Sets"));
+const Onchain = lazy(() => import("./pages/Onchain"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
 const queryClient = new QueryClient();
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+  </div>
+);
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
@@ -35,25 +44,27 @@ const App = () => (
           <AuthProvider>
             <BackgroundLayer />
             <div className="relative z-[1]">
-              <Routes>
-                <Route path="/" element={<Market />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/explore" element={<Explore />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/demo" element={<DemoProfile />} />
-                <Route path="/u/:slug" element={<Profile />} />
-                <Route path="/card/:id" element={<CardDetail />} />
-                <Route path="/sealed/:id" element={<SealedDetail />} />
-                <Route path="/market" element={<Market />} />
-                <Route path="/sets" element={<Sets />} />
-                <Route path="/onchain" element={<Onchain />} />
-                <Route path="/games" element={<Games />} />
-                <Route path="/games/card-match" element={<CardMatch />} />
-                <Route path="/stats" element={<Stats />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Market />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/explore" element={<Explore />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/demo" element={<DemoProfile />} />
+                  <Route path="/u/:slug" element={<Profile />} />
+                  <Route path="/card/:id" element={<CardDetail />} />
+                  <Route path="/sealed/:id" element={<SealedDetail />} />
+                  <Route path="/market" element={<Market />} />
+                  <Route path="/sets" element={<Sets />} />
+                  <Route path="/onchain" element={<Onchain />} />
+                  <Route path="/games" element={<Games />} />
+                  <Route path="/games/card-match" element={<CardMatch />} />
+                  <Route path="/stats" element={<Stats />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </div>
           </AuthProvider>
         </BrowserRouter>
@@ -63,3 +74,4 @@ const App = () => (
 );
 
 export default App;
+
