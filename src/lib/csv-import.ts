@@ -75,8 +75,6 @@ export async function resolveImport(rows: CsvRow[]): Promise<ImportResult> {
     } catch {
       // skip on error
     }
-    // Rate limit - pokemontcg.io has limits
-    await new Promise(r => setTimeout(r, 200));
   }
 
   for (const row of rows) {

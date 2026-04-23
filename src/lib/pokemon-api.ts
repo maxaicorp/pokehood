@@ -242,11 +242,12 @@ export async function enrichPageWithPricing(
   concurrency = 15,
 ): Promise<PokemonCard[]> {
   const results: PokemonCard[] = new Array(cards.length);
-  let idx = 0;
+  // Use a queue to avoid race conditions — each worker pops its own index
+  const queue = cards.map((_, i) => i);
 
   async function worker() {
-    while (idx < cards.length) {
-      const i = idx++;
+    while (queue.length > 0) {
+      const i = queue.shift()!;
       results[i] = await enrichCardWithPricing(cards[i]);
     }
   }

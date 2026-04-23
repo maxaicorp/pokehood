@@ -47,10 +47,19 @@ let sealedCache: SealedProduct[] | null = null;
 
 async function loadSealedProducts(): Promise<SealedProduct[]> {
   if (sealedCache) return sealedCache;
-  const res = await fetch("/data/sealed-products.json");
-  if (!res.ok) throw new Error("Failed to load sealed-products.json");
-  const json = await res.json();
-  sealedCache = json.products ?? [];
+  try {
+    const res = await fetch("/data/sealed-products.json");
+    if (!res.ok) {
+      console.warn("sealed-products.json not found — Sealed tab will be empty");
+      sealedCache = [];
+      return sealedCache;
+    }
+    const json = await res.json();
+    sealedCache = json.products ?? [];
+  } catch (err) {
+    console.warn("Failed to load sealed-products.json:", err);
+    sealedCache = [];
+  }
   return sealedCache;
 }
 

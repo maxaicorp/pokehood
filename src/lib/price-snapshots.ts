@@ -146,20 +146,24 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
   //    The daily cron sometimes skips middle pages, so we fetch the last 3 days
   //    and merge them (today wins, then yesterday, then 2-days-ago) so cards
   //    that weren't priced today still surface a recent price instead of N/A.
+  // 2. Compute fallback dates (fill gaps in today's data) and historical comparison dates.
+  //    Fallback: merge latest + yesterday + 2-days-ago so missing cards still get a price.
+  //    Historical: compare effective-current vs 1d/7d/30d ago for % change columns.
   const latest = new Date(latestDate);
   const fmt = (d: Date) => d.toISOString().split("T")[0];
   const dPrev1 = new Date(latest); dPrev1.setDate(dPrev1.getDate() - 1);
   const dPrev2 = new Date(latest); dPrev2.setDate(dPrev2.getDate() - 2);
+  // Historical comparison dates (relative to latestDate, NOT the merge window)
   const d1 = new Date(latest); d1.setDate(d1.getDate() - 1);
   const d7 = new Date(latest); d7.setDate(d7.getDate() - 7);
   const d30 = new Date(latest); d30.setDate(d30.getDate() - 30);
 
-  // 3. Fetch current + fallback days + historical comparison days in parallel
-  const [currentRows, prev1Rows, prev2Rows, d1Rows, d7Rows, d30Rows] = await Promise.all([
+  // 3. Fetch current + fallback days + historical comparison days in parallel.
+  //    d1 overlaps with dPrev1 intentionally — we reuse the same fetch to avoid waste.
+  const [currentRows, prev1Rows, prev2Rows, d7Rows, d30Rows] = await Promise.all([
     fetchSnapshotDate(latestDate),
     fetchSnapshotDate(fmt(dPrev1)),
     fetchSnapshotDate(fmt(dPrev2)),
-    fetchSnapshotDate(fmt(d1)),
     fetchSnapshotDate(fmt(d7)),
     fetchSnapshotDate(fmt(d30)),
   ]);
@@ -189,7 +193,7 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
     return { byId, byName };
   }
 
-  const lookup1d = buildLookups(d1Rows);
+  const lookup1d = buildLookups(prev1Rows);
   const lookup7d = buildLookups(d7Rows);
   const lookup30d = buildLookups(d30Rows);
 

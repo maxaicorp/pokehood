@@ -18,8 +18,7 @@ export default function Profile() {
   const [qrOpen, setQrOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(CARDS_PER_PAGE);
   const loaderRef = useRef<HTMLDivElement>(null);
-  const publishedDomain = "https://collectiblez.lovable.app";
-  const profileUrl = `${publishedDomain}/u/${slug || "demo"}`;
+  const profileUrl = `${window.location.origin}/u/${slug || "demo"}`;
 
   // Fetch profile by slug
   const { data: profile, isLoading: profileLoading } = useQuery({
@@ -68,7 +67,8 @@ export default function Profile() {
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");
     // Fire-and-forget insert
-    supabase.from("profile_views").insert({ profile_user_id: profile.user_id }).then();
+    supabase.from("profile_views").insert({ profile_user_id: profile.user_id })
+      .then(({ error }) => { if (error) console.warn("Failed to record profile view:", error.message); });
   }, [profile?.user_id]);
 
   // Track link clicks
@@ -76,7 +76,7 @@ export default function Profile() {
     supabase.from("link_clicks").insert({
       link_id: link.id,
       link_user_id: link.user_id,
-    }).then();
+    }).then(({ error }) => { if (error) console.warn("Failed to record link click:", error.message); });
   };
 
   // Infinite scroll observer

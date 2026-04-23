@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   getWishlists,
   createWishlist,
@@ -103,7 +104,6 @@ export default function WishlistDashboard() {
 
   const handleUpgrade = async () => {
     try {
-      const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("create-checkout");
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
