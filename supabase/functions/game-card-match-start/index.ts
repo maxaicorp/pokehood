@@ -148,7 +148,7 @@ serve(async (req) => {
       if (code === "23505") {
         const { data: existing, error: reuseErr } = await supabase
           .from("game_sessions")
-          .select("id, started_at")
+          .select("id, started_at, slots")
           .eq("user_id", user.id)
           .eq("game", game)
           .eq("status", "active")
@@ -162,6 +162,7 @@ serve(async (req) => {
           session_id: existing.id,
           started_at: existing.started_at,
           slots: SLOTS,
+          slot_cards: existing.slots,
           image_urls: imageUrls,
           reused: true,
         });
