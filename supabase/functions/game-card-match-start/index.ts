@@ -109,14 +109,17 @@ serve(async (req) => {
       .from("game_card_pool")
       .select("card_id, name, image_small");
     if (poolErr) return fail(`Read pool: ${describeError(poolErr)}`);
-    if (!pool || pool.length < PAIRS) {
-      return fail(`Card pool too small (${pool?.length ?? 0}); seed game_card_pool first`);
+    const localPool = (pool ?? []).filter(
+      (entry) => typeof entry.image_small === "string" && entry.image_small.startsWith("/data/card-pool/"),
+    );
+    if (localPool.length < PAIRS) {
+      return fail(`Local card pool too small (${localPool.length}); seed game_card_pool first`);
     }
 
     // image_small in game_card_pool is already a local path served by the
     // frontend (/data/card-pool/{card_id}.png). Pass it through verbatim — no
     // storage indirection, no CDN fetch.
-    const picked = shuffle([...pool]).slice(0, PAIRS);
+    const picked = shuffle([...localPool]).slice(0, PAIRS);
 
     const slots = shuffle(
       picked.flatMap((c) => [
