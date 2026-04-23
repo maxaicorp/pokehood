@@ -71,11 +71,33 @@ interface SnapshotRow {
 
 // ─── Price extraction ─────────────────────────────────────────────────────────
 
-function extractCardPrice(card: ScrydexCard): number | null {
-  const variants = card.variants ?? [];
+// Variant priority: prefer Unlimited/Normal prints over 1st Edition.
+// Older sets (Base, Jungle, Fossil, etc.) have variants like "normal",
+// "holofoil", "1stEditionHolofoil" with wildly different prices.
+// Most collectors own Unlimited, so that should be the default display price.
+const VARIANT_PRIORITY = [
+  "normal",
+  "holofoil",
+  "reverseHolofoil",
+  "1stEditionNormal",
+  "1stEditionHolofoil",
+  "1stEdition",
+  "unlimitedHolofoil",
+];
 
-  // 1. NM raw USD market (most accurate price for a near-mint ungraded card)
-  for (const v of variants) {
+function sortVariantsByPriority(variants: ScrydexVariant[]): ScrydexVariant[] {
+  return [...variants].sort((a, b) => {
+    const ai = VARIANT_PRIORITY.indexOf(a.name);
+    const bi = VARIANT_PRIORITY.indexOf(b.name);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
+}
+
+function extractCardPrice(card: ScrydexCard): number | null {
+  const sorted = sortVariantsByPriority(card.variants ?? []);
+
+  // 1. NM raw USD market — sorted so Unlimited/Normal is checked first
+  for (const v of sorted) {
     const p = (v.prices ?? []).find(
       (x) => x.condition === "NM" && x.type === "raw" && x.currency === "USD" && x.market > 0
     );
@@ -83,7 +105,7 @@ function extractCardPrice(card: ScrydexCard): number | null {
   }
 
   // 2. NM raw any currency
-  for (const v of variants) {
+  for (const v of sorted) {
     const p = (v.prices ?? []).find(
       (x) => x.condition === "NM" && x.type === "raw" && x.market > 0
     );
@@ -91,7 +113,7 @@ function extractCardPrice(card: ScrydexCard): number | null {
   }
 
   // 3. Any raw USD market (LP/MP/etc. fallback — only if no NM exists)
-  for (const v of variants) {
+  for (const v of sorted) {
     const p = (v.prices ?? []).find(
       (x) => x.type === "raw" && x.currency === "USD" && x.market > 0
     );
@@ -99,7 +121,7 @@ function extractCardPrice(card: ScrydexCard): number | null {
   }
 
   // 4. Any raw market (last resort)
-  for (const v of variants) {
+  for (const v of sorted) {
     const p = (v.prices ?? []).find((x) => x.type === "raw" && x.market > 0);
     if (p) return p.market;
   }

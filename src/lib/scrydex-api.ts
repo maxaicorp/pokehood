@@ -72,12 +72,16 @@ export function normalizeDate(d: string): string {
   return d ? d.replace(/\//g, "-") : "";
 }
 
-/** Extract best NM market price from a Scrydex card */
+/** Extract best NM market price from a Scrydex card.
+ *  Prefers Unlimited/Normal variants over 1st Edition for older sets,
+ *  matching the priority used by the snapshot-prices edge function. */
 export function getScrydexCardPrice(card: ScrydexCard): number | null {
-  const order = ["holofoil", "reverseHolofoil", "normal", "firstEdition"];
-  const sorted = [...card.variants].sort(
-    (a, b) => order.indexOf(a.name) - order.indexOf(b.name)
-  );
+  const order = ["normal", "holofoil", "reverseHolofoil", "1stEditionNormal", "1stEditionHolofoil", "1stEdition", "unlimitedHolofoil"];
+  const sorted = [...card.variants].sort((a, b) => {
+    const ai = order.indexOf(a.name);
+    const bi = order.indexOf(b.name);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
   for (const variant of sorted) {
     const nm = variant.prices.find((p) => p.condition === "NM" && p.type === "raw");
     if (nm && nm.market > 0) return nm.market;

@@ -430,9 +430,10 @@ function paginate(cards: PokemonCard[], page: number, pageSize: number): SearchR
 export function getMarketPrice(card: PokemonCard): number | null {
   const prices = card.tcgplayer?.prices ?? pricingCache.get(card.id)?.prices;
   if (!prices) return null;
+  // Prefer normal/Unlimited over holofoil/1st Edition for consistent default pricing
   const priceData =
-    prices.holofoil ||
     prices.normal ||
+    prices.holofoil ||
     prices.reverseHolofoil ||
     prices["1stEditionHolofoil"];
   return priceData?.market ?? priceData?.mid ?? null;
@@ -442,8 +443,8 @@ export function getLowPrice(card: PokemonCard): number | null {
   const prices = card.tcgplayer?.prices ?? pricingCache.get(card.id)?.prices;
   if (!prices) return null;
   const priceData =
-    prices.holofoil ||
     prices.normal ||
+    prices.holofoil ||
     prices.reverseHolofoil ||
     prices["1stEditionHolofoil"];
   return priceData?.low ?? null;
