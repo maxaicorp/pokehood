@@ -132,9 +132,11 @@ export function getSealedTrends(product: SealedProduct): {
   const sealedId = `sealed-${product.id}`;
   const dbEntry = sealedPriceMap?.get(sealedId);
   if (dbEntry) {
+    const pctFrom = (prev: number | null) =>
+      prev != null && prev !== 0 ? ((dbEntry.price - prev) / prev) * 100 : null;
     return {
-      pct1d: dbEntry.pricePct24h,
-      pct7d: dbEntry.pricePct7d,
+      pct1d: pctFrom(dbEntry.price1d),
+      pct7d: pctFrom(dbEntry.price7d),
     };
   }
   // Fallback to inline trend data from JSON

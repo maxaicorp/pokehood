@@ -51,9 +51,14 @@ export async function getPriceChanges(
   return map;
 }
 
-/** Format a percentage with sign and color-appropriate CSS class */
+/** Format a percentage with sign and color-appropriate CSS class.
+ *  Guards against NaN, Infinity, and absurd values (>1000%) that indicate
+ *  upstream data corruption — renders them as "—" rather than leaking garbage to the UI. */
+const PCT_SANITY_LIMIT = 1000;
 export function formatPct(pct: number | null): { text: string; className: string } {
-  if (pct == null) return { text: "—", className: "text-muted-foreground" };
+  if (pct == null || !Number.isFinite(pct) || Math.abs(pct) > PCT_SANITY_LIMIT) {
+    return { text: "—", className: "text-muted-foreground" };
+  }
   const sign = pct >= 0 ? "+" : "";
   const text = `${sign}${pct.toFixed(2)}%`;
   if (pct > 0) return { text, className: "text-green-500" };
@@ -97,9 +102,11 @@ export interface LatestPrice {
   cardName: string;
   setName: string;
   price: number;
-  pricePct24h: number | null;
-  pricePct7d: number | null;
-  pricePct30d: number | null;
+  // Raw prior-day snapshot prices. % change is computed at display time from these,
+  // NOT stored as pct and reverse-engineered later (that caused runaway error amplification).
+  price1d: number | null;
+  price7d: number | null;
+  price30d: number | null;
 }
 
 /**
@@ -178,14 +185,22 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
 
   if (!effectiveCurrent.length) return map;
 
-  // Build lookup maps — first by card_id, then by name+set for fallback
+  // Extract variant suffix (after "::") from a card_id, or "" for no variant.
+  // Used to scope the name-based fallback so "Charizard 1st Edition" doesn't
+  // get matched against "Charizard Unlimited" via name collision.
+  const variantOf = (id: string) => {
+    const i = id.indexOf("::");
+    return i === -1 ? "" : id.slice(i + 2);
+  };
+
+  // Build lookup maps — first by card_id, then by name+set+variant for fallback
   function buildLookups(rows: Row[]) {
     const byId = new Map<string, number>();
     const byName = new Map<string, number[]>();
     for (const r of rows) {
       const price = Number(r.price);
       byId.set(r.card_id, price);
-      const key = `${r.card_name}|${r.set_name}`.toLowerCase();
+      const key = `${r.card_name}|${r.set_name}|${variantOf(r.card_id)}`.toLowerCase();
       const arr = byName.get(key);
       if (arr) arr.push(price);
       else byName.set(key, [price]);
@@ -197,7 +212,10 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
   const lookup7d = buildLookups(d7Rows);
   const lookup30d = buildLookups(d30Rows);
 
-  // Find the best historical price: exact ID match first, then name+set with closest price
+  // Find the best historical price: exact ID match first, then name+set+variant with closest price,
+  // then fall back to the base card's historical price (for brand-new variant rows that have no
+  // history yet — gives them an immediate baseline that's close enough for same-priced variants;
+  // wildly-off approximations are caught by the >1000% sanity guard in formatPct).
   function findHistoricalPrice(
     lookup: ReturnType<typeof buildLookups>,
     cardId: string,
@@ -208,18 +226,29 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
     const byId = lookup.byId.get(cardId);
     if (byId !== undefined) return byId;
 
-    const key = `${cardName}|${setName}`.toLowerCase();
+    const key = `${cardName}|${setName}|${variantOf(cardId)}`.toLowerCase();
     const candidates = lookup.byName.get(key);
-    if (!candidates?.length) return undefined;
-
-    if (candidates.length === 1) return candidates[0];
-    let best = candidates[0];
-    let bestDiff = Math.abs(currentPrice - best);
-    for (let i = 1; i < candidates.length; i++) {
-      const diff = Math.abs(currentPrice - candidates[i]);
-      if (diff < bestDiff) { best = candidates[i]; bestDiff = diff; }
+    if (candidates?.length) {
+      if (candidates.length === 1) return candidates[0];
+      let best = candidates[0];
+      let bestDiff = Math.abs(currentPrice - best);
+      for (let i = 1; i < candidates.length; i++) {
+        const diff = Math.abs(currentPrice - candidates[i]);
+        if (diff < bestDiff) { best = candidates[i]; bestDiff = diff; }
+      }
+      return best;
     }
-    return best;
+
+    // Base-card fallback: a variant-suffixed id ("base1-4::holofoil") falls back
+    // to the base id ("base1-4") if it exists in history.
+    const sep = cardId.indexOf("::");
+    if (sep !== -1) {
+      const baseId = cardId.slice(0, sep);
+      const base = lookup.byId.get(baseId);
+      if (base !== undefined) return base;
+    }
+
+    return undefined;
   }
 
   for (const row of effectiveCurrent) {
@@ -233,9 +262,9 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
       cardName: row.card_name,
       setName: row.set_name,
       price,
-      pricePct24h: p1 != null && p1 !== 0 ? ((price - p1) / p1) * 100 : null,
-      pricePct7d: p7 != null && p7 !== 0 ? ((price - p7) / p7) * 100 : null,
-      pricePct30d: p30 != null && p30 !== 0 ? ((price - p30) / p30) * 100 : null,
+      price1d: p1 ?? null,
+      price7d: p7 ?? null,
+      price30d: p30 ?? null,
     });
   }
 

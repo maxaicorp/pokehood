@@ -133,9 +133,9 @@ export function seedPricingCache(prices: Map<string, {
   price: number;
   cardName?: string;
   setName?: string;
-  pricePct24h?: number | null;
-  pricePct7d?: number | null;
-  pricePct30d?: number | null;
+  price1d?: number | null;
+  price7d?: number | null;
+  price30d?: number | null;
 }>) {
   // Fresh DB seed should always win over stale in-memory values from earlier navigation.
   pricingCache.clear();
@@ -151,12 +151,13 @@ export function seedPricingCache(prices: Map<string, {
 
     pricingCache.set(cardId, tcgplayer);
 
-    // Store % change data for the Market page columns
-    if (data.pricePct24h != null || data.pricePct7d != null || data.pricePct30d != null) {
+    // Store raw prior-day prices in avg1/7/30. Display-side code computes % change
+    // from these directly — no reverse-engineering, no error amplification.
+    if (data.price1d != null || data.price7d != null || data.price30d != null) {
       const avgs: PokemonCard["cardmarketAvgs"] = {
-        avg1: data.pricePct24h != null && data.price > 0 ? data.price / (1 + data.pricePct24h / 100) : null,
-        avg7: data.pricePct7d != null && data.price > 0 ? data.price / (1 + data.pricePct7d / 100) : null,
-        avg30: data.pricePct30d != null && data.price > 0 ? data.price / (1 + data.pricePct30d / 100) : null,
+        avg1: data.price1d ?? null,
+        avg7: data.price7d ?? null,
+        avg30: data.price30d ?? null,
         trend: data.price,
       };
       cardmarketAvgsSeeded.set(cardId, avgs);
