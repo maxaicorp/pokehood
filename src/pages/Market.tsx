@@ -13,6 +13,7 @@ import {
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import { formatPct, getLatestSnapshotPrices } from "@/lib/price-snapshots";
+import { loadMarketCache, saveMarketCache } from "@/lib/market-cache";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
 import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import AppHeader from "@/components/AppHeader";
@@ -57,12 +58,15 @@ export default function Market() {
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
   const isRecentFilter = selectedSetId === "recent5" || selectedSetId === "recent10";
 
-  // Card state
-  const [cards, setCards] = useState<PokemonCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Card state — hydrate synchronously from localStorage cache for instant first paint
+  const [cards, setCards] = useState<PokemonCard[]>(() => loadMarketCache("recent5")?.cards ?? []);
+  const [isLoading, setIsLoading] = useState(() => !loadMarketCache("recent5"));
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(null);
+  const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(() => {
+    const c = loadMarketCache("recent5");
+    return c ? { data: c.sets } : null;
+  });
   const [pricesReady, setPricesReady] = useState(false);
 
   // Load most visited when tab is active
@@ -89,8 +93,8 @@ export default function Market() {
   useEffect(() => {
     if (!pricesReady || !setsData) return;
     let cancelled = false;
-    setIsLoading(true);
-    setCards([]);
+    // Only show skeleton if we have nothing cached to display
+    if (cards.length === 0) setIsLoading(true);
     setVisibleCount(VISIBLE_PAGE_SIZE);
 
     const physicalSets = setsData.data.filter(
@@ -113,6 +117,8 @@ export default function Market() {
       if (!cancelled) {
         setCards(result);
         setIsLoading(false);
+        // Persist so the next visit paints instantly
+        saveMarketCache({ sets: setsData.data, cards: result, selectedSetId });
       }
     });
 
