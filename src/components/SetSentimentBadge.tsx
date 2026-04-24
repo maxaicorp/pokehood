@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VoteType } from "@/lib/sentiment-store";
@@ -11,21 +12,23 @@ interface SetSentimentBadgeProps {
   compact?: boolean;
 }
 
-export default function SetSentimentBadge({
+const SetSentimentBadge = forwardRef<HTMLDivElement, SetSentimentBadgeProps>(function SetSentimentBadge({
   upvotes,
   downvotes,
   score,
   currentUserVote,
   onVote,
   compact = false,
-}: SetSentimentBadgeProps) {
+}, ref) {
   return (
     <div
+      ref={ref}
       className={cn(
         "flex items-center gap-1 rounded-lg border border-border/50 bg-muted/30 overflow-hidden",
         compact ? "text-[10px]" : "text-xs"
       )}
       onClick={(e) => e.stopPropagation()}
+      data-score={score}
     >
       <button
         onClick={(e) => {
@@ -64,4 +67,6 @@ export default function SetSentimentBadge({
       </button>
     </div>
   );
-}
+});
+
+export default SetSentimentBadge;

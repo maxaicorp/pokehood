@@ -289,9 +289,21 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
     }
   }
 
-  const pricingIds = Array.from(pricingCache.keys());
+  const suffixesByBaseId = new Map<string, string[]>();
+  for (const cardId of pricingIds) {
+    const [baseId, rawSuffix] = cardId.split("::");
+    const suffix = rawSuffix ? `::${rawSuffix}` : "";
+    const existing = suffixesByBaseId.get(baseId);
+    if (existing) {
+      if (!existing.includes(suffix)) existing.push(suffix);
+    } else {
+      suffixesByBaseId.set(baseId, [suffix]);
+    }
+  }
 
   for (const card of cards) {
+    const potentialSuffixes = suffixesByBaseId.get(card.id) ?? [];
+
     // First pass: collect every suffix that has a price in the cache.
     const matches: { suffix: string; priceData: NonNullable<PokemonCard["tcgplayer"]> }[] = [];
     for (const suffix of potentialSuffixes) {
@@ -307,15 +319,14 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
       continue;
     }
 
-    const hasVintage = matches.some((m) => VINTAGE_SUFFIXES.has(m.suffix));
+    const hasVintage = matches.some((m) => isVintageVariantSuffix(m.suffix));
 
     if (!hasVintage) {
       // Modern card: Scrydex sometimes returns duplicate "normal"+"holofoil"
       // entries for the same physical card. Collapse to one row using the best
       // available price (prefer bare → holofoil → reverseHolofoil), keep the
       // base card id so /card/:id links work, and don't stamp "(Holo)" onto the name.
-      const priority = ["", "::holofoil", "::reverseHolofoil"];
-      const best = priority.map((p) => matches.find((m) => m.suffix === p)).find(Boolean) ?? matches[0];
+      const best = MODERN_SUFFIXES.map((p) => matches.find((m) => m.suffix === p)).find(Boolean) ?? matches[0];
       const matchesBaseSet = !allowedSetIds || requestedBaseSets.has(card.set.id) || allowedSetIds.has(card.set.id);
       if (!matchesBaseSet) continue;
 
@@ -330,19 +341,17 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
       continue;
     }
 
-    // Vintage card: emit every matched variant as its own row. But if a
-    // holo-specific marker is present (e.g. ::unlimitedHolofoil), drop the
-    // bare entry — Scrydex often returns both as schema artifacts of the
-    // same physical printing, producing duplicate rows like
-    // "Charizard" + "Charizard (Unlimited Holo)".
-    const holoMarkers = new Set(["::holofoil", "::unlimitedHolofoil", "::shadowlessHolofoil", "::1stEditionHolofoil"]);
-    const hasHoloMarker = matches.some((m) => holoMarkers.has(m.suffix));
-    const vintageMatches = hasHoloMarker ? matches.filter((m) => m.suffix !== "") : matches;
+    // Vintage card: if specific suffixed variants exist, never surface the bare
+    // row because Scrydex's unsuffixed price is ambiguous and often maps to the
+    // wrong printing (for Base/Jungle/Fossil it frequently mirrors 1st Edition).
+    const vintageMatches = matches.some((m) => m.suffix !== "")
+      ? matches.filter((m) => m.suffix !== "")
+      : matches;
 
     for (const { suffix, priceData } of vintageMatches) {
       const variantId = `${card.id}${suffix}`;
       const variantName = suffix.replace("::", "");
-      const is1stEdition = variantName.toLowerCase().includes("1stedition");
+      const is1stEdition = /(?:1stedition|firstedition)/i.test(variantName);
 
       let isRequestedVariant = true;
       if (allowedSetIds) {
