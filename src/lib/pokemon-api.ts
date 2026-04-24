@@ -250,6 +250,18 @@ function formatVariantName(variant: string): string {
   }
 }
 
+// Suffixes that indicate a genuinely distinct collectible variant (vintage-era
+// markers). Modern cards often have both "normal" and "holofoil" entries from
+// Scrydex for the same physical card — those should collapse into one row.
+const VINTAGE_SUFFIXES = new Set([
+  "::1stEditionNormal",
+  "::1stEditionHolofoil",
+  "::1stEdition",
+  "::unlimitedHolofoil",
+  "::shadowless",
+  "::shadowlessHolofoil",
+]);
+
 function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): PokemonCard[] {
   const expanded: PokemonCard[] = [];
   const requestedVariantSets = new Set<string>();
@@ -265,50 +277,75 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
     }
   }
 
+  const potentialSuffixes = ["", "::holofoil", "::reverseHolofoil", "::1stEditionNormal", "::1stEditionHolofoil", "::1stEdition", "::unlimitedHolofoil", "::shadowless", "::shadowlessHolofoil"];
+
   for (const card of cards) {
-    const potentialSuffixes = ["", "::holofoil", "::reverseHolofoil", "::1stEditionNormal", "::1stEditionHolofoil", "::1stEdition", "::unlimitedHolofoil"];
-    let foundAny = false;
-
+    // First pass: collect every suffix that has a price in the cache.
+    const matches: { suffix: string; priceData: NonNullable<PokemonCard["tcgplayer"]> }[] = [];
     for (const suffix of potentialSuffixes) {
-      const variantId = `${card.id}${suffix}`;
-      const priceData = pricingCache.get(variantId);
-      
-      if (priceData) {
-        foundAny = true;
-        const variantName = suffix.replace("::", "");
-        const is1stEdition = variantName.toLowerCase().includes("1stedition");
-        
-        let isRequestedVariant = true;
-        if (allowedSetIds) {
-           const matches1stEditionSet = requestedVariantSets.has(`${card.set.id}::1stEdition`);
-           const matchesBaseSet = requestedBaseSets.has(card.set.id);
-           
-           if (is1stEdition && !matches1stEditionSet) isRequestedVariant = false;
-           if (!is1stEdition && !matchesBaseSet) isRequestedVariant = false;
-        }
-
-        if (isRequestedVariant) {
-          let enriched = { ...card, id: variantId, tcgplayer: priceData };
-          if (variantName) {
-             enriched.name = `${card.name} (${formatVariantName(variantName)})`;
-             if (is1stEdition) {
-               enriched.set = { ...card.set, id: `${card.set.id}::1stEdition`, name: `${card.set.name} (1st Edition)` };
-             }
-          }
-          const avgs = cardmarketAvgsSeeded.get(variantId) ?? cardmarketAvgsCache.get(variantId);
-          if (avgs) enriched.cardmarketAvgs = avgs;
-          expanded.push(enriched);
-        }
-      }
+      const priceData = pricingCache.get(`${card.id}${suffix}`);
+      if (priceData) matches.push({ suffix, priceData });
     }
 
-    if (!foundAny) {
+    if (matches.length === 0) {
+      // No pricing at all — emit the base card for the unpriced section of set views.
       if (!allowedSetIds || requestedBaseSets.has(card.set.id) || allowedSetIds.has(card.set.id)) {
         expanded.push(card);
       }
+      continue;
+    }
+
+    const hasVintage = matches.some((m) => VINTAGE_SUFFIXES.has(m.suffix));
+
+    if (!hasVintage) {
+      // Modern card: Scrydex sometimes returns duplicate "normal"+"holofoil"
+      // entries for the same physical card. Collapse to one row using the best
+      // available price (prefer bare → holofoil → reverseHolofoil), keep the
+      // base card id so /card/:id links work, and don't stamp "(Holo)" onto the name.
+      const priority = ["", "::holofoil", "::reverseHolofoil"];
+      const best = priority.map((p) => matches.find((m) => m.suffix === p)).find(Boolean) ?? matches[0];
+      const matchesBaseSet = !allowedSetIds || requestedBaseSets.has(card.set.id) || allowedSetIds.has(card.set.id);
+      if (!matchesBaseSet) continue;
+
+      const enriched: PokemonCard = { ...card, tcgplayer: best!.priceData };
+      const avgs =
+        cardmarketAvgsSeeded.get(card.id) ??
+        cardmarketAvgsSeeded.get(`${card.id}${best!.suffix}`) ??
+        cardmarketAvgsCache.get(card.id) ??
+        cardmarketAvgsCache.get(`${card.id}${best!.suffix}`);
+      if (avgs) enriched.cardmarketAvgs = avgs;
+      expanded.push(enriched);
+      continue;
+    }
+
+    // Vintage card: emit every matched variant as its own row.
+    for (const { suffix, priceData } of matches) {
+      const variantId = `${card.id}${suffix}`;
+      const variantName = suffix.replace("::", "");
+      const is1stEdition = variantName.toLowerCase().includes("1stedition");
+
+      let isRequestedVariant = true;
+      if (allowedSetIds) {
+        const matches1stEditionSet = requestedVariantSets.has(`${card.set.id}::1stEdition`);
+        const matchesBaseSet = requestedBaseSets.has(card.set.id);
+        if (is1stEdition && !matches1stEditionSet) isRequestedVariant = false;
+        if (!is1stEdition && !matchesBaseSet) isRequestedVariant = false;
+      }
+      if (!isRequestedVariant) continue;
+
+      const enriched: PokemonCard = { ...card, id: variantId, tcgplayer: priceData };
+      if (variantName) {
+        enriched.name = `${card.name} (${formatVariantName(variantName)})`;
+        if (is1stEdition) {
+          enriched.set = { ...card.set, id: `${card.set.id}::1stEdition`, name: `${card.set.name} (1st Edition)` };
+        }
+      }
+      const avgs = cardmarketAvgsSeeded.get(variantId) ?? cardmarketAvgsCache.get(variantId);
+      if (avgs) enriched.cardmarketAvgs = avgs;
+      expanded.push(enriched);
     }
   }
-  
+
   return expanded;
 }
 

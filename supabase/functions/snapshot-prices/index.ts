@@ -71,8 +71,22 @@ interface SnapshotRow {
 
 // ─── Price extraction ─────────────────────────────────────────────────────────
 
+// Variant names that indicate a card genuinely has multiple collectible
+// printings worth tracking separately (vintage-era markers). When none of
+// these are present, Scrydex's "normal" and "holofoil" entries are usually
+// two takes on the same physical card and should be collapsed.
+const VINTAGE_VARIANTS = new Set([
+  "1stEdition",
+  "1stEditionNormal",
+  "1stEditionHolofoil",
+  "unlimitedHolofoil",
+  "shadowless",
+  "shadowlessHolofoil",
+]);
+const MODERN_PRIORITY = ["normal", "holofoil", "reverseHolofoil"];
+
 function extractAllVariantPrices(card: ScrydexCard): { variant: string; price: number }[] {
-  const results: { variant: string; price: number }[] = [];
+  const all: { variant: string; price: number }[] = [];
   const variants = card.variants ?? [];
 
   for (const v of variants) {
@@ -80,13 +94,25 @@ function extractAllVariantPrices(card: ScrydexCard): { variant: string; price: n
     if (!price) price = v.prices?.find((x) => x.condition === "NM" && x.type === "raw" && x.market > 0)?.market;
     if (!price) price = v.prices?.find((x) => x.type === "raw" && x.currency === "USD" && x.market > 0)?.market;
     if (!price) price = v.prices?.find((x) => x.type === "raw" && x.market > 0)?.market;
-    
+
     if (price && price > 0) {
-      results.push({ variant: v.name, price });
+      all.push({ variant: v.name, price });
     }
   }
 
-  return results;
+  if (all.length === 0) return [];
+
+  // If any vintage marker is present, keep every variant — the card has
+  // multiple real printings (1st Edition, Shadowless, Unlimited Holo, etc.).
+  const isVintage = all.some((vp) => VINTAGE_VARIANTS.has(vp.variant));
+  if (isVintage) return all;
+
+  // Modern card: collapse to a single bare-id row using the best available
+  // price. Emitting as "normal" means the downstream code writes no ::suffix.
+  const best =
+    MODERN_PRIORITY.map((p) => all.find((vp) => vp.variant === p)).find(Boolean) ??
+    all[0];
+  return [{ variant: "normal", price: best!.price }];
 }
 
 // ─── Scrydex fetch helper ─────────────────────────────────────────────────────
