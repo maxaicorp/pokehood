@@ -242,25 +242,37 @@ function formatVariantName(variant: string): string {
   switch (variant) {
     case "holofoil": return "Holo";
     case "reverseHolofoil": return "Reverse Holo";
-    case "1stEditionNormal": return "1st Edition";
-    case "1stEditionHolofoil": return "1st Edition Holo";
-    case "1stEdition": return "1st Edition";
-    case "unlimitedHolofoil": return "Unlimited Holo";
-    default: return variant.replace(/([A-Z])/g, ' $1').trim();
+    case "1stEditionNormal":
+    case "firstEdition":
+    case "firstEditionShadowless":
+      return "1st Edition";
+    case "1stEditionHolofoil":
+    case "firstEditionHolofoil":
+    case "firstEditionShadowlessHolofoil":
+      return "1st Edition Holo";
+    case "1stEdition":
+      return "1st Edition";
+    case "unlimitedHolofoil":
+      return "Unlimited Holo";
+    case "unlimitedShadowless":
+      return "Shadowless";
+    case "unlimitedShadowlessHolofoil":
+      return "Shadowless Holo";
+    default:
+      return variant
+        .replace(/([A-Z])/g, " $1")
+        .replace(/^first Edition/i, "1st Edition")
+        .trim();
   }
 }
 
-// Suffixes that indicate a genuinely distinct collectible variant (vintage-era
-// markers). Modern cards often have both "normal" and "holofoil" entries from
-// Scrydex for the same physical card — those should collapse into one row.
-const VINTAGE_SUFFIXES = new Set([
-  "::1stEditionNormal",
-  "::1stEditionHolofoil",
-  "::1stEdition",
-  "::unlimitedHolofoil",
-  "::shadowless",
-  "::shadowlessHolofoil",
-]);
+const MODERN_SUFFIXES = ["", "::holofoil", "::reverseHolofoil"];
+
+function isVintageVariantSuffix(suffix: string): boolean {
+  if (!suffix.startsWith("::")) return false;
+  const variant = suffix.slice(2).toLowerCase();
+  return variant.includes("shadowless") || variant.includes("1stedition") || variant.includes("firstedition") || variant.startsWith("unlimited");
+}
 
 function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): PokemonCard[] {
   const expanded: PokemonCard[] = [];
@@ -277,7 +289,7 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
     }
   }
 
-  const potentialSuffixes = ["", "::holofoil", "::reverseHolofoil", "::1stEditionNormal", "::1stEditionHolofoil", "::1stEdition", "::unlimitedHolofoil", "::shadowless", "::shadowlessHolofoil"];
+  const pricingIds = Array.from(pricingCache.keys());
 
   for (const card of cards) {
     // First pass: collect every suffix that has a price in the cache.
