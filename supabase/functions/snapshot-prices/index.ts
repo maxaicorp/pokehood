@@ -321,7 +321,7 @@ serve(async (req: Request) => {
       body.mode === "full" ? "full"
       : body.mode === "chunk" ? "chunk"
       : body.mode === "sets" ? "sets"
-      : "daily";
+      : "daily" as "daily" | "full" | "chunk" | "sets";
     const today = new Date().toISOString().split("T")[0];
     // Optional chunking: { mode:"chunk", startPage:1, pageLimit:50, orderBy:"-expansion.release_date" }
     const startPage: number = Math.max(1, Number(body.startPage) || 1);
@@ -383,14 +383,42 @@ serve(async (req: Request) => {
         apiKey, teamId, supabase, today, seenIds, buffer, counters,
       });
     } else if (mode === "full") {
-      // Full mode: single pass newest-first through all pages (~235 credits)
-      pagesProcessed += await runPass({
-        label: "full",
-        orderBy: "-expansion.release_date",
-        pageLimit: Infinity,
-        startPage: 1,
-        apiKey, teamId, supabase, today, seenIds, buffer, counters,
-      });
+      // Full mode: single pass newest-first through all pages (~235 credits).
+      // Run in background so the proxy/client timeout (~150s) doesn't kill the worker
+      // mid-pass. Caller can pass { mode:"full", startPage:N } to resume.
+      const fullStartPage = startPage > 1 ? startPage : 1;
+      const work = (async () => {
+        try {
+          pagesProcessed += await runPass({
+            label: "full",
+            orderBy: "-expansion.release_date",
+            pageLimit: Infinity,
+            startPage: fullStartPage,
+            apiKey, teamId, supabase, today, seenIds, buffer, counters,
+          });
+          const { inserted, skipped } = await flushRows(supabase, buffer);
+          counters.inserted += inserted;
+          counters.skipped += skipped;
+          // 90-day cleanup
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - 90);
+          await supabase.from("price_snapshots").delete().lt("recorded_at", cutoff.toISOString().split("T")[0]);
+          console.log(`[full] BACKGROUND DONE — pages=${pagesProcessed} inserted=${counters.inserted} skipped=${counters.skipped}`);
+        } catch (e) {
+          console.error("[full] background error:", e);
+        }
+      })();
+      // @ts-ignore — EdgeRuntime is available in Supabase Edge runtime
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(work);
+      } else {
+        work.catch((e) => console.error("[full] background error", e));
+      }
+      return new Response(
+        JSON.stringify({ success: true, mode: "full", startPage: fullStartPage, note: "Running in background — see logs for completion." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
+      );
     } else {
       // Daily mode: pass 1 — newest 60 pages (~6,000 most-recent cards)
       pagesProcessed += await runPass({
