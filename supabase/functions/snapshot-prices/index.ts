@@ -321,7 +321,7 @@ serve(async (req: Request) => {
       body.mode === "full" ? "full"
       : body.mode === "chunk" ? "chunk"
       : body.mode === "sets" ? "sets"
-      : "daily";
+      : "daily" as "daily" | "full" | "chunk" | "sets";
     const today = new Date().toISOString().split("T")[0];
     // Optional chunking: { mode:"chunk", startPage:1, pageLimit:50, orderBy:"-expansion.release_date" }
     const startPage: number = Math.max(1, Number(body.startPage) || 1);
