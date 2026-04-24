@@ -113,7 +113,7 @@ export default function Market() {
       setIds = new Set(physicalSets.map((s) => s.id));
     }
 
-    getMarketCards({ setIds, limit: 200 }).then((result) => {
+    getMarketCards({ setIds, limit: 300 }).then((result) => {
       if (!cancelled) {
         setCards(result);
         setIsLoading(false);
