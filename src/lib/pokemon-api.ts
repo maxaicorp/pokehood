@@ -290,7 +290,7 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
   }
 
   const suffixesByBaseId = new Map<string, string[]>();
-  for (const cardId of pricingIds) {
+  for (const cardId of pricingCache.keys()) {
     const [baseId, rawSuffix] = cardId.split("::");
     const suffix = rawSuffix ? `::${rawSuffix}` : "";
     const existing = suffixesByBaseId.get(baseId);
