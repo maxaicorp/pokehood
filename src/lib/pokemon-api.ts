@@ -318,8 +318,16 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
       continue;
     }
 
-    // Vintage card: emit every matched variant as its own row.
-    for (const { suffix, priceData } of matches) {
+    // Vintage card: emit every matched variant as its own row. But if a
+    // holo-specific marker is present (e.g. ::unlimitedHolofoil), drop the
+    // bare entry — Scrydex often returns both as schema artifacts of the
+    // same physical printing, producing duplicate rows like
+    // "Charizard" + "Charizard (Unlimited Holo)".
+    const holoMarkers = new Set(["::holofoil", "::unlimitedHolofoil", "::shadowlessHolofoil", "::1stEditionHolofoil"]);
+    const hasHoloMarker = matches.some((m) => holoMarkers.has(m.suffix));
+    const vintageMatches = hasHoloMarker ? matches.filter((m) => m.suffix !== "") : matches;
+
+    for (const { suffix, priceData } of vintageMatches) {
       const variantId = `${card.id}${suffix}`;
       const variantName = suffix.replace("::", "");
       const is1stEdition = variantName.toLowerCase().includes("1stedition");
