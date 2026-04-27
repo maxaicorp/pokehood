@@ -100,8 +100,7 @@ export default function Market() {
   useEffect(() => {
     if (!pricesReady || !setsData) return;
     let cancelled = false;
-    // Only show skeleton if we have nothing cached to display
-    if (cards.length === 0) setIsLoading(true);
+    setIsLoading(true);
     setVisibleCount(VISIBLE_PAGE_SIZE);
 
     setHasMore(true);
@@ -123,7 +122,7 @@ export default function Market() {
     });
 
     return () => { cancelled = true; };
-  }, [cards.length, pricesReady, resolveMarketSetIds, selectedSetId, setsData]);
+  }, [pricesReady, resolveMarketSetIds, selectedSetId, setsData]);
 
   // Fetch sentiment for visible cards when filter is recent5/recent10
   useEffect(() => {
