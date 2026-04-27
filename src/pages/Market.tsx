@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  getMarketCards,
   getSets,
   getMarketPrice,
   formatPrice,
@@ -41,7 +40,7 @@ type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "s
 const VISIBLE_PAGE_SIZE = 10;
 
 export default function Market() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedSetId, setSelectedSetId] = useState("recent5");
@@ -63,11 +62,21 @@ export default function Market() {
   const [isLoading, setIsLoading] = useState(() => !loadMarketCache("recent5"));
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
+  const [hasMore, setHasMore] = useState(true);
   const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(() => {
     const c = loadMarketCache("recent5");
     return c ? { data: c.sets } : null;
   });
   const [pricesReady, setPricesReady] = useState(false);
+
+  const resolveMarketSetIds = () => {
+    const physicalSets = (setsData?.data ?? []).filter((s: PokemonSet) => !s.isOnlineOnly);
+    if (selectedSetId === "recent5") return new Set(physicalSets.slice(0, 5).map((s) => s.id));
+    if (selectedSetId === "recent10") return new Set(physicalSets.slice(0, 10).map((s) => s.id));
+    if (selectedSetId) return new Set([selectedSetId]);
+    return new Set(physicalSets.map((s) => s.id));
+  };
 
   // Load most visited when tab is active
   useEffect(() => {
