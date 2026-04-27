@@ -86,6 +86,9 @@ export async function getSealedByExpansion(
 
 /** Extract the best market price from a sealed product */
 export function getSealedMarketPrice(product: SealedProduct): number | null {
+  const dbEntry = sealedPriceMap?.get(`sealed-${product.id}`);
+  if (dbEntry?.price != null) return dbEntry.price;
+
   for (const variant of product.variants) {
     for (const price of variant.prices) {
       if (price.market > 0) return price.market;
@@ -169,6 +172,23 @@ function getLatestExpansionIds(products: SealedProduct[], count: number): Set<st
   return new Set(sorted);
 }
 
+function matchesSealedType(product: SealedProduct, type: string): boolean {
+  const productType = (product.type ?? "").toLowerCase();
+  const name = (product.name ?? "").toLowerCase();
+  const isDisplay = /\bdisplay\b|\bcase\b/.test(name);
+
+  switch (type) {
+    case "Booster Pack":
+      return productType === "booster pack" && /booster pack/.test(name) && !/booster box|booster bundle|display|case/.test(name);
+    case "Tin":
+      return productType === "tin" && !isDisplay;
+    case "Booster Bundle":
+      return productType === "booster bundle" && !isDisplay;
+    default:
+      return product.type === type;
+  }
+}
+
 // ─── Main fetch (reads from cached JSON, sorted by price desc) ────────────────
 
 export async function fetchSealedProducts(opts: {
@@ -192,7 +212,7 @@ export async function fetchSealedProducts(opts: {
     const latestIds = getLatestExpansionIds(all, 15);
     filtered = all.filter((p) => latestIds.has(p.expansionId));
   } else if (type && type !== "all") {
-    filtered = all.filter((p) => p.type === type);
+    filtered = all.filter((p) => matchesSealedType(p, type));
   } else {
     filtered = [...all];
   }
@@ -230,8 +250,8 @@ export const SEALED_TYPES = [
   { value: "all", label: "All Products" },
   { value: "Booster Box", label: "Booster Box" },
   { value: "Booster Pack", label: "Booster Pack" },
+  { value: "Booster Bundle", label: "Booster Bundle" },
   { value: "Elite Trainer Box", label: "ETB" },
   { value: "Collection", label: "Collection" },
-  { value: "Bundle", label: "Bundle" },
   { value: "Tin", label: "Tin" },
 ];
