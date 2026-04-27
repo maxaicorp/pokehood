@@ -32,13 +32,11 @@ function ApiHealthBanner() {
           return;
         }
         const ms = Date.now() - start;
-        const scrydexOk = data?.checks?.scrydex_proxy?.ok !== false;
-        const pricingOk = data?.checks?.price_snapshot_freshness?.ok !== false;
-        // Only raise the banner when users genuinely can't see prices. The pricing
-        // cache survives a missed day (getLatestSnapshotPrices merges prev1/prev2),
-        // and a transient Scrydex outage doesn't touch cached data. Require BOTH
-        // to fail before telling users pricing is down.
-        if (!scrydexOk && !pricingOk) setStatus("down");
+        const cardCoverageOk = data?.checks?.card_coverage?.ok !== false;
+        // The public app renders from stored snapshots, not live Scrydex calls.
+        // Low Scrydex credits or a missed daily freshness check should not show a
+        // user-facing outage banner while the snapshot table still has coverage.
+        if (!cardCoverageOk) setStatus("down");
         else if (ms > 4000) setStatus("slow");
         else setStatus("ok");
       } catch {
