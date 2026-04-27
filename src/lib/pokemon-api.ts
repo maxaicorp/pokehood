@@ -256,12 +256,14 @@ function formatVariantName(variant: string): string {
     case "reverseHolofoil": return "Reverse Holo";
     case "1stEditionNormal":
     case "firstEdition":
-    case "firstEditionShadowless":
       return "1st Edition";
+    case "firstEditionShadowless":
+      return "1st Edition Shadowless";
     case "1stEditionHolofoil":
     case "firstEditionHolofoil":
-    case "firstEditionShadowlessHolofoil":
       return "1st Edition Holo";
+    case "firstEditionShadowlessHolofoil":
+      return "1st Edition Shadowless Holo";
     case "1stEdition":
       return "1st Edition";
     case "unlimitedHolofoil":
@@ -357,7 +359,7 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
     // row because Scrydex's unsuffixed price is ambiguous and often maps to the
     // wrong printing (for Base/Jungle/Fossil it frequently mirrors 1st Edition).
     const vintageMatches = matches.some((m) => m.suffix !== "")
-      ? matches.filter((m) => m.suffix !== "")
+      ? matches.filter((m) => m.suffix !== "" && isVintageVariantSuffix(m.suffix))
       : matches;
 
     for (const { suffix, priceData } of vintageMatches) {
