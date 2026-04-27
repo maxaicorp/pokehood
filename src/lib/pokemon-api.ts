@@ -4,7 +4,7 @@
 // Card detail: Scrydex proxy
 
 import { supabase } from "@/integrations/supabase/client";
-import { getLatestSnapshotPrices } from "@/lib/price-snapshots";
+import { getLatestSnapshotPrices, type LatestPrice } from "@/lib/price-snapshots";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -144,6 +144,18 @@ export function seedPricingCache(prices: Map<string, {
   cardmarketAvgsSeeded.clear();
   cardmarketAvgsCache.clear();
 
+  appendPricingCache(prices);
+}
+
+export function appendPricingCache(prices: Map<string, {
+  price: number;
+  cardName?: string;
+  setName?: string;
+  price1d?: number | null;
+  price7d?: number | null;
+  price30d?: number | null;
+}>) {
+
   for (const [cardId, data] of prices) {
     const tcgplayer: PokemonCard["tcgplayer"] = {
       url: "",
@@ -166,6 +178,29 @@ export function seedPricingCache(prices: Map<string, {
       cardmarketAvgsCache.set(cardId, avgs);
     }
   }
+}
+
+export async function hydrateCardsFromLatestPrices(prices: LatestPrice[]): Promise<PokemonCard[]> {
+  const priceMap = new Map(prices.map((p) => [p.cardId, p]));
+  appendPricingCache(priceMap);
+
+  const { cards } = await loadCardIndex();
+  const byId = new Map(cards.map((card) => [card.id, card]));
+
+  return prices.flatMap((price) => {
+    const [baseId, variant] = price.cardId.split("::");
+    const base = byId.get(baseId);
+    if (!base) return [];
+    const enriched: PokemonCard = { ...base, id: price.cardId, tcgplayer: pricingCache.get(price.cardId) };
+    if (variant) {
+      const category = getVintageVariantCategory(variant);
+      enriched.name = `${base.name} (${formatVariantName(variant)})`;
+      enriched.set = category ? { ...base.set, id: `${base.set.id}::${category}`, name: getVirtualSetName(base.set.name, category) } : base.set;
+    }
+    const avgs = cardmarketAvgsSeeded.get(price.cardId) ?? cardmarketAvgsCache.get(price.cardId);
+    if (avgs) enriched.cardmarketAvgs = avgs;
+    return [enriched];
+  });
 }
 
 async function ensurePricingCacheSeeded(): Promise<void> {
