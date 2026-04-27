@@ -79,18 +79,15 @@ export default function Market() {
     });
   }, [activeTab]);
 
-  // Step 1: Load snapshot prices once, then load sets with pricing-aware virtual variants.
+  // Step 1: Load lightweight set metadata; do not block first paint on every price snapshot row.
   useEffect(() => {
-    getLatestSnapshotPrices().then(async (prices) => {
-      seedPricingCache(prices);
-      seedSealedPriceMap(prices);
-      const r = await getSets();
+    getSets().then((r) => {
       setSetsData(r);
       setPricesReady(true);
     });
   }, []);
 
-  // Step 2: Once prices are seeded, load cards instantly (no API calls)
+  // Step 2: Load only the first visible price page, then append more pages on scroll.
   useEffect(() => {
     if (!pricesReady || !setsData) return;
     let cancelled = false;
@@ -114,7 +111,7 @@ export default function Market() {
       setIds = new Set(physicalSets.map((s) => s.id));
     }
 
-    getMarketCards({ setIds, limit: 300 }).then((result) => {
+    getLatestSnapshotPage({ setIds, limit: VISIBLE_PAGE_SIZE, offset: 0 }).then(hydrateCardsFromLatestPrices).then((result) => {
       if (!cancelled) {
         setCards(result);
         setIsLoading(false);
