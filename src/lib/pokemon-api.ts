@@ -473,27 +473,31 @@ export async function getSets(): Promise<SetSearchResult> {
   await ensurePricingCacheSeeded();
   const { sets, cards } = await loadCardIndex();
   
-  // Dynamically inject virtual sets for 1st Edition
-  const firstEditionSetIds = new Set<string>();
+  // Dynamically inject virtual vintage sets so Unlimited, Shadowless, and
+  // 1st Edition cards can be selected independently.
+  const vintageSets = new Map<string, Set<"shadowless" | "firstEdition">>();
   for (const [cardId] of pricingCache) {
-    if (cardId.toLowerCase().includes("1stedition")) {
-      const baseCardId = cardId.split("::")[0];
-      const baseCard = cards.find(c => c.id === baseCardId);
-      if (baseCard) {
-        firstEditionSetIds.add(baseCard.set.id);
-      }
-    }
+    const category = getVintageVariantCategory(cardId);
+    if (category !== "shadowless" && category !== "firstEdition") continue;
+    const baseCardId = cardId.split("::")[0];
+    const baseCard = cards.find(c => c.id === baseCardId);
+    if (!baseCard) continue;
+    const existing = vintageSets.get(baseCard.set.id) ?? new Set<"shadowless" | "firstEdition">();
+    existing.add(category);
+    vintageSets.set(baseCard.set.id, existing);
   }
 
   const virtualSets: PokemonSet[] = [];
-  for (const setId of firstEditionSetIds) {
+  for (const [setId, categories] of vintageSets) {
     const baseSet = sets.find(s => s.id === setId);
     if (baseSet) {
-      virtualSets.push({
-        ...baseSet,
-        id: `${baseSet.id}::1stEdition`,
-        name: `${baseSet.name} (1st Edition)`,
-      });
+      for (const category of categories) {
+        virtualSets.push({
+          ...baseSet,
+          id: `${baseSet.id}::${category}`,
+          name: getVirtualSetName(baseSet.name, category),
+        });
+      }
     }
   }
 
