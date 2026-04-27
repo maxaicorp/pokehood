@@ -4,7 +4,7 @@
 // Card detail: Scrydex proxy
 
 import { supabase } from "@/integrations/supabase/client";
-import { getLatestSnapshotPrices } from "@/lib/price-snapshots";
+import { getLatestSnapshotPrices, type LatestPrice } from "@/lib/price-snapshots";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -144,6 +144,18 @@ export function seedPricingCache(prices: Map<string, {
   cardmarketAvgsSeeded.clear();
   cardmarketAvgsCache.clear();
 
+  appendPricingCache(prices);
+}
+
+export function appendPricingCache(prices: Map<string, {
+  price: number;
+  cardName?: string;
+  setName?: string;
+  price1d?: number | null;
+  price7d?: number | null;
+  price30d?: number | null;
+}>) {
+
   for (const [cardId, data] of prices) {
     const tcgplayer: PokemonCard["tcgplayer"] = {
       url: "",
@@ -166,6 +178,46 @@ export function seedPricingCache(prices: Map<string, {
       cardmarketAvgsCache.set(cardId, avgs);
     }
   }
+}
+
+export async function hydrateCardsFromLatestPrices(prices: LatestPrice[]): Promise<PokemonCard[]> {
+  const priceMap = new Map(prices.map((p) => [p.cardId, p]));
+  appendPricingCache(priceMap);
+
+  return prices.map((price) => {
+    const [baseId, variant] = price.cardId.split("::");
+    const setId = baseId.split("-").slice(0, -1).join("-") || baseId;
+    const number = baseId.split("-").at(-1) ?? "";
+    const baseSet = {
+      id: setId,
+      name: price.setName,
+      series: "",
+      printedTotal: 0,
+      total: 0,
+      releaseDate: "",
+      images: { symbol: "", logo: "" },
+    };
+    const enriched: PokemonCard = {
+      id: price.cardId,
+      name: price.cardName,
+      supertype: "Pokémon",
+      set: baseSet,
+      number,
+      images: {
+        small: `https://images.scrydex.com/pokemon/${baseId}/small`,
+        large: `https://images.scrydex.com/pokemon/${baseId}/large`,
+      },
+      tcgplayer: pricingCache.get(price.cardId),
+    };
+    if (variant) {
+      const category = getVintageVariantCategory(variant);
+      enriched.name = `${price.cardName} (${formatVariantName(variant)})`;
+      enriched.set = category ? { ...baseSet, id: `${setId}::${category}`, name: getVirtualSetName(price.setName, category) } : baseSet;
+    }
+    const avgs = cardmarketAvgsSeeded.get(price.cardId) ?? cardmarketAvgsCache.get(price.cardId);
+    if (avgs) enriched.cardmarketAvgs = avgs;
+    return enriched;
+  });
 }
 
 async function ensurePricingCacheSeeded(): Promise<void> {
@@ -470,7 +522,6 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
 // ─── Public API functions ─────────────────────────────────────────────────────
 
 export async function getSets(): Promise<SetSearchResult> {
-  await ensurePricingCacheSeeded();
   const { sets, cards } = await loadCardIndex();
   
   // Dynamically inject virtual vintage sets so Unlimited, Shadowless, and

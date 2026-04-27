@@ -3,16 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  getMarketCards,
   getSets,
   getMarketPrice,
   formatPrice,
   PokemonCard,
   PokemonSet,
-  seedPricingCache,
+  hydrateCardsFromLatestPrices,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
-import { formatPct, getLatestSnapshotPrices } from "@/lib/price-snapshots";
+import { formatPct, getLatestSnapshotPage } from "@/lib/price-snapshots";
 import { loadMarketCache, saveMarketCache } from "@/lib/market-cache";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
 import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
@@ -29,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package } from "lucide-react";
 import SealedTab from "@/components/SealedTab";
-import { SEALED_TYPES, seedSealedPriceMap } from "@/lib/sealed-store";
+import { SEALED_TYPES } from "@/lib/sealed-store";
 import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -38,10 +37,10 @@ import CardGridView from "@/components/CardGridView";
 
 type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
 
-const VISIBLE_PAGE_SIZE = 50;
+const VISIBLE_PAGE_SIZE = 10;
 
 export default function Market() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedSetId, setSelectedSetId] = useState("recent5");
@@ -63,11 +62,21 @@ export default function Market() {
   const [isLoading, setIsLoading] = useState(() => !loadMarketCache("recent5"));
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
+  const [hasMore, setHasMore] = useState(true);
   const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(() => {
     const c = loadMarketCache("recent5");
     return c ? { data: c.sets } : null;
   });
   const [pricesReady, setPricesReady] = useState(false);
+
+  const resolveMarketSetIds = useCallback(() => {
+    const physicalSets = (setsData?.data ?? []).filter((s: PokemonSet) => !s.isOnlineOnly);
+    if (selectedSetId === "recent5") return new Set(physicalSets.slice(0, 5).map((s) => s.id));
+    if (selectedSetId === "recent10") return new Set(physicalSets.slice(0, 10).map((s) => s.id));
+    if (selectedSetId) return new Set([selectedSetId]);
+    return new Set(physicalSets.map((s) => s.id));
+  }, [selectedSetId, setsData]);
 
   // Load most visited when tab is active
   useEffect(() => {
@@ -79,52 +88,41 @@ export default function Market() {
     });
   }, [activeTab]);
 
-  // Step 1: Load snapshot prices once, then load sets with pricing-aware virtual variants.
+  // Step 1: Load lightweight set metadata; do not block first paint on every price snapshot row.
   useEffect(() => {
-    getLatestSnapshotPrices().then(async (prices) => {
-      seedPricingCache(prices);
-      seedSealedPriceMap(prices);
-      const r = await getSets();
+    getSets().then((r) => {
       setSetsData(r);
       setPricesReady(true);
     });
   }, []);
 
-  // Step 2: Once prices are seeded, load cards instantly (no API calls)
+  // Step 2: Load only the first visible price page, then append more pages on scroll.
   useEffect(() => {
     if (!pricesReady || !setsData) return;
     let cancelled = false;
-    // Only show skeleton if we have nothing cached to display
-    if (cards.length === 0) setIsLoading(true);
+    setIsLoading(true);
     setVisibleCount(VISIBLE_PAGE_SIZE);
 
-    const physicalSets = setsData.data.filter(
-      (s: PokemonSet) => !s.isOnlineOnly
-    );
+    setHasMore(true);
+    loadingMoreRef.current = true;
+    const setIds = resolveMarketSetIds();
 
-    let setIds: Set<string> | undefined;
-    if (selectedSetId === "recent5") {
-      setIds = new Set(physicalSets.slice(0, 5).map((s) => s.id));
-    } else if (selectedSetId === "recent10") {
-      setIds = new Set(physicalSets.slice(0, 10).map((s) => s.id));
-    } else if (selectedSetId) {
-      setIds = new Set([selectedSetId]);
-    } else {
-      // "All Sets" — physical only
-      setIds = new Set(physicalSets.map((s) => s.id));
-    }
-
-    getMarketCards({ setIds, limit: 300 }).then((result) => {
+    getLatestSnapshotPage({ setIds, limit: VISIBLE_PAGE_SIZE, offset: 0 }).then(hydrateCardsFromLatestPrices).then((result) => {
       if (!cancelled) {
         setCards(result);
         setIsLoading(false);
+        setHasMore(result.length === VISIBLE_PAGE_SIZE);
+        loadingMoreRef.current = false;
         // Persist so the next visit paints instantly
         saveMarketCache({ sets: setsData.data, cards: result, selectedSetId });
       }
+    }).catch(() => {
+      if (!cancelled) setIsLoading(false);
+      loadingMoreRef.current = false;
     });
 
     return () => { cancelled = true; };
-  }, [pricesReady, setsData, selectedSetId]);
+  }, [pricesReady, resolveMarketSetIds, selectedSetId, setsData]);
 
   // Fetch sentiment for visible cards when filter is recent5/recent10
   useEffect(() => {
@@ -161,15 +159,24 @@ export default function Market() {
     if (!sentinel) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisibleCount((prev) => prev + VISIBLE_PAGE_SIZE);
+        if (entry.isIntersecting && hasMore && !loadingMoreRef.current && activeTab !== "sealed" && activeTab !== "most-visited") {
+          loadingMoreRef.current = true;
+          getLatestSnapshotPage({ setIds: resolveMarketSetIds(), limit: VISIBLE_PAGE_SIZE, offset: cards.length })
+            .then(hydrateCardsFromLatestPrices)
+            .then((nextCards) => {
+              setCards((prev) => [...prev, ...nextCards]);
+              setVisibleCount((prev) => prev + nextCards.length);
+              setHasMore(nextCards.length === VISIBLE_PAGE_SIZE);
+              loadingMoreRef.current = false;
+            })
+            .catch(() => { loadingMoreRef.current = false; });
         }
       },
       { rootMargin: "200px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [cards.length]);
+  }, [activeTab, cards.length, hasMore, resolveMarketSetIds]);
 
   const handleSort = (col: "price" | "24h" | "7d") => {
     if (sortCol === col) {
