@@ -109,6 +109,13 @@ export interface LatestPrice {
   price30d: number | null;
 }
 
+export interface LatestSnapshotPageOptions {
+  limit?: number;
+  offset?: number;
+  setIds?: Set<string>;
+  sortDir?: "asc" | "desc";
+}
+
 /**
  * Fetch the most recent snapshot price + historical % changes for every card.
  *
@@ -118,6 +125,122 @@ export interface LatestPrice {
  *    - When multiple variants share a name, pick the one with the closest price to current
  */
 type Row = { card_id: string; card_name: string; set_name: string; price: number };
+
+let latestSnapshotDatePromise: Promise<string | null> | null = null;
+
+async function getLatestSnapshotDate(): Promise<string | null> {
+  if (!latestSnapshotDatePromise) {
+    latestSnapshotDatePromise = (supabase.from as any)("price_snapshots")
+      .select("recorded_at")
+      .order("recorded_at", { ascending: false })
+      .limit(1)
+      .then(({ data }: { data: Array<{ recorded_at: string }> | null }) => data?.[0]?.recorded_at ?? null);
+  }
+  return latestSnapshotDatePromise;
+}
+
+function snapshotComparisonDates(latestDate: string) {
+  const latest = new Date(latestDate);
+  const fmt = (d: Date) => d.toISOString().split("T")[0];
+  const d1 = new Date(latest); d1.setDate(d1.getDate() - 1);
+  const d7 = new Date(latest); d7.setDate(d7.getDate() - 7);
+  const d30 = new Date(latest); d30.setDate(d30.getDate() - 30);
+  return { d1: fmt(d1), d7: fmt(d7), d30: fmt(d30) };
+}
+
+function toLatestPrice(row: Row, history: Map<string, { p1?: number; p7?: number; p30?: number }>): LatestPrice {
+  const h = history.get(row.card_id);
+  return {
+    cardId: row.card_id,
+    cardName: row.card_name,
+    setName: row.set_name,
+    price: Number(row.price),
+    price1d: h?.p1 ?? null,
+    price7d: h?.p7 ?? null,
+    price30d: h?.p30 ?? null,
+  };
+}
+
+async function fetchSnapshotRowsByIds(date: string, ids: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (ids.length === 0) return map;
+  const { data, error } = await (supabase.from as any)("price_snapshots")
+    .select("card_id, price")
+    .eq("recorded_at", date)
+    .in("card_id", ids);
+  if (error || !data) return map;
+  for (const row of data as Array<{ card_id: string; price: number }>) {
+    map.set(row.card_id, Number(row.price));
+  }
+  return map;
+}
+
+/** Fetch one visible Market page directly from the latest snapshots instead of loading every snapshot row. */
+export async function getLatestSnapshotPage({
+  limit = 10,
+  offset = 0,
+  setIds,
+  sortDir = "desc",
+}: LatestSnapshotPageOptions = {}): Promise<LatestPrice[]> {
+  const latestDate = await getLatestSnapshotDate();
+  if (!latestDate) return [];
+
+  let query = (supabase.from as any)("price_snapshots")
+    .select("card_id, card_name, set_name, price")
+    .eq("recorded_at", latestDate)
+    .not("card_id", "like", "sealed-%")
+    .order("price", { ascending: sortDir === "asc" })
+    .range(offset, offset + limit - 1);
+
+  if (setIds?.size) {
+    const filters = [...setIds]
+      .map((id) => id.split("::")[0])
+      .filter(Boolean)
+      .map((id) => `card_id.like.${id}-%`);
+    if (filters.length) query = query.or(filters.join(","));
+  }
+
+  const { data, error } = await query;
+  if (error || !data?.length) return [];
+
+  const rows = data as Row[];
+  const ids = rows.map((r) => r.card_id);
+  const { d1, d7, d30 } = snapshotComparisonDates(latestDate);
+  const [p1, p7, p30] = await Promise.all([
+    fetchSnapshotRowsByIds(d1, ids),
+    fetchSnapshotRowsByIds(d7, ids),
+    fetchSnapshotRowsByIds(d30, ids),
+  ]);
+
+  const history = new Map<string, { p1?: number; p7?: number; p30?: number }>();
+  for (const id of ids) history.set(id, { p1: p1.get(id), p7: p7.get(id), p30: p30.get(id) });
+  return rows.map((row) => toLatestPrice(row, history));
+}
+
+export async function getLatestSnapshotPricesForIds(cardIds: string[]): Promise<Map<string, LatestPrice>> {
+  const map = new Map<string, LatestPrice>();
+  const latestDate = await getLatestSnapshotDate();
+  if (!latestDate || cardIds.length === 0) return map;
+
+  const { data, error } = await (supabase.from as any)("price_snapshots")
+    .select("card_id, card_name, set_name, price")
+    .eq("recorded_at", latestDate)
+    .in("card_id", cardIds);
+  if (error || !data) return map;
+
+  const rows = data as Row[];
+  const ids = rows.map((r) => r.card_id);
+  const { d1, d7, d30 } = snapshotComparisonDates(latestDate);
+  const [p1, p7, p30] = await Promise.all([
+    fetchSnapshotRowsByIds(d1, ids),
+    fetchSnapshotRowsByIds(d7, ids),
+    fetchSnapshotRowsByIds(d30, ids),
+  ]);
+  const history = new Map<string, { p1?: number; p7?: number; p30?: number }>();
+  for (const id of ids) history.set(id, { p1: p1.get(id), p7: p7.get(id), p30: p30.get(id) });
+  for (const row of rows) map.set(row.card_id, toLatestPrice(row, history));
+  return map;
+}
 
 /** Fetch all rows for a given snapshot date, paginating past the 1,000-row default limit. */
 async function fetchSnapshotDate(date: string): Promise<Row[]> {
