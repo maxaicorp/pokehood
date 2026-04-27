@@ -382,7 +382,7 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
 
       let isRequestedVariant = true;
       if (allowedSetIds) {
-        const wants1stEdition = requestedVariantSets.has(`${card.set.id}::1stEdition`);
+        const wants1stEdition = requestedVariantSets.has(`${card.set.id}::firstEdition`);
         const wantsShadowless = requestedVariantSets.has(`${card.set.id}::shadowless`);
         const wantsUnlimited = requestedVariantSets.has(`${card.set.id}::unlimited`) || requestedBaseSets.has(card.set.id);
         if (category === "firstEdition" && !wants1stEdition) isRequestedVariant = false;
