@@ -9,10 +9,10 @@ import {
   formatPrice,
   PokemonCard,
   PokemonSet,
-  seedPricingCache,
+  hydrateCardsFromLatestPrices,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
-import { formatPct, getLatestSnapshotPrices } from "@/lib/price-snapshots";
+import { formatPct, getLatestSnapshotPage } from "@/lib/price-snapshots";
 import { loadMarketCache, saveMarketCache } from "@/lib/market-cache";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
 import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package } from "lucide-react";
 import SealedTab from "@/components/SealedTab";
-import { SEALED_TYPES, seedSealedPriceMap } from "@/lib/sealed-store";
+import { SEALED_TYPES } from "@/lib/sealed-store";
 import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -38,7 +38,7 @@ import CardGridView from "@/components/CardGridView";
 
 type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
 
-const VISIBLE_PAGE_SIZE = 50;
+const VISIBLE_PAGE_SIZE = 10;
 
 export default function Market() {
   const { user, loading } = useAuth();
