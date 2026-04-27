@@ -483,7 +483,6 @@ serve(async (req: Request) => {
       prices_saved: counters.inserted,
       prices_skipped: counters.skipped,
     };
-    if (mode === "sets") summary.sets = setSummaries;
     console.log("Done:", summary);
 
     return new Response(JSON.stringify(summary), {
