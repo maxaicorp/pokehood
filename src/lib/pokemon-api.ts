@@ -282,10 +282,23 @@ function formatVariantName(variant: string): string {
 
 const MODERN_SUFFIXES = ["", "::holofoil", "::reverseHolofoil"];
 
+function getVintageVariantCategory(variantOrSuffix: string): "unlimited" | "shadowless" | "firstEdition" | null {
+  const variant = variantOrSuffix.replace(/^::/, "").toLowerCase();
+  if (variant.includes("1stedition") || variant.includes("firstedition")) return "firstEdition";
+  if (variant.includes("shadowless")) return "shadowless";
+  if (variant.startsWith("unlimited")) return "unlimited";
+  return null;
+}
+
+function getVirtualSetName(baseName: string, category: ReturnType<typeof getVintageVariantCategory>): string {
+  if (category === "firstEdition") return `${baseName} (1st Edition)`;
+  if (category === "shadowless") return `${baseName} (Shadowless)`;
+  if (category === "unlimited") return `${baseName} (Unlimited)`;
+  return baseName;
+}
+
 function isVintageVariantSuffix(suffix: string): boolean {
-  if (!suffix.startsWith("::")) return false;
-  const variant = suffix.slice(2).toLowerCase();
-  return variant.includes("shadowless") || variant.includes("1stedition") || variant.includes("firstedition") || variant.startsWith("unlimited");
+  return suffix.startsWith("::") && getVintageVariantCategory(suffix) !== null;
 }
 
 function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): PokemonCard[] {
@@ -365,23 +378,23 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
     for (const { suffix, priceData } of vintageMatches) {
       const variantId = `${card.id}${suffix}`;
       const variantName = suffix.replace("::", "");
-      const is1stEdition = /(?:1stedition|firstedition)/i.test(variantName);
+      const category = getVintageVariantCategory(variantName);
 
       let isRequestedVariant = true;
       if (allowedSetIds) {
-        const matches1stEditionSet = requestedVariantSets.has(`${card.set.id}::1stEdition`);
-        const matchesBaseSet = requestedBaseSets.has(card.set.id);
-        if (is1stEdition && !matches1stEditionSet) isRequestedVariant = false;
-        if (!is1stEdition && !matchesBaseSet) isRequestedVariant = false;
+        const wants1stEdition = requestedVariantSets.has(`${card.set.id}::1stEdition`);
+        const wantsShadowless = requestedVariantSets.has(`${card.set.id}::shadowless`);
+        const wantsUnlimited = requestedVariantSets.has(`${card.set.id}::unlimited`) || requestedBaseSets.has(card.set.id);
+        if (category === "firstEdition" && !wants1stEdition) isRequestedVariant = false;
+        if (category === "shadowless" && !wantsShadowless) isRequestedVariant = false;
+        if (category === "unlimited" && !wantsUnlimited) isRequestedVariant = false;
       }
       if (!isRequestedVariant) continue;
 
       const enriched: PokemonCard = { ...card, id: variantId, tcgplayer: priceData };
       if (variantName) {
         enriched.name = `${card.name} (${formatVariantName(variantName)})`;
-        if (is1stEdition) {
-          enriched.set = { ...card.set, id: `${card.set.id}::1stEdition`, name: `${card.set.name} (1st Edition)` };
-        }
+        enriched.set = category ? { ...card.set, id: `${card.set.id}::${category}`, name: getVirtualSetName(card.set.name, category) } : card.set;
       }
       const avgs = cardmarketAvgsSeeded.get(variantId) ?? cardmarketAvgsCache.get(variantId);
       if (avgs) enriched.cardmarketAvgs = avgs;
