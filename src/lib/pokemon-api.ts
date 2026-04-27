@@ -184,22 +184,39 @@ export async function hydrateCardsFromLatestPrices(prices: LatestPrice[]): Promi
   const priceMap = new Map(prices.map((p) => [p.cardId, p]));
   appendPricingCache(priceMap);
 
-  const { cards } = await loadCardIndex();
-  const byId = new Map(cards.map((card) => [card.id, card]));
-
-  return prices.flatMap((price) => {
+  return prices.map((price) => {
     const [baseId, variant] = price.cardId.split("::");
-    const base = byId.get(baseId);
-    if (!base) return [];
-    const enriched: PokemonCard = { ...base, id: price.cardId, tcgplayer: pricingCache.get(price.cardId) };
+    const setId = baseId.split("-").slice(0, -1).join("-") || baseId;
+    const number = baseId.split("-").at(-1) ?? "";
+    const baseSet = {
+      id: setId,
+      name: price.setName,
+      series: "",
+      printedTotal: 0,
+      total: 0,
+      releaseDate: "",
+      images: { symbol: "", logo: "" },
+    };
+    const enriched: PokemonCard = {
+      id: price.cardId,
+      name: price.cardName,
+      supertype: "Pokémon",
+      set: baseSet,
+      number,
+      images: {
+        small: `https://images.scrydex.com/pokemon/${baseId}/small`,
+        large: `https://images.scrydex.com/pokemon/${baseId}/large`,
+      },
+      tcgplayer: pricingCache.get(price.cardId),
+    };
     if (variant) {
       const category = getVintageVariantCategory(variant);
-      enriched.name = `${base.name} (${formatVariantName(variant)})`;
-      enriched.set = category ? { ...base.set, id: `${base.set.id}::${category}`, name: getVirtualSetName(base.set.name, category) } : base.set;
+      enriched.name = `${price.cardName} (${formatVariantName(variant)})`;
+      enriched.set = category ? { ...baseSet, id: `${setId}::${category}`, name: getVirtualSetName(price.setName, category) } : baseSet;
     }
     const avgs = cardmarketAvgsSeeded.get(price.cardId) ?? cardmarketAvgsCache.get(price.cardId);
     if (avgs) enriched.cardmarketAvgs = avgs;
-    return [enriched];
+    return enriched;
   });
 }
 
