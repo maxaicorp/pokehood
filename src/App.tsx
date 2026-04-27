@@ -24,6 +24,12 @@ const Stats = lazy(() => import("./pages/Stats"));
 const Market = lazy(() => import("./pages/Market"));
 const Sets = lazy(() => import("./pages/Sets"));
 const Onchain = lazy(() => import("./pages/Onchain"));
+const Giveaway = lazy(() => import("./pages/Giveaway"));
+const GiveawayConfirm = lazy(() => import("./pages/GiveawayConfirm"));
+const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
+const AdminGiveaways = lazy(() => import("./pages/admin/AdminGiveaways"));
+const AdminGiveawayForm = lazy(() => import("./pages/admin/AdminGiveawayForm"));
+const AdminPrizes = lazy(() => import("./pages/admin/AdminPrizes"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -62,6 +68,13 @@ const App = () => (
                   <Route path="/games" element={<Games />} />
                   <Route path="/games/card-match" element={<CardMatch />} />
                   <Route path="/stats" element={<Stats />} />
+                  <Route path="/giveaway" element={<Giveaway />} />
+                  <Route path="/giveaway/confirm" element={<GiveawayConfirm />} />
+                  <Route path="/admin" element={<AdminOverview />} />
+                  <Route path="/admin/giveaways" element={<AdminGiveaways />} />
+                  <Route path="/admin/giveaways/new" element={<AdminGiveawayForm />} />
+                  <Route path="/admin/giveaways/:id" element={<AdminGiveawayForm />} />
+                  <Route path="/admin/prizes" element={<AdminPrizes />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>

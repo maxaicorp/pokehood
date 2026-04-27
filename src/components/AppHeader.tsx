@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X, TrendingUp, Layers, Link2, Gamepad2, BarChart3 } from "lucide-react";
+import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, AlertTriangle, X, TrendingUp, Layers, Link2, Gamepad2, BarChart3, Gift, Shield } from "lucide-react";
 import GlobalSearch from "@/components/GlobalSearch";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -71,7 +71,7 @@ function ApiHealthBanner() {
 }
 
 export default function AppHeader({ activePage, children }: AppHeaderProps) {
-  const { user, isPro, signOut } = useAuth();
+  const { user, isPro, isAdmin, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const [qrOpen, setQrOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -147,6 +147,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Sets</Link>
               {/* Onchain hidden for now */}
               <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Games</Link>
+              <Link to="/giveaway" className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Giveaway</Link>
             </div>
             {isPro && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
@@ -195,6 +196,18 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                       <BarChart3 className="w-4 h-4 mr-2" /> My Stats
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/giveaway">
+                      <Gift className="w-4 h-4 mr-2" /> Giveaway
+                    </Link>
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin">
+                        <Shield className="w-4 h-4 mr-2" /> Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
                     {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
                     {theme === "dark" ? "Light Mode" : "Dark Mode"}
