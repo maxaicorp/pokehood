@@ -4,6 +4,7 @@
 // Card detail: Scrydex proxy
 
 import { supabase } from "@/integrations/supabase/client";
+import { getLatestSnapshotPrices } from "@/lib/price-snapshots";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -124,6 +125,7 @@ let allSetsCache: PokemonSet[] | null = null;
 const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
 const CARD_INDEX_VERSION = "2026-04-13-ascended-heroes-fix";
+let pricingSeedPromise: Promise<void> | null = null;
 
 /**
  * Pre-populate the pricing cache from database snapshot prices + % changes.
@@ -164,6 +166,16 @@ export function seedPricingCache(prices: Map<string, {
       cardmarketAvgsCache.set(cardId, avgs);
     }
   }
+}
+
+async function ensurePricingCacheSeeded(): Promise<void> {
+  if (pricingCache.size > 0) return;
+  if (!pricingSeedPromise) {
+    pricingSeedPromise = getLatestSnapshotPrices().then((prices) => {
+      seedPricingCache(prices);
+    }).catch(() => undefined);
+  }
+  await pricingSeedPromise;
 }
 
 // ─── Loader ───────────────────────────────────────────────────────────────────
