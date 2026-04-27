@@ -75,15 +75,12 @@ interface SnapshotRow {
 // printings worth tracking separately (vintage-era markers). When none of
 // these are present, Scrydex's "normal" and "holofoil" entries are usually
 // two takes on the same physical card and should be collapsed.
-const VINTAGE_VARIANTS = new Set([
-  "1stEdition",
-  "1stEditionNormal",
-  "1stEditionHolofoil",
-  "unlimitedHolofoil",
-  "shadowless",
-  "shadowlessHolofoil",
-]);
 const MODERN_PRIORITY = ["normal", "holofoil", "reverseHolofoil"];
+
+function isVintageVariantName(name: string): boolean {
+  const n = name.toLowerCase();
+  return n.includes("shadowless") || n.includes("1stedition") || n.includes("firstedition") || n.startsWith("unlimited");
+}
 
 function extractAllVariantPrices(card: ScrydexCard): { variant: string; price: number }[] {
   const all: { variant: string; price: number }[] = [];
@@ -104,7 +101,7 @@ function extractAllVariantPrices(card: ScrydexCard): { variant: string; price: n
 
   // If any vintage marker is present, keep every variant — the card has
   // multiple real printings (1st Edition, Shadowless, Unlimited Holo, etc.).
-  const isVintage = all.some((vp) => VINTAGE_VARIANTS.has(vp.variant));
+  const isVintage = all.some((vp) => isVintageVariantName(vp.variant));
   if (isVintage) return all;
 
   // Modern card: collapse to a single bare-id row using the best available
@@ -486,7 +483,6 @@ serve(async (req: Request) => {
       prices_saved: counters.inserted,
       prices_skipped: counters.skipped,
     };
-    if (mode === "sets") summary.sets = setSummaries;
     console.log("Done:", summary);
 
     return new Response(JSON.stringify(summary), {

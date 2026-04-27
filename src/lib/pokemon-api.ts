@@ -4,6 +4,7 @@
 // Card detail: Scrydex proxy
 
 import { supabase } from "@/integrations/supabase/client";
+import { getLatestSnapshotPrices } from "@/lib/price-snapshots";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -124,6 +125,7 @@ let allSetsCache: PokemonSet[] | null = null;
 const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
 const CARD_INDEX_VERSION = "2026-04-13-ascended-heroes-fix";
+let pricingSeedPromise: Promise<void> | null = null;
 
 /**
  * Pre-populate the pricing cache from database snapshot prices + % changes.
@@ -164,6 +166,16 @@ export function seedPricingCache(prices: Map<string, {
       cardmarketAvgsCache.set(cardId, avgs);
     }
   }
+}
+
+async function ensurePricingCacheSeeded(): Promise<void> {
+  if (pricingCache.size > 0) return;
+  if (!pricingSeedPromise) {
+    pricingSeedPromise = getLatestSnapshotPrices().then((prices) => {
+      seedPricingCache(prices);
+    }).catch(() => undefined);
+  }
+  await pricingSeedPromise;
 }
 
 // ─── Loader ───────────────────────────────────────────────────────────────────
@@ -244,12 +256,14 @@ function formatVariantName(variant: string): string {
     case "reverseHolofoil": return "Reverse Holo";
     case "1stEditionNormal":
     case "firstEdition":
-    case "firstEditionShadowless":
       return "1st Edition";
+    case "firstEditionShadowless":
+      return "1st Edition Shadowless";
     case "1stEditionHolofoil":
     case "firstEditionHolofoil":
-    case "firstEditionShadowlessHolofoil":
       return "1st Edition Holo";
+    case "firstEditionShadowlessHolofoil":
+      return "1st Edition Shadowless Holo";
     case "1stEdition":
       return "1st Edition";
     case "unlimitedHolofoil":
@@ -268,10 +282,23 @@ function formatVariantName(variant: string): string {
 
 const MODERN_SUFFIXES = ["", "::holofoil", "::reverseHolofoil"];
 
+function getVintageVariantCategory(variantOrSuffix: string): "unlimited" | "shadowless" | "firstEdition" | null {
+  const variant = variantOrSuffix.replace(/^::/, "").toLowerCase();
+  if (variant.includes("1stedition") || variant.includes("firstedition")) return "firstEdition";
+  if (variant.includes("shadowless")) return "shadowless";
+  if (variant.startsWith("unlimited")) return "unlimited";
+  return null;
+}
+
+function getVirtualSetName(baseName: string, category: ReturnType<typeof getVintageVariantCategory>): string {
+  if (category === "firstEdition") return `${baseName} (1st Edition)`;
+  if (category === "shadowless") return `${baseName} (Shadowless)`;
+  if (category === "unlimited") return `${baseName} (Unlimited)`;
+  return baseName;
+}
+
 function isVintageVariantSuffix(suffix: string): boolean {
-  if (!suffix.startsWith("::")) return false;
-  const variant = suffix.slice(2).toLowerCase();
-  return variant.includes("shadowless") || variant.includes("1stedition") || variant.includes("firstedition") || variant.startsWith("unlimited");
+  return suffix.startsWith("::") && getVintageVariantCategory(suffix) !== null;
 }
 
 function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): PokemonCard[] {
@@ -345,29 +372,29 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
     // row because Scrydex's unsuffixed price is ambiguous and often maps to the
     // wrong printing (for Base/Jungle/Fossil it frequently mirrors 1st Edition).
     const vintageMatches = matches.some((m) => m.suffix !== "")
-      ? matches.filter((m) => m.suffix !== "")
+      ? matches.filter((m) => m.suffix !== "" && isVintageVariantSuffix(m.suffix))
       : matches;
 
     for (const { suffix, priceData } of vintageMatches) {
       const variantId = `${card.id}${suffix}`;
       const variantName = suffix.replace("::", "");
-      const is1stEdition = /(?:1stedition|firstedition)/i.test(variantName);
+      const category = getVintageVariantCategory(variantName);
 
       let isRequestedVariant = true;
       if (allowedSetIds) {
-        const matches1stEditionSet = requestedVariantSets.has(`${card.set.id}::1stEdition`);
-        const matchesBaseSet = requestedBaseSets.has(card.set.id);
-        if (is1stEdition && !matches1stEditionSet) isRequestedVariant = false;
-        if (!is1stEdition && !matchesBaseSet) isRequestedVariant = false;
+        const wants1stEdition = requestedVariantSets.has(`${card.set.id}::firstEdition`);
+        const wantsShadowless = requestedVariantSets.has(`${card.set.id}::shadowless`);
+        const wantsUnlimited = requestedVariantSets.has(`${card.set.id}::unlimited`) || requestedBaseSets.has(card.set.id);
+        if (category === "firstEdition" && !wants1stEdition) isRequestedVariant = false;
+        if (category === "shadowless" && !wantsShadowless) isRequestedVariant = false;
+        if (category === "unlimited" && !wantsUnlimited) isRequestedVariant = false;
       }
       if (!isRequestedVariant) continue;
 
       const enriched: PokemonCard = { ...card, id: variantId, tcgplayer: priceData };
       if (variantName) {
         enriched.name = `${card.name} (${formatVariantName(variantName)})`;
-        if (is1stEdition) {
-          enriched.set = { ...card.set, id: `${card.set.id}::1stEdition`, name: `${card.set.name} (1st Edition)` };
-        }
+        enriched.set = category ? { ...card.set, id: `${card.set.id}::${category}`, name: getVirtualSetName(card.set.name, category) } : card.set;
       }
       const avgs = cardmarketAvgsSeeded.get(variantId) ?? cardmarketAvgsCache.get(variantId);
       if (avgs) enriched.cardmarketAvgs = avgs;
@@ -443,29 +470,34 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
 // ─── Public API functions ─────────────────────────────────────────────────────
 
 export async function getSets(): Promise<SetSearchResult> {
+  await ensurePricingCacheSeeded();
   const { sets, cards } = await loadCardIndex();
   
-  // Dynamically inject virtual sets for 1st Edition
-  const firstEditionSetIds = new Set<string>();
+  // Dynamically inject virtual vintage sets so Unlimited, Shadowless, and
+  // 1st Edition cards can be selected independently.
+  const vintageSets = new Map<string, Set<"shadowless" | "firstEdition">>();
   for (const [cardId] of pricingCache) {
-    if (cardId.toLowerCase().includes("1stedition")) {
-      const baseCardId = cardId.split("::")[0];
-      const baseCard = cards.find(c => c.id === baseCardId);
-      if (baseCard) {
-        firstEditionSetIds.add(baseCard.set.id);
-      }
-    }
+    const category = getVintageVariantCategory(cardId);
+    if (category !== "shadowless" && category !== "firstEdition") continue;
+    const baseCardId = cardId.split("::")[0];
+    const baseCard = cards.find(c => c.id === baseCardId);
+    if (!baseCard) continue;
+    const existing = vintageSets.get(baseCard.set.id) ?? new Set<"shadowless" | "firstEdition">();
+    existing.add(category);
+    vintageSets.set(baseCard.set.id, existing);
   }
 
   const virtualSets: PokemonSet[] = [];
-  for (const setId of firstEditionSetIds) {
+  for (const [setId, categories] of vintageSets) {
     const baseSet = sets.find(s => s.id === setId);
     if (baseSet) {
-      virtualSets.push({
-        ...baseSet,
-        id: `${baseSet.id}::1stEdition`,
-        name: `${baseSet.name} (1st Edition)`,
-      });
+      for (const category of categories) {
+        virtualSets.push({
+          ...baseSet,
+          id: `${baseSet.id}::${category}`,
+          name: getVirtualSetName(baseSet.name, category),
+        });
+      }
     }
   }
 
@@ -514,6 +546,7 @@ export async function searchCardsAdvanced(
   page = 1,
   pageSize = 35,
 ): Promise<SearchResult> {
+  await ensurePricingCacheSeeded();
   const { cards, sets } = await loadCardIndex();
   const physicalSetIds = new Set(sets.filter((s) => !s.isOnlineOnly).map((s) => s.id));
   const pocketSetIds = new Set(sets.filter((s) => s.isOnlineOnly).map((s) => s.id));
@@ -581,6 +614,7 @@ export async function getSetCards(
   page = 1,
   pageSize = 20,
 ): Promise<SearchResult> {
+  await ensurePricingCacheSeeded();
   const { cards } = await loadCardIndex();
   let baseSetId = setId;
   if (setId.includes("::")) baseSetId = setId.split("::")[0];
@@ -681,7 +715,23 @@ export const PRODUCT_TYPES = [
 ];
 
 export async function getCardById(id: string): Promise<PokemonCard | null> {
+  await ensurePricingCacheSeeded();
   const { cards } = await loadCardIndex();
+  if (id.includes("::")) {
+    const [baseId, variant] = id.split("::");
+    const base = cards.find((c) => c.id === baseId);
+    const priceData = pricingCache.get(id);
+    if (!base) return null;
+    const enriched: PokemonCard = { ...base, id, tcgplayer: priceData };
+    if (variant) {
+      const category = getVintageVariantCategory(variant);
+      enriched.name = `${base.name} (${formatVariantName(variant)})`;
+      enriched.set = category ? { ...base.set, id: `${base.set.id}::${category}`, name: getVirtualSetName(base.set.name, category) } : base.set;
+    }
+    const avgs = cardmarketAvgsSeeded.get(id) ?? cardmarketAvgsCache.get(id);
+    if (avgs) enriched.cardmarketAvgs = avgs;
+    return enriched;
+  }
   return cards.find((c) => c.id === id) ?? null;
 }
 
@@ -695,6 +745,7 @@ export async function getMarketCards(opts: {
   setIds?: Set<string>;
   limit?: number;
 }): Promise<PokemonCard[]> {
+  await ensurePricingCacheSeeded();
   const { cards, sets } = await loadCardIndex();
   const physicalSetIds = new Set(sets.filter((s) => !s.isOnlineOnly).map((s) => s.id));
   

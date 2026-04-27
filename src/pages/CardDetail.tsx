@@ -141,13 +141,13 @@ export default function CardDetail() {
   }
 
   const handleAddToCollection = async () => {
-    if (!card) return;
+    if (!enrichedCard) return;
     if (!user) { toast.info("Sign in to add to your collection"); navigate("/auth"); return; }
     setAddingToCollection(true);
-    const result = await addToCollection(card, user.id, "NM");
+    const result = await addToCollection(enrichedCard, user.id, "NM");
     if (result) {
-      toast.success(`${card.name} added to collection!`);
-      recordCollectionAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
+      toast.success(`${enrichedCard.name} added to collection!`);
+      recordCollectionAdd({ id: enrichedCard.id, name: enrichedCard.name, setName: enrichedCard.set.name, imageSmall: enrichedCard.images.small });
     } else {
       toast.error("Failed to add to collection.");
     }
@@ -155,7 +155,7 @@ export default function CardDetail() {
   };
 
   const handleWishlist = async () => {
-    if (!card) return;
+    if (!enrichedCard) return;
     if (!user) { toast.info("Sign in to add to your wishlist"); navigate("/auth"); return; }
     let target = wishlists[0];
     if (!target) {
@@ -168,10 +168,10 @@ export default function CardDetail() {
       }
     }
     try {
-      const ok = await addCardToWishlist(target.id, user.id, card);
+      const ok = await addCardToWishlist(target.id, user.id, enrichedCard);
       if (ok) {
-        toast.success(`${card.name} added to wishlist!`);
-        recordWishlistAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
+        toast.success(`${enrichedCard.name} added to wishlist!`);
+        recordWishlistAdd({ id: enrichedCard.id, name: enrichedCard.name, setName: enrichedCard.set.name, imageSmall: enrichedCard.images.small });
         queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
       } else {
         toast.info("Already in wishlist.");

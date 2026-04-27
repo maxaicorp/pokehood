@@ -79,12 +79,13 @@ export default function Market() {
     });
   }, [activeTab]);
 
-  // Step 1: Load sets + seed pricing cache from DB (runs once)
+  // Step 1: Load snapshot prices once, then load sets with pricing-aware virtual variants.
   useEffect(() => {
-    Promise.all([getSets(), getLatestSnapshotPrices()]).then(([r, prices]) => {
-      setSetsData(r);
+    getLatestSnapshotPrices().then(async (prices) => {
       seedPricingCache(prices);
       seedSealedPriceMap(prices);
+      const r = await getSets();
+      setSetsData(r);
       setPricesReady(true);
     });
   }, []);
