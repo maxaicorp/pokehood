@@ -37,7 +37,6 @@ function ApiHealthBanner() {
         // Low Scrydex credits or a missed daily freshness check should not show a
         // user-facing outage banner while the snapshot table still has coverage.
         if (!cardCoverageOk) setStatus("down");
-        else if (ms > 4000) setStatus("slow");
         else setStatus("ok");
       } catch {
         if (!cancelled) setStatus("ok");
