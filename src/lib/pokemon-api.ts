@@ -505,7 +505,6 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
 // ─── Public API functions ─────────────────────────────────────────────────────
 
 export async function getSets(): Promise<SetSearchResult> {
-  await ensurePricingCacheSeeded();
   const { sets, cards } = await loadCardIndex();
   
   // Dynamically inject virtual vintage sets so Unlimited, Shadowless, and
