@@ -455,6 +455,7 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
 // ─── Public API functions ─────────────────────────────────────────────────────
 
 export async function getSets(): Promise<SetSearchResult> {
+  await ensurePricingCacheSeeded();
   const { sets, cards } = await loadCardIndex();
   
   // Dynamically inject virtual sets for 1st Edition
@@ -526,6 +527,7 @@ export async function searchCardsAdvanced(
   page = 1,
   pageSize = 35,
 ): Promise<SearchResult> {
+  await ensurePricingCacheSeeded();
   const { cards, sets } = await loadCardIndex();
   const physicalSetIds = new Set(sets.filter((s) => !s.isOnlineOnly).map((s) => s.id));
   const pocketSetIds = new Set(sets.filter((s) => s.isOnlineOnly).map((s) => s.id));
@@ -593,6 +595,7 @@ export async function getSetCards(
   page = 1,
   pageSize = 20,
 ): Promise<SearchResult> {
+  await ensurePricingCacheSeeded();
   const { cards } = await loadCardIndex();
   let baseSetId = setId;
   if (setId.includes("::")) baseSetId = setId.split("::")[0];
