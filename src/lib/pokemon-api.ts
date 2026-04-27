@@ -696,7 +696,19 @@ export const PRODUCT_TYPES = [
 ];
 
 export async function getCardById(id: string): Promise<PokemonCard | null> {
+  await ensurePricingCacheSeeded();
   const { cards } = await loadCardIndex();
+  if (id.includes("::")) {
+    const [baseId, variant] = id.split("::");
+    const base = cards.find((c) => c.id === baseId);
+    const priceData = pricingCache.get(id);
+    if (!base) return null;
+    const enriched: PokemonCard = { ...base, id, tcgplayer: priceData };
+    if (variant) enriched.name = `${base.name} (${formatVariantName(variant)})`;
+    const avgs = cardmarketAvgsSeeded.get(id) ?? cardmarketAvgsCache.get(id);
+    if (avgs) enriched.cardmarketAvgs = avgs;
+    return enriched;
+  }
   return cards.find((c) => c.id === id) ?? null;
 }
 
@@ -710,6 +722,7 @@ export async function getMarketCards(opts: {
   setIds?: Set<string>;
   limit?: number;
 }): Promise<PokemonCard[]> {
+  await ensurePricingCacheSeeded();
   const { cards, sets } = await loadCardIndex();
   const physicalSetIds = new Set(sets.filter((s) => !s.isOnlineOnly).map((s) => s.id));
   
