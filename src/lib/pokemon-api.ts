@@ -723,7 +723,11 @@ export async function getCardById(id: string): Promise<PokemonCard | null> {
     const priceData = pricingCache.get(id);
     if (!base) return null;
     const enriched: PokemonCard = { ...base, id, tcgplayer: priceData };
-    if (variant) enriched.name = `${base.name} (${formatVariantName(variant)})`;
+    if (variant) {
+      const category = getVintageVariantCategory(variant);
+      enriched.name = `${base.name} (${formatVariantName(variant)})`;
+      enriched.set = category ? { ...base.set, id: `${base.set.id}::${category}`, name: getVirtualSetName(base.set.name, category) } : base.set;
+    }
     const avgs = cardmarketAvgsSeeded.get(id) ?? cardmarketAvgsCache.get(id);
     if (avgs) enriched.cardmarketAvgs = avgs;
     return enriched;
