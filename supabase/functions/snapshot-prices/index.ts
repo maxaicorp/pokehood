@@ -31,6 +31,11 @@ const corsHeaders = {
 const PAGE_SIZE = 100;
 const DAILY_PAGE_LIMIT = 60; // 60 pages newest + 60 pages oldest = 120 credits/day
 const DELAY_MS = 150;        // ~6-7 req/sec, well under 100/sec limit
+const EARLY_VARIANT_SET_IDS = new Set([
+  "base1", "base2", "base3", "base4", "base5", "base6",
+  "gym1", "gym2",
+  "neo1", "neo2", "neo3", "neo4",
+]);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,6 +87,15 @@ function isVintageVariantName(name: string): boolean {
   return n.includes("shadowless") || n.includes("1stedition") || n.includes("firstedition") || n.startsWith("unlimited");
 }
 
+function isEarlyVariantSet(card: ScrydexCard): boolean {
+  const expansionId = card.expansion?.id?.toLowerCase();
+  const cardPrefix = card.id.split("-")[0]?.toLowerCase();
+  return Boolean(
+    (expansionId && EARLY_VARIANT_SET_IDS.has(expansionId)) ||
+    (cardPrefix && EARLY_VARIANT_SET_IDS.has(cardPrefix))
+  );
+}
+
 function extractAllVariantPrices(card: ScrydexCard): { variant: string; price: number }[] {
   const all: { variant: string; price: number }[] = [];
   const variants = card.variants ?? [];
@@ -99,9 +113,9 @@ function extractAllVariantPrices(card: ScrydexCard): { variant: string; price: n
 
   if (all.length === 0) return [];
 
-  // If any vintage marker is present, keep every variant — the card has
+  // If any vintage marker is present on an allowed early set, keep every variant — the card has
   // multiple real printings (1st Edition, Shadowless, Unlimited Holo, etc.).
-  const isVintage = all.some((vp) => isVintageVariantName(vp.variant));
+  const isVintage = isEarlyVariantSet(card) && all.some((vp) => isVintageVariantName(vp.variant));
   if (isVintage) return all;
 
   // Modern card: collapse to a single bare-id row using the best available
