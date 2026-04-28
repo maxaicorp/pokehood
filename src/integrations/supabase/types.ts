@@ -182,6 +182,130 @@ export type Database = {
         }
         Relationships: []
       }
+      giveaway_entries: {
+        Row: {
+          city: string
+          confirmation_sent_at: string | null
+          confirmation_token: string
+          confirmed_at: string | null
+          country: string
+          created_at: string
+          email: string
+          full_name: string
+          giveaway_id: string
+          id: string
+          ip_address: unknown
+          state: string
+          status: string
+          street_address: string
+          user_agent: string | null
+          user_id: string | null
+          zip: string
+        }
+        Insert: {
+          city: string
+          confirmation_sent_at?: string | null
+          confirmation_token: string
+          confirmed_at?: string | null
+          country?: string
+          created_at?: string
+          email: string
+          full_name: string
+          giveaway_id: string
+          id?: string
+          ip_address?: unknown
+          state: string
+          status?: string
+          street_address: string
+          user_agent?: string | null
+          user_id?: string | null
+          zip: string
+        }
+        Update: {
+          city?: string
+          confirmation_sent_at?: string | null
+          confirmation_token?: string
+          confirmed_at?: string | null
+          country?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          giveaway_id?: string
+          id?: string
+          ip_address?: unknown
+          state?: string
+          status?: string
+          street_address?: string
+          user_agent?: string | null
+          user_id?: string | null
+          zip?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "giveaway_entries_giveaway_id_fkey"
+            columns: ["giveaway_id"]
+            isOneToOne: false
+            referencedRelation: "giveaways"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      giveaways: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          ends_at: string
+          estimated_value_usd: number | null
+          id: string
+          prize_image_url: string | null
+          rules_text: string | null
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+          winner_entry_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          ends_at: string
+          estimated_value_usd?: number | null
+          id?: string
+          prize_image_url?: string | null
+          rules_text?: string | null
+          starts_at: string
+          status?: string
+          title: string
+          updated_at?: string
+          winner_entry_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          ends_at?: string
+          estimated_value_usd?: number | null
+          id?: string
+          prize_image_url?: string | null
+          rules_text?: string | null
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          winner_entry_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "giveaways_winner_entry_fk"
+            columns: ["winner_entry_id"]
+            isOneToOne: false
+            referencedRelation: "giveaway_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       link_clicks: {
         Row: {
           clicked_at: string
