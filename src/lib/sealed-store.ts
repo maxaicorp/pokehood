@@ -206,9 +206,29 @@ export async function fetchSealedProducts(opts: {
   const all = await loadSealedProducts();
 
   // Apply category filter (strict — no fuzzy "Latest" view).
-  const filtered = type && type !== "all"
+  let filtered = type && type !== "all"
     ? all.filter((p) => matchesSealedType(p, type))
     : [...all];
+
+  // Tin dedupe: a single tin line ("Ascended Heroes Mini Tin") often ships
+  // with 5 different Pokemon-art SKUs. Collapse to one row per line by
+  // stripping the " - <character>" suffix and keeping the highest-priced
+  // representative (most useful baseline; they all retail similarly anyway).
+  if (type === "Tin") {
+    const groups = new Map<string, SealedProduct>();
+    for (const p of filtered) {
+      const key = `${p.expansionId}|${(p.name ?? "").split(" - ")[0].trim()}`;
+      const existing = groups.get(key);
+      if (!existing) {
+        groups.set(key, p);
+        continue;
+      }
+      const a = getSealedMarketPrice(p) ?? 0;
+      const b = getSealedMarketPrice(existing) ?? 0;
+      if (a > b) groups.set(key, p);
+    }
+    filtered = Array.from(groups.values());
+  }
 
   // Default sort: newest expansion first. User-selected columns (price/1d/7d)
   // override that default and use the requested direction.
