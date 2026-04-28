@@ -125,6 +125,19 @@ export interface LatestSnapshotPageOptions {
  *    - When multiple variants share a name, pick the one with the closest price to current
  */
 type Row = { card_id: string; card_name: string; set_name: string; price: number };
+const EARLY_VARIANT_SET_IDS = new Set([
+  "base1", "base2", "base3", "base4", "base5", "base6",
+  "gym1", "gym2",
+  "neo1", "neo2", "neo3", "neo4",
+]);
+
+function normalizeSnapshotRow(row: Row): Row | null {
+  if (!row.card_id.includes("::")) return row;
+  const baseId = row.card_id.split("::")[0];
+  const setId = baseId.split("-").slice(0, -1).join("-") || baseId;
+  if (EARLY_VARIANT_SET_IDS.has(setId)) return row;
+  return null;
+}
 
 let latestSnapshotDatePromise: Promise<string | null> | null = null;
 
@@ -203,7 +216,7 @@ export async function getLatestSnapshotPage({
   const { data, error } = await query;
   if (error || !data?.length) return [];
 
-  const rows = data as Row[];
+  const rows = (data as Row[]).map(normalizeSnapshotRow).filter(Boolean) as Row[];
   const ids = rows.map((r) => r.card_id);
   const { d1, d7, d30 } = snapshotComparisonDates(latestDate);
   const [p1, p7, p30] = await Promise.all([
@@ -253,7 +266,7 @@ async function fetchSnapshotDate(date: string): Promise<Row[]> {
       .eq("recorded_at", date)
       .range(from, from + PAGE - 1);
     if (error || !data) break;
-    rows.push(...(data as Row[]));
+    rows.push(...((data as Row[]).map(normalizeSnapshotRow).filter(Boolean) as Row[]));
     if (data.length < PAGE) break;
     from += PAGE;
   }
