@@ -156,37 +156,37 @@ export function getSealedTrends(product: SealedProduct): {
   return { pct1d: null, pct7d: null };
 }
 
-// ─── Latest-expansions helper ─────────────────────────────────────────────────
-
-function getLatestExpansionIds(products: SealedProduct[], count: number): Set<string> {
-  const byId = new Map<string, string>(); // expansionId -> expansionReleaseDate
-  for (const p of products) {
-    if (!byId.has(p.expansionId) && p.expansionReleaseDate) {
-      byId.set(p.expansionId, p.expansionReleaseDate);
-    }
-  }
-  const sorted = [...byId.entries()]
-    .sort(([, a], [, b]) => b.localeCompare(a))
-    .slice(0, count)
-    .map(([id]) => id);
-  return new Set(sorted);
-}
+// ─── Strict per-category matching ────────────────────────────────────────────
+// Each filter shows only its single canonical product per set (no bundles,
+// multipacks, art-bundles, sleeved variants, displays, cases, or special
+// premium SKUs). Names like "Set of 4", "5-Pack", "Display", "Case",
+// "Sleeved", "Art Bundle" are treated as noise and excluded.
+const NAME_NOISE = /\b(bundle|case|display|set of|sleeved|art bundle)\b|\b\d+[- ]pack\b/i;
 
 function matchesSealedType(product: SealedProduct, type: string): boolean {
-  const productType = (product.type ?? "").toLowerCase();
-  const name = (product.name ?? "").toLowerCase();
-  const isDisplay = /\bdisplay\b|\bcase\b/.test(name);
+  if (type === "all") return true;
 
-  switch (type) {
-    case "Booster Pack":
-      return productType === "booster pack" && /booster pack/.test(name) && !/booster box|booster bundle|display|case/.test(name);
-    case "Tin":
-      return productType === "tin" && !isDisplay;
-    case "Booster Bundle":
-      return productType === "booster bundle" && !isDisplay;
-    default:
-      return product.type === type;
+  const t = product.type ?? "";
+  const name = product.name ?? "";
+
+  // Type must match exactly. The noise filter then excludes derivative SKUs.
+  if (t !== type) return false;
+
+  // Booster Pack: also reject "Sleeved Booster Pack" and "Booster Pack Art Bundle"
+  // so this filter shows ONLY the plain set booster pack.
+  if (type === "Booster Pack") {
+    if (NAME_NOISE.test(name)) return false;
+    return /\bbooster pack\b/i.test(name);
   }
+
+  // Booster Bundle: the word "bundle" IS the product, so the generic
+  // noise filter would zero it out. Only strip multipacks / display SKUs.
+  if (type === "Booster Bundle") {
+    return !/\b(case|display|set of)\b|\b\d+[- ]pack\b/i.test(name);
+  }
+
+  // For everything else the type-equality check + noise filter is enough.
+  return !NAME_NOISE.test(name);
 }
 
 // ─── Main fetch (reads from cached JSON, sorted by price desc) ────────────────
@@ -205,36 +205,35 @@ export async function fetchSealedProducts(opts: {
 
   const all = await loadSealedProducts();
 
-  // Apply filter: "latest" = products from the 15 most-recent expansions;
-  // "all" (or falsy) = everything; otherwise match by product.type
-  let filtered: SealedProduct[];
-  if (type === "latest") {
-    const latestIds = getLatestExpansionIds(all, 15);
-    filtered = all.filter((p) => latestIds.has(p.expansionId));
-  } else if (type && type !== "all") {
-    filtered = all.filter((p) => matchesSealedType(p, type));
-  } else {
-    filtered = [...all];
-  }
+  // Apply category filter (strict — no fuzzy "Latest" view).
+  const filtered = type && type !== "all"
+    ? all.filter((p) => matchesSealedType(p, type))
+    : [...all];
 
-  // Sort: use user-selected column, or default to price desc
-  const effectiveCol = sortCol ?? "price";
-  filtered.sort((a, b) => {
-    let va: number | null, vb: number | null;
-    if (effectiveCol === "price") {
-      va = getSealedMarketPrice(a);
-      vb = getSealedMarketPrice(b);
-    } else {
-      const ta = getSealedTrends(a);
-      const tb = getSealedTrends(b);
-      va = effectiveCol === "1d" ? ta.pct1d : ta.pct7d;
-      vb = effectiveCol === "1d" ? tb.pct1d : tb.pct7d;
-    }
-    if (va === null && vb === null) return 0;
-    if (va === null) return 1;
-    if (vb === null) return -1;
-    return sortDir === "asc" ? va - vb : vb - va;
-  });
+  // Default sort: newest expansion first. User-selected columns (price/1d/7d)
+  // override that default and use the requested direction.
+  if (sortCol) {
+    filtered.sort((a, b) => {
+      let va: number | null, vb: number | null;
+      if (sortCol === "price") {
+        va = getSealedMarketPrice(a);
+        vb = getSealedMarketPrice(b);
+      } else {
+        const ta = getSealedTrends(a);
+        const tb = getSealedTrends(b);
+        va = sortCol === "1d" ? ta.pct1d : ta.pct7d;
+        vb = sortCol === "1d" ? tb.pct1d : tb.pct7d;
+      }
+      if (va === null && vb === null) return 0;
+      if (va === null) return 1;
+      if (vb === null) return -1;
+      return sortDir === "asc" ? va - vb : vb - va;
+    });
+  } else {
+    filtered.sort((a, b) =>
+      (b.expansionReleaseDate ?? "").localeCompare(a.expansionReleaseDate ?? ""),
+    );
+  }
 
   const totalCount = filtered.length;
   const start = (page - 1) * pageSize;
@@ -246,12 +245,14 @@ export async function fetchSealedProducts(opts: {
 // ─── Sealed product type filter options ──────────────────────────────────────
 
 export const SEALED_TYPES = [
-  { value: "latest", label: "Latest (15 Sets)" },
+  { value: "Elite Trainer Box", label: "ETBs" },
+  { value: "Booster Box", label: "Booster Boxes" },
+  { value: "Booster Pack", label: "Booster Packs" },
+  { value: "Booster Bundle", label: "Booster Bundles" },
+  { value: "Tin", label: "Tins" },
+  { value: "Collection", label: "Collections" },
+  { value: "Blister", label: "Blisters" },
+  { value: "Build & Battle", label: "Build & Battle" },
+  { value: "Theme Deck", label: "Theme Decks" },
   { value: "all", label: "All Products" },
-  { value: "Booster Box", label: "Booster Box" },
-  { value: "Booster Pack", label: "Booster Pack" },
-  { value: "Booster Bundle", label: "Booster Bundle" },
-  { value: "Elite Trainer Box", label: "ETB" },
-  { value: "Collection", label: "Collection" },
-  { value: "Tin", label: "Tin" },
 ];
