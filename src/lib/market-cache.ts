@@ -1,6 +1,6 @@
 import type { PokemonCard, PokemonSet } from "./pokemon-api";
 
-const KEY = "market-cache-v3";
+const KEY = "market-cache-v4-early-variants-only";
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export interface MarketCache {
