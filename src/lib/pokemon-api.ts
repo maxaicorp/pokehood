@@ -209,7 +209,7 @@ export async function hydrateCardsFromLatestPrices(prices: LatestPrice[]): Promi
       },
       tcgplayer: pricingCache.get(price.cardId),
     };
-    if (variant) {
+    if (variant && isEarlyVariantSetId(setId)) {
       const category = getVintageVariantCategory(variant);
       enriched.name = `${price.cardName} (${formatVariantName(variant)})`;
       enriched.set = category ? { ...baseSet, id: `${setId}::${category}`, name: getVirtualSetName(price.setName, category) } : baseSet;
@@ -333,6 +333,11 @@ function formatVariantName(variant: string): string {
 }
 
 const MODERN_SUFFIXES = ["", "::holofoil", "::reverseHolofoil"];
+const EARLY_VARIANT_SET_IDS = new Set([
+  "base1", "base2", "base3", "base4", "base5", "base6",
+  "gym1", "gym2",
+  "neo1", "neo2", "neo3", "neo4",
+]);
 
 function getVintageVariantCategory(variantOrSuffix: string): "unlimited" | "shadowless" | "firstEdition" | null {
   const variant = variantOrSuffix.replace(/^::/, "").toLowerCase();
@@ -351,6 +356,10 @@ function getVirtualSetName(baseName: string, category: ReturnType<typeof getVint
 
 function isVintageVariantSuffix(suffix: string): boolean {
   return suffix.startsWith("::") && getVintageVariantCategory(suffix) !== null;
+}
+
+function isEarlyVariantSetId(setId: string): boolean {
+  return EARLY_VARIANT_SET_IDS.has(setId.split("::")[0]);
 }
 
 function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): PokemonCard[] {
