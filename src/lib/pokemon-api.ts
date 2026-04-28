@@ -407,7 +407,7 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
       continue;
     }
 
-    const hasVintage = matches.some((m) => isVintageVariantSuffix(m.suffix));
+    const hasVintage = isEarlyVariantSetId(card.set.id) && matches.some((m) => isVintageVariantSuffix(m.suffix));
 
     if (!hasVintage) {
       // Modern card: Scrydex sometimes returns duplicate "normal"+"holofoil"
@@ -542,6 +542,7 @@ export async function getSets(): Promise<SetSearchResult> {
     const baseCardId = cardId.split("::")[0];
     const baseCard = cards.find(c => c.id === baseCardId);
     if (!baseCard) continue;
+    if (!isEarlyVariantSetId(baseCard.set.id)) continue;
     const existing = vintageSets.get(baseCard.set.id) ?? new Set<"shadowless" | "firstEdition">();
     existing.add(category);
     vintageSets.set(baseCard.set.id, existing);
