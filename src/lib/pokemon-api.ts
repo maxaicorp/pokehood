@@ -99,11 +99,9 @@ interface CardIndexSet {
 interface CardIndexCard {
   id: string;
   name: string;
-  // Legacy TCGdex format (base URL, /low.webp and /high.webp appended)
-  image?: string;
-  // Scrydex format (full CDN URLs stored directly)
-  imageSmall?: string;
-  imageLarge?: string;
+  // Scrydex CDN URLs — single source of truth. No legacy TCGdex fallback.
+  imageSmall: string;
+  imageLarge: string;
   localId: string;
   setId: string;
   rarity?: string;
@@ -264,9 +262,11 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
     if (seenIds.has(c.id)) continue;
     seenIds.add(c.id);
     const s = index.sets[c.setId];
-    // Scrydex CDN images — imageSmall/imageLarge stored directly in all-cards.json
-    const imageSmall = c.imageSmall ?? (c.image ? c.image + "/low.webp" : "");
-    const imageLarge = c.imageLarge ?? (c.image ? c.image + "/high.webp" : "");
+    // Scrydex CDN images — single source of truth. No legacy fallback.
+    // If imageSmall/Large is missing on any card, that's a data sync bug to fix
+    // upstream, not something to paper over here.
+    const imageSmall = c.imageSmall ?? "";
+    const imageLarge = c.imageLarge ?? "";
     cards.push({
       id: c.id,
       name: c.name,

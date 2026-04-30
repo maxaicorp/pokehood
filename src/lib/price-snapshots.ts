@@ -364,27 +364,16 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
 
     const key = `${cardName}|${setName}|${variantOf(cardId)}`.toLowerCase();
     const candidates = lookup.byName.get(key);
-    if (candidates?.length) {
-      if (candidates.length === 1) return candidates[0];
-      let best = candidates[0];
-      let bestDiff = Math.abs(currentPrice - best);
-      for (let i = 1; i < candidates.length; i++) {
-        const diff = Math.abs(currentPrice - candidates[i]);
-        if (diff < bestDiff) { best = candidates[i]; bestDiff = diff; }
-      }
-      return best;
-    }
+    if (!candidates?.length) return undefined;
 
-    // Base-card fallback: a variant-suffixed id ("base1-4::holofoil") falls back
-    // to the base id ("base1-4") if it exists in history.
-    const sep = cardId.indexOf("::");
-    if (sep !== -1) {
-      const baseId = cardId.slice(0, sep);
-      const base = lookup.byId.get(baseId);
-      if (base !== undefined) return base;
+    if (candidates.length === 1) return candidates[0];
+    let best = candidates[0];
+    let bestDiff = Math.abs(currentPrice - best);
+    for (let i = 1; i < candidates.length; i++) {
+      const diff = Math.abs(currentPrice - candidates[i]);
+      if (diff < bestDiff) { best = candidates[i]; bestDiff = diff; }
     }
-
-    return undefined;
+    return best;
   }
 
   for (const row of effectiveCurrent) {
