@@ -110,6 +110,28 @@ serve(async (req) => {
   const today = new Date().toISOString().split("T")[0];
 
   try {
+    // Idempotency guard. A successful sealed run writes ~600 rows. If we're
+    // already past 500 sealed snapshots for today, the caller is almost
+    // certainly a duplicate (stuck cron, manual + cron) and should not spend
+    // more Scrydex credits. Pass { force: true } in the body to override.
+    const body = await req.json().catch(() => ({}));
+    const force = body?.force === true;
+    if (!force) {
+      const { count: existingToday } = await supabase
+        .from("price_snapshots")
+        .select("id", { count: "exact", head: true })
+        .eq("recorded_at", today)
+        .like("card_id", "sealed-%");
+      const have = existingToday ?? 0;
+      if (have >= 500) {
+        console.log(`[skip] ${have} sealed rows already exist for ${today} — skipping (override with force:true)`);
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, today_count: have, reason: "already-snapshotted-today" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     const pageSize = 100;
     let page = 1;
     let totalSaved = 0;

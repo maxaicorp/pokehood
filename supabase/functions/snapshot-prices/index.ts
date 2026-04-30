@@ -370,6 +370,40 @@ serve(async (req: Request) => {
 
     console.log(`snapshot-prices [${mode}] starting — ${today}`);
 
+    // Idempotency guard. Counts today's existing card snapshots (excluding sealed).
+    // A typical successful daily run writes ~12,000 rows; full mode writes ~22,000.
+    // If we're already past those thresholds, the same-day caller is almost certainly
+    // a duplicate (stuck cron, manual + cron, parallel resume) and should not spend
+    // more Scrydex credits. Pass { force: true } in the body to override.
+    const force = body?.force === true;
+    if (!force) {
+      const { count: existingToday } = await supabase
+        .from("price_snapshots")
+        .select("id", { count: "exact", head: true })
+        .eq("recorded_at", today)
+        .not("card_id", "like", "sealed-%");
+      const have = existingToday ?? 0;
+      const threshold =
+        mode === "full" ? 20000 :
+        mode === "chunk" ? 0 :              // chunk is always intentional, never skip
+        mode === "sets"  ? 0 :              // set backfill is targeted, never skip
+        10000;                              // daily
+      if (threshold > 0 && have >= threshold) {
+        console.log(`[skip] ${have} card rows already exist for ${today} — skipping ${mode} run (override with force:true)`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            skipped: true,
+            reason: "already-snapshotted-today",
+            mode,
+            today_count: have,
+            threshold,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+    }
+
     const seenIds = new Set<string>();
     const buffer: SnapshotRow[] = [];
     const counters = { inserted: 0, skipped: 0 };
