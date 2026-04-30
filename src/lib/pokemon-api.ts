@@ -139,11 +139,10 @@ export function seedPricingCache(prices: Map<string, {
   price7d?: number | null;
   price30d?: number | null;
 }>) {
-  // Fresh DB seed should always win over stale in-memory values from earlier navigation.
-  pricingCache.clear();
-  cardmarketAvgsSeeded.clear();
-  cardmarketAvgsCache.clear();
-
+  // No clear() — appendPricingCache overwrites every key present in `prices`
+  // with the current values, so fresh data still wins for the cards in this
+  // batch. Keys NOT in `prices` persist as the most recent value we have,
+  // which is preferable to losing an Explore-page hydrate that ran in parallel.
   appendPricingCache(prices);
 }
 
@@ -429,12 +428,12 @@ function expandVariants(cards: PokemonCard[], allowedSetIds?: Set<string>): Poke
       continue;
     }
 
-    // Vintage card: if specific suffixed variants exist, never surface the bare
-    // row because Scrydex's unsuffixed price is ambiguous and often maps to the
-    // wrong printing (for Base/Jungle/Fossil it frequently mirrors 1st Edition).
-    const vintageMatches = matches.some((m) => m.suffix !== "")
-      ? matches.filter((m) => m.suffix !== "" && isVintageVariantSuffix(m.suffix))
-      : matches;
+    // Vintage card: drop the bare row (it's an ambiguous duplicate of one of
+    // the suffixed printings) but keep ALL non-bare variants — including
+    // modern markers like ::holofoil and ::reverseHolofoil. A Legendary
+    // Collection card can legitimately have BOTH a 1st Edition Holo and a
+    // Reverse Holo printing, and previous logic was hiding the Reverse Holo.
+    const vintageMatches = matches.filter((m) => m.suffix !== "");
 
     for (const { suffix, priceData } of vintageMatches) {
       const variantId = `${card.id}${suffix}`;

@@ -162,6 +162,19 @@ export default function AdminGiveawayForm() {
   if (!isNew && isLoading) {
     return <AdminLayout><p className="text-sm text-muted-foreground">Loading…</p></AdminLayout>;
   }
+  if (!isNew && !isLoading && !existing) {
+    return (
+      <AdminLayout>
+        <div className="rounded-lg border border-border/50 p-8 text-center">
+          <h2 className="text-lg font-semibold mb-2">Giveaway not found</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            This giveaway may have been deleted by another admin.
+          </p>
+          <Button asChild variant="outline"><a href="/admin/giveaways">Back to list</a></Button>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>

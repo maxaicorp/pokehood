@@ -206,6 +206,15 @@ export async function uploadGiveawayImage(file: File): Promise<string> {
 // ─── Pick a winner ───────────────────────────────────────────────────────────
 
 export async function drawWinner(giveawayId: string): Promise<GiveawayEntry | null> {
+  // Idempotent: if the giveaway is already drawn, return the existing winner
+  // instead of re-rolling. Two simultaneous admin clicks return the same row.
+  const giveaway = await getGiveaway(giveawayId);
+  if (!giveaway) throw new Error("Giveaway not found");
+  if (giveaway.status === "drawn" && giveaway.winner_entry_id) {
+    const entries = await listEntries(giveawayId);
+    return entries.find((e) => e.id === giveaway.winner_entry_id) ?? null;
+  }
+
   const entries = await listEntries(giveawayId);
   const eligible = entries.filter((e) => e.status === "confirmed");
   if (eligible.length === 0) return null;

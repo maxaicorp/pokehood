@@ -91,7 +91,7 @@ export default function Sets() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
-      <AppHeader activePage="market">
+      <AppHeader activePage="sets">
         {/* Search bar below header */}
         <div className="border-t border-border/30 bg-muted/20">
           <div className="container px-4 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center gap-3">

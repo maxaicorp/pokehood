@@ -148,6 +148,26 @@ serve(async (req: Request) => {
   if (giveaway.status !== "active") return bad("This giveaway isn't accepting entries");
   if (new Date(giveaway.ends_at).getTime() < Date.now()) return bad("This giveaway has ended");
 
+  const ipAddr = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? null;
+  const userAgent = req.headers.get("user-agent") ?? null;
+
+  // Rate limit: max 5 entries per IP per hour across all giveaways. Skips when
+  // the IP can't be determined (Supabase Edge always sets x-forwarded-for in
+  // production, so this branch is only hit in local dev).
+  if (ipAddr) {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count, error: rlErr } = await supabase
+      .from("giveaway_entries")
+      .select("id", { count: "exact", head: true })
+      .eq("ip_address", ipAddr)
+      .gte("created_at", oneHourAgo);
+    if (!rlErr && (count ?? 0) >= 5) {
+      return bad("Too many entries from your network. Try again in an hour.", 429);
+    }
+  } else {
+    console.warn("[giveaway-submit] no IP — skipping rate limit");
+  }
+
   // Optional: capture the signed-in user_id if a JWT was provided
   let userId: string | null = null;
   const auth = req.headers.get("Authorization");
@@ -156,8 +176,6 @@ serve(async (req: Request) => {
     userId = userRes?.user?.id ?? null;
   }
 
-  const ipAddr = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? null;
-  const userAgent = req.headers.get("user-agent") ?? null;
   const token = generateToken();
 
   // Upsert: re-submitting the same email before confirming generates a fresh
@@ -207,10 +225,11 @@ serve(async (req: Request) => {
     }
   }
 
-  // Build confirmation URL — origin is whatever called us, falling back to the
-  // env var SITE_URL.
-  const origin = req.headers.get("origin") ?? Deno.env.get("SITE_URL") ?? "https://collectiblez.lovable.app";
-  const confirmUrl = `${origin.replace(/\/$/, "")}/giveaway/confirm?token=${token}`;
+  // Build confirmation URL from SITE_URL env var. We deliberately do NOT use
+  // the request `origin` header — an attacker could send `origin: https://attacker.com`
+  // to make the confirmation link point at their phishing domain.
+  const siteUrl = Deno.env.get("SITE_URL") ?? "https://collectiblez.lovable.app";
+  const confirmUrl = `${siteUrl.replace(/\/$/, "")}/giveaway/confirm?token=${token}`;
 
   const apiKey = Deno.env.get("RESEND_API_KEY") ?? "";
   const fromAddress = Deno.env.get("GIVEAWAY_FROM_ADDRESS") ?? "Collectiblez <noreply@collectiblez.com>";

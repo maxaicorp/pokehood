@@ -58,7 +58,7 @@ serve(async (req: Request) => {
 
   const { data: entry, error } = await supabase
     .from("giveaway_entries")
-    .select("id, status, giveaway_id, full_name")
+    .select("id, status, giveaway_id, full_name, confirmation_sent_at")
     .eq("confirmation_token", token)
     .maybeSingle();
 
@@ -73,6 +73,16 @@ serve(async (req: Request) => {
   }
   if (entry.status === "rejected") {
     return json({ error: "This entry was rejected" }, 410);
+  }
+
+  // 7-day token expiration. Beyond that, the user has to re-submit to get a
+  // fresh token. Keeps stale-leaked links from being valid forever.
+  if (entry.confirmation_sent_at) {
+    const sentAt = new Date(entry.confirmation_sent_at).getTime();
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    if (Date.now() - sentAt > sevenDays) {
+      return json({ error: "This confirmation link has expired. Please submit your entry again." }, 410);
+    }
   }
 
   const { error: upErr } = await supabase
