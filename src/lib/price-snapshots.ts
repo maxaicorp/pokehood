@@ -161,6 +161,16 @@ function snapshotComparisonDates(latestDate: string) {
   return { d1: fmt(d1), d7: fmt(d7), d30: fmt(d30) };
 }
 
+function offsetSnapshotDate(date: string, daysBack: number): string {
+  const d = new Date(date);
+  d.setDate(d.getDate() - daysBack);
+  return d.toISOString().split("T")[0];
+}
+
+function historicalFallbackDates(latestDate: string, daysBack: number): string[] {
+  return [0, 1, 2].map((extra) => offsetSnapshotDate(latestDate, daysBack + extra));
+}
+
 function toLatestPrice(row: Row, history: Map<string, { p1?: number; p7?: number; p30?: number }>): LatestPrice {
   const h = history.get(row.card_id);
   return {
@@ -184,6 +194,18 @@ async function fetchSnapshotRowsByIds(date: string, ids: string[]): Promise<Map<
   if (error || !data) return map;
   for (const row of data as Array<{ card_id: string; price: number }>) {
     map.set(row.card_id, Number(row.price));
+  }
+  return map;
+}
+
+async function fetchSnapshotRowsByIdsWithFallback(latestDate: string, daysBack: number, ids: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  let remaining = Array.from(new Set(ids));
+  for (const date of historicalFallbackDates(latestDate, daysBack)) {
+    if (remaining.length === 0) break;
+    const rows = await fetchSnapshotRowsByIds(date, remaining);
+    for (const [id, price] of rows) map.set(id, price);
+    remaining = remaining.filter((id) => !map.has(id));
   }
   return map;
 }
