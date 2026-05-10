@@ -240,11 +240,10 @@ export async function getLatestSnapshotPage({
 
   const rows = (data as Row[]).map(normalizeSnapshotRow).filter(Boolean) as Row[];
   const ids = rows.map((r) => r.card_id);
-  const { d1, d7, d30 } = snapshotComparisonDates(latestDate);
   const [p1, p7, p30] = await Promise.all([
-    fetchSnapshotRowsByIds(d1, ids),
-    fetchSnapshotRowsByIds(d7, ids),
-    fetchSnapshotRowsByIds(d30, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 1, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 7, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 30, ids),
   ]);
 
   const history = new Map<string, { p1?: number; p7?: number; p30?: number }>();
@@ -265,11 +264,10 @@ export async function getLatestSnapshotPricesForIds(cardIds: string[]): Promise<
 
   const rows = data as Row[];
   const ids = rows.map((r) => r.card_id);
-  const { d1, d7, d30 } = snapshotComparisonDates(latestDate);
   const [p1, p7, p30] = await Promise.all([
-    fetchSnapshotRowsByIds(d1, ids),
-    fetchSnapshotRowsByIds(d7, ids),
-    fetchSnapshotRowsByIds(d30, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 1, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 7, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 30, ids),
   ]);
   const history = new Map<string, { p1?: number; p7?: number; p30?: number }>();
   for (const id of ids) history.set(id, { p1: p1.get(id), p7: p7.get(id), p30: p30.get(id) });
