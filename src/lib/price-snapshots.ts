@@ -119,298 +119,113 @@ export interface LatestSnapshotPageOptions {
 /**
  * Fetch the most recent snapshot price + historical % changes for every card.
  *
- * Historical matching strategy:
- * 1. Try exact card_id match (works when both dates use same ID format)
- * 2. Fall back to card_name + set_name match (bridges TCGdex->Scrydex ID migration)
- *    - When multiple variants share a name, pick the one with the closest price to current
+ * Backed by the `get_all_latest_prices` RPC (DISTINCT ON card_id ORDER BY recorded_at DESC).
+ * Returns each card's latest snapshot regardless of age — so chase cards with
+ * sparse Scrydex pricing don't drop out just because the last 3 days had no row.
  */
-type Row = { card_id: string; card_name: string; set_name: string; price: number };
+type LatestRow = {
+  card_id: string;
+  card_name: string;
+  set_name: string;
+  price: number | string;
+  recorded_at: string;
+  price_1d: number | string | null;
+  price_7d: number | string | null;
+  price_30d: number | string | null;
+};
+
 const EARLY_VARIANT_SET_IDS = new Set([
   "base1", "base2", "base3", "base4", "base5", "base6",
   "gym1", "gym2",
   "neo1", "neo2", "neo3", "neo4",
 ]);
 
-function normalizeSnapshotRow(row: Row): Row | null {
-  if (!row.card_id.includes("::")) return row;
-  const baseId = row.card_id.split("::")[0];
+// Modern card variants (e.g. `me2pt5-225::reverseHolofoil`) get collapsed to
+// the bare card_id by the snapshot pipeline. If a stray ::variant row sneaks
+// in for a non-vintage set, drop it so it doesn't double-count or override
+// the canonical bare row.
+function keepRow(cardId: string): boolean {
+  if (!cardId.includes("::")) return true;
+  const baseId = cardId.split("::")[0];
   const setId = baseId.split("-").slice(0, -1).join("-") || baseId;
-  if (EARLY_VARIANT_SET_IDS.has(setId)) return row;
-  return null;
+  return EARLY_VARIANT_SET_IDS.has(setId);
 }
 
-let latestSnapshotDatePromise: Promise<string | null> | null = null;
+const numOrNull = (v: number | string | null | undefined): number | null => {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
 
-async function getLatestSnapshotDate(): Promise<string | null> {
-  if (!latestSnapshotDatePromise) {
-    latestSnapshotDatePromise = (supabase.from as any)("price_snapshots")
-      .select("recorded_at")
-      .order("recorded_at", { ascending: false })
-      .limit(1)
-      .then(({ data }: { data: Array<{ recorded_at: string }> | null }) => data?.[0]?.recorded_at ?? null);
-  }
-  return latestSnapshotDatePromise;
-}
-
-function snapshotComparisonDates(latestDate: string) {
-  const latest = new Date(latestDate);
-  const fmt = (d: Date) => d.toISOString().split("T")[0];
-  const d1 = new Date(latest); d1.setDate(d1.getDate() - 1);
-  const d7 = new Date(latest); d7.setDate(d7.getDate() - 7);
-  const d30 = new Date(latest); d30.setDate(d30.getDate() - 30);
-  return { d1: fmt(d1), d7: fmt(d7), d30: fmt(d30) };
-}
-
-function offsetSnapshotDate(date: string, daysBack: number): string {
-  const d = new Date(date);
-  d.setDate(d.getDate() - daysBack);
-  return d.toISOString().split("T")[0];
-}
-
-function historicalFallbackDates(latestDate: string, daysBack: number): string[] {
-  const offsets: number[] = [];
-  for (let distance = 0; distance <= 7; distance++) {
-    const newer = daysBack - distance;
-    const older = daysBack + distance;
-    if (newer >= 1 && !offsets.includes(newer)) offsets.push(newer);
-    if (!offsets.includes(older)) offsets.push(older);
-  }
-  return offsets.map((offset) => offsetSnapshotDate(latestDate, offset));
-}
-
-function toLatestPrice(row: Row, history: Map<string, { p1?: number; p7?: number; p30?: number }>): LatestPrice {
-  const h = history.get(row.card_id);
+function rowToLatestPrice(row: LatestRow): LatestPrice {
   return {
     cardId: row.card_id,
     cardName: row.card_name,
     setName: row.set_name,
     price: Number(row.price),
-    price1d: h?.p1 ?? null,
-    price7d: h?.p7 ?? null,
-    price30d: h?.p30 ?? null,
+    price1d: numOrNull(row.price_1d),
+    price7d: numOrNull(row.price_7d),
+    price30d: numOrNull(row.price_30d),
   };
 }
 
-async function fetchSnapshotRowsByIds(date: string, ids: string[]): Promise<Map<string, number>> {
-  const map = new Map<string, number>();
-  if (ids.length === 0) return map;
-  const { data, error } = await (supabase.from as any)("price_snapshots")
-    .select("card_id, price")
-    .eq("recorded_at", date)
-    .in("card_id", ids);
-  if (error || !data) return map;
-  for (const row of data as Array<{ card_id: string; price: number }>) {
-    map.set(row.card_id, Number(row.price));
+/** Fetch every card's latest snapshot via the get_all_latest_prices RPC, paginating
+ *  through the function's p_limit/p_offset arguments past PostgREST's default cap. */
+async function fetchAllLatestRows(): Promise<LatestRow[]> {
+  const PAGE = 5000;
+  const rows: LatestRow[] = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await (supabase.rpc as any)("get_all_latest_prices", {
+      p_limit: PAGE,
+      p_offset: offset,
+    });
+    if (error || !data) break;
+    rows.push(...(data as LatestRow[]));
+    if ((data as LatestRow[]).length < PAGE) break;
+    offset += PAGE;
   }
-  return map;
+  return rows;
 }
 
-async function fetchSnapshotRowsByIdsWithFallback(latestDate: string, daysBack: number, ids: string[]): Promise<Map<string, number>> {
-  const map = new Map<string, number>();
-  let remaining = Array.from(new Set(ids));
-  for (const date of historicalFallbackDates(latestDate, daysBack)) {
-    if (remaining.length === 0) break;
-    const rows = await fetchSnapshotRowsByIds(date, remaining);
-    for (const [id, price] of rows) map.set(id, price);
-    remaining = remaining.filter((id) => !map.has(id));
-  }
-  return map;
+let allLatestRowsPromise: Promise<LatestRow[]> | null = null;
+function getAllLatestRows(): Promise<LatestRow[]> {
+  if (!allLatestRowsPromise) allLatestRowsPromise = fetchAllLatestRows();
+  return allLatestRowsPromise;
 }
 
-/** Fetch one visible Market page directly from the latest snapshots instead of loading every snapshot row. */
+/** Fetch one visible Market page from the latest-per-card RPC, sorted by price. */
 export async function getLatestSnapshotPage({
   limit = 10,
   offset = 0,
   setIds,
   sortDir = "desc",
 }: LatestSnapshotPageOptions = {}): Promise<LatestPrice[]> {
-  const latestDate = await getLatestSnapshotDate();
-  if (!latestDate) return [];
+  const all = await getAllLatestRows();
+  if (!all.length) return [];
 
-  let query = (supabase.from as any)("price_snapshots")
-    .select("card_id, card_name, set_name, price")
-    .eq("recorded_at", latestDate)
-    .not("card_id", "like", "sealed-%")
-    .order("price", { ascending: sortDir === "asc" })
-    .range(offset, offset + limit - 1);
+  let rows = all.filter((r) => keepRow(r.card_id));
 
   if (setIds?.size) {
-    const filters = [...setIds]
-      .map((id) => id.split("::")[0])
-      .filter(Boolean)
-      .map((id) => `card_id.like.${id}-%`);
-    if (filters.length) query = query.or(filters.join(","));
+    const prefixes = [...setIds].map((id) => `${id.split("::")[0]}-`).filter(Boolean);
+    rows = rows.filter((r) => prefixes.some((p) => r.card_id.startsWith(p)));
   }
 
-  const { data, error } = await query;
-  if (error || !data?.length) return [];
+  rows.sort((a, b) => {
+    const ap = Number(a.price);
+    const bp = Number(b.price);
+    return sortDir === "asc" ? ap - bp : bp - ap;
+  });
 
-  const rows = (data as Row[]).map(normalizeSnapshotRow).filter(Boolean) as Row[];
-  const ids = rows.map((r) => r.card_id);
-  const [p1, p7, p30] = await Promise.all([
-    fetchSnapshotRowsByIdsWithFallback(latestDate, 1, ids),
-    fetchSnapshotRowsByIdsWithFallback(latestDate, 7, ids),
-    fetchSnapshotRowsByIdsWithFallback(latestDate, 30, ids),
-  ]);
-
-  const history = new Map<string, { p1?: number; p7?: number; p30?: number }>();
-  for (const id of ids) history.set(id, { p1: p1.get(id), p7: p7.get(id), p30: p30.get(id) });
-  return rows.map((row) => toLatestPrice(row, history));
-}
-
-export async function getLatestSnapshotPricesForIds(cardIds: string[]): Promise<Map<string, LatestPrice>> {
-  const map = new Map<string, LatestPrice>();
-  const latestDate = await getLatestSnapshotDate();
-  if (!latestDate || cardIds.length === 0) return map;
-
-  const { data, error } = await (supabase.from as any)("price_snapshots")
-    .select("card_id, card_name, set_name, price")
-    .eq("recorded_at", latestDate)
-    .in("card_id", cardIds);
-  if (error || !data) return map;
-
-  const rows = data as Row[];
-  const ids = rows.map((r) => r.card_id);
-  const [p1, p7, p30] = await Promise.all([
-    fetchSnapshotRowsByIdsWithFallback(latestDate, 1, ids),
-    fetchSnapshotRowsByIdsWithFallback(latestDate, 7, ids),
-    fetchSnapshotRowsByIdsWithFallback(latestDate, 30, ids),
-  ]);
-  const history = new Map<string, { p1?: number; p7?: number; p30?: number }>();
-  for (const id of ids) history.set(id, { p1: p1.get(id), p7: p7.get(id), p30: p30.get(id) });
-  for (const row of rows) map.set(row.card_id, toLatestPrice(row, history));
-  return map;
-}
-
-/** Fetch all rows for a given snapshot date, paginating past the 1,000-row default limit. */
-async function fetchSnapshotDate(date: string): Promise<Row[]> {
-  const PAGE = 1000;
-  const rows: Row[] = [];
-  let from = 0;
-  while (true) {
-    const { data, error } = await (supabase.from as any)("price_snapshots")
-      .select("card_id, card_name, set_name, price")
-      .eq("recorded_at", date)
-      .range(from, from + PAGE - 1);
-    if (error || !data) break;
-    rows.push(...((data as Row[]).map(normalizeSnapshotRow).filter(Boolean) as Row[]));
-    if (data.length < PAGE) break;
-    from += PAGE;
-  }
-  return rows;
+  return rows.slice(offset, offset + limit).map(rowToLatestPrice);
 }
 
 export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice>> {
   const map = new Map<string, LatestPrice>();
-
-  // 1. Get the latest snapshot date
-  const { data: dateRows } = await (supabase.from as any)("price_snapshots")
-    .select("recorded_at")
-    .order("recorded_at", { ascending: false })
-    .limit(1);
-
-  if (!dateRows?.length) return map;
-  const latestDate = dateRows[0].recorded_at;
-
-  // 2. Compute fallback dates (fill gaps in today's data) and historical comparison dates.
-  //    Fallback: merge latest + yesterday + 2-days-ago so missing cards still get a price.
-  //    Historical: compare effective-current vs 1d/7d/30d ago with the same
-  //    two-day fallback window. This keeps new set runs like Ascended Heroes
-  //    from showing blank 7d data when the exact target date had no rows.
-  const currentFallbackDates = [latestDate, offsetSnapshotDate(latestDate, 1), offsetSnapshotDate(latestDate, 2)];
-  const d7FallbackDates = historicalFallbackDates(latestDate, 7);
-  const d30FallbackDates = historicalFallbackDates(latestDate, 30);
-
-  // 3. Fetch current + fallback days + historical comparison days in parallel.
-  const [currentRows, prev1Rows, prev2Rows, d7Rows0, d7Rows1, d7Rows2, d30Rows0, d30Rows1, d30Rows2] = await Promise.all([
-    ...currentFallbackDates.map(fetchSnapshotDate),
-    ...d7FallbackDates.map(fetchSnapshotDate),
-    ...d30FallbackDates.map(fetchSnapshotDate),
-  ]);
-  const d7Rows = [...d7Rows0, ...d7Rows1, ...d7Rows2];
-  const d30Rows = [...d30Rows0, ...d30Rows1, ...d30Rows2];
-
-  // Merge by card_id: today wins, then yesterday fills gaps, then 2-days-ago fills the rest.
-  // Same merge by name+set so name-fallback also benefits from the rolling window.
-  const mergedById = new Map<string, Row>();
-  for (const r of prev2Rows) mergedById.set(r.card_id, r);
-  for (const r of prev1Rows) mergedById.set(r.card_id, r);
-  for (const r of currentRows) mergedById.set(r.card_id, r);
-  const effectiveCurrent: Row[] = Array.from(mergedById.values());
-
-  if (!effectiveCurrent.length) return map;
-
-  // Extract variant suffix (after "::") from a card_id, or "" for no variant.
-  // Used to scope the name-based fallback so "Charizard 1st Edition" doesn't
-  // get matched against "Charizard Unlimited" via name collision.
-  const variantOf = (id: string) => {
-    const i = id.indexOf("::");
-    return i === -1 ? "" : id.slice(i + 2);
-  };
-
-  // Build lookup maps — first by card_id, then by name+set+variant for fallback
-  function buildLookups(rows: Row[]) {
-    const byId = new Map<string, number>();
-    const byName = new Map<string, number[]>();
-    for (const r of rows) {
-      const price = Number(r.price);
-      byId.set(r.card_id, price);
-      const key = `${r.card_name}|${r.set_name}|${variantOf(r.card_id)}`.toLowerCase();
-      const arr = byName.get(key);
-      if (arr) arr.push(price);
-      else byName.set(key, [price]);
-    }
-    return { byId, byName };
+  const rows = await getAllLatestRows();
+  for (const row of rows) {
+    if (!keepRow(row.card_id)) continue;
+    map.set(row.card_id, rowToLatestPrice(row));
   }
-
-  const lookup1d = buildLookups(prev1Rows);
-  const lookup7d = buildLookups(d7Rows);
-  const lookup30d = buildLookups(d30Rows);
-
-  // Find the best historical price: exact ID match first, then name+set+variant with closest price,
-  // then fall back to the base card's historical price (for brand-new variant rows that have no
-  // history yet — gives them an immediate baseline that's close enough for same-priced variants;
-  // wildly-off approximations are caught by the >1000% sanity guard in formatPct).
-  function findHistoricalPrice(
-    lookup: ReturnType<typeof buildLookups>,
-    cardId: string,
-    cardName: string,
-    setName: string,
-    currentPrice: number
-  ): number | undefined {
-    const byId = lookup.byId.get(cardId);
-    if (byId !== undefined) return byId;
-
-    const key = `${cardName}|${setName}|${variantOf(cardId)}`.toLowerCase();
-    const candidates = lookup.byName.get(key);
-    if (!candidates?.length) return undefined;
-
-    if (candidates.length === 1) return candidates[0];
-    let best = candidates[0];
-    let bestDiff = Math.abs(currentPrice - best);
-    for (let i = 1; i < candidates.length; i++) {
-      const diff = Math.abs(currentPrice - candidates[i]);
-      if (diff < bestDiff) { best = candidates[i]; bestDiff = diff; }
-    }
-    return best;
-  }
-
-  for (const row of effectiveCurrent) {
-    const price = Number(row.price);
-    const p1 = findHistoricalPrice(lookup1d, row.card_id, row.card_name, row.set_name, price);
-    const p7 = findHistoricalPrice(lookup7d, row.card_id, row.card_name, row.set_name, price);
-    const p30 = findHistoricalPrice(lookup30d, row.card_id, row.card_name, row.set_name, price);
-
-    map.set(row.card_id, {
-      cardId: row.card_id,
-      cardName: row.card_name,
-      setName: row.set_name,
-      price,
-      price1d: p1 ?? null,
-      price7d: p7 ?? null,
-      price30d: p30 ?? null,
-    });
-  }
-
   return map;
 }
