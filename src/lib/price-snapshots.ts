@@ -168,7 +168,14 @@ function offsetSnapshotDate(date: string, daysBack: number): string {
 }
 
 function historicalFallbackDates(latestDate: string, daysBack: number): string[] {
-  return [0, 1, 2].map((extra) => offsetSnapshotDate(latestDate, daysBack + extra));
+  const offsets: number[] = [];
+  for (let distance = 0; distance <= 7; distance++) {
+    const newer = daysBack - distance;
+    const older = daysBack + distance;
+    if (newer >= 1 && !offsets.includes(newer)) offsets.push(newer);
+    if (!offsets.includes(older)) offsets.push(older);
+  }
+  return offsets.map((offset) => offsetSnapshotDate(latestDate, offset));
 }
 
 function toLatestPrice(row: Row, history: Map<string, { p1?: number; p7?: number; p30?: number }>): LatestPrice {
