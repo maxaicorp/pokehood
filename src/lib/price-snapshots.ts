@@ -305,31 +305,23 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
   if (!dateRows?.length) return map;
   const latestDate = dateRows[0].recorded_at;
 
-  // 2. Compute target dates for 1d, 7d, 30d ago + 2 fallback days.
-  //    The daily cron sometimes skips middle pages, so we fetch the last 3 days
-  //    and merge them (today wins, then yesterday, then 2-days-ago) so cards
-  //    that weren't priced today still surface a recent price instead of N/A.
   // 2. Compute fallback dates (fill gaps in today's data) and historical comparison dates.
   //    Fallback: merge latest + yesterday + 2-days-ago so missing cards still get a price.
-  //    Historical: compare effective-current vs 1d/7d/30d ago for % change columns.
-  const latest = new Date(latestDate);
-  const fmt = (d: Date) => d.toISOString().split("T")[0];
-  const dPrev1 = new Date(latest); dPrev1.setDate(dPrev1.getDate() - 1);
-  const dPrev2 = new Date(latest); dPrev2.setDate(dPrev2.getDate() - 2);
-  // Historical comparison dates (relative to latestDate, NOT the merge window)
-  const d1 = new Date(latest); d1.setDate(d1.getDate() - 1);
-  const d7 = new Date(latest); d7.setDate(d7.getDate() - 7);
-  const d30 = new Date(latest); d30.setDate(d30.getDate() - 30);
+  //    Historical: compare effective-current vs 1d/7d/30d ago with the same
+  //    two-day fallback window. This keeps new set runs like Ascended Heroes
+  //    from showing blank 7d data when the exact target date had no rows.
+  const currentFallbackDates = [latestDate, offsetSnapshotDate(latestDate, 1), offsetSnapshotDate(latestDate, 2)];
+  const d7FallbackDates = historicalFallbackDates(latestDate, 7);
+  const d30FallbackDates = historicalFallbackDates(latestDate, 30);
 
   // 3. Fetch current + fallback days + historical comparison days in parallel.
-  //    d1 overlaps with dPrev1 intentionally — we reuse the same fetch to avoid waste.
-  const [currentRows, prev1Rows, prev2Rows, d7Rows, d30Rows] = await Promise.all([
-    fetchSnapshotDate(latestDate),
-    fetchSnapshotDate(fmt(dPrev1)),
-    fetchSnapshotDate(fmt(dPrev2)),
-    fetchSnapshotDate(fmt(d7)),
-    fetchSnapshotDate(fmt(d30)),
+  const [currentRows, prev1Rows, prev2Rows, d7Rows0, d7Rows1, d7Rows2, d30Rows0, d30Rows1, d30Rows2] = await Promise.all([
+    ...currentFallbackDates.map(fetchSnapshotDate),
+    ...d7FallbackDates.map(fetchSnapshotDate),
+    ...d30FallbackDates.map(fetchSnapshotDate),
   ]);
+  const d7Rows = [...d7Rows0, ...d7Rows1, ...d7Rows2];
+  const d30Rows = [...d30Rows0, ...d30Rows1, ...d30Rows2];
 
   // Merge by card_id: today wins, then yesterday fills gaps, then 2-days-ago fills the rest.
   // Same merge by name+set so name-fallback also benefits from the rolling window.
