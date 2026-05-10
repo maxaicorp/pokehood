@@ -161,6 +161,23 @@ function snapshotComparisonDates(latestDate: string) {
   return { d1: fmt(d1), d7: fmt(d7), d30: fmt(d30) };
 }
 
+function offsetSnapshotDate(date: string, daysBack: number): string {
+  const d = new Date(date);
+  d.setDate(d.getDate() - daysBack);
+  return d.toISOString().split("T")[0];
+}
+
+function historicalFallbackDates(latestDate: string, daysBack: number): string[] {
+  const offsets: number[] = [];
+  for (let distance = 0; distance <= 7; distance++) {
+    const newer = daysBack - distance;
+    const older = daysBack + distance;
+    if (newer >= 1 && !offsets.includes(newer)) offsets.push(newer);
+    if (!offsets.includes(older)) offsets.push(older);
+  }
+  return offsets.map((offset) => offsetSnapshotDate(latestDate, offset));
+}
+
 function toLatestPrice(row: Row, history: Map<string, { p1?: number; p7?: number; p30?: number }>): LatestPrice {
   const h = history.get(row.card_id);
   return {
@@ -184,6 +201,18 @@ async function fetchSnapshotRowsByIds(date: string, ids: string[]): Promise<Map<
   if (error || !data) return map;
   for (const row of data as Array<{ card_id: string; price: number }>) {
     map.set(row.card_id, Number(row.price));
+  }
+  return map;
+}
+
+async function fetchSnapshotRowsByIdsWithFallback(latestDate: string, daysBack: number, ids: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  let remaining = Array.from(new Set(ids));
+  for (const date of historicalFallbackDates(latestDate, daysBack)) {
+    if (remaining.length === 0) break;
+    const rows = await fetchSnapshotRowsByIds(date, remaining);
+    for (const [id, price] of rows) map.set(id, price);
+    remaining = remaining.filter((id) => !map.has(id));
   }
   return map;
 }
@@ -218,11 +247,10 @@ export async function getLatestSnapshotPage({
 
   const rows = (data as Row[]).map(normalizeSnapshotRow).filter(Boolean) as Row[];
   const ids = rows.map((r) => r.card_id);
-  const { d1, d7, d30 } = snapshotComparisonDates(latestDate);
   const [p1, p7, p30] = await Promise.all([
-    fetchSnapshotRowsByIds(d1, ids),
-    fetchSnapshotRowsByIds(d7, ids),
-    fetchSnapshotRowsByIds(d30, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 1, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 7, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 30, ids),
   ]);
 
   const history = new Map<string, { p1?: number; p7?: number; p30?: number }>();
@@ -243,11 +271,10 @@ export async function getLatestSnapshotPricesForIds(cardIds: string[]): Promise<
 
   const rows = data as Row[];
   const ids = rows.map((r) => r.card_id);
-  const { d1, d7, d30 } = snapshotComparisonDates(latestDate);
   const [p1, p7, p30] = await Promise.all([
-    fetchSnapshotRowsByIds(d1, ids),
-    fetchSnapshotRowsByIds(d7, ids),
-    fetchSnapshotRowsByIds(d30, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 1, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 7, ids),
+    fetchSnapshotRowsByIdsWithFallback(latestDate, 30, ids),
   ]);
   const history = new Map<string, { p1?: number; p7?: number; p30?: number }>();
   for (const id of ids) history.set(id, { p1: p1.get(id), p7: p7.get(id), p30: p30.get(id) });
@@ -285,31 +312,23 @@ export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice
   if (!dateRows?.length) return map;
   const latestDate = dateRows[0].recorded_at;
 
-  // 2. Compute target dates for 1d, 7d, 30d ago + 2 fallback days.
-  //    The daily cron sometimes skips middle pages, so we fetch the last 3 days
-  //    and merge them (today wins, then yesterday, then 2-days-ago) so cards
-  //    that weren't priced today still surface a recent price instead of N/A.
   // 2. Compute fallback dates (fill gaps in today's data) and historical comparison dates.
   //    Fallback: merge latest + yesterday + 2-days-ago so missing cards still get a price.
-  //    Historical: compare effective-current vs 1d/7d/30d ago for % change columns.
-  const latest = new Date(latestDate);
-  const fmt = (d: Date) => d.toISOString().split("T")[0];
-  const dPrev1 = new Date(latest); dPrev1.setDate(dPrev1.getDate() - 1);
-  const dPrev2 = new Date(latest); dPrev2.setDate(dPrev2.getDate() - 2);
-  // Historical comparison dates (relative to latestDate, NOT the merge window)
-  const d1 = new Date(latest); d1.setDate(d1.getDate() - 1);
-  const d7 = new Date(latest); d7.setDate(d7.getDate() - 7);
-  const d30 = new Date(latest); d30.setDate(d30.getDate() - 30);
+  //    Historical: compare effective-current vs 1d/7d/30d ago with the same
+  //    two-day fallback window. This keeps new set runs like Ascended Heroes
+  //    from showing blank 7d data when the exact target date had no rows.
+  const currentFallbackDates = [latestDate, offsetSnapshotDate(latestDate, 1), offsetSnapshotDate(latestDate, 2)];
+  const d7FallbackDates = historicalFallbackDates(latestDate, 7);
+  const d30FallbackDates = historicalFallbackDates(latestDate, 30);
 
   // 3. Fetch current + fallback days + historical comparison days in parallel.
-  //    d1 overlaps with dPrev1 intentionally — we reuse the same fetch to avoid waste.
-  const [currentRows, prev1Rows, prev2Rows, d7Rows, d30Rows] = await Promise.all([
-    fetchSnapshotDate(latestDate),
-    fetchSnapshotDate(fmt(dPrev1)),
-    fetchSnapshotDate(fmt(dPrev2)),
-    fetchSnapshotDate(fmt(d7)),
-    fetchSnapshotDate(fmt(d30)),
+  const [currentRows, prev1Rows, prev2Rows, d7Rows0, d7Rows1, d7Rows2, d30Rows0, d30Rows1, d30Rows2] = await Promise.all([
+    ...currentFallbackDates.map(fetchSnapshotDate),
+    ...d7FallbackDates.map(fetchSnapshotDate),
+    ...d30FallbackDates.map(fetchSnapshotDate),
   ]);
+  const d7Rows = [...d7Rows0, ...d7Rows1, ...d7Rows2];
+  const d30Rows = [...d30Rows0, ...d30Rows1, ...d30Rows2];
 
   // Merge by card_id: today wins, then yesterday fills gaps, then 2-days-ago fills the rest.
   // Same merge by name+set so name-fallback also benefits from the rolling window.
