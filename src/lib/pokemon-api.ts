@@ -754,7 +754,8 @@ export const CARD_TYPES = [
 ];
 
 export const SORT_OPTIONS = [
-  { value: "number", label: "Card Number" },
+  { value: "number", label: "Card Number: Low → High" },
+  { value: "-number", label: "Card Number: High → Low" },
   { value: "price", label: "Price: Low → High" },
   { value: "-price", label: "Price: High → Low" },
   { value: "name", label: "Name A-Z" },
