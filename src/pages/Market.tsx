@@ -38,6 +38,10 @@ import CardGridView from "@/components/CardGridView";
 type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
 
 const VISIBLE_PAGE_SIZE = 10;
+// Hard cap on how deep "Recent X" filters scroll before stopping — the tail
+// is sub-dollar commons that nobody is browsing for. Cap is per-filter so
+// recent10 (~2× the sets) gets a proportionally larger budget.
+const RECENT_CAPS: Record<string, number> = { recent5: 300, recent10: 500 };
 
 export default function Market() {
   const { user } = useAuth();
@@ -107,11 +111,14 @@ export default function Market() {
     loadingMoreRef.current = true;
     const setIds = resolveMarketSetIds();
 
+    const cap = RECENT_CAPS[selectedSetId];
+
     getLatestSnapshotPage({ setIds, limit: VISIBLE_PAGE_SIZE, offset: 0 }).then(hydrateCardsFromLatestPrices).then((result) => {
       if (!cancelled) {
         setCards(result);
         setIsLoading(false);
-        setHasMore(result.length === VISIBLE_PAGE_SIZE);
+        const reachedCap = cap !== undefined && result.length >= cap;
+        setHasMore(result.length === VISIBLE_PAGE_SIZE && !reachedCap);
         loadingMoreRef.current = false;
         // Persist so the next visit paints instantly
         saveMarketCache({ sets: setsData.data, cards: result, selectedSetId });
@@ -160,13 +167,21 @@ export default function Market() {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && hasMore && !loadingMoreRef.current && activeTab !== "sealed" && activeTab !== "most-visited") {
+          const cap = RECENT_CAPS[selectedSetId];
+          // Clamp the request so we never fetch past the cap, even if the user
+          // scrolls fast enough to trigger a load right at the boundary.
+          const remaining = cap !== undefined ? Math.max(0, cap - cards.length) : VISIBLE_PAGE_SIZE;
+          const pageLimit = Math.min(VISIBLE_PAGE_SIZE, remaining);
+          if (pageLimit <= 0) { setHasMore(false); return; }
+
           loadingMoreRef.current = true;
-          getLatestSnapshotPage({ setIds: resolveMarketSetIds(), limit: VISIBLE_PAGE_SIZE, offset: cards.length })
+          getLatestSnapshotPage({ setIds: resolveMarketSetIds(), limit: pageLimit, offset: cards.length })
             .then(hydrateCardsFromLatestPrices)
             .then((nextCards) => {
               setCards((prev) => [...prev, ...nextCards]);
               setVisibleCount((prev) => prev + nextCards.length);
-              setHasMore(nextCards.length === VISIBLE_PAGE_SIZE);
+              const reachedCap = cap !== undefined && (cards.length + nextCards.length) >= cap;
+              setHasMore(nextCards.length === pageLimit && !reachedCap);
               loadingMoreRef.current = false;
             })
             .catch(() => { loadingMoreRef.current = false; });
@@ -176,7 +191,7 @@ export default function Market() {
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [activeTab, cards.length, hasMore, resolveMarketSetIds]);
+  }, [activeTab, cards.length, hasMore, resolveMarketSetIds, selectedSetId]);
 
   const handleSort = (col: "price" | "24h" | "7d") => {
     if (sortCol === col) {
@@ -303,7 +318,7 @@ export default function Market() {
             {([
               { key: "top", label: "Top", icon: Trophy },
               { key: "sealed", label: "Sealed", icon: Package },
-              { key: "trending", label: "Trending", icon: Flame },
+              { key: "trending", label: "Movers", icon: Flame },
               { key: "gainers", label: "Gainers", icon: TrendingUp },
               { key: "losers", label: "Losers", icon: TrendingDown },
               { key: "most-visited", label: "Most Visited", icon: Eye },

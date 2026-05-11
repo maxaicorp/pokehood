@@ -16,7 +16,7 @@ import type { ViewMode } from "@/components/ViewToggle";
 
 const PAGE_SIZE = 50;
 
-type SortCol = "price" | "1d" | "7d";
+type SortCol = "set" | "price" | "1d" | "7d";
 
 interface SealedTabProps {
   typeFilter: string;
@@ -141,7 +141,9 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
       <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
         <span>#</span>
         <span>Product</span>
-        <span>Set</span>
+        <button onClick={() => handleSort("set")} className="flex items-center hover:text-foreground transition-colors">
+          Set <SortIcon col="set" />
+        </button>
         <button onClick={() => handleSort("price")} className="flex items-center justify-end hover:text-foreground transition-colors">
           Price <SortIcon col="price" />
         </button>

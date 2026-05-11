@@ -197,7 +197,9 @@ function getAllLatestRows(): Promise<LatestRow[]> {
   return allLatestRowsPromise;
 }
 
-/** Fetch one visible Market page from the latest-per-card RPC, sorted by price. */
+/** Fetch one visible Market page from the latest-per-card RPC, sorted by price.
+ *  Excludes sealed-* rows — sealed products have their own tab and shouldn't
+ *  mix into the card list. */
 export async function getLatestSnapshotPage({
   limit = 10,
   offset = 0,
@@ -207,7 +209,7 @@ export async function getLatestSnapshotPage({
   const all = await getAllLatestRows();
   if (!all.length) return [];
 
-  let rows = all.filter((r) => keepRow(r.card_id));
+  let rows = all.filter((r) => !r.card_id.startsWith("sealed-") && keepRow(r.card_id));
 
   if (setIds?.size) {
     const prefixes = [...setIds].map((id) => `${id.split("::")[0]}-`).filter(Boolean);

@@ -195,7 +195,7 @@ export async function fetchSealedProducts(opts: {
   page?: number;
   pageSize?: number;
   type?: string;
-  sortCol?: "price" | "1d" | "7d" | null;
+  sortCol?: "set" | "price" | "1d" | "7d" | null;
   sortDir?: "asc" | "desc";
 }): Promise<SealedSearchResult> {
   const { page = 1, pageSize = 50, type, sortCol, sortDir = "desc" } = opts;
@@ -230,9 +230,14 @@ export async function fetchSealedProducts(opts: {
     filtered = Array.from(groups.values());
   }
 
-  // Default sort: newest expansion first. User-selected columns (price/1d/7d)
-  // override that default and use the requested direction.
-  if (sortCol) {
+  // Default sort: newest expansion first. User-selected columns override that default.
+  if (sortCol === "set") {
+    filtered.sort((a, b) => {
+      const da = a.expansionReleaseDate ?? "";
+      const db = b.expansionReleaseDate ?? "";
+      return sortDir === "asc" ? da.localeCompare(db) : db.localeCompare(da);
+    });
+  } else if (sortCol) {
     filtered.sort((a, b) => {
       let va: number | null, vb: number | null;
       if (sortCol === "price") {
