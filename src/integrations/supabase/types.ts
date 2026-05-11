@@ -672,6 +672,19 @@ export type Database = {
     }
     Functions: {
       current_week_start: { Args: never; Returns: string }
+      get_all_latest_prices: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          card_id: string
+          card_name: string
+          price: number
+          price_1d: number
+          price_30d: number
+          price_7d: number
+          recorded_at: string
+          set_name: string
+        }[]
+      }
       get_game_leaderboard: {
         Args: { p_end: string; p_game: string; p_start: string }
         Returns: {

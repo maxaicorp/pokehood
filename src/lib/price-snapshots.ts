@@ -172,7 +172,10 @@ function rowToLatestPrice(row: LatestRow): LatestPrice {
 /** Fetch every card's latest snapshot via the get_all_latest_prices RPC, paginating
  *  through the function's p_limit/p_offset arguments past PostgREST's default cap. */
 async function fetchAllLatestRows(): Promise<LatestRow[]> {
-  const PAGE = 5000;
+  // PostgREST caps RPC result sets at 1,000 rows even when p_limit is higher.
+  // Keep the page size aligned with that cap so we do not stop after the first
+  // alphabetic chunk (base sets only), which hides newer sets like Ascended Heroes.
+  const PAGE = 1000;
   const rows: LatestRow[] = [];
   let offset = 0;
   while (true) {
