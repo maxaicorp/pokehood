@@ -572,6 +572,25 @@ export async function getSets(): Promise<SetSearchResult> {
   };
 }
 
+/** Lightweight set metadata for Market. Avoids downloading/parsing all cards on the public homepage. */
+export async function getMarketSets(): Promise<SetSearchResult> {
+  const res = await fetch(`/data/market-sets.json?v=${CARD_INDEX_VERSION}`, {
+    cache: "force-cache",
+  });
+  if (!res.ok) return getSets();
+
+  const json = await res.json() as { sets?: PokemonSet[] };
+  const sets = (json.sets ?? []).sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+
+  return {
+    data: sets,
+    page: 1,
+    pageSize: sets.length,
+    count: sets.length,
+    totalCount: sets.length,
+  };
+}
+
 export async function getLatestCards(
   page = 1,
   pageSize = 35,

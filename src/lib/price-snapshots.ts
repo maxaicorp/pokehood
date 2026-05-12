@@ -206,23 +206,18 @@ export async function getLatestSnapshotPage({
   setIds,
   sortDir = "desc",
 }: LatestSnapshotPageOptions = {}): Promise<LatestPrice[]> {
-  const all = await getAllLatestRows();
-  if (!all.length) return [];
-
-  let rows = all.filter((r) => !r.card_id.startsWith("sealed-") && keepRow(r.card_id));
-
-  if (setIds?.size) {
-    const prefixes = [...setIds].map((id) => `${id.split("::")[0]}-`).filter(Boolean);
-    rows = rows.filter((r) => prefixes.some((p) => r.card_id.startsWith(p)));
-  }
-
-  rows.sort((a, b) => {
-    const ap = Number(a.price);
-    const bp = Number(b.price);
-    return sortDir === "asc" ? ap - bp : bp - ap;
+  const { data, error } = await (supabase.rpc as any)("get_latest_price_page", {
+    p_limit: limit,
+    p_offset: offset,
+    p_set_ids: setIds?.size ? [...setIds] : null,
+    p_sort_dir: sortDir,
+    p_include_sealed: false,
   });
 
-  return rows.slice(offset, offset + limit).map(rowToLatestPrice);
+  if (error || !data) return [];
+  return (data as LatestRow[])
+    .filter((r) => !r.card_id.startsWith("sealed-") && keepRow(r.card_id))
+    .map(rowToLatestPrice);
 }
 
 export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice>> {

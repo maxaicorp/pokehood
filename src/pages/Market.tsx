@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  getSets,
+  getMarketSets,
   getMarketPrice,
   formatPrice,
   PokemonCard,
@@ -92,9 +92,9 @@ export default function Market() {
     });
   }, [activeTab]);
 
-  // Step 1: Load lightweight set metadata; do not block first paint on every price snapshot row.
+  // Step 1: Load lightweight set metadata; do not block first paint on the full card index.
   useEffect(() => {
-    getSets().then((r) => {
+    getMarketSets().then((r) => {
       setSetsData(r);
       setPricesReady(true);
     });

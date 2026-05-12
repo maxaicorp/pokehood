@@ -695,6 +695,25 @@ export type Database = {
           username: string
         }[]
       }
+      get_latest_price_page: {
+        Args: {
+          p_include_sealed?: boolean
+          p_limit?: number
+          p_offset?: number
+          p_set_ids?: string[]
+          p_sort_dir?: string
+        }
+        Returns: {
+          card_id: string
+          card_name: string
+          price: number
+          price_1d: number
+          price_30d: number
+          price_7d: number
+          recorded_at: string
+          set_name: string
+        }[]
+      }
       get_my_game_stats: { Args: { p_game: string }; Returns: Json }
       get_set_sentiment: {
         Args: { p_set_ids: string[] }
