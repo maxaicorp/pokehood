@@ -162,6 +162,12 @@ export default function Market() {
 
   // Infinite scroll observer
   useEffect(() => {
+    // Defer attaching until the initial load is done. Otherwise the observer
+    // can fire while loadingMoreRef.current is still true (set by the data
+    // loader at the start of its fetch), the callback bails, and no new
+    // intersection event ever arrives — leaving the page stuck at 10 rows
+    // until the component re-mounts.
+    if (isLoading) return;
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     const observer = new IntersectionObserver(
@@ -191,7 +197,7 @@ export default function Market() {
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [activeTab, cards.length, hasMore, resolveMarketSetIds, selectedSetId]);
+  }, [activeTab, cards.length, hasMore, resolveMarketSetIds, selectedSetId, isLoading]);
 
   const handleSort = (col: "price" | "24h" | "7d") => {
     if (sortCol === col) {
@@ -686,8 +692,8 @@ export default function Market() {
         {!isLoading && activeTab !== "sealed" && (
           <p className="text-xs text-muted-foreground text-center mt-4">
             {isSingleSet
-              ? `${pricedCards.length} of ${(cards || []).length} cards have pricing · Prices sourced from TCGdex`
-              : `Showing top ${pricedCards.length} cards · Prices sourced from TCGdex`}
+              ? `${pricedCards.length} of ${(cards || []).length} cards have pricing`
+              : `Showing top ${pricedCards.length} cards`}
           </p>
         )}
       </div>
