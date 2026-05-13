@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getActiveGiveaway, type Giveaway } from "@/lib/giveaway-store";
 import { Gift, Clock, DollarSign } from "lucide-react";
+import SEO from "@/components/SEO";
 
 function useCountdown(target: string | null) {
   const [now, setNow] = useState(() => Date.now());
@@ -36,6 +37,12 @@ export default function GiveawayPage() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <SEO
+        title={giveaway?.title ? `${giveaway.title} — Collectiblez Giveaway` : "Pokémon TCG Giveaway — Collectiblez"}
+        description={giveaway?.description?.slice(0, 160) || "Enter our current sweepstakes to win real Pokémon TCG cards. No purchase necessary."}
+        path="/giveaway"
+        image={giveaway?.prize_image_url}
+      />
       <AppHeader activePage={"market" as any} />
 
       <div className="container max-w-3xl py-10 sm:py-16 px-4 sm:px-8">

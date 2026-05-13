@@ -1,10 +1,16 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SEO from "@/components/SEO";
 
 export default function Privacy() {
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Privacy Policy — Collectiblez"
+        description="How Collectiblez collects, uses, and protects your data. Read our full privacy policy."
+        path="/privacy"
+      />
       <div className="container max-w-3xl py-12 px-4 sm:px-8">
         <Button variant="ghost" size="sm" asChild className="mb-6">
           <Link to="/"><ArrowLeft className="w-4 h-4 mr-1" /> Back</Link>

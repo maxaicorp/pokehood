@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Particles } from "@/components/ui/particles";
 import { useTheme } from "next-themes";
+import SEO from "@/components/SEO";
 
 export default function Auth() {
   const { user, loading } = useAuth();
@@ -47,6 +48,11 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 relative overflow-hidden">
+      <SEO
+        title="Sign in to Collectiblez"
+        description="Sign in or create a free Collectiblez account to start tracking your Pokémon TCG collection."
+        path="/auth"
+      />
       <Particles
         className="absolute inset-0 z-0"
         quantity={200}

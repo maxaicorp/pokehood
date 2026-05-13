@@ -1,10 +1,16 @@
 import { Link } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import { Gamepad2, Trophy } from "lucide-react";
+import SEO from "@/components/SEO";
 
 export default function Games() {
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <SEO
+        title="Pokémon TCG Mini-Games & Weekly Prizes — Collectiblez"
+        description="Play Pokémon-themed mini-games and climb the weekly leaderboard for a chance to win real Pokémon TCG prizes."
+        path="/games"
+      />
       <AppHeader activePage="games" />
       <div className="container py-10 px-4 sm:px-8 max-w-5xl">
         <div className="mb-8">
