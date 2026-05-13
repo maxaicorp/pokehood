@@ -118,6 +118,12 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title={profile ? `${profile.display_name || slug} on Collectiblez` : "Profile — Collectiblez"}
+        description={profile?.bio?.slice(0, 160) || `View ${profile?.display_name || slug}'s public Pokémon TCG collection on Collectiblez.`}
+        path={`/u/${slug}`}
+        image={profile?.avatar_url}
+      />
       {/* Ambient glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-primary/8 rounded-full blur-[150px] pointer-events-none" />
 
