@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ExternalLink, Wallet, Loader2, Lock, Mail, Share } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion } from "framer-motion";
+import SEO from "@/components/SEO";
 
 const CARDS_PER_PAGE = 20;
 

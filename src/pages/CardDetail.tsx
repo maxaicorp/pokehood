@@ -33,6 +33,7 @@ import { ChevronRight, ArrowLeft, ExternalLink, ChevronDown, TrendingUp, Trendin
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import PriceChart from "@/components/PriceChart";
+import SEO from "@/components/SEO";
 
 // ─── Type styling ─────────────────────────────────────────────────────────────
 
@@ -212,6 +213,32 @@ export default function CardDetail() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      {card && (
+        <SEO
+          title={`${card.name} · ${card.set.name} — Collectiblez`}
+          description={`Live market price, 24h/7d trends, and price history for ${card.name} from ${card.set.name}.`}
+          path={`/card/${card.id}`}
+          image={card.images?.large || card.images?.small}
+          type="product"
+          jsonLd={{
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: card.name,
+            image: card.images?.large || card.images?.small,
+            description: `${card.name} from ${card.set.name}.`,
+            category: "Trading Card",
+            ...(getMarketPrice(card) != null && {
+              offers: {
+                "@type": "Offer",
+                price: getMarketPrice(card),
+                priceCurrency: "USD",
+                availability: "https://schema.org/InStock",
+                url: `https://collectiblez.app/card/${card.id}`,
+              },
+            }),
+          }}
+        />
+      )}
       <AppHeader activePage="explore" />
 
       <div className="container py-6 px-4 sm:px-8">

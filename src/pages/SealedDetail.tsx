@@ -26,6 +26,7 @@ import {
 import { ArrowLeft, ChevronRight, ChevronDown, ExternalLink, Package, TrendingUp, TrendingDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import SEO from "@/components/SEO";
 
 export default function SealedDetail() {
   const { id } = useParams<{ id: string }>();
@@ -111,6 +112,23 @@ export default function SealedDetail() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      {product && (
+        <SEO
+          title={`${product.name} · ${product.expansionName} — Collectiblez`}
+          description={`Live market price and price history for the ${product.name} sealed product from ${product.expansionName}.`}
+          path={`/sealed/${product.id}`}
+          image={product.imageMedium || product.imageSmall}
+          type="product"
+          jsonLd={{
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: product.name,
+            image: product.imageMedium || product.imageSmall,
+            description: `Sealed ${product.name} from ${product.expansionName}.`,
+            category: "Sealed Trading Card Product",
+          }}
+        />
+      )}
       <AppHeader activePage="market" />
 
       <div className="container py-6 px-4 sm:px-8">
