@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import ViewToggle, { type ViewMode } from "@/components/ViewToggle";
 import CardGridView from "@/components/CardGridView";
+import SEO from "@/components/SEO";
 
 type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
 
