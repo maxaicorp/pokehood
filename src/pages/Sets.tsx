@@ -114,7 +114,7 @@ export default function Sets() {
         </div>
       </AppHeader>
 
-      <main className="container px-4 sm:px-8 py-6 space-y-10">
+      <div className="container px-4 sm:px-8 py-6 space-y-10">
         {isLoading ? (
           <div className="space-y-10">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -147,7 +147,7 @@ export default function Sets() {
             </section>
           ))
         )}
-      </main>
+      </div>
     </div>
   );
 }

@@ -103,7 +103,7 @@ export default function Onchain() {
         <div />
       </AppHeader>
 
-      <main className="container px-4 sm:px-8 py-6 max-w-5xl mx-auto">
+      <div className="container px-4 sm:px-8 py-6 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -265,7 +265,7 @@ export default function Onchain() {
             </Button>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }
