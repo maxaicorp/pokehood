@@ -316,6 +316,18 @@ export default function Market() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <SEO
+        title="Pokémon TCG Market Prices & Trends — Collectiblez"
+        description="Live market prices, 24h/7d trends, gainers, losers, and sealed product values for every Pokémon TCG expansion."
+        path="/market"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          name: "Pokémon TCG Market",
+          url: "https://collectiblez.app/market",
+          description: "Live market prices and trends for Pokémon TCG cards and sealed products.",
+        }}
+      />
       <AppHeader activePage="market" />
 
       <div className="container py-6 px-4 sm:px-8">
