@@ -49,7 +49,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <BackgroundLayer />
-            <div className="relative z-[1]">
+            <main className="relative z-[1]">
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Market />} />
