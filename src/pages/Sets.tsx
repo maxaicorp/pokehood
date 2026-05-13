@@ -6,6 +6,7 @@ import AppHeader from "@/components/AppHeader";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Layers } from "lucide-react";
+import SEO from "@/components/SEO";
 import { motion } from "framer-motion";
 
 /** Preferred display order for series (newest first) */
@@ -91,6 +92,11 @@ export default function Sets() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <SEO
+        title="Pokémon TCG Sets & Expansions — Collectiblez"
+        description="Browse every Pokémon TCG expansion, newest first, with set logos, card counts, and links to live market prices."
+        path="/sets"
+      />
       <AppHeader activePage="sets">
         {/* Search bar below header */}
         <div className="border-t border-border/30 bg-muted/20">
@@ -114,7 +120,7 @@ export default function Sets() {
         </div>
       </AppHeader>
 
-      <main className="container px-4 sm:px-8 py-6 space-y-10">
+      <div className="container px-4 sm:px-8 py-6 space-y-10">
         {isLoading ? (
           <div className="space-y-10">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -147,7 +153,7 @@ export default function Sets() {
             </section>
           ))
         )}
-      </main>
+      </div>
     </div>
   );
 }

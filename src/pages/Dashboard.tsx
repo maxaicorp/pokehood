@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { NumberTicker } from "@/components/ui/number-ticker";
 import { MagicCard } from "@/components/ui/magic-card";
 import { NeonGradientCard } from "@/components/ui/neon-gradient-card";
+import SEO from "@/components/SEO";
 
 type Tab = "collection" | "wishlists" | "mypage" | "analytics";
 
@@ -121,6 +122,12 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <SEO
+        title="My Collection Dashboard — Collectiblez"
+        description="Track your Pokémon TCG portfolio value, manage your collection, view analytics, and curate wishlists."
+        path="/dashboard"
+        noindex
+      />
       <AppHeader activePage="dashboard">
         {/* Tabs */}
         <div className="container px-4 sm:px-8">

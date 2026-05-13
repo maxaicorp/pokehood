@@ -49,7 +49,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <BackgroundLayer />
-            <div className="relative z-[1]">
+            <main className="relative z-[1]">
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Market />} />
@@ -78,7 +78,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
-            </div>
+            </main>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

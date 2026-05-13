@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import SEO from "@/components/SEO";
 
 type ViewMode = "grid" | "list";
 
@@ -291,6 +292,11 @@ export default function Explore() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <SEO
+        title="Explore Pokémon TCG Cards — Collectiblez"
+        description="Search the entire Pokémon TCG database. Filter by set, rarity, and price. Add cards to your collection in one click."
+        path="/explore"
+      />
       <AppHeader activePage="explore" />
 
       {/* Search Bar */}

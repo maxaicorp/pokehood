@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import SEO from "@/components/SEO";
 
 interface Activity {
   signature: string;
@@ -99,11 +100,16 @@ export default function Onchain() {
 
   return (
     <div className="min-h-screen pb-20">
+      <SEO
+        title="Onchain Activity — Phygital Pokémon Cards | Collectiblez"
+        description="Live activity feed for phygital NFC and QR-tagged Pokémon trading cards: trades, listings, and transfers."
+        path="/onchain"
+      />
       <AppHeader activePage="onchain">
         <div />
       </AppHeader>
 
-      <main className="container px-4 sm:px-8 py-6 max-w-5xl mx-auto">
+      <div className="container px-4 sm:px-8 py-6 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
@@ -265,7 +271,7 @@ export default function Onchain() {
             </Button>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }
