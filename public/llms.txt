@@ -1,0 +1,21 @@
+# Collectiblez
+
+> Pokémon TCG portfolio tracker with live market prices, 24h/7d trends, sealed product tracking, and shareable seller profiles.
+
+Collectiblez helps collectors track the value of their Pokémon TCG cards and sealed products in real time. Pricing data is sourced from Scrydex and refreshed daily. Users can build collections, publish public seller profiles, run analytics on their portfolio, and browse market trends across every English-language expansion.
+
+## Pages
+
+- [Market](/market): Live market prices, trending cards, gainers, losers, and sealed product tracking across every Pokémon TCG set.
+- [Sets](/sets): Browse every Pokémon TCG expansion, newest first, with set logos and card counts.
+- [Explore](/explore): Discover cards across the full database with filters for set, rarity, and price.
+- [Dashboard](/dashboard): Personal portfolio dashboard with collection value, analytics, and wishlist management.
+- [Onchain](/onchain): Activity feed for phygital NFC/QR-tagged Pokémon cards.
+- [Games](/games): Mini-games with weekly leaderboards and real Pokémon prize giveaways.
+- [Giveaway](/giveaway): Current active sweepstakes — enter to win real Pokémon cards.
+- [Auth](/auth): Sign in or create an account.
+
+## Optional
+
+- [Privacy](/privacy): Privacy policy.
+- [Terms](/terms): Terms of service.
