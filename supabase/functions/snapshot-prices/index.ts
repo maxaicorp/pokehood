@@ -479,10 +479,7 @@ serve(async (req: Request) => {
           const { inserted, skipped } = await flushRows(supabase, buffer);
           counters.inserted += inserted;
           counters.skipped += skipped;
-          // 90-day cleanup
-          const cutoff = new Date();
-          cutoff.setDate(cutoff.getDate() - 90);
-          await supabase.from("price_snapshots").delete().lt("recorded_at", cutoff.toISOString().split("T")[0]);
+          await cleanupOldSnapshots(supabase);
           console.log(`[full] BACKGROUND DONE — pages=${pagesProcessed} inserted=${counters.inserted} skipped=${counters.skipped}`);
         } catch (e) {
           console.error("[full] background error:", e);
@@ -500,23 +497,48 @@ serve(async (req: Request) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
       );
     } else {
-      // Daily mode: pass 1 — newest 60 pages (~6,000 most-recent cards)
-      pagesProcessed += await runPass({
-        label: "newest",
-        orderBy: "-expansion.release_date",
-        pageLimit: DAILY_PAGE_LIMIT,
-        startPage: 1,
-        apiKey, teamId, supabase, today, seenIds, buffer, counters,
-      });
+      // Daily mode can exceed the HTTP request timeout. Queue it as background
+      // work so both newest and oldest passes complete after cron gets its 202.
+      const work = (async () => {
+        try {
+          // pass 1 — newest 60 pages (~6,000 most-recent cards)
+          pagesProcessed += await runPass({
+            label: "newest",
+            orderBy: "-expansion.release_date",
+            pageLimit: DAILY_PAGE_LIMIT,
+            startPage: 1,
+            apiKey, teamId, supabase, today, seenIds, buffer, counters,
+          });
 
-      // Daily mode: pass 2 — oldest 60 pages (~6,000 oldest cards), skip any already seen
-      pagesProcessed += await runPass({
-        label: "oldest",
-        orderBy: "expansion.release_date",
-        pageLimit: DAILY_PAGE_LIMIT,
-        startPage: 1,
-        apiKey, teamId, supabase, today, seenIds, buffer, counters,
-      });
+          // pass 2 — oldest 60 pages (~6,000 oldest cards), skip any already seen
+          pagesProcessed += await runPass({
+            label: "oldest",
+            orderBy: "expansion.release_date",
+            pageLimit: DAILY_PAGE_LIMIT,
+            startPage: 1,
+            apiKey, teamId, supabase, today, seenIds, buffer, counters,
+          });
+
+          const { inserted, skipped } = await flushRows(supabase, buffer);
+          counters.inserted += inserted;
+          counters.skipped += skipped;
+          await cleanupOldSnapshots(supabase);
+          console.log(`[daily] BACKGROUND DONE — pages=${pagesProcessed} inserted=${counters.inserted} skipped=${counters.skipped}`);
+        } catch (e) {
+          console.error("[daily] background error:", e);
+        }
+      })();
+      // @ts-ignore — EdgeRuntime is available in Supabase Edge runtime
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(work);
+      } else {
+        work.catch((e) => console.error("[daily] background error", e));
+      }
+      return new Response(
+        JSON.stringify({ success: true, mode: "daily", note: "Running in background — see logs for completion." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
+      );
     }
 
     // Final flush
