@@ -16,7 +16,7 @@
  *   Total ≈ 4,540 credits/month (460 buffer under 5,000 Starter limit)
  *
  * Scheduling:
- *   - Daily job: POST {} every day (covers newest + oldest ~6k each)
+ *   - Daily job: POST {} every day (covers newest + oldest ~6k each, runs in background)
  *   - Weekly job: POST { mode:"full" } once/week (covers all middle cards too)
  */
 
@@ -327,6 +327,15 @@ async function runSetBackfill(opts: {
   } while (page <= totalPages);
 
   return { pages: page, cardsWithPrice };
+}
+
+async function cleanupOldSnapshots(supabase: any): Promise<void> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 90);
+  await supabase
+    .from("price_snapshots")
+    .delete()
+    .lt("recorded_at", cutoff.toISOString().split("T")[0]);
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
