@@ -24,6 +24,15 @@
     <meta name="twitter:description" content="Track, value, and trade your Pokémon TCG collection with live market prices." />
     <meta name="twitter:image" content="https://collectiblez.app/og-image.jpg" />
 
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister()));
+      }
+    </script>
+
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",

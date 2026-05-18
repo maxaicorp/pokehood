@@ -2,10 +2,11 @@ import { ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import AdminRouteGuard from "@/components/AdminRouteGuard";
-import { Gift, Trophy, LayoutDashboard } from "lucide-react";
+import { Gift, Trophy, LayoutDashboard, Activity } from "lucide-react";
 
 const NAV = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, end: true },
+  { to: "/admin/health", label: "System health", icon: Activity },
   { to: "/admin/giveaways", label: "Giveaways", icon: Gift },
   { to: "/admin/prizes", label: "Game Prizes", icon: Trophy },
 ];

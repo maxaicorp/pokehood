@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   getMarketSets,
   getMarketPrice,
@@ -12,7 +13,6 @@ import {
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import { formatPct, getLatestSnapshotPage } from "@/lib/price-snapshots";
-import { loadMarketCache, saveMarketCache } from "@/lib/market-cache";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
 import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import AppHeader from "@/components/AppHeader";
@@ -62,18 +62,21 @@ export default function Market() {
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
   const isRecentFilter = selectedSetId === "recent5" || selectedSetId === "recent10";
 
-  // Card state — hydrate synchronously from localStorage cache for instant first paint
-  const [cards, setCards] = useState<PokemonCard[]>(() => loadMarketCache("recent5")?.cards ?? []);
-  const [isLoading, setIsLoading] = useState(() => !loadMarketCache("recent5"));
+  // Always fetch fresh from the DB on mount/focus. No localStorage cache — it was
+  // the silent source of "site shows three-week-old prices" complaints. The DB's
+  // get_all_latest_prices RPC is already fast (~150ms paginated), so the brief
+  // first-paint skeleton is preferable to potentially-stale data.
+  const [cards, setCards] = useState<PokemonCard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
   const [hasMore, setHasMore] = useState(true);
-  const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(() => {
-    const c = loadMarketCache("recent5");
-    return c ? { data: c.sets } : null;
-  });
+  const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(null);
   const [pricesReady, setPricesReady] = useState(false);
+  // Bumping this re-triggers the data-loading effect — used by window-focus
+  // refresh and by the admin Master Refresh broadcast.
+  const [refreshToken, setRefreshToken] = useState(0);
 
   const resolveMarketSetIds = useCallback(() => {
     const physicalSets = (setsData?.data ?? []).filter((s: PokemonSet) => !s.isOnlineOnly);
@@ -121,16 +124,65 @@ export default function Market() {
         const reachedCap = cap !== undefined && result.length >= cap;
         setHasMore(result.length === VISIBLE_PAGE_SIZE && !reachedCap);
         loadingMoreRef.current = false;
-        // Persist so the next visit paints instantly
-        saveMarketCache({ sets: setsData.data, cards: result, selectedSetId });
       }
-    }).catch(() => {
-      if (!cancelled) setIsLoading(false);
-      loadingMoreRef.current = false;
+    }).catch((err) => {
+      if (!cancelled) {
+        setIsLoading(false);
+        loadingMoreRef.current = false;
+        // Surface failures instead of silently leaving an empty grid on screen.
+        // Without this toast, a broken DB query looked identical to "no cards in this set".
+        console.error("Market price fetch failed:", err);
+        toast.error("Could not load latest prices. Pull to refresh or try again.");
+      }
     });
 
     return () => { cancelled = true; };
-  }, [pricesReady, resolveMarketSetIds, selectedSetId, setsData]);
+  }, [pricesReady, resolveMarketSetIds, selectedSetId, setsData, refreshToken]);
+
+  // Refresh on tab focus and on a custom "collectiblez:force-refresh" event
+  // (broadcast by the admin Master Refresh button via localStorage). Without
+  // this, a user with the tab in the background sees stale prices indefinitely.
+  useEffect(() => {
+    const bump = () => setRefreshToken((n) => n + 1);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "collectiblez:force-refresh") bump();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") bump();
+    };
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
+  // Realtime push: when the snapshot-prices cron writes a new row to the
+  // price_snapshots table, every open Market tab gets notified within ~1s and
+  // re-fetches. This is the "backend updates the frontend immediately" wire —
+  // no polling, no cache invalidation, no Master Refresh click needed.
+  // Debounced because a single cron run writes thousands of rows in a burst.
+  useEffect(() => {
+    let pendingBump: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase
+      .channel("price-snapshots-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "price_snapshots" },
+        () => {
+          if (pendingBump) clearTimeout(pendingBump);
+          // Wait 3s of quiet (no more inserts) before refetching — keeps us from
+          // hammering the RPC mid-cron-run.
+          pendingBump = setTimeout(() => setRefreshToken((n) => n + 1), 3000);
+        },
+      )
+      .subscribe();
+    return () => {
+      if (pendingBump) clearTimeout(pendingBump);
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Fetch sentiment for visible cards when filter is recent5/recent10
   useEffect(() => {

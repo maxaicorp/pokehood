@@ -16,7 +16,7 @@
  *   Total ≈ 4,540 credits/month (460 buffer under 5,000 Starter limit)
  *
  * Scheduling:
- *   - Daily job: POST {} every day (covers newest + oldest ~6k each, runs in background)
+ *   - Daily job: POST {} every day (covers newest + oldest ~6k each)
  *   - Weekly job: POST { mode:"full" } once/week (covers all middle cards too)
  */
 
@@ -329,15 +329,6 @@ async function runSetBackfill(opts: {
   return { pages: page, cardsWithPrice };
 }
 
-async function cleanupOldSnapshots(supabase: any): Promise<void> {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 90);
-  await supabase
-    .from("price_snapshots")
-    .delete()
-    .lt("recorded_at", cutoff.toISOString().split("T")[0]);
-}
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
@@ -479,7 +470,10 @@ serve(async (req: Request) => {
           const { inserted, skipped } = await flushRows(supabase, buffer);
           counters.inserted += inserted;
           counters.skipped += skipped;
-          await cleanupOldSnapshots(supabase);
+          // 90-day cleanup
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - 90);
+          await supabase.from("price_snapshots").delete().lt("recorded_at", cutoff.toISOString().split("T")[0]);
           console.log(`[full] BACKGROUND DONE — pages=${pagesProcessed} inserted=${counters.inserted} skipped=${counters.skipped}`);
         } catch (e) {
           console.error("[full] background error:", e);
@@ -497,11 +491,15 @@ serve(async (req: Request) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
       );
     } else {
-      // Daily mode can exceed the HTTP request timeout. Queue it as background
-      // work so both newest and oldest passes complete after cron gets its 202.
+      // Daily mode — runs in the background so the ~150s edge-function request
+      // timeout cannot kill it mid-pass. Two passes (~12,000 cards total) at
+      // ~150ms/page typically takes 2–3 minutes wall-clock, which is OVER the
+      // request timeout. Without waitUntil, slow days wrote partial data
+      // (we saw 3,742 rows on 5/14 instead of the expected ~12k) and the
+      // idempotency guard then blocked a retry for the rest of the day.
       const work = (async () => {
         try {
-          // pass 1 — newest 60 pages (~6,000 most-recent cards)
+          // Pass 1 — newest 60 pages (~6,000 most-recent cards)
           pagesProcessed += await runPass({
             label: "newest",
             orderBy: "-expansion.release_date",
@@ -510,7 +508,7 @@ serve(async (req: Request) => {
             apiKey, teamId, supabase, today, seenIds, buffer, counters,
           });
 
-          // pass 2 — oldest 60 pages (~6,000 oldest cards), skip any already seen
+          // Pass 2 — oldest 60 pages (~6,000 oldest cards), skip any already seen
           pagesProcessed += await runPass({
             label: "oldest",
             orderBy: "expansion.release_date",
@@ -522,7 +520,12 @@ serve(async (req: Request) => {
           const { inserted, skipped } = await flushRows(supabase, buffer);
           counters.inserted += inserted;
           counters.skipped += skipped;
-          await cleanupOldSnapshots(supabase);
+
+          // 90-day retention sweep
+          const cutoff = new Date();
+          cutoff.setDate(cutoff.getDate() - 90);
+          await supabase.from("price_snapshots").delete().lt("recorded_at", cutoff.toISOString().split("T")[0]);
+
           console.log(`[daily] BACKGROUND DONE — pages=${pagesProcessed} inserted=${counters.inserted} skipped=${counters.skipped}`);
         } catch (e) {
           console.error("[daily] background error:", e);
@@ -541,12 +544,11 @@ serve(async (req: Request) => {
       );
     }
 
-    // Final flush
+    // ─ Reached only by sets/chunk modes that don't early-return above ─
     const { inserted, skipped } = await flushRows(supabase, buffer);
     counters.inserted += inserted;
     counters.skipped += skipped;
 
-    // Cleanup: remove snapshots older than 90 days
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
     await supabase

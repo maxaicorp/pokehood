@@ -83,6 +83,126 @@ async function checkSealedFreshness(
   return { ok: true, message: `${count} sealed product snapshots since ${cutoff}` };
 }
 
+// ─── Snapshot-run history (last 14 days) ──────────────────────────────────────
+//
+// A successful daily run writes ~7-12k card rows. A successful full run writes
+// ~20-22k card rows. The shape of recorded_at counts over the last 14 days
+// tells us whether both cadences are firing.
+
+const DAILY_RUN_THRESHOLD = 6_000;   // partial daily counts as a daily; below this is a broken run
+const FULL_RUN_THRESHOLD  = 18_000;  // full mode writes ~22k; allow some headroom
+
+interface SnapshotDayStat {
+  date: string;
+  card_rows: number;
+  sealed_rows: number;
+  is_daily: boolean;
+  is_full: boolean;
+}
+
+async function loadSnapshotHistory(
+  supabase: any,
+  days = 14,
+): Promise<{
+  history: SnapshotDayStat[];
+  last_daily: SnapshotDayStat | null;
+  last_full: SnapshotDayStat | null;
+}> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (days - 1));
+  const cutoffStr = cutoff.toISOString().split("T")[0];
+
+  // Pull just recorded_at + a sealed/non-sealed flag for every snapshot in the
+  // window. This is up to ~150k tiny rows for the default 14-day window — well
+  // under PostgREST's response limit when select is narrow.
+  const cardCounts = new Map<string, number>();
+  const sealedCounts = new Map<string, number>();
+
+  // Paginate so we don't truncate at PostgREST's default 1000-row cap.
+  const PAGE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("price_snapshots")
+      .select("recorded_at, card_id")
+      .gte("recorded_at", cutoffStr)
+      .range(from, from + PAGE - 1);
+    if (error) {
+      console.error("snapshot history query failed:", error.message);
+      break;
+    }
+    const rows = (data ?? []) as { recorded_at: string; card_id: string }[];
+    for (const r of rows) {
+      const m = r.card_id.startsWith("sealed-") ? sealedCounts : cardCounts;
+      m.set(r.recorded_at, (m.get(r.recorded_at) ?? 0) + 1);
+    }
+    if (rows.length < PAGE) break;
+    from += PAGE;
+  }
+
+  const dates = new Set<string>([...cardCounts.keys(), ...sealedCounts.keys()]);
+  const history: SnapshotDayStat[] = [...dates]
+    .sort((a, b) => (a < b ? 1 : -1))
+    .map((date) => {
+      const cards = cardCounts.get(date) ?? 0;
+      const sealed = sealedCounts.get(date) ?? 0;
+      return {
+        date,
+        card_rows: cards,
+        sealed_rows: sealed,
+        is_daily: cards >= DAILY_RUN_THRESHOLD,
+        is_full: cards >= FULL_RUN_THRESHOLD,
+      };
+    });
+
+  const last_daily = history.find((d) => d.is_daily) ?? null;
+  const last_full  = history.find((d) => d.is_full)  ?? null;
+  return { history, last_daily, last_full };
+}
+
+function checkDailyRun(last: SnapshotDayStat | null): CheckResult {
+  if (!last) return { ok: false, message: "No successful daily snapshot in the last 14 days" };
+  const ageDays = Math.floor(
+    (Date.now() - new Date(last.date).getTime()) / 86_400_000,
+  );
+  if (ageDays > 2) {
+    return {
+      ok: false,
+      message: `Last daily run was ${ageDays} days ago (${last.date}, ${last.card_rows.toLocaleString()} card rows)`,
+      detail: last,
+    };
+  }
+  return {
+    ok: true,
+    message: `Last daily run: ${last.date} — ${last.card_rows.toLocaleString()} card rows`,
+    detail: last,
+  };
+}
+
+function checkFullRun(last: SnapshotDayStat | null): CheckResult {
+  if (!last) {
+    return {
+      ok: false,
+      message: "No full-coverage run in the last 14 days. Schedule { mode:'full' } weekly to refresh middle-numbered cards.",
+    };
+  }
+  const ageDays = Math.floor(
+    (Date.now() - new Date(last.date).getTime()) / 86_400_000,
+  );
+  if (ageDays > 8) {
+    return {
+      ok: false,
+      message: `Last full run was ${ageDays} days ago (${last.date}). Should run weekly.`,
+      detail: last,
+    };
+  }
+  return {
+    ok: true,
+    message: `Last full run: ${last.date} — ${last.card_rows.toLocaleString()} card rows`,
+    detail: last,
+  };
+}
+
 async function checkScrydexProxy(apiKey: string, teamId: string): Promise<CheckResult> {
   if (!apiKey || !teamId) return { ok: false, message: "Missing SCRYDEX_API_KEY or SCRYDEX_TEAM_ID" };
   try {
@@ -163,19 +283,25 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [freshness, coverage, sealedFreshness, scrydex, statsRpc, images] = await Promise.all([
+  const [freshness, coverage, sealedFreshness, scrydex, statsRpc, images, snapshotHistory] = await Promise.all([
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
     checkSealedFreshness(supabase),
     checkScrydexProxy(apiKey, teamId),
     checkCardStatsRpc(supabase),
     checkSampleImages(),
+    loadSnapshotHistory(supabase, 14),
   ]);
+
+  const dailyRun = checkDailyRun(snapshotHistory.last_daily);
+  const fullRun  = checkFullRun(snapshotHistory.last_full);
 
   const checks = {
     price_snapshot_freshness: freshness,
     card_coverage: coverage,
     sealed_freshness: sealedFreshness,
+    daily_snapshot_run: dailyRun,
+    full_snapshot_run: fullRun,
     scrydex_proxy: scrydex,
     card_stats_rpc: statsRpc,
     sample_images: images,
@@ -183,7 +309,12 @@ serve(async (req) => {
 
   const allOk = Object.values(checks).every((c) => c.ok);
 
-  const report = { healthy: allOk, checkedAt, checks };
+  const report = {
+    healthy: allOk,
+    checkedAt,
+    checks,
+    snapshot_history: snapshotHistory.history,
+  };
   console.log("Health check:", JSON.stringify(report, null, 2));
 
   return new Response(JSON.stringify(report), {
