@@ -48,7 +48,7 @@ export default function Market() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedSetId, setSelectedSetId] = useState("recent5");
+  const [selectedSetId, setSelectedSetId] = useState("recent10");
   const [addingCards, setAddingCards] = useState(new Set<string>());
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -108,6 +108,13 @@ export default function Market() {
   useEffect(() => {
     if (!pricesReady || !setsData) return;
     let cancelled = false;
+    // Clear the old set's cards immediately so the dropdown change feels like a
+    // fresh load instead of "old prices flicker, then jump to new prices."
+    // Without this, switching from "Recent 10" to "sv8" leaves sv-unrelated
+    // cards on screen for ~200ms while the new fetch runs.
+    setCards([]);
+    setSentimentMap(new Map());
+    setSortCol(null);
     setIsLoading(true);
     setVisibleCount(VISIBLE_PAGE_SIZE);
 
