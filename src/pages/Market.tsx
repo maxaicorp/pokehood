@@ -39,6 +39,12 @@ import SEO from "@/components/SEO";
 type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
 
 const VISIBLE_PAGE_SIZE = 10;
+// Scroll-load pages are larger than the first paint. The first paint stays at 10
+// for fast time-to-content; once the user is scrolling, fetching 25 at a time
+// cuts the round-trip count by ~60% over the same scroll distance. The expensive
+// part of get_latest_price_page is the per-row LATERAL JOINs for 1d/7d/30d
+// prices, so doubling-plus the page size doesn't double the cost.
+const SCROLL_PAGE_SIZE = 25;
 // Hard cap on how deep multi-set filters scroll before stopping — the tail
 // is sub-dollar commons that nobody is browsing for. Cap is per-filter so
 // each option gets a budget proportional to its set count.
@@ -253,8 +259,8 @@ export default function Market() {
           const cap = RECENT_CAPS[selectedSetId];
           // Clamp the request so we never fetch past the cap, even if the user
           // scrolls fast enough to trigger a load right at the boundary.
-          const remaining = cap !== undefined ? Math.max(0, cap - cards.length) : VISIBLE_PAGE_SIZE;
-          const pageLimit = Math.min(VISIBLE_PAGE_SIZE, remaining);
+          const remaining = cap !== undefined ? Math.max(0, cap - cards.length) : SCROLL_PAGE_SIZE;
+          const pageLimit = Math.min(SCROLL_PAGE_SIZE, remaining);
           if (pageLimit <= 0) { setHasMore(false); return; }
 
           loadingMoreRef.current = true;
@@ -270,7 +276,11 @@ export default function Market() {
             .catch(() => { loadingMoreRef.current = false; });
         }
       },
-      { rootMargin: "200px" },
+      // Prefetch deep: kick off the next page when the sentinel is 800px from the
+      // viewport, not 200px. The fetch then happens DURING the scroll instead of
+      // after the user has already hit the bottom, which hides the round-trip
+      // latency behind their existing scroll motion.
+      { rootMargin: "800px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
