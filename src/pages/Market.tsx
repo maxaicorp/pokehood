@@ -368,7 +368,10 @@ export default function Market() {
   const pricedCards = getTabSortedCards();
   const visibleCards = pricedCards.slice(0, visibleCount);
 
-  const isSingleSet = selectedSetId && !selectedSetId.startsWith("recent");
+  // Multi-set filters: empty (All), recent5/10, and modern. Anything else is
+  // a single set ID and gets the compact "Set Total" layout without the Set column.
+  const isSingleSet =
+    !!selectedSetId && selectedSetId !== "modern" && !selectedSetId.startsWith("recent");
   const totalValue = rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0);
 
   const gridClasses = isSingleSet
