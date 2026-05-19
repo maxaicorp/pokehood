@@ -169,6 +169,29 @@ async function flushRows(
   return { inserted: rows.length, skipped: 0 };
 }
 
+// ─── Latest-prices cache refresh ──────────────────────────────────────────────
+//
+// Called at the end of every successful snapshot run. Materializes the latest
+// per-card price + the 1d/7d/30d prior prices into the latest_card_prices
+// table so the public Market RPCs become flat indexed reads instead of
+// per-request join-heavy aggregations. Failure here does NOT fail the cron —
+// the snapshot rows are still safely in price_snapshots; the cache just stays
+// one run behind until the next refresh.
+
+async function refreshLatestCardPrices(supabase: any): Promise<void> {
+  try {
+    const t0 = Date.now();
+    const { data, error } = await supabase.rpc("refresh_latest_card_prices");
+    if (error) {
+      console.error("[cache] refresh_latest_card_prices failed:", error.message);
+      return;
+    }
+    console.log(`[cache] refresh_latest_card_prices wrote ${data ?? "?"} rows in ${Date.now() - t0}ms`);
+  } catch (e) {
+    console.error("[cache] refresh_latest_card_prices threw:", e);
+  }
+}
+
 // ─── Fetch pass helper ────────────────────────────────────────────────────────
 
 async function runPass(opts: {
@@ -432,6 +455,7 @@ serve(async (req: Request) => {
         counters.inserted += inserted;
         counters.skipped += skipped;
         console.log(`[sets] BACKGROUND DONE — sets=${setIds.length} inserted=${counters.inserted} skipped=${counters.skipped}`, setSummaries);
+        await refreshLatestCardPrices(supabase);
       })();
       // @ts-ignore — EdgeRuntime is available in Supabase Edge runtime
       if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
@@ -475,6 +499,7 @@ serve(async (req: Request) => {
           cutoff.setDate(cutoff.getDate() - 90);
           await supabase.from("price_snapshots").delete().lt("recorded_at", cutoff.toISOString().split("T")[0]);
           console.log(`[full] BACKGROUND DONE — pages=${pagesProcessed} inserted=${counters.inserted} skipped=${counters.skipped}`);
+          await refreshLatestCardPrices(supabase);
         } catch (e) {
           console.error("[full] background error:", e);
         }
@@ -527,6 +552,7 @@ serve(async (req: Request) => {
           await supabase.from("price_snapshots").delete().lt("recorded_at", cutoff.toISOString().split("T")[0]);
 
           console.log(`[daily] BACKGROUND DONE — pages=${pagesProcessed} inserted=${counters.inserted} skipped=${counters.skipped}`);
+          await refreshLatestCardPrices(supabase);
         } catch (e) {
           console.error("[daily] background error:", e);
         }
@@ -555,6 +581,9 @@ serve(async (req: Request) => {
       .from("price_snapshots")
       .delete()
       .lt("recorded_at", cutoff.toISOString().split("T")[0]);
+
+    // Refresh the precomputed Market cache after chunk/sets sync paths too.
+    await refreshLatestCardPrices(supabase);
 
     const summary: Record<string, unknown> = {
       success: true,
