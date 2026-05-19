@@ -474,7 +474,7 @@ export default function Market() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sets</SelectItem>
-                  <SelectItem value="modern">Modern Era (S&amp;V + Mega Evolution)</SelectItem>
+                  <SelectItem value="modern">Modern Era</SelectItem>
                   <SelectItem value="recent5">Recent Sets (5)</SelectItem>
                   <SelectItem value="recent10">Recent Sets (10)</SelectItem>
                   {setsData?.data
