@@ -23,9 +23,9 @@ const corsHeaders = {
 
 // Sample Scrydex CDN image URLs to probe (no API credits used)
 const SAMPLE_IMAGES = [
-  "https://images.scrydex.com/pokemon/en/sv8pt5/001/small.webp",
-  "https://images.scrydex.com/pokemon/en/sv8/001/small.webp",
-  "https://images.scrydex.com/pokemon/en/swsh1/001/small.webp",
+  "https://images.scrydex.com/pokemon/mcd24-13/small",
+  "https://images.scrydex.com/pokemon/mcd24-14/small",
+  "https://images.scrydex.com/pokemon/mcd24-15/small",
 ];
 
 interface CheckResult {
@@ -86,11 +86,11 @@ async function checkSealedFreshness(
 // ─── Snapshot-run history (last 14 days) ──────────────────────────────────────
 //
 // A successful daily run writes ~7-12k card rows. A successful full run writes
-// ~20-22k card rows. The shape of recorded_at counts over the last 14 days
+// ~17k+ priced physical card rows. The shape of recorded_at counts over the last 14 days
 // tells us whether both cadences are firing.
 
 const DAILY_RUN_THRESHOLD = 6_000;   // partial daily counts as a daily; below this is a broken run
-const FULL_RUN_THRESHOLD  = 18_000;  // full mode writes ~22k; allow some headroom
+const FULL_RUN_THRESHOLD  = 17_000;  // full mode writes every currently priced physical card
 
 interface SnapshotDayStat {
   date: string;

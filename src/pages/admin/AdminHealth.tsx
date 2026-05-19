@@ -43,7 +43,7 @@ const CHECK_HELP: Record<string, string> = {
   daily_snapshot_run:
     "Daily cron writes ~7–12k card rows. Should run every day. If stale, check Supabase → Database → Cron Jobs.",
   full_snapshot_run:
-    "Weekly { mode:'full' } cron writes ~20–22k card rows in one run — refreshes middle-numbered cards that daily mode skips. If missing, the weekly schedule isn't set up.",
+    "Weekly { mode:'full' } cron writes ~17k+ priced physical card rows in one run — refreshes middle-numbered cards that daily mode skips. If missing, the weekly schedule isn't set up.",
   card_coverage:
     "Total distinct card snapshots ever written. Coverage growing means Scrydex is returning prices for more cards over time.",
   scrydex_proxy:
@@ -110,7 +110,7 @@ export default function AdminHealth() {
   // stale prices again, click here" button.
   const masterRefresh = async (mode: "daily" | "full") => {
     setRefreshMode(mode);
-    const friendly = mode === "full" ? "Full snapshot (~22k cards, ~6 min)" : "Daily snapshot (~12k cards, ~2 min)";
+    const friendly = mode === "full" ? "Full snapshot (~17k+ priced cards, ~6 min)" : "Daily snapshot (~12k cards, ~2 min)";
     toast.info(`${friendly} started in background.`);
     try {
       const body = mode === "full" ? { mode: "full" } : {};
@@ -237,7 +237,7 @@ export default function AdminHealth() {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               <span className="text-green-400">daily</span> = ≥ 6,000 card rows ·
-              <span className="text-blue-400"> full</span> = ≥ 18,000 card rows (weekly cron) ·
+              <span className="text-blue-400"> full</span> = ≥ 17,000 card rows (weekly cron) ·
               <span className="text-amber-400"> partial</span> = run failed midway
             </p>
           </section>
