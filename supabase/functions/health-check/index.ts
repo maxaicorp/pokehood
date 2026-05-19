@@ -23,9 +23,9 @@ const corsHeaders = {
 
 // Sample Scrydex CDN image URLs to probe (no API credits used)
 const SAMPLE_IMAGES = [
-  "https://images.scrydex.com/pokemon/en/sv8pt5/001/small.webp",
-  "https://images.scrydex.com/pokemon/en/sv8/001/small.webp",
-  "https://images.scrydex.com/pokemon/en/swsh1/001/small.webp",
+  "https://images.scrydex.com/pokemon/mcd24-13/small",
+  "https://images.scrydex.com/pokemon/mcd24-14/small",
+  "https://images.scrydex.com/pokemon/mcd24-15/small",
 ];
 
 interface CheckResult {
