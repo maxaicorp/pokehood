@@ -39,16 +39,25 @@ import SEO from "@/components/SEO";
 type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
 
 const VISIBLE_PAGE_SIZE = 10;
-// Hard cap on how deep "Recent X" filters scroll before stopping — the tail
+// Hard cap on how deep multi-set filters scroll before stopping — the tail
 // is sub-dollar commons that nobody is browsing for. Cap is per-filter so
-// recent10 (~2× the sets) gets a proportionally larger budget.
-const RECENT_CAPS: Record<string, number> = { recent5: 300, recent10: 500 };
+// each option gets a budget proportional to its set count.
+// Verified 2026-05-18: at modern=500, the 500th card by price is ~$13;
+// the 1000th is still ~$4, so 500 leaves plenty of headroom above the
+// "should be > $2" rule of thumb if we ever want to bump it.
+const RECENT_CAPS: Record<string, number> = { recent5: 300, recent10: 500, modern: 500 };
+
+// "Modern Era" = Scarlet & Violet onward (S&V + Mega Evolution series).
+// Series strings come from the Scrydex `expansion.series` field and must
+// match exactly — we use these to build the set ID list at render time so
+// new sets in either series get picked up automatically without a code change.
+const MODERN_ERA_SERIES = new Set(["Scarlet & Violet", "Mega Evolution"]);
 
 export default function Market() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedSetId, setSelectedSetId] = useState("recent10");
+  const [selectedSetId, setSelectedSetId] = useState("modern");
   const [addingCards, setAddingCards] = useState(new Set<string>());
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -60,7 +69,8 @@ export default function Market() {
 
   // Sentiment voting state
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
-  const isRecentFilter = selectedSetId === "recent5" || selectedSetId === "recent10";
+  const isRecentFilter =
+    selectedSetId === "recent5" || selectedSetId === "recent10" || selectedSetId === "modern";
 
   // Always fetch fresh from the DB on mount/focus. No localStorage cache — it was
   // the silent source of "site shows three-week-old prices" complaints. The DB's
@@ -82,6 +92,13 @@ export default function Market() {
     const physicalSets = (setsData?.data ?? []).filter((s: PokemonSet) => !s.isOnlineOnly);
     if (selectedSetId === "recent5") return new Set(physicalSets.slice(0, 5).map((s) => s.id));
     if (selectedSetId === "recent10") return new Set(physicalSets.slice(0, 10).map((s) => s.id));
+    if (selectedSetId === "modern") {
+      // Every Scarlet & Violet + Mega Evolution set (promos included — the user
+      // wants pull-rate promos in this view since they often have chase cards).
+      return new Set(
+        physicalSets.filter((s) => MODERN_ERA_SERIES.has(s.series)).map((s) => s.id),
+      );
+    }
     if (selectedSetId) return new Set([selectedSetId]);
     return new Set(physicalSets.map((s) => s.id));
   }, [selectedSetId, setsData]);
@@ -457,6 +474,7 @@ export default function Market() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sets</SelectItem>
+                  <SelectItem value="modern">Modern Era (S&amp;V + Mega Evolution)</SelectItem>
                   <SelectItem value="recent5">Recent Sets (5)</SelectItem>
                   <SelectItem value="recent10">Recent Sets (10)</SelectItem>
                   {setsData?.data
