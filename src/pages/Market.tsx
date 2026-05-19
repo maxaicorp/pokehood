@@ -1,3 +1,36 @@
+// ─── MARKET RENDERING CONTRACT ───────────────────────────────────────────────
+//
+// READ THIS BEFORE EDITING. The same bug has been "fixed" ~100 times because
+// well-meaning edits add a caching layer that hides fresh data behind stale
+// data. The contract below is the only working version. Changing it WILL
+// reintroduce the stale-prices bug.
+//
+// 1. Data source: get_latest_price_page RPC. That RPC reads from the
+//    precomputed latest_card_prices table (NOT from price_snapshots and NOT
+//    via live aggregation). Both the table and the RPC live in
+//    supabase/migrations/20260519010000_latest_card_prices_table.sql.
+//
+// 2. Cache strategy: NONE on the browser side. No localStorage. No
+//    in-memory shadow that survives across mounts. The DB read is ~30-50ms;
+//    a brief skeleton on first paint is correct behavior.
+//
+// 3. Refresh triggers (any of these re-fetches):
+//      a. Component mount / filter change (selectedSetId, refreshToken deps)
+//      b. document.visibilitychange  — user returns to the tab
+//      c. window 'storage' event with key "collectiblez:force-refresh"
+//         (admin Master Refresh broadcasts this)
+//      d. Supabase Realtime INSERT on price_snapshots (debounced ~3s)
+//
+// 4. Errors are LOUD. If the RPC fails, we toast the user. We do NOT silently
+//    .catch() and leave stale rows on screen — that hides outages for weeks.
+//
+// 5. The precomputed table is refreshed by snapshot-prices/index.ts at the
+//    end of every successful daily/full/sets/chunk run. If "the site looks
+//    stale," check the AdminHealth page first (snapshot ran?) and then the
+//    latest_card_prices row count (refresh ran?). Don't add a cache here.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";

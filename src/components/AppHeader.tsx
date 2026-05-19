@@ -149,11 +149,6 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Games</Link>
               <Link to="/giveaway" className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Giveaway</Link>
             </div>
-            {isPro && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">
-                <Crown className="w-3 h-3" /> PRO
-              </span>
-            )}
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <GlobalSearch />
