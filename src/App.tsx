@@ -23,6 +23,7 @@ const CardMatch = lazy(() => import("./pages/CardMatch"));
 const Stats = lazy(() => import("./pages/Stats"));
 const Market = lazy(() => import("./pages/Market"));
 const Sets = lazy(() => import("./pages/Sets"));
+const SetDetail = lazy(() => import("./pages/SetDetail"));
 const Onchain = lazy(() => import("./pages/Onchain"));
 const Giveaway = lazy(() => import("./pages/Giveaway"));
 const GiveawayConfirm = lazy(() => import("./pages/GiveawayConfirm"));
@@ -65,6 +66,7 @@ const App = () => (
                   <Route path="/sealed/:id" element={<SealedDetail />} />
                   <Route path="/market" element={<Market />} />
                   <Route path="/sets" element={<Sets />} />
+                  <Route path="/sets/:slug" element={<SetDetail />} />
                   <Route path="/onchain" element={<Onchain />} />
                   <Route path="/games" element={<Games />} />
                   <Route path="/games/card-match" element={<CardMatch />} />

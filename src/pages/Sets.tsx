@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { getSets, PokemonSet } from "@/lib/pokemon-api";
+import { setPath } from "@/lib/slug";
 import AppHeader from "@/components/AppHeader";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -173,7 +174,7 @@ function SetCard({ set, index }: { set: PokemonSet; index: number }) {
       transition={{ delay: Math.min(index * 0.02, 0.4) }}
     >
       <Link
-        to={`/explore?set=${set.id}`}
+        to={setPath(set)}
         className="group block rounded-xl border border-border/60 bg-card hover:border-primary/40 hover:bg-muted/50 transition-all duration-200 overflow-hidden"
       >
         {/* Logo area */}
