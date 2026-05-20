@@ -33,7 +33,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -415,7 +415,50 @@ export default function Market() {
   // a single set ID and gets the compact "Set Total" layout without the Set column.
   const isSingleSet =
     !!selectedSetId && selectedSetId !== "modern" && !selectedSetId.startsWith("recent");
-  const totalValue = rawPricedCards.reduce((sum, c) => sum + (getMarketPrice(c) ?? 0), 0);
+
+  // Server-computed total for the badge in the header. Replaces the previous
+  // client-side reduce over loaded cards, which ratcheted upward as the user
+  // scrolled (a "Top 30 Value" that should have read "Top 500 Value"). The
+  // new RPC reads the precomputed latest_card_prices table and returns
+  // {card_count, total_value} for the filter in one round-trip. The badge
+  // stays hidden until this query resolves so the displayed number is final,
+  // not an intermediate sum.
+  const filterCap = RECENT_CAPS[selectedSetId] ?? 500;
+  const summarySetIds = (() => {
+    if (!setsData) return null;
+    if (selectedSetId === "modern") {
+      const ids = setsData.data
+        .filter((s) => !s.isOnlineOnly && MODERN_ERA_SERIES.has(s.series))
+        .map((s) => s.id);
+      return ids.length ? ids : null;
+    }
+    if (selectedSetId === "recent5" || selectedSetId === "recent10") {
+      const n = selectedSetId === "recent5" ? 5 : 10;
+      const ids = setsData.data.filter((s) => !s.isOnlineOnly).slice(0, n).map((s) => s.id);
+      return ids.length ? ids : null;
+    }
+    return selectedSetId ? [selectedSetId] : null;
+  })();
+  const { data: summary } = useQuery({
+    queryKey: ["market-filter-summary", selectedSetId, filterCap, refreshToken, summarySetIds?.join(",") ?? ""],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)("get_filter_summary", {
+        p_set_ids: summarySetIds,
+        p_top_n: filterCap,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        cardCount: Number(row?.card_count ?? 0),
+        totalValue: Number(row?.total_value ?? 0),
+      };
+    },
+    enabled: !!setsData,
+    staleTime: 5 * 60 * 1000,
+  });
+  // Round up to whole dollars per user request.
+  const totalValue = summary ? Math.ceil(summary.totalValue) : 0;
+  const totalCount = summary?.cardCount ?? 0;
 
   const gridClasses = isSingleSet
     ? "sm:grid-cols-[32px_1fr_100px_80px_80px_36px]"
@@ -501,13 +544,15 @@ export default function Market() {
             </div>
           ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
-              {!isLoading && totalValue > 0 && (
+              {/* Hidden until the server-computed total arrives, so the
+                  number never ratchets as the user scrolls. */}
+              {summary && totalValue > 0 && (
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">
-                    {isSingleSet ? "Set Total" : `Top ${pricedCards.length} Value`}
+                    {isSingleSet ? "Set Total" : `Top ${totalCount} Value`}
                   </p>
-                  <p className="text-lg font-bold text-foreground">
-                    {formatPrice(totalValue)}
+                  <p className="text-lg font-bold text-foreground tabular-nums">
+                    ${totalValue.toLocaleString("en-US")}
                   </p>
                 </div>
               )}
