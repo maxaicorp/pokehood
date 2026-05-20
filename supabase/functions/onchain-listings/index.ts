@@ -26,6 +26,12 @@ const COLLECTIONS = [
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
+interface RawAmount {
+  rawAmount: string;
+  address?: string;
+  decimals: number;
+}
+
 interface MeListing {
   pdaAddress: string;
   tokenMint: string;
@@ -34,9 +40,14 @@ interface MeListing {
   sellerReferral?: string;
   tokenAddress: string;
   tokenSize: number;
-  price: number;             // SOL
+  price: number;             // SOL-equivalent (always)
+  priceInfo?: {
+    solPrice?: RawAmount;
+    splPrice?: RawAmount;    // present when listed in USDC etc.
+  };
   rarity?: { howRare?: { rank?: number } };
   extra?: { img?: string };
+  token?: { name?: string };
 }
 
 interface NormalizedListing {
@@ -45,6 +56,10 @@ interface NormalizedListing {
   collection: string;
   seller: string;
   price: number;
+  // Pass priceInfo through so the frontend can render USDC vs SOL correctly.
+  // Without this, we'd display every USDC listing as SOL.
+  priceInfo?: MeListing["priceInfo"];
+  name?: string;
   image?: string;
   rarityRank?: number | null;
   marketplaceUrl: string;
@@ -92,12 +107,14 @@ Deno.serve(async (req) => {
 
     const raw = (await res.json()) as MeListing[];
     // Normalize so the frontend doesn't depend on ME's exact shape.
-    const items: NormalizedListing[] = raw.map((l) => ({
+    const items: NormalizedListing[] = (raw ?? []).map((l) => ({
       pdaAddress: l.pdaAddress,
       tokenMint: l.tokenMint,
       collection,
       seller: l.seller,
       price: l.price,
+      priceInfo: l.priceInfo,
+      name: l.token?.name,
       image: l.extra?.img,
       rarityRank: l.rarity?.howRare?.rank ?? null,
       marketplaceUrl: `https://magiceden.us/item-details/${l.tokenMint}`,

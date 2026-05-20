@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, RefreshCw, AlertTriangle, Activity as ActivityIcon, Store } from "lucide-react";
 import SEO from "@/components/SEO";
+import { formatTradePrice, useSolPrice, type PriceInfo } from "@/lib/onchain-price";
 
 interface Activity {
   signature: string;
@@ -19,9 +20,8 @@ interface Activity {
   seller?: string;
   price: number;
   image?: string;
-  priceInfo?: {
-    solPrice?: { rawAmount: string };
-  };
+  // Full priceInfo so we can detect USDC trades vs SOL trades.
+  priceInfo?: PriceInfo;
 }
 
 const TYPE_FILTERS = [
@@ -70,6 +70,8 @@ interface Listing {
   collection: string;
   seller: string;
   price: number;
+  priceInfo?: PriceInfo;
+  name?: string;
   image?: string;
   rarityRank?: number | null;
   marketplaceUrl: string;
@@ -92,6 +94,11 @@ function Onchain() {
   const [typeFilter, setTypeFilter] = useState("");
   const [page, setPage] = useState(0);
   const limit = 20;
+
+  // Spot SOL/USD price for converting SOL trades into a USD subtitle. Returns
+  // null if both Jupiter and CoinGecko are down — the UI just hides the USD
+  // line in that case instead of blocking the page.
+  const { solUsd } = useSolPrice();
 
   // Activity feed — existing Magic Eden activities endpoint.
   const { data, isLoading, isFetching, isError, refetch } = useQuery({
@@ -148,10 +155,14 @@ function Onchain() {
         headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
       });
       if (!res.ok) throw new Error(`Marketplace unavailable (${res.status})`);
-      const body = (await res.json()) as { items: Listing[] };
+      const body = (await res.json()) as { items?: Listing[]; error?: string };
+      // Defensive: edge function could return { error: "..." } with 200, OR
+      // an unexpected shape if Magic Eden's response changes. Coerce to [] so
+      // the page never blanks on a missing field.
+      const items = Array.isArray(body.items) ? body.items : [];
       return {
-        items: body.items.slice(0, limit),
-        hasMore: body.items.length > limit,
+        items: items.slice(0, limit),
+        hasMore: items.length > limit,
       };
     },
     enabled: activeTab === "marketplace",
@@ -327,11 +338,24 @@ function Onchain() {
                   </div>
                 </div>
 
-                {/* Price */}
+                {/* Price — USDC primary when the trade was in USDC, else SOL
+                    primary with USD subtitle. See lib/onchain-price.ts. */}
                 <div className="text-right shrink-0 self-start">
-                  <div className="text-lg font-bold text-foreground tabular-nums">
-                    {a.price > 0 ? `◎ ${a.price.toFixed(3)}` : "—"}
-                  </div>
+                  {(() => {
+                    const fmt = formatTradePrice(a.price, a.priceInfo, solUsd);
+                    return (
+                      <>
+                        <div className={`text-lg font-bold tabular-nums ${fmt.isUsdc ? "text-emerald-400" : "text-foreground"}`}>
+                          {fmt.primary}
+                        </div>
+                        {fmt.secondary && (
+                          <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
+                            {fmt.secondary}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto mt-1" />
                 </div>
               </a>
@@ -411,12 +435,24 @@ function Onchain() {
                       NFT
                     </div>
                   )}
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-foreground">
-                      ◎ {l.price.toFixed(3)}
-                    </span>
+                  <div className="mt-2 flex items-start justify-between gap-2">
+                    {(() => {
+                      const fmt = formatTradePrice(l.price, l.priceInfo, solUsd);
+                      return (
+                        <div className="min-w-0">
+                          <div className={`text-sm font-semibold tabular-nums ${fmt.isUsdc ? "text-emerald-400" : "text-foreground"}`}>
+                            {fmt.primary}
+                          </div>
+                          {fmt.secondary && (
+                            <div className="text-[10px] text-muted-foreground tabular-nums">
+                              {fmt.secondary}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {l.rarityRank != null && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
                         #{l.rarityRank}
                       </Badge>
                     )}
