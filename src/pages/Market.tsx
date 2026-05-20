@@ -729,30 +729,59 @@ export default function Market() {
                       </Button>
                     </div>
 
-                    {/* Mobile: stacked layout */}
-                    <div className="sm:hidden px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-muted-foreground tabular-nums w-4 shrink-0 text-right">{i + 1}</span>
-                        <img src={card.images.small} alt={card.name} className="w-11 rounded-md shrink-0 shadow-sm" loading="lazy" />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-1">
-                            <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-6 w-6 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
-                              disabled={addingCards.has(card.id)}
-                              onClick={(e) => handleAdd(e, card)}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
+                    {/* Mobile: real card layout (Option A — 2026-05-19).
+                        Bigger portrait image, info stacked vertically with
+                        breathing room, vote + add on their own action row
+                        with proper touch targets. No more cramming everything
+                        onto one line. Strictly mobile — desktop grid above
+                        is untouched. */}
+                    <div className="sm:hidden p-4">
+                      <div className="flex gap-3">
+                        {/* Card image with rank pill in the corner */}
+                        <div className="relative shrink-0">
+                          <span className="absolute -top-1.5 -left-1.5 z-10 text-[10px] font-mono font-semibold text-foreground bg-background/95 backdrop-blur px-1.5 py-0.5 rounded-full border border-border/60 tabular-nums shadow-sm">
+                            {i + 1}
+                          </span>
+                          <img
+                            src={card.images.small}
+                            alt={card.name}
+                            className="w-20 aspect-[3/4] rounded-lg shadow-md object-cover bg-muted"
+                            loading="lazy"
+                          />
+                        </div>
+
+                        {/* Details column */}
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          {/* Title + price */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-base font-semibold text-foreground leading-tight truncate">{card.name}</p>
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">{card.set.name}</p>
+                              <p className="text-[11px] text-muted-foreground/60 mt-0.5 tabular-nums">
+                                #{card.number}/{card.set.printedTotal || card.set.total}
+                              </p>
+                            </div>
+                            <p className="text-base font-bold text-foreground tabular-nums shrink-0">
+                              {formatPrice(price)}
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground truncate">{card.set.name} · #{card.number}/{card.set.printedTotal || card.set.total}</p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <span className="text-xs font-bold text-foreground tabular-nums">{formatPrice(price)}</span>
-                            <span className={`text-[10px] font-medium tabular-nums ${pct24h.className}`}>{pct24h.text}</span>
-                            <span className={`text-[10px] font-medium tabular-nums ${pct7d.className}`}>{pct7d.text}</span>
-                            {isRecentFilter && (
+
+                          {/* Stat chips — 24h and 7d each as a labeled pair */}
+                          <div className="flex items-center gap-4 text-[11px] mt-2">
+                            <div className="flex items-center gap-1">
+                              <span className="text-muted-foreground">24h</span>
+                              <span className={`font-medium tabular-nums ${pct24h.className}`}>{pct24h.text}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-muted-foreground">7d</span>
+                              <span className={`font-medium tabular-nums ${pct7d.className}`}>{pct7d.text}</span>
+                            </div>
+                          </div>
+
+                          {/* Action row — vote chips + add button. Bigger
+                              touch targets than the old icon-only layout. */}
+                          <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-border/30">
+                            {isRecentFilter ? (
                               <SetSentimentBadge
                                 upvotes={sentiment?.upvotes ?? 0}
                                 downvotes={sentiment?.downvotes ?? 0}
@@ -761,7 +790,19 @@ export default function Market() {
                                 onVote={(vt) => handleVote(card.id, vt)}
                                 compact
                               />
+                            ) : (
+                              <span aria-hidden />
                             )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 px-3 rounded-full border border-border/50 hover:border-primary hover:text-primary"
+                              disabled={addingCards.has(card.id)}
+                              onClick={(e) => handleAdd(e, card)}
+                            >
+                              <Plus className="w-3.5 h-3.5 mr-1" />
+                              <span className="text-xs font-medium">Add</span>
+                            </Button>
                           </div>
                         </div>
                       </div>
