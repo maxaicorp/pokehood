@@ -306,6 +306,42 @@ export type Database = {
           },
         ]
       }
+      latest_card_prices: {
+        Row: {
+          card_id: string
+          card_name: string
+          price: number
+          price_1d: number | null
+          price_30d: number | null
+          price_7d: number | null
+          recorded_at: string
+          set_name: string
+          updated_at: string
+        }
+        Insert: {
+          card_id: string
+          card_name: string
+          price: number
+          price_1d?: number | null
+          price_30d?: number | null
+          price_7d?: number | null
+          recorded_at: string
+          set_name: string
+          updated_at?: string
+        }
+        Update: {
+          card_id?: string
+          card_name?: string
+          price?: number
+          price_1d?: number | null
+          price_30d?: number | null
+          price_7d?: number | null
+          recorded_at?: string
+          set_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       link_clicks: {
         Row: {
           clicked_at: string
@@ -754,6 +790,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      refresh_latest_card_prices: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
