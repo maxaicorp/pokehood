@@ -67,6 +67,7 @@ const App = () => (
                   <Route path="/market" element={<Market />} />
                   <Route path="/sets" element={<Sets />} />
                   <Route path="/sets/:slug" element={<SetDetail />} />
+                  <Route path="/sets/:slug/:cardSlug" element={<CardDetail />} />
                   <Route path="/onchain" element={<Onchain />} />
                   <Route path="/games" element={<Games />} />
                   <Route path="/games/card-match" element={<CardMatch />} />

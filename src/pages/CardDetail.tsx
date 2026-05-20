@@ -1,14 +1,16 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getCardById,
+  getSets,
   getSetCards,
   getMarketPrice,
   enrichCardWithPricing,
   formatPrice,
 } from "@/lib/pokemon-api";
+import { findSetBySlug, cardSlug, cardPath, setPath } from "@/lib/slug";
 import { addToCollection } from "@/lib/collection-store";
 import { recordCardView, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
 import {
@@ -54,8 +56,40 @@ const TYPE_COLORS: Record<string, string> = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CardDetail() {
-  const { id } = useParams<{ id: string }>();
+  // Two route shapes resolve to the same page:
+  //   /card/:id                          (legacy, kept for back-compat + share links)
+  //   /sets/:slug/:cardSlug              (new, SEO-friendly canonical)
+  // Below resolves either shape into a single `id` so the rest of this file
+  // is unchanged. Slug-based routes incur ONE extra query (the set's card
+  // list) to translate cardSlug -> card.id.
+  const params = useParams<{ id?: string; slug?: string; cardSlug?: string }>();
   const navigate = useNavigate();
+
+  const { data: setsResult } = useQuery({
+    queryKey: ["all-sets"],
+    queryFn: getSets,
+    staleTime: Infinity,
+  });
+  const setFromSlug = useMemo(() => {
+    if (!params.slug || !setsResult?.data) return undefined;
+    return findSetBySlug(params.slug, setsResult.data);
+  }, [params.slug, setsResult]);
+
+  const { data: setCardsForResolve } = useQuery({
+    queryKey: ["card-slug-resolve", setFromSlug?.id],
+    queryFn: () => getSetCards(setFromSlug!.id, 1, 500),
+    enabled: !!params.cardSlug && !!setFromSlug,
+    staleTime: Infinity,
+  });
+
+  const id = useMemo<string | undefined>(() => {
+    if (params.id) return params.id;
+    if (!params.cardSlug || !setCardsForResolve?.data) return undefined;
+    const found = setCardsForResolve.data.find(
+      (c) => cardSlug({ name: c.name, number: c.number }) === params.cardSlug,
+    );
+    return found?.id;
+  }, [params.id, params.cardSlug, setCardsForResolve]);
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
   const [addingToCollection, setAddingToCollection] = useState(false);
@@ -215,28 +249,45 @@ export default function CardDetail() {
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       {card && (
         <SEO
-          title={`${card.name} · ${card.set.name} — Collectiblez`}
-          description={`Live market price, 24h/7d trends, and price history for ${card.name} from ${card.set.name}.`}
-          path={`/card/${card.id}`}
+          // Canonical points to the slug-based URL regardless of which route
+          // the user landed on. /card/:id requests will have their
+          // <link rel="canonical"> point to /sets/:slug/:cardSlug so Google
+          // collapses duplicates onto the SEO-friendly URL.
+          title={`${card.name} #${card.number} — ${card.set.name} Price | Collectiblez`}
+          description={`${card.name} ${card.number}/${card.set.printedTotal || card.set.total} from ${card.set.name}. Live market price, 24h/7d trends, and price history. Updated daily.`}
+          path={cardPath(card.set, { name: card.name, number: card.number })}
           image={card.images?.large || card.images?.small}
           type="product"
-          jsonLd={{
-            "@context": "https://schema.org",
-            "@type": "Product",
-            name: card.name,
-            image: card.images?.large || card.images?.small,
-            description: `${card.name} from ${card.set.name}.`,
-            category: "Trading Card",
-            ...(getMarketPrice(card) != null && {
-              offers: {
-                "@type": "Offer",
-                price: getMarketPrice(card),
-                priceCurrency: "USD",
-                availability: "https://schema.org/InStock",
-                url: `https://collectiblez.app/card/${card.id}`,
-              },
-            }),
-          }}
+          jsonLd={[
+            {
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Sets", item: "https://collectiblez.app/sets" },
+                { "@type": "ListItem", position: 2, name: card.set.name, item: `https://collectiblez.app${setPath(card.set)}` },
+                { "@type": "ListItem", position: 3, name: card.name, item: `https://collectiblez.app${cardPath(card.set, { name: card.name, number: card.number })}` },
+              ],
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "Product",
+              name: card.name,
+              sku: card.number,
+              image: card.images?.large || card.images?.small,
+              description: `${card.name} ${card.number}/${card.set.printedTotal || card.set.total} from ${card.set.name}.`,
+              brand: { "@type": "Brand", name: "Pokémon" },
+              category: "Trading Card",
+              ...(getMarketPrice(card) != null && {
+                offers: {
+                  "@type": "Offer",
+                  price: getMarketPrice(card)?.toFixed(2),
+                  priceCurrency: "USD",
+                  availability: "https://schema.org/InStock",
+                  url: `https://collectiblez.app${cardPath(card.set, { name: card.name, number: card.number })}`,
+                },
+              }),
+            },
+          ]}
         />
       )}
       <AppHeader activePage="explore" />
@@ -423,7 +474,7 @@ export default function CardDetail() {
             </h3>
             <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
               {suggestions.map((c) => (
-                <Link key={c.id} to={`/card/${c.id}`} className="shrink-0 group">
+                <Link key={c.id} to={cardPath(c.set, { name: c.name, number: c.number })} className="shrink-0 group">
                   <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }}>
                     <img
                       src={c.images.small}
