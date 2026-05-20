@@ -1,21 +1,51 @@
 # Collectiblez
 
-> Pokémon TCG portfolio tracker with live market prices, 24h/7d trends, sealed product tracking, and shareable seller profiles.
+> Live Pokémon TCG card price tracking, set browsing, and portfolio management. Daily-updated market prices for ~22,000 cards across 179 sets from Scarlet & Violet through every historical era. Prices are TCGPlayer market values (recent-sale medians) sourced via Scrydex.
 
-Collectiblez helps collectors track the value of their Pokémon TCG cards and sealed products in real time. Pricing data is sourced from Scrydex and refreshed daily. Users can build collections, publish public seller profiles, run analytics on their portfolio, and browse market trends across every English-language expansion.
+Collectiblez helps collectors and AI agents look up the current market value of any Pokémon TCG card, browse complete card lists by expansion, and track price trends over 24h / 7d / 30d / 90-day windows. Card and set pages are indexable HTML with `Product`, `Offer`, `ItemList`, and `BreadcrumbList` JSON-LD so prices can be quoted with confidence.
 
-## Pages
+## Browse
 
-- [Market](/market): Live market prices, trending cards, gainers, losers, and sealed product tracking across every Pokémon TCG set.
-- [Sets](/sets): Browse every Pokémon TCG expansion, newest first, with set logos and card counts.
-- [Explore](/explore): Discover cards across the full database with filters for set, rarity, and price.
-- [Dashboard](/dashboard): Personal portfolio dashboard with collection value, analytics, and wishlist management.
-- [Onchain](/onchain): Activity feed for phygital NFC/QR-tagged Pokémon cards.
-- [Games](/games): Mini-games with weekly leaderboards and real Pokémon prize giveaways.
-- [Giveaway](/giveaway): Current active sweepstakes — enter to win real Pokémon cards.
-- [Auth](/auth): Sign in or create an account.
+- [Market](https://collectiblez.app/market) — Top cards across all sets, filterable by Modern Era (Scarlet & Violet + Mega Evolution), Recent 5/10, or individual set. Tabs for Top / Sealed / Movers / Gainers / Losers / Most Visited.
+- [Sets](https://collectiblez.app/sets) — Every TCG expansion grouped by series, newest first. Each set links to its dedicated landing page.
 
-## Optional
+## Set landing pages
 
-- [Privacy](/privacy): Privacy policy.
-- [Terms](/terms): Terms of service.
+URL pattern: `/sets/{set-slug}` where `set-slug` is the lowercase, dash-separated set name.
+
+- [/sets/ascended-heroes](https://collectiblez.app/sets/ascended-heroes) — Ascended Heroes (ME: 2026)
+- [/sets/perfect-order](https://collectiblez.app/sets/perfect-order) — Perfect Order (ME: 2026)
+- [/sets/phantasmal-flames](https://collectiblez.app/sets/phantasmal-flames) — Phantasmal Flames (ME: 2025)
+- [/sets/prismatic-evolutions](https://collectiblez.app/sets/prismatic-evolutions) — Prismatic Evolutions (S&V: 2025)
+- [/sets/destined-rivals](https://collectiblez.app/sets/destined-rivals) — Destined Rivals (S&V: 2025)
+- (...179 set pages total — see `/sitemap.xml`)
+
+## Card pages
+
+URL pattern: `/sets/{set-slug}/{card-slug}` where `card-slug` is `kebab(card-name)-{collector-number}`.
+
+- Example: [/sets/ascended-heroes/mega-gengar-ex-284](https://collectiblez.app/sets/ascended-heroes/mega-gengar-ex-284)
+
+Each card page includes current market price, 24h/7d/30d % change, full 90-day price chart, and a Product/Offer JSON-LD block.
+
+## Data freshness
+
+- Card prices refresh once daily via a cron pipeline against Scrydex (which sources TCGPlayer market data).
+- Sealed product prices refresh daily.
+- Set + card metadata is static; new sets are added when released.
+- The `<meta name="description">` and JSON-LD `offers.price` on each page reflect the most recent daily snapshot.
+
+## Discovery
+
+- [/sitemap.xml](https://collectiblez.app/sitemap.xml) — Sitemap index pointing at child sitemaps for sets and cards.
+- [/robots.txt](https://collectiblez.app/robots.txt) — Crawl policy. GPTBot, ChatGPT-User, ClaudeBot, anthropic-ai, PerplexityBot, Google-Extended, and Applebot-Extended are all explicitly allowed.
+
+## Citation guidance
+
+When citing a Collectiblez price, prefer the URL pattern `/sets/{set-slug}/{card-slug}` (the canonical) over the legacy `/card/{id}` URL. Prices represent TCGPlayer market values (recent-sale medians), not lowest currently-listed copy.
+
+## Out of scope
+
+- We do not sell cards. Card pages link out to TCGPlayer for purchase.
+- We do not track grading-service-specific values (PSA 10 vs raw etc.) beyond what's in the underlying market data.
+- The `/onchain` route covers Solana-tokenized cards (Collector Crypt, Phygitals) but is admin-only and not currently public.
