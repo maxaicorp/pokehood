@@ -28,7 +28,6 @@ const TYPE_FILTERS = [
   { value: "", label: "All" },
   { value: "buyNow", label: "Sales" },
   { value: "list", label: "Listings" },
-  { value: "delist", label: "Delistings" },
   { value: "bid", label: "Bids" },
 ];
 
@@ -111,9 +110,13 @@ function Onchain() {
       });
       if (!res.ok) throw new Error(`Activity feed unavailable (${res.status})`);
       const raw = (await res.json()) as Activity[];
+      // Defensive client-side filter: Magic Eden's ?type= occasionally leaks
+      // through neighboring event types (we saw Bids in a Sales-only filter).
+      // Re-filter here so the displayed list matches the chip the user picked.
+      const filtered = typeFilter ? raw.filter((a) => a.type === typeFilter) : raw;
       return {
-        activities: raw.slice(0, limit),
-        hasMore: raw.length > limit,
+        activities: filtered.slice(0, limit),
+        hasMore: filtered.length > limit,
       };
     },
     refetchInterval: activeTab === "activity" ? 30_000 : false,
@@ -258,16 +261,17 @@ function Onchain() {
         )}
 
         {/* Activity Feed */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           {isLoading ? (
             Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border/50">
-                <Skeleton className="w-12 h-12 rounded-md" />
+              <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border/50">
+                <Skeleton className="w-20 sm:w-24 aspect-[3/4] rounded-md" />
                 <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-48" />
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-4 w-56" />
+                  <Skeleton className="h-3 w-32" />
                 </div>
-                <Skeleton className="h-5 w-16" />
+                <Skeleton className="h-6 w-20" />
               </div>
             ))
           ) : activities && activities.length > 0 ? (
@@ -277,34 +281,38 @@ function Onchain() {
                 href={`https://solscan.io/tx/${a.signature}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border/50 hover:border-primary/30 hover:bg-card/80 transition-colors group"
+                className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:bg-card/80 transition-colors group"
               >
-                {/* Card Image */}
+                {/* Card Image — sized for actual card visibility (collectible cards
+                    have a roughly 3:4 aspect ratio, so we use a portrait box). */}
                 {a.image ? (
                   <img
                     src={a.image}
                     alt=""
-                    className="w-12 h-12 rounded-md object-cover bg-muted"
+                    className="w-20 sm:w-24 aspect-[3/4] rounded-md object-cover bg-muted shrink-0"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                  <div className="w-20 sm:w-24 aspect-[3/4] rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
                     NFT
                   </div>
                 )}
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {typeIcon(a.type)}
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-base font-semibold text-foreground">
                       {typeLabel(a.type)}
                     </span>
                     <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
                       {a.source.replace("magiceden_v2", "Magic Eden")}
                     </Badge>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                  <p className="text-sm text-muted-foreground mt-1 font-mono truncate">
+                    Mint: {shortenAddress(a.tokenMint)}
+                  </p>
+                  <div className="text-xs text-muted-foreground mt-1 flex items-center gap-x-3 gap-y-1 flex-wrap">
                     {a.buyer && (
                       <span>
                         Buyer: <span className="font-mono">{shortenAddress(a.buyer)}</span>
@@ -315,16 +323,15 @@ function Onchain() {
                         Seller: <span className="font-mono">{shortenAddress(a.seller)}</span>
                       </span>
                     )}
-                    <span className="text-muted-foreground/60">·</span>
                     <span>{timeAgo(a.blockTime)}</span>
                   </div>
                 </div>
 
                 {/* Price */}
-                <div className="text-right shrink-0">
-                  <span className="text-sm font-semibold text-foreground">
+                <div className="text-right shrink-0 self-start">
+                  <div className="text-lg font-bold text-foreground tabular-nums">
                     {a.price > 0 ? `◎ ${a.price.toFixed(3)}` : "—"}
-                  </span>
+                  </div>
                   <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto mt-1" />
                 </div>
               </a>
