@@ -97,6 +97,13 @@ function Onchain() {
   const limit = 20;
   const queryClient = useQueryClient();
 
+  const setActivityFilter = (value: string) => {
+    queryClient.cancelQueries({ queryKey: ["onchain-activity"] });
+    queryClient.removeQueries({ queryKey: ["onchain-activity"] });
+    setTypeFilter(value);
+    setPage(0);
+  };
+
   // Hard refresh — invalidates the cache for BOTH activity and listings
   // queries, then refetches the active one. Used by the Refresh button so
   // users have an escape hatch when something feels stale. A plain
@@ -120,11 +127,13 @@ function Onchain() {
         collection: "collector_crypt",
         offset: String(page * limit),
         limit: String(limit + 1), // fetch one extra to detect if there's a next page
+        _ts: String(Date.now()),
       });
       if (typeFilter) params.set("type", typeFilter);
 
       const res = await fetch(`${baseUrl}?${params}`, {
         headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        cache: "no-store",
       });
       if (!res.ok) throw new Error(`Activity feed unavailable (${res.status})`);
       const raw = (await res.json()) as Activity[];
@@ -148,7 +157,9 @@ function Onchain() {
     refetchOnWindowFocus: true,
   });
 
-  const activities = data?.activities;
+  const activities = typeFilter
+    ? data?.activities?.filter((activity) => activity.type === typeFilter)
+    : data?.activities;
   const hasMore = data?.hasMore ?? false;
 
   // Marketplace listings — paginated, cheapest first.
@@ -261,7 +272,7 @@ function Onchain() {
           {TYPE_FILTERS.map((f) => (
             <button
               key={f.value}
-              onClick={() => { setTypeFilter(f.value); setPage(0); }}
+              onClick={() => setActivityFilter(f.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                 typeFilter === f.value
                   ? "bg-primary text-primary-foreground"
