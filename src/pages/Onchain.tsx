@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -95,6 +95,16 @@ function Onchain() {
   const [typeFilter, setTypeFilter] = useState("");
   const [page, setPage] = useState(0);
   const limit = 20;
+  const queryClient = useQueryClient();
+
+  // Hard refresh — invalidates the cache for BOTH activity and listings
+  // queries, then refetches the active one. Used by the Refresh button so
+  // users have an escape hatch when something feels stale. A plain
+  // refetch() reuses the React Query cache; invalidateQueries clears it.
+  const hardRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ["onchain-activity"] });
+    await queryClient.invalidateQueries({ queryKey: ["onchain-listings"] });
+  };
 
   // Spot SOL/USD price for converting SOL trades into a USD subtitle. Returns
   // null if both Jupiter and CoinGecko are down — the UI just hides the USD
@@ -127,8 +137,15 @@ function Onchain() {
         hasMore: filtered.length > limit,
       };
     },
+    // Aggressive refresh — user reported "stuck" data showing 5+ min old
+    // events when ME's site had fresher ones. Force a fetch every mount,
+    // every tab focus, and every 30s while the Activity tab is active.
+    // staleTime: 0 is the React Query default but explicit beats implicit.
     refetchInterval: activeTab === "activity" ? 30_000 : false,
     enabled: activeTab === "activity",
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const activities = data?.activities;
@@ -168,6 +185,9 @@ function Onchain() {
     },
     enabled: activeTab === "marketplace",
     refetchInterval: activeTab === "marketplace" ? 60_000 : false,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   const listings = listingsData?.items;
@@ -206,7 +226,7 @@ function Onchain() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => activeTab === "activity" ? refetch() : refetchListings()}
+            onClick={hardRefresh}
             disabled={activeTab === "activity" ? isFetching : listingsFetching}
             className="gap-2"
           >
