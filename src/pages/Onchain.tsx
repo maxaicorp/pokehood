@@ -1,5 +1,12 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import AppHeader from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -78,6 +85,23 @@ interface Listing {
 
 type OnchainTab = "activity" | "marketplace";
 
+// Marketplace sort options. Magic Eden's listings endpoint only supports
+// ascending order, so "Price: High to Low" is implemented by walking offsets
+// from the end of the listings array (we need the total count first, which
+// the edge function returns when ?include_total=1 is set).
+type MarketplaceSort = "price-asc" | "price-desc" | "recent";
+const MARKETPLACE_SORTS: { value: MarketplaceSort; label: string }[] = [
+  { value: "price-asc", label: "Price: Low to High" },
+  { value: "price-desc", label: "Price: High to Low" },
+  { value: "recent", label: "Recently Listed" },
+];
+
+// Infinite-scroll batch size + per-session cap. 1000 was chosen so the entire
+// session stays under ~50 ME requests per tab (well within the free tier's
+// limits) and the user gets ~50 screens of scroll before hitting the wall.
+const BATCH = 20;
+const ITEM_CAP = 1000;
+
 export default function OnchainPage() {
   // Public as of 2026-05-21 — the admin gate came off when the feature was
   // ready enough to show to everyone. Data is all from Magic Eden's public
@@ -93,16 +117,8 @@ export default function OnchainPage() {
 function Onchain() {
   const [activeTab, setActiveTab] = useState<OnchainTab>("activity");
   const [typeFilter, setTypeFilter] = useState("");
-  const [page, setPage] = useState(0);
-  const limit = 20;
+  const [marketplaceSort, setMarketplaceSort] = useState<MarketplaceSort>("price-asc");
   const queryClient = useQueryClient();
-
-  const setActivityFilter = (value: string) => {
-    queryClient.cancelQueries({ queryKey: ["onchain-activity"] });
-    queryClient.removeQueries({ queryKey: ["onchain-activity"] });
-    setTypeFilter(value);
-    setPage(0);
-  };
 
   // Hard refresh — invalidates the cache for BOTH activity and listings
   // queries, then refetches the active one. Used by the Refresh button so
@@ -118,38 +134,42 @@ function Onchain() {
   // line in that case instead of blocking the page.
   const { solUsd } = useSolPrice();
 
-  // Activity feed — existing Magic Eden activities endpoint.
-  const { data, isLoading, isFetching, isError, refetch } = useQuery({
-    queryKey: ["onchain-activity", typeFilter, page],
-    queryFn: async () => {
+  // Activity feed — infinite scroll, 1000-event cap. Magic Eden returns events
+  // newest-first by default, so each page=N gives the next 20 older events.
+  const {
+    data: activityPages,
+    isLoading,
+    isFetching,
+    isError,
+    refetch,
+    fetchNextPage: fetchNextActivity,
+    hasNextPage: hasNextActivity,
+    isFetchingNextPage: isFetchingMoreActivity,
+  } = useInfiniteQuery({
+    queryKey: ["onchain-activity", typeFilter],
+    queryFn: async ({ pageParam }) => {
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onchain-activity`;
       const params = new URLSearchParams({
         collection: "collector_crypt",
-        offset: String(page * limit),
-        limit: String(limit + 1), // fetch one extra to detect if there's a next page
-        _ts: String(Date.now()),
+        offset: String(pageParam * BATCH),
+        limit: String(BATCH),
       });
       if (typeFilter) params.set("type", typeFilter);
-
       const res = await fetch(`${baseUrl}?${params}`, {
         headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-        cache: "no-store",
       });
       if (!res.ok) throw new Error(`Activity feed unavailable (${res.status})`);
       const raw = (await res.json()) as Activity[];
-      // Defensive client-side filter: Magic Eden's ?type= occasionally leaks
-      // through neighboring event types (we saw Bids in a Sales-only filter).
-      // Re-filter here so the displayed list matches the chip the user picked.
-      const filtered = typeFilter ? raw.filter((a) => a.type === typeFilter) : raw;
-      return {
-        activities: filtered.slice(0, limit),
-        hasMore: filtered.length > limit,
-      };
+      // Defensive client-side filter — ME's ?type= sometimes leaks neighbors.
+      return typeFilter ? raw.filter((a) => a.type === typeFilter) : raw;
     },
-    // Aggressive refresh — user reported "stuck" data showing 5+ min old
-    // events when ME's site had fresher ones. Force a fetch every mount,
-    // every tab focus, and every 30s while the Activity tab is active.
-    // staleTime: 0 is the React Query default but explicit beats implicit.
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.length, 0);
+      if (loaded >= ITEM_CAP) return undefined;        // hit our 1000 cap
+      if (lastPage.length < BATCH) return undefined;   // ME ran out
+      return allPages.length;
+    },
     refetchInterval: activeTab === "activity" ? 30_000 : false,
     enabled: activeTab === "activity",
     staleTime: 0,
@@ -157,42 +177,115 @@ function Onchain() {
     refetchOnWindowFocus: true,
   });
 
-  const activities = typeFilter
-    ? data?.activities?.filter((activity) => activity.type === typeFilter)
-    : data?.activities;
-  const hasMore = data?.hasMore ?? false;
+  const activities = activityPages?.pages.flat() ?? [];
 
-  // Marketplace listings — paginated, cheapest first.
+  // Sentinel-based scroll trigger: when this div enters the viewport, load
+  // the next page. rootMargin gives us 600px of warning so the fetch starts
+  // before the user reaches the bottom and we don't show empty space.
+  const activitySentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (activeTab !== "activity") return;
+    const el = activitySentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextActivity && !isFetchingMoreActivity) {
+          fetchNextActivity();
+        }
+      },
+      { rootMargin: "600px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [activeTab, hasNextActivity, isFetchingMoreActivity, fetchNextActivity, activities.length]);
+
+  // Marketplace — infinite scroll, 1000-listing cap, sortable.
+  //
+  // The "Price: High to Low" sort is implemented by walking offsets from the
+  // end of the collection's listings array, because Magic Eden's listings
+  // endpoint only supports ascending sort. The first page fetched in this
+  // mode asks the edge function to attach the total listings count
+  // (?include_total=1), and subsequent pages compute their offsets from it.
+  // Each page's items are reversed before display so the user sees the
+  // most-expensive first.
+  //
+  // For "Price: Low to High" and "Recently Listed" the math is simpler —
+  // pageParam * 20 is the offset, items render as ME returns them.
   const {
-    data: listingsData,
+    data: listingsPages,
     isLoading: listingsLoading,
     isFetching: listingsFetching,
     isError: listingsError,
-    refetch: refetchListings,
-  } = useQuery({
-    queryKey: ["onchain-listings", page],
-    queryFn: async () => {
+    fetchNextPage: fetchNextListings,
+    hasNextPage: hasNextListings,
+    isFetchingNextPage: isFetchingMoreListings,
+  } = useInfiniteQuery({
+    // marketplaceSort in the key so switching the dropdown resets the list
+    // and refetches from page 0 with the new sort.
+    queryKey: ["onchain-listings", marketplaceSort],
+    queryFn: async ({ pageParam }) => {
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onchain-listings`;
+      const sortField = marketplaceSort === "recent" ? "createdAt" : "listPrice";
+      const isReverse = marketplaceSort === "price-desc";
+      // For Price: High to Low we need the total count to compute offset from
+      // the end. We learn it on page 0 via ?include_total=1; subsequent pages
+      // pass it along in pageParam.total so we don't re-query stats.
+      let offset = pageParam.page * BATCH;
+      let total: number | null = pageParam.total;
+      if (isReverse && total != null) {
+        offset = Math.max(0, total - (pageParam.page + 1) * BATCH);
+      }
       const params = new URLSearchParams({
         collection: "collector_crypt",
-        offset: String(page * limit),
-        limit: String(limit + 1),
-        sort: "listPrice",
-        sortDirection: "asc",
+        offset: String(offset),
+        limit: String(BATCH),
+        sort: sortField,
       });
+      if (isReverse && total == null) params.set("include_total", "1");
       const res = await fetch(`${baseUrl}?${params}`, {
         headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
       });
       if (!res.ok) throw new Error(`Marketplace unavailable (${res.status})`);
-      const body = (await res.json()) as { items?: Listing[]; error?: string };
-      // Defensive: edge function could return { error: "..." } with 200, OR
-      // an unexpected shape if Magic Eden's response changes. Coerce to [] so
-      // the page never blanks on a missing field.
-      const items = Array.isArray(body.items) ? body.items : [];
-      return {
-        items: items.slice(0, limit),
-        hasMore: items.length > limit,
-      };
+      const body = (await res.json()) as { items?: Listing[]; totalListings?: number | null };
+      if (isReverse && total == null && body.totalListings != null) {
+        total = body.totalListings;
+        // First reverse-sort fetch landed at offset 0 (default). Now that we
+        // know total, recompute and refetch from the actual end. Cheap — a
+        // single extra request and only on the first page of this sort.
+        if (offset === 0 && total > BATCH) {
+          const realOffset = Math.max(0, total - BATCH);
+          const reparams = new URLSearchParams({
+            collection: "collector_crypt",
+            offset: String(realOffset),
+            limit: String(BATCH),
+            sort: sortField,
+          });
+          const r2 = await fetch(`${baseUrl}?${reparams}`, {
+            headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+          });
+          if (r2.ok) {
+            const b2 = (await r2.json()) as { items?: Listing[] };
+            const items = (b2.items ?? []).slice().reverse();
+            return { items, total };
+          }
+        }
+      }
+      const items = isReverse
+        ? (body.items ?? []).slice().reverse()
+        : (body.items ?? []);
+      return { items, total };
+    },
+    initialPageParam: { page: 0, total: null as number | null },
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
+      if (loaded >= ITEM_CAP) return undefined;
+      if (lastPage.items.length < BATCH) return undefined;
+      // For reverse, also stop when we've hit offset 0.
+      if (marketplaceSort === "price-desc" && lastPage.total != null) {
+        const nextOffset = Math.max(0, lastPage.total - (allPages.length + 1) * BATCH);
+        if (nextOffset === 0 && allPages.length > 0) return undefined;
+      }
+      return { page: allPages.length, total: lastPage.total };
     },
     enabled: activeTab === "marketplace",
     refetchInterval: activeTab === "marketplace" ? 60_000 : false,
@@ -201,8 +294,30 @@ function Onchain() {
     refetchOnWindowFocus: true,
   });
 
-  const listings = listingsData?.items;
-  const listingsHasMore = listingsData?.hasMore ?? false;
+  const listings = listingsPages?.pages.flatMap((p) => p.items) ?? [];
+
+  // Sentinel for marketplace infinite scroll, mirror of activity's setup.
+  const listingsSentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (activeTab !== "marketplace") return;
+    const el = listingsSentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextListings && !isFetchingMoreListings) {
+          fetchNextListings();
+        }
+      },
+      { rootMargin: "600px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [activeTab, hasNextListings, isFetchingMoreListings, fetchNextListings, listings.length]);
+
+  // Manual "Retry" handler kept for the error states.
+  const refetchListings = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["onchain-listings"] });
+  }, [queryClient]);
 
   return (
     <div className="min-h-screen pb-20">
@@ -254,7 +369,7 @@ function Onchain() {
           ] as const).map(({ v, label, Icon }) => (
             <button
               key={v}
-              onClick={() => { setActiveTab(v); setPage(0); }}
+              onClick={() => setActiveTab(v)}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === v
                   ? "text-foreground border-primary"
@@ -272,7 +387,7 @@ function Onchain() {
           {TYPE_FILTERS.map((f) => (
             <button
               key={f.value}
-              onClick={() => setActivityFilter(f.value)}
+              onClick={() => setTypeFilter(f.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                 typeFilter === f.value
                   ? "bg-primary text-primary-foreground"
@@ -400,30 +515,46 @@ function Onchain() {
         </div>
 
         {/* Pagination */}
-        {(page > 0 || hasMore) && !isError && (
-          <div className="flex justify-center gap-3 mt-6">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!hasMore}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
+        {/* Infinite-scroll sentinel + tail state. Renders a fixed-height div
+            the IntersectionObserver watches, plus a small status line below
+            so users get visible feedback when more pages are loading vs when
+            the cap or end has been hit. */}
+        {!isError && (
+          <>
+            <div ref={activitySentinelRef} className="h-1" aria-hidden />
+            <div className="py-6 text-center text-xs text-muted-foreground">
+              {isFetchingMoreActivity
+                ? "Loading more…"
+                : !hasNextActivity && activities.length > 0
+                ? activities.length >= ITEM_CAP
+                  ? `Showing the most recent ${ITEM_CAP.toLocaleString()} events.`
+                  : "End of activity feed."
+                : ""}
+            </div>
+          </>
         )}
         </>)}
 
         {/* ─── Marketplace branch ─────────────────────────────────────────── */}
         {activeTab === "marketplace" && (<>
+          {/* Sort dropdown above the grid. Same three options Magic Eden's
+              own UI shows. Changing the selection resets the infinite scroll
+              (because marketplaceSort is in the query key). */}
+          <div className="flex justify-end mb-4">
+            <Select value={marketplaceSort} onValueChange={(v) => setMarketplaceSort(v as MarketplaceSort)}>
+              <SelectTrigger className="w-[200px] bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MARKETPLACE_SORTS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {listingsError && (
             <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive mb-4">
               <AlertTriangle className="w-5 h-5 shrink-0" />
@@ -467,6 +598,17 @@ function Onchain() {
                       NFT
                     </div>
                   )}
+                  {/* Card title — from Magic Eden's token.name (e.g.
+                      "2023 #001 Squirtle CGC 10 ..."). Two lines max, clamped
+                      so long names don't blow out the grid row height. */}
+                  {l.name && (
+                    <p
+                      className="text-sm font-semibold text-foreground mt-2 leading-tight line-clamp-2"
+                      title={l.name}
+                    >
+                      {l.name}
+                    </p>
+                  )}
                   <div className="mt-2 flex items-start justify-between gap-2">
                     {(() => {
                       const fmt = formatTradePrice(l.price, l.priceInfo, solUsd);
@@ -501,25 +643,19 @@ function Onchain() {
             )}
           </div>
 
-          {(page > 0 || listingsHasMore) && !listingsError && (
-            <div className="flex justify-center gap-3 mt-6">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!listingsHasMore}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
+          {!listingsError && (
+            <>
+              <div ref={listingsSentinelRef} className="h-1" aria-hidden />
+              <div className="py-6 text-center text-xs text-muted-foreground">
+                {isFetchingMoreListings
+                  ? "Loading more…"
+                  : !hasNextListings && listings.length > 0
+                  ? listings.length >= ITEM_CAP
+                    ? `Showing ${ITEM_CAP.toLocaleString()} listings.`
+                    : "End of listings."
+                  : ""}
+              </div>
+            </>
           )}
         </>)}
       </div>

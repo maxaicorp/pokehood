@@ -109,20 +109,53 @@ Deno.serve(async (req) => {
 
     const raw = (await res.json()) as MeListing[];
     // Normalize so the frontend doesn't depend on ME's exact shape.
-    const items: NormalizedListing[] = (raw ?? []).map((l) => ({
-      pdaAddress: l.pdaAddress,
-      tokenMint: l.tokenMint,
-      collection,
-      seller: l.seller,
-      price: l.price,
-      priceInfo: l.priceInfo,
-      name: l.token?.name,
-      image: l.extra?.img,
-      rarityRank: l.rarity?.howRare?.rank ?? null,
-      marketplaceUrl: `https://magiceden.us/item-details/${l.tokenMint}`,
-    }));
+    // Also drop non-Pokémon items — the Collector Crypt platform tokenizes
+    // other brands' physical items (currently "moonbirds physical collectible")
+    // and they share the same collection symbol on Magic Eden. They display
+    // as identical mystery-pack placeholders and have no Pokémon trait data,
+    // so they're noise on the marketplace tab. Filter by exact name match
+    // for now; expand the blocklist when other non-Pokémon items appear.
+    const NAME_BLOCKLIST = new Set(["moonbirds physical collectible"]);
+    const items: NormalizedListing[] = (raw ?? [])
+      .filter((l) => {
+        const nm = (l.token?.name ?? "").trim().toLowerCase();
+        if (!nm) return false; // no name = generic placeholder, skip
+        if (NAME_BLOCKLIST.has(nm)) return false;
+        return true;
+      })
+      .map((l) => ({
+        pdaAddress: l.pdaAddress,
+        tokenMint: l.tokenMint,
+        collection,
+        seller: l.seller,
+        price: l.price,
+        priceInfo: l.priceInfo,
+        name: l.token?.name,
+        image: l.extra?.img,
+        rarityRank: l.rarity?.howRare?.rank ?? null,
+        marketplaceUrl: `https://magiceden.us/item-details/${l.tokenMint}`,
+      }));
 
-    return new Response(JSON.stringify({ items }), {
+    // Optionally fetch total listings count for the collection. Used by the
+    // frontend's "Price: High to Low" sort, which has to walk offsets from
+    // the end (Magic Eden's listings endpoint sorts ascending only). The
+    // /stats endpoint is cheap and returns listedCount alongside floor/vol.
+    let totalListings: number | null = null;
+    if (url.searchParams.get("include_total") === "1") {
+      try {
+        const sRes = await fetch(`${ME_API}/collections/${collection}/stats`, {
+          headers: { Accept: "application/json" },
+        });
+        if (sRes.ok) {
+          const s = await sRes.json();
+          totalListings = Number(s?.listedCount ?? null) || null;
+        }
+      } catch {
+        // Non-fatal — frontend can fall back to a default if total is null.
+      }
+    }
+
+    return new Response(JSON.stringify({ items, totalListings }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
