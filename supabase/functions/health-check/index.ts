@@ -54,15 +54,55 @@ async function checkPriceSnapshotFreshness(
 async function checkCardCoverage(
   supabase: any,
 ): Promise<CheckResult> {
+  // Count distinct CARDS the site can currently display, not history rows.
+  // This is the latest_card_prices table (one row per card) — what the
+  // Market RPC actually reads. Counting price_snapshots history (~240k
+  // rows for 22k cards × ~11 days) was misleading: the displayed number
+  // grew over time even though the user-visible card count was constant.
   const { count, error } = await supabase
-    .from("price_snapshots")
+    .from("latest_card_prices")
     .select("card_id", { count: "exact", head: true })
     .not("card_id", "like", "sealed-%");
 
   if (error) return { ok: false, message: "DB query failed", detail: error.message };
   const n = count ?? 0;
-  if (n < 1000) return { ok: false, message: `Only ${n} card snapshots (expected ≥ 1,000)` };
-  return { ok: true, message: `${n.toLocaleString()} card snapshots in DB` };
+  if (n < 1000) return { ok: false, message: `Only ${n} cards in the live cache (expected >= 1,000)` };
+  return { ok: true, message: `${n.toLocaleString()} cards displayable on the site` };
+}
+
+// "Is the precomputed cache the site reads fresh?" Looks at the most recent
+// refreshed_at in latest_card_prices. The cache is refreshed at the end of
+// every successful snapshot run via refresh_latest_card_prices(). If this is
+// stale, the snapshot may have run but the read-side table was never
+// updated — which means the site is serving yesterday's prices regardless
+// of whether the cron itself succeeded.
+async function checkLiveCacheFreshness(
+  supabase: any,
+): Promise<CheckResult> {
+  const { data, error } = await supabase
+    .from("latest_card_prices")
+    .select("refreshed_at")
+    .order("refreshed_at", { ascending: false })
+    .limit(1);
+
+  if (error) return { ok: false, message: "DB query failed", detail: error.message };
+  const row = Array.isArray(data) ? data[0] : data;
+  const ts = row?.refreshed_at as string | undefined;
+  if (!ts) return { ok: false, message: "latest_card_prices is empty" };
+  const ageMs = Date.now() - new Date(ts).getTime();
+  const ageHours = ageMs / 3_600_000;
+  if (ageHours > 36) {
+    return {
+      ok: false,
+      message: `Cache refreshed ${ageHours.toFixed(1)}h ago (${ts}). Site is showing stale prices.`,
+      detail: { refreshed_at: ts, age_hours: ageHours },
+    };
+  }
+  return {
+    ok: true,
+    message: `Cache refreshed ${ageHours < 1 ? `${Math.round(ageMs / 60_000)}m` : `${ageHours.toFixed(1)}h`} ago — site is showing current prices.`,
+    detail: { refreshed_at: ts, age_hours: ageHours },
+  };
 }
 
 async function checkSealedFreshness(
@@ -283,9 +323,10 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [freshness, coverage, sealedFreshness, scrydex, statsRpc, images, snapshotHistory] = await Promise.all([
+  const [freshness, coverage, liveCache, sealedFreshness, scrydex, statsRpc, images, snapshotHistory] = await Promise.all([
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
+    checkLiveCacheFreshness(supabase),
     checkSealedFreshness(supabase),
     checkScrydexProxy(apiKey, teamId),
     checkCardStatsRpc(supabase),
@@ -296,9 +337,14 @@ serve(async (req) => {
   const dailyRun = checkDailyRun(snapshotHistory.last_daily);
   const fullRun  = checkFullRun(snapshotHistory.last_full);
 
+  // Order matters here — this is the order they render on the admin page.
+  // live_cache_freshness goes first because it's the most important single
+  // signal: "is the site showing fresh data right now?" Everything else is
+  // upstream-pipeline detail.
   const checks = {
-    price_snapshot_freshness: freshness,
+    live_cache_freshness: liveCache,
     card_coverage: coverage,
+    price_snapshot_freshness: freshness,
     sealed_freshness: sealedFreshness,
     daily_snapshot_run: dailyRun,
     full_snapshot_run: fullRun,

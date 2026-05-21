@@ -29,8 +29,9 @@ interface HealthReport {
 }
 
 const CHECK_LABELS: Record<string, string> = {
+  live_cache_freshness: "Live site cache freshness",
+  card_coverage: "Cards displayable on the site",
   price_snapshot_freshness: "Price snapshot freshness",
-  card_coverage: "Card coverage",
   sealed_freshness: "Sealed snapshot freshness",
   daily_snapshot_run: "Daily snapshot cron",
   full_snapshot_run: "Weekly full-coverage cron",
@@ -40,12 +41,14 @@ const CHECK_LABELS: Record<string, string> = {
 };
 
 const CHECK_HELP: Record<string, string> = {
+  live_cache_freshness:
+    "The single most important signal: when was the precomputed table the site reads (latest_card_prices) last refreshed? Goes red if older than 36 hours, regardless of whether the snapshot cron itself ran successfully.",
   daily_snapshot_run:
-    "Daily cron writes ~7–12k card rows. Should run every day. If stale, check Supabase → Database → Cron Jobs.",
+    "Daily cron writes ~7-12k card rows. Should run every day. If stale, check Supabase → Database → Cron Jobs.",
   full_snapshot_run:
     "Weekly { mode:'full' } cron writes ~17k+ priced physical card rows in one run — refreshes middle-numbered cards that daily mode skips. If missing, the weekly schedule isn't set up.",
   card_coverage:
-    "Total distinct card snapshots ever written. Coverage growing means Scrydex is returning prices for more cards over time.",
+    "Distinct cards in the live read-side cache (latest_card_prices). This is the universe of cards the site can display prices for right now.",
   scrydex_proxy:
     "Live check against Scrydex /account/v1/usage. Warns at <500 credits remaining. Starter tier resets monthly.",
 };
@@ -113,7 +116,14 @@ export default function AdminHealth() {
     const friendly = mode === "full" ? "Full snapshot (~17k+ priced cards, ~6 min)" : "Daily snapshot (~12k cards, ~2 min)";
     toast.info(`${friendly} started in background.`);
     try {
-      const body = mode === "full" ? { mode: "full" } : {};
+      // force:true overrides snapshot-prices's per-day idempotency guard.
+      // Without it, clicking Daily after today's snapshot already ran returns
+      // success: true, skipped: true — the user sees a green toast and zero
+      // actual effect, which makes the button feel broken. With force the
+      // cron actually re-runs and the cache table really does refresh.
+      const body = mode === "full"
+        ? { mode: "full", force: true }
+        : { force: true };
       const { error } = await supabase.functions.invoke("snapshot-prices", { body });
       if (error) throw error;
       // Broadcast to every open tab to reload its prices on next visibility.
