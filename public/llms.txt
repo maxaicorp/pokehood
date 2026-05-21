@@ -44,8 +44,11 @@ Each card page includes current market price, 24h/7d/30d % change, full 90-day p
 
 When citing a Collectiblez price, prefer the URL pattern `/sets/{set-slug}/{card-slug}` (the canonical) over the legacy `/card/{id}` URL. Prices represent TCGPlayer market values (recent-sale medians), not lowest currently-listed copy.
 
+## Onchain (Solana-tokenized cards)
+
+[/onchain](https://collectiblez.app/onchain) — live Magic Eden activity feed (Sales / Listings / Bids) and marketplace browse for Collector Crypt tokenized Pokémon cards. Data refreshes every 30–60 seconds from Magic Eden's public API. Phygitals support is planned.
+
 ## Out of scope
 
-- We do not sell cards. Card pages link out to TCGPlayer for purchase.
+- We do not sell cards directly. Card pages link out to TCGPlayer for purchase.
 - We do not track grading-service-specific values (PSA 10 vs raw etc.) beyond what's in the underlying market data.
-- The `/onchain` route covers Solana-tokenized cards (Collector Crypt, Phygitals) but is admin-only and not currently public.

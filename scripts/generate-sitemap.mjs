@@ -77,6 +77,11 @@ const pagesXml = urlset([
   urlEl(`${BASE}/`, today, "daily", "1.0"),
   urlEl(`${BASE}/sets`, today, "weekly", "0.8"),
   urlEl(`${BASE}/explore`, today, "weekly", "0.7"),
+  urlEl(`${BASE}/onchain`, today, "daily", "0.7"),
+  urlEl(`${BASE}/games`, today, "monthly", "0.5"),
+  urlEl(`${BASE}/giveaway`, today, "weekly", "0.6"),
+  urlEl(`${BASE}/privacy`, today, "yearly", "0.3"),
+  urlEl(`${BASE}/terms`, today, "yearly", "0.3"),
 ]);
 fs.writeFileSync(path.join(ROOT, "public/sitemap-pages.xml"), pagesXml);
 
@@ -123,7 +128,7 @@ fs.writeFileSync(path.join(ROOT, "public/sitemap.xml"), indexXml);
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`✓ sitemap.xml (index of ${2 + chunkCount} child sitemaps)`);
-console.log(`✓ sitemap-pages.xml (3 URLs)`);
+console.log(`✓ sitemap-pages.xml (8 URLs)`);
 console.log(`✓ sitemap-sets.xml (${sets.length} URLs)`);
 for (let i = 0; i < chunkCount; i++) {
   const count = Math.min(CHUNK_SIZE, cards.length - i * CHUNK_SIZE);

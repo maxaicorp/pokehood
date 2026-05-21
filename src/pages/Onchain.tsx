@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import AppHeader from "@/components/AppHeader";
-import AdminRouteGuard from "@/components/AdminRouteGuard";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -80,12 +79,14 @@ interface Listing {
 type OnchainTab = "activity" | "marketplace";
 
 export default function OnchainPage() {
-  // Admin-only for now. Move the export to <OnchainContent /> and gate at the
-  // top so the route is unreachable for non-admins.
+  // Public as of 2026-05-21 — the admin gate came off when the feature was
+  // ready enough to show to everyone. Data is all from Magic Eden's public
+  // API anyway, no privacy concern. Wrapper kept as the default export so
+  // future re-gating is a one-line change.
   return (
-    <AdminRouteGuard>
+    <>
       <Onchain />
-    </AdminRouteGuard>
+    </>
   );
 }
 
