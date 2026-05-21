@@ -76,9 +76,11 @@ Deno.serve(async (req) => {
     const offset = url.searchParams.get("offset") || "0";
     const requestedLimit = Number(url.searchParams.get("limit") ?? DEFAULT_LIMIT);
     const limit = Math.max(1, Math.min(MAX_LIMIT, isNaN(requestedLimit) ? DEFAULT_LIMIT : requestedLimit));
-    // ME supports min_price, max_price, sort (listPrice/priceAsc, etc.), sortDirection.
+    // ME listings endpoint supports: offset, limit, min_price, max_price,
+    // attributes, sort (listPrice), listingAggMode. It does NOT accept a
+    // sortDirection param — passing it returns 500 "Missing field spec:
+    // sortDirection". Direction is implicit (ascending by listPrice).
     const sort = url.searchParams.get("sort") || "listPrice";
-    const sortDirection = url.searchParams.get("sortDirection") || "asc";
     const minPrice = url.searchParams.get("min_price");
     const maxPrice = url.searchParams.get("max_price");
 
@@ -93,8 +95,8 @@ Deno.serve(async (req) => {
       offset,
       limit: String(limit),
       sort,
-      sortDirection,
     });
+
     if (minPrice) params.set("min_price", minPrice);
     if (maxPrice) params.set("max_price", maxPrice);
 

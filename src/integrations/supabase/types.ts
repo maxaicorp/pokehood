@@ -721,6 +721,13 @@ export type Database = {
           set_name: string
         }[]
       }
+      get_filter_summary: {
+        Args: { p_set_ids?: string[]; p_top_n?: number }
+        Returns: {
+          card_count: number
+          total_value: number
+        }[]
+      }
       get_game_leaderboard: {
         Args: { p_end: string; p_game: string; p_start: string }
         Returns: {
