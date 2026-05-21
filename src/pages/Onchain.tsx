@@ -28,6 +28,11 @@ interface Activity {
   image?: string;
   // Full priceInfo so we can detect USDC trades vs SOL trades.
   priceInfo?: PriceInfo;
+  // Card name — injected by the onchain-activity edge function via Helius
+  // getAssetBatch. ME's /activities response doesn't include the human
+  // name, only tokenMint. Optional because Helius enrichment is
+  // best-effort; if it fails, we fall back to rendering the mint address.
+  name?: string;
 }
 
 const TYPE_FILTERS = [
@@ -467,9 +472,20 @@ function Onchain() {
                       {a.source.replace("magiceden_v2", "Magic Eden")}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1 font-mono truncate">
-                    Mint: {shortenAddress(a.tokenMint)}
-                  </p>
+                  {/* Card name (Helius-enriched) — falls back to mint
+                      address if Helius didn't return a name for this mint. */}
+                  {a.name ? (
+                    <p
+                      className="text-sm font-semibold text-foreground mt-1 truncate"
+                      title={a.name}
+                    >
+                      {a.name}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-1 font-mono truncate">
+                      Mint: {shortenAddress(a.tokenMint)}
+                    </p>
+                  )}
                   <div className="text-xs text-muted-foreground mt-1 flex items-center gap-x-3 gap-y-1 flex-wrap">
                     {a.buyer && (
                       <span>

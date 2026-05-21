@@ -13,6 +13,64 @@ const noStoreHeaders = {
 };
 
 const ME_API = "https://api-mainnet.magiceden.dev/v2";
+const HELIUS_RPC = "https://mainnet.helius-rpc.com";
+
+// Enrich activity rows with card names via Helius getAssetBatch. Takes ME's
+// activity objects (which only have tokenMint, no name) and returns them with
+// a `name` field added wherever we can resolve it. Best-effort: any error
+// returns the activities unchanged so the page still loads.
+//
+// One Helius RPC call covers up to ~1000 mints per batch. Our page sizes are
+// way below that. ~1 Helius credit per page load.
+interface ActivityRow {
+  tokenMint?: string;
+  name?: string;
+  [k: string]: unknown;
+}
+
+async function enrichWithNames<T extends ActivityRow>(rows: T[]): Promise<T[]> {
+  const apiKey = Deno.env.get("HELIUS_API_KEY");
+  if (!apiKey || rows.length === 0) return rows;
+  const uniqueMints = [...new Set(rows.map((r) => r.tokenMint).filter((m): m is string => !!m))];
+  if (uniqueMints.length === 0) return rows;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5_000);
+    const res = await fetch(`${HELIUS_RPC}/?api-key=${apiKey}`, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "onchain-activity-enrich",
+        method: "getAssetBatch",
+        params: { ids: uniqueMints },
+      }),
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return rows;
+
+    const j = await res.json() as {
+      result?: Array<{ id?: string; content?: { metadata?: { name?: string } } }>;
+    };
+    const nameByMint = new Map<string, string>();
+    for (const asset of j.result ?? []) {
+      const id = asset?.id;
+      const name = asset?.content?.metadata?.name;
+      if (id && name) nameByMint.set(id, name);
+    }
+    if (nameByMint.size === 0) return rows;
+
+    return rows.map((r) => {
+      const name = r.tokenMint ? nameByMint.get(r.tokenMint) : undefined;
+      return name ? { ...r, name } : r;
+    });
+  } catch (e) {
+    console.error("enrichWithNames failed:", e);
+    return rows;
+  }
+}
 
 // Known Collector Crypt collections on Magic Eden
 const COLLECTIONS = [
@@ -73,7 +131,15 @@ Deno.serve(async (req) => {
     filtered.sort((a, b) => (b.blockTime ?? 0) - (a.blockTime ?? 0));
     const paged = filtered.slice(offset, offset + limit);
 
-    return new Response(JSON.stringify(paged), {
+    // Enrich with card names via Helius getAssetBatch. ME's activity feed
+    // includes only tokenMint, not the card name — so without this step every
+    // Activity row would show "Mint: EkFq...dEyq" with no human-readable
+    // title. One Helius RPC call covers all unique mints in the page (20-200
+    // mints, ~1 Helius credit). Strictly best-effort: any failure here just
+    // returns the events without names rather than failing the request.
+    const enriched = await enrichWithNames(paged);
+
+    return new Response(JSON.stringify(enriched), {
       headers: { ...corsHeaders, ...noStoreHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
