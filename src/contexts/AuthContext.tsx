@@ -78,10 +78,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Reset adminChecked before each new lookup so guards know to wait again
       // (covers fast user-switch scenarios where the old `true` would stick).
       setAdminChecked(false);
-      supabase.rpc("has_role", { _user_id: session.user.id, _role: "admin" })
-        .then(({ data }) => setIsAdmin(!!data))
-        .catch(() => setIsAdmin(false))
-        .finally(() => setAdminChecked(true));
+      (async () => {
+        try {
+          const { data } = await supabase.rpc("has_role", { _user_id: session.user.id, _role: "admin" });
+          setIsAdmin(!!data);
+        } catch {
+          setIsAdmin(false);
+        } finally {
+          setAdminChecked(true);
+        }
+      })();
     } else {
       setSubscription({ subscribed: false, productId: null, subscriptionEnd: null });
       setIsAdmin(false);
