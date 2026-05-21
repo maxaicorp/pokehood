@@ -484,7 +484,7 @@ export default function Market() {
       <SEO
         title="Pokémon TCG Market Prices & Trends — Collectiblez"
         description="Live market prices, 24h/7d trends, gainers, losers, and sealed product values for every Pokémon TCG expansion."
-        path="/market"
+        path="/"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "CollectionPage",

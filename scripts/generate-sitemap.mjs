@@ -8,7 +8,7 @@
  *
  * Run:    node scripts/build-sitemap.js
  * Output: public/sitemap.xml          — sitemap index
- *         public/sitemap-pages.xml    — homepage + market + sets + explore
+ *         public/sitemap-pages.xml    — homepage + sets + explore
  *         public/sitemap-sets.xml     — every /sets/:slug
  *         public/sitemap-cards-N.xml  — chunks of /sets/:slug/:cardSlug
  *
@@ -70,9 +70,11 @@ const today = new Date().toISOString().slice(0, 10);
 
 // ─── Build static pages sitemap ──────────────────────────────────────────────
 
+// /market is intentionally omitted — it's an alias of / (both routes serve the
+// same Market component). Including both would create duplicate content. The
+// canonical emitted by Market.tsx points to / regardless of which route hit.
 const pagesXml = urlset([
   urlEl(`${BASE}/`, today, "daily", "1.0"),
-  urlEl(`${BASE}/market`, today, "daily", "0.9"),
   urlEl(`${BASE}/sets`, today, "weekly", "0.8"),
   urlEl(`${BASE}/explore`, today, "weekly", "0.7"),
 ]);
@@ -121,7 +123,7 @@ fs.writeFileSync(path.join(ROOT, "public/sitemap.xml"), indexXml);
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 console.log(`✓ sitemap.xml (index of ${2 + chunkCount} child sitemaps)`);
-console.log(`✓ sitemap-pages.xml (4 URLs)`);
+console.log(`✓ sitemap-pages.xml (3 URLs)`);
 console.log(`✓ sitemap-sets.xml (${sets.length} URLs)`);
 for (let i = 0; i < chunkCount; i++) {
   const count = Math.min(CHUNK_SIZE, cards.length - i * CHUNK_SIZE);

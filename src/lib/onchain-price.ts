@@ -57,7 +57,13 @@ export function formatTradePrice(
       ? rawToNumber(priceInfo.splPrice)
       : null;
 
-  const sol = rawToNumber(priceInfo?.solPrice) ?? fallbackPriceSol ?? null;
+  // DO NOT use rawToNumber on priceInfo.solPrice. Magic Eden reports it with
+  // decimals=9 but the rawAmount is actually at 10^18 scale (attoSOL or
+  // similar), so applying the documented decimals yields nine-figure SOL
+  // numbers (verified 2026-05-20: a 3.4 SOL bid rendered as "8637200000.000").
+  // The top-level `price` field is already in human SOL units and matches
+  // every Magic Eden UI display, so use that.
+  const sol = fallbackPriceSol > 0 ? fallbackPriceSol : null;
 
   if (splUsdc != null) {
     // USDC trade. Primary is the actual USDC amount; secondary is SOL equivalent.
