@@ -16,6 +16,11 @@ interface AuthContextType {
   subscription: SubscriptionInfo;
   isPro: boolean;
   isAdmin: boolean;
+  // True once the has_role RPC has returned for the current session. Guards
+  // that gate on isAdmin (e.g. AdminRouteGuard) must wait on this — otherwise
+  // they redirect during the ~200ms window between session arrival and the
+  // RPC resolving, kicking real admins out to the home page.
+  adminChecked: boolean;
   limits: typeof FREE_TIER_LIMITS | typeof PRO_TIER_LIMITS;
   checkSubscription: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -27,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
   const [subscription, setSubscription] = useState<SubscriptionInfo>({
     subscribed: false,
     productId: null,
@@ -69,12 +75,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (session) {
       checkSubscription();
-      // Check admin role
+      // Reset adminChecked before each new lookup so guards know to wait again
+      // (covers fast user-switch scenarios where the old `true` would stick).
+      setAdminChecked(false);
       supabase.rpc("has_role", { _user_id: session.user.id, _role: "admin" })
-        .then(({ data }) => setIsAdmin(!!data));
+        .then(({ data }) => setIsAdmin(!!data))
+        .catch(() => setIsAdmin(false))
+        .finally(() => setAdminChecked(true));
     } else {
       setSubscription({ subscribed: false, productId: null, subscriptionEnd: null });
       setIsAdmin(false);
+      // No session means the admin question is settled (no, they're not).
+      setAdminChecked(true);
     }
   }, [session, checkSubscription]);
 
@@ -96,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, subscription, isPro, isAdmin, limits, checkSubscription, signOut }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, subscription, isPro, isAdmin, adminChecked, limits, checkSubscription, signOut }}>
       {children}
     </AuthContext.Provider>
   );

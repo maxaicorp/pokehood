@@ -64,7 +64,11 @@ const App = () => (
                   <Route path="/u/:slug" element={<Profile />} />
                   <Route path="/card/:id" element={<CardDetail />} />
                   <Route path="/sealed/:id" element={<SealedDetail />} />
-                  <Route path="/market" element={<Market />} />
+                  {/* /market route intentionally removed 2026-05-20 — the
+                      URL is being reserved for a future "buy/sell" marketplace
+                      that will list actual cards for sale. The homepage at /
+                      continues to serve the existing Market price-tracker
+                      component, unchanged. */}
                   <Route path="/sets" element={<Sets />} />
                   <Route path="/sets/:slug" element={<SetDetail />} />
                   <Route path="/sets/:slug/:cardSlug" element={<CardDetail />} />
