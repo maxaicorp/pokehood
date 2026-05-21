@@ -65,23 +65,31 @@ export function formatTradePrice(
   // every Magic Eden UI display, so use that.
   const sol = fallbackPriceSol > 0 ? fallbackPriceSol : null;
 
+  // USD-only display (per user spec 2026-05-21). Drop the SOL subtitle on
+  // every row — site visitors don't care about lamport precision, they want
+  // dollar amounts that match what they'd pay. The green tint on isUsdc
+  // distinguishes real USDC settlement from a SOL trade we converted, which
+  // is the one piece of cross-currency signal worth keeping.
   if (splUsdc != null) {
-    // USDC trade. Primary is the actual USDC amount; secondary is SOL equivalent.
     return {
       primary: `$${splUsdc.toFixed(2)}`,
-      secondary: sol != null ? `≈ ◎ ${sol.toFixed(3)}` : "",
+      secondary: "",
       isUsdc: true,
     };
   }
 
-  // SOL trade. Primary is SOL; secondary is USD equivalent if we have a spot rate.
+  // SOL trade — show the USD equivalent. If the SOL/USD spot rate isn't
+  // available (both Jupiter and Pyth down), render a dash; never fall back
+  // to a SOL number per the no-SOL spec.
   if (sol == null) {
     return { primary: "—", secondary: "", isUsdc: false };
   }
-  const usd = solUsdSpot != null ? sol * solUsdSpot : null;
+  if (solUsdSpot == null) {
+    return { primary: "—", secondary: "", isUsdc: false };
+  }
   return {
-    primary: `◎ ${sol.toFixed(3)}`,
-    secondary: usd != null ? `≈ $${usd.toFixed(2)}` : "",
+    primary: `$${(sol * solUsdSpot).toFixed(2)}`,
+    secondary: "",
     isUsdc: false,
   };
 }
