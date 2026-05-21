@@ -18,17 +18,44 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Pyth's Hermes service exposes price feeds over plain HTTP, no auth, with
+// no IP-based rate limit that matters for our traffic. It's the canonical
+// price source on Solana and what most DeFi UIs already read. The feed ID
+// below is Crypto.SOL/USD on mainnet.
+const PYTH_SOL_USD_ID = "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
+const PYTH_URL = `https://hermes.pyth.network/v2/updates/price/latest?ids%5B%5D=${PYTH_SOL_USD_ID}`;
+// Fallback if Pyth is unreachable. Jupiter is our second-favorite because the
+// number tends to match what Magic Eden displays (both read Jupiter-aggregated
+// liquidity for tokens, while Pyth reads CEX-aggregated oracle data — the two
+// usually differ by <0.5%, well below SOL/USD volatility).
 const JUPITER_URL = "https://price.jup.ag/v6/price?ids=SOL";
-const COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd";
 const CACHE_TTL_MS = 60_000;
 
 interface CachedPrice {
   price: number;
-  source: "jupiter" | "coingecko";
+  source: "pyth" | "jupiter";
   fetchedAt: number;
 }
 
 let cache: CachedPrice | null = null;
+
+async function fetchPyth(): Promise<number | null> {
+  try {
+    const r = await fetch(PYTH_URL, { headers: { Accept: "application/json" } });
+    if (!r.ok) return null;
+    const j = await r.json();
+    // Response shape: { parsed: [{ price: { price: "1499950000", expo: -8, ... } }] }
+    const entry = j?.parsed?.[0]?.price;
+    if (!entry) return null;
+    const raw = Number(entry.price);
+    const expo = Number(entry.expo);
+    if (!Number.isFinite(raw) || !Number.isFinite(expo)) return null;
+    const price = raw * Math.pow(10, expo);
+    return price > 0 ? price : null;
+  } catch {
+    return null;
+  }
+}
 
 async function fetchJupiter(): Promise<number | null> {
   try {
@@ -36,18 +63,6 @@ async function fetchJupiter(): Promise<number | null> {
     if (!r.ok) return null;
     const j = await r.json();
     const p = j?.data?.SOL?.price;
-    return typeof p === "number" && p > 0 ? p : null;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchCoinGecko(): Promise<number | null> {
-  try {
-    const r = await fetch(COINGECKO_URL, { headers: { Accept: "application/json" } });
-    if (!r.ok) return null;
-    const j = await r.json();
-    const p = j?.solana?.usd;
     return typeof p === "number" && p > 0 ? p : null;
   } catch {
     return null;
@@ -67,12 +82,12 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Try Jupiter first, fall back to CoinGecko.
-  let price = await fetchJupiter();
-  let source: CachedPrice["source"] = "jupiter";
+  // Try Pyth first, fall back to Jupiter.
+  let price = await fetchPyth();
+  let source: CachedPrice["source"] = "pyth";
   if (price == null) {
-    price = await fetchCoinGecko();
-    source = "coingecko";
+    price = await fetchJupiter();
+    source = "jupiter";
   }
 
   if (price == null) {
