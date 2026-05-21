@@ -18,22 +18,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Pyth's Hermes service exposes price feeds over plain HTTP, no auth, with
-// no IP-based rate limit that matters for our traffic. It's the canonical
-// price source on Solana and what most DeFi UIs already read. The feed ID
-// below is Crypto.SOL/USD on mainnet.
+// Jupiter is our primary source because (a) with a JUPITER_API_KEY set as a
+// Supabase secret it has no rate-limit risk for our traffic, and (b) its
+// price reads the same Solana DEX liquidity that Magic Eden's UI displays,
+// so the USD subtitles we render line up with what users see on ME.
+const JUPITER_URL = "https://price.jup.ag/v6/price?ids=SOL";
+// Pyth Hermes is the fallback. Free HTTP, no auth, but Pyth blocks some
+// regions/IPs aggressively (verified 2026-05-21 from local), so we don't
+// trust it as primary. Pyth's number is CEX-aggregated and may differ from
+// the Solana DEX price Jupiter reads by ~0.5% — fine for a fallback.
 const PYTH_SOL_USD_ID = "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
 const PYTH_URL = `https://hermes.pyth.network/v2/updates/price/latest?ids%5B%5D=${PYTH_SOL_USD_ID}`;
-// Fallback if Pyth is unreachable. Jupiter is our second-favorite because the
-// number tends to match what Magic Eden displays (both read Jupiter-aggregated
-// liquidity for tokens, while Pyth reads CEX-aggregated oracle data — the two
-// usually differ by <0.5%, well below SOL/USD volatility).
-const JUPITER_URL = "https://price.jup.ag/v6/price?ids=SOL";
 const CACHE_TTL_MS = 60_000;
 
 interface CachedPrice {
   price: number;
-  source: "pyth" | "jupiter";
+  source: "jupiter" | "pyth";
   fetchedAt: number;
 }
 
@@ -88,12 +88,12 @@ Deno.serve(async (req) => {
     );
   }
 
-  // Try Pyth first, fall back to Jupiter.
-  let price = await fetchPyth();
-  let source: CachedPrice["source"] = "pyth";
+  // Try Jupiter first (matches what Magic Eden shows). Pyth as fallback.
+  let price = await fetchJupiter();
+  let source: CachedPrice["source"] = "jupiter";
   if (price == null) {
-    price = await fetchJupiter();
-    source = "jupiter";
+    price = await fetchPyth();
+    source = "pyth";
   }
 
   if (price == null) {
