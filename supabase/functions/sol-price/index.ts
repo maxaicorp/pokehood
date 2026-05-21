@@ -59,7 +59,13 @@ async function fetchPyth(): Promise<number | null> {
 
 async function fetchJupiter(): Promise<number | null> {
   try {
-    const r = await fetch(JUPITER_URL, { headers: { Accept: "application/json" } });
+    // Optional Jupiter Pro key for higher rate limits. If the JUPITER_API_KEY
+    // secret is set in Supabase, we send it as x-api-key; otherwise the call
+    // hits the free unauthenticated endpoint (shared IP rate limit applies).
+    const apiKey = Deno.env.get("JUPITER_API_KEY");
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (apiKey) headers["x-api-key"] = apiKey;
+    const r = await fetch(JUPITER_URL, { headers });
     if (!r.ok) return null;
     const j = await r.json();
     const p = j?.data?.SOL?.price;
