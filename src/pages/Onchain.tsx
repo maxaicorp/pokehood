@@ -165,8 +165,21 @@ function Onchain() {
       });
       if (!res.ok) throw new Error(`Activity feed unavailable (${res.status})`);
       const raw = (await res.json()) as Activity[];
-      // Defensive client-side filter — ME's ?type= sometimes leaks neighbors.
-      return typeFilter ? raw.filter((a) => a.type === typeFilter) : raw;
+      // Defensive client-side filter — multi-layer:
+      //   1. ME's ?type= filter (server-side, primary)
+      //   2. Edge function strict re-filter (server-side, also primary)
+      //   3. This client-side filter (defense in depth — never trust upstream)
+      // The "Sales tab shows Bids" bug recurred so many times that bypassing
+      // any of these is unacceptable. Hard guard: if a typeFilter is set, the
+      // ONLY allowed type in the rendered list is exactly that string.
+      if (typeFilter) {
+        const leaked = raw.filter((a) => a.type !== typeFilter);
+        if (leaked.length > 0) {
+          console.warn(`[onchain] ${leaked.length}/${raw.length} events leaked through ${typeFilter} filter (types: ${[...new Set(leaked.map(l => l.type))].join(",")})`);
+        }
+        return raw.filter((a) => a.type === typeFilter);
+      }
+      return raw;
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
@@ -252,6 +265,18 @@ function Onchain() {
       });
       if (!res.ok) throw new Error(`Marketplace unavailable (${res.status})`);
       const body = (await res.json()) as { items?: Listing[]; totalListings?: number | null };
+
+      // Client-side blocklist as defense-in-depth — even when the edge function
+      // hasn't deployed the latest filter, the page never shows these. Same list
+      // as supabase/functions/onchain-listings/index.ts NAME_BLOCKLIST.
+      const filterBlocked = (items: Listing[]) =>
+        items.filter((l) => {
+          const nm = (l.name ?? "").trim().toLowerCase();
+          if (!nm) return false;
+          if (nm === "moonbirds physical collectible") return false;
+          return true;
+        });
+
       if (isReverse && total == null && body.totalListings != null) {
         total = body.totalListings;
         // First reverse-sort fetch landed at offset 0 (default). Now that we
@@ -270,14 +295,13 @@ function Onchain() {
           });
           if (r2.ok) {
             const b2 = (await r2.json()) as { items?: Listing[] };
-            const items = (b2.items ?? []).slice().reverse();
+            const items = filterBlocked((b2.items ?? []).slice().reverse());
             return { items, total };
           }
         }
       }
-      const items = isReverse
-        ? (body.items ?? []).slice().reverse()
-        : (body.items ?? []);
+      const raw = body.items ?? [];
+      const items = filterBlocked(isReverse ? raw.slice().reverse() : raw);
       return { items, total };
     },
     initialPageParam: { page: 0, total: null as number | null },
@@ -428,7 +452,7 @@ function Onchain() {
           {isLoading ? (
             Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border/50">
-                <Skeleton className="w-20 sm:w-24 aspect-[3/4] rounded-md" />
+                <Skeleton className="w-24 sm:w-32 aspect-[3/4] rounded-md" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-5 w-40" />
                   <Skeleton className="h-4 w-56" />
@@ -452,11 +476,11 @@ function Onchain() {
                   <img
                     src={a.image}
                     alt=""
-                    className="w-20 sm:w-24 aspect-[3/4] rounded-md object-cover bg-muted shrink-0"
+                    className="w-24 sm:w-32 aspect-[3/4] rounded-md object-cover bg-muted shrink-0"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-20 sm:w-24 aspect-[3/4] rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
+                  <div className="w-24 sm:w-32 aspect-[3/4] rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
                     NFT
                   </div>
                 )}
@@ -588,7 +612,7 @@ function Onchain() {
             {listingsLoading ? (
               Array.from({ length: 12 }).map((_, i) => (
                 <div key={i} className="rounded-lg bg-card border border-border/50 p-3 space-y-2">
-                  <Skeleton className="aspect-square rounded-md" />
+                  <Skeleton className="aspect-[3/4] rounded-md" />
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
@@ -602,15 +626,18 @@ function Onchain() {
                   rel="noopener noreferrer"
                   className="rounded-lg bg-card border border-border/50 p-3 hover:border-primary/30 hover:bg-card/80 transition-colors group block"
                 >
+                  {/* 3:4 portrait aspect — physical TCG cards are taller than
+                      they are wide. Square was leaving large empty bands on
+                      every tile and making the card art look tiny. */}
                   {l.image ? (
                     <img
                       src={l.image}
                       alt=""
-                      className="aspect-square w-full rounded-md object-cover bg-muted"
+                      className="aspect-[3/4] w-full rounded-md object-cover bg-muted"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="aspect-square w-full rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                    <div className="aspect-[3/4] w-full rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">
                       NFT
                     </div>
                   )}
