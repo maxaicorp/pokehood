@@ -269,12 +269,14 @@ function Onchain() {
       // Client-side blocklist as defense-in-depth — even when the edge function
       // hasn't deployed the latest filter, the page never shows these. Same list
       // as supabase/functions/onchain-listings/index.ts NAME_BLOCKLIST.
+      // NOTE: keep items with no name. They may be legitimate listings whose
+      // metadata isn't indexed yet; rendering with just price+image is better
+      // than dropping them and blanking the page (which is exactly what
+      // happened when this filter was strict-required a name 2026-05-21).
       const filterBlocked = (items: Listing[]) =>
         items.filter((l) => {
           const nm = (l.name ?? "").trim().toLowerCase();
-          if (!nm) return false;
-          if (nm === "moonbirds physical collectible") return false;
-          return true;
+          return nm !== "moonbirds physical collectible";
         });
 
       if (isReverse && total == null && body.totalListings != null) {

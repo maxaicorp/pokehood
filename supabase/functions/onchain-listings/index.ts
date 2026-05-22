@@ -91,9 +91,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Fetch a wider window from ME than the caller asked for so that, after
+    // filtering out moonbirds / non-Pokémon items, we still have enough
+    // entries to fill the requested page. Without this, the first ~80 ME
+    // listings sorted by price are nearly all moonbirds and the page comes
+    // back empty. ME caps `limit` at 100.
+    const fetchLimit = 100;
+    const fetchOffset = parseInt(offset, 10) * (fetchLimit / limit) || 0;
     const params = new URLSearchParams({
-      offset,
-      limit: String(limit),
+      offset: String(fetchOffset),
+      limit: String(fetchLimit),
       sort,
     });
 
@@ -115,11 +122,14 @@ Deno.serve(async (req) => {
     // as identical mystery-pack placeholders and have no Pokémon trait data,
     // so they're noise on the marketplace tab. Filter by exact name match
     // for now; expand the blocklist when other non-Pokémon items appear.
+    //
+    // Items with NO name are kept — they may be legitimate listings whose
+    // token metadata isn't indexed yet, and rendering them with just price +
+    // image is better than blank-screening the page.
     const NAME_BLOCKLIST = new Set(["moonbirds physical collectible"]);
-    const items: NormalizedListing[] = (raw ?? [])
+    const allItems: NormalizedListing[] = (raw ?? [])
       .filter((l) => {
         const nm = (l.token?.name ?? "").trim().toLowerCase();
-        if (!nm) return false; // no name = generic placeholder, skip
         if (NAME_BLOCKLIST.has(nm)) return false;
         return true;
       })
@@ -135,6 +145,9 @@ Deno.serve(async (req) => {
         rarityRank: l.rarity?.howRare?.rank ?? null,
         marketplaceUrl: `https://magiceden.us/item-details/${l.tokenMint}`,
       }));
+
+    // Slice down to what the caller actually asked for.
+    const items = allItems.slice(0, limit);
 
     // Optionally fetch total listings count for the collection. Used by the
     // frontend's "Price: High to Low" sort, which has to walk offsets from
