@@ -70,6 +70,54 @@ async function checkCardCoverage(
   return { ok: true, message: `${n.toLocaleString()} cards displayable on the site` };
 }
 
+// "Are there new sets we've collected snapshot data for but haven't ingested
+// into the static market-sets.json the frontend uses?" Calls the
+// scrydex-new-sets-check function and reports any high-priority gaps.
+// The me4 (Chaos Rising) case: we had 100 priced cards in the DB but no
+// /sets/chaos-rising landing page because the static metadata was missing.
+// This check would have surfaced that gap on day 1 instead of waiting for
+// a user to notice.
+async function checkNewSets(): Promise<CheckResult> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")
+      ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    if (!supabaseUrl) return { ok: true, message: "skipped (no SUPABASE_URL env)" };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const res = await fetch(`${supabaseUrl}/functions/v1/scrydex-new-sets-check`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return { ok: false, message: `scrydex-new-sets-check returned ${res.status}` };
+    const body = await res.json() as {
+      healthy?: boolean;
+      missingCount?: number;
+      missing?: Array<{ id: string; name: string; priority?: string; reason?: string }>;
+    };
+    const missing = body.missing ?? [];
+    const highPri = missing.filter((m) => m.priority === "high");
+    if (highPri.length === 0) {
+      return {
+        ok: true,
+        message: `All known sets are in the frontend catalog (${body.missingCount ?? 0} other gaps).`,
+        detail: body,
+      };
+    }
+    const names = highPri.slice(0, 3).map((m) => m.name).join(", ");
+    return {
+      ok: false,
+      message: `${highPri.length} new set(s) not in market-sets.json: ${names}${highPri.length > 3 ? `, +${highPri.length - 3} more` : ""}. Add them so /sets/{slug} pages exist.`,
+      detail: { high_priority: highPri, all: body },
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, message: `scrydex-new-sets-check failed: ${msg}` };
+  }
+}
+
 // "Are the 24h/7d/30d price deltas actually populated?" The site's % change
 // columns depend on latest_card_prices.{price_1d, price_7d, price_30d}.
 // If those are null on most cards, every row shows "—" instead of a
@@ -361,11 +409,12 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [freshness, coverage, liveCache, deltasComputed, sealedFreshness, scrydex, statsRpc, images, snapshotHistory] = await Promise.all([
+  const [freshness, coverage, liveCache, deltasComputed, newSets, sealedFreshness, scrydex, statsRpc, images, snapshotHistory] = await Promise.all([
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
     checkLiveCacheFreshness(supabase),
     checkDeltasComputed(supabase),
+    checkNewSets(),
     checkSealedFreshness(supabase),
     checkScrydexProxy(apiKey, teamId),
     checkCardStatsRpc(supabase),
@@ -377,13 +426,14 @@ serve(async (req) => {
   const fullRun  = checkFullRun(snapshotHistory.last_full);
 
   // Order matters here — this is the order they render on the admin page.
-  // live_cache_freshness goes first because it's the most important single
-  // signal: "is the site showing fresh data right now?" Everything else is
-  // upstream-pipeline detail. deltas_computed sits right after because it's
-  // the signal for "are the % change columns going to render?"
+  // live_cache_freshness first ("is the site showing fresh data?"),
+  // deltas_computed second ("will % change columns render?"),
+  // new_sets third ("is the frontend missing any sets we have data for?"),
+  // then the upstream pipeline detail.
   const checks = {
     live_cache_freshness: liveCache,
     deltas_computed: deltasComputed,
+    new_sets: newSets,
     card_coverage: coverage,
     price_snapshot_freshness: freshness,
     sealed_freshness: sealedFreshness,
