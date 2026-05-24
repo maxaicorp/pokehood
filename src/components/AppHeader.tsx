@@ -114,9 +114,9 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           <TrendingUp className="w-5 h-5" />
           <span className="text-[10px] font-medium">Market</span>
         </Link>
-        <Link to="/dashboard" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground"}`}>
-          <LayoutGrid className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Dashboard</span>
+        <Link to="/onchain" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "onchain" ? "text-foreground" : "text-muted-foreground"}`}>
+          <Link2 className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Onchain</span>
         </Link>
         <Link to="/explore" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "explore" ? "text-foreground" : "text-muted-foreground"}`}>
           <Search className="w-5 h-5" />
