@@ -454,7 +454,7 @@ function Onchain() {
           {isLoading ? (
             Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border/50">
-                <Skeleton className="w-24 sm:w-32 aspect-[3/4] rounded-md" />
+                <Skeleton className="w-32 sm:w-44 aspect-[3/4] rounded-md" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-5 w-40" />
                   <Skeleton className="h-4 w-56" />
@@ -478,11 +478,12 @@ function Onchain() {
                   <img
                     src={a.image}
                     alt=""
-                    className="w-24 sm:w-32 aspect-[3/4] rounded-md object-cover bg-muted shrink-0"
+                    className="w-32 sm:w-44 aspect-[3/4] rounded-md object-cover bg-muted shrink-0"
                     loading="lazy"
+                    decoding="async"
                   />
                 ) : (
-                  <div className="w-24 sm:w-32 aspect-[3/4] rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
+                  <div className="w-32 sm:w-44 aspect-[3/4] rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
                     NFT
                   </div>
                 )}
@@ -637,6 +638,7 @@ function Onchain() {
                       alt=""
                       className="aspect-[3/4] w-full rounded-md object-cover bg-muted"
                       loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div className="aspect-[3/4] w-full rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">
