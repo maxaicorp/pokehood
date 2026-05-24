@@ -405,6 +405,28 @@ serve(async (req) => {
     { auth: { persistSession: false } },
   );
 
+  // ── Auth: require either CRON_SECRET header (scheduler) or admin JWT ──
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const providedSecret = req.headers.get("x-cron-secret");
+  let authorized = !!(cronSecret && providedSecret && providedSecret === cronSecret);
+  if (!authorized) {
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data: u } = await supabase.auth.getUser(token);
+      if (u?.user) {
+        const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
+        authorized = !!isAdmin;
+      }
+    }
+  }
+  if (!authorized) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized — admin or cron secret required" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 },
+    );
+  }
+
   const apiKey = Deno.env.get("SCRYDEX_API_KEY") ?? "";
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
