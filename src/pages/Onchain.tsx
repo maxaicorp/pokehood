@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Select,
@@ -108,19 +109,23 @@ const BATCH = 20;
 const ITEM_CAP = 1000;
 
 export default function OnchainPage() {
-  // Public as of 2026-05-21 — the admin gate came off when the feature was
-  // ready enough to show to everyone. Data is all from Magic Eden's public
-  // API anyway, no privacy concern. Wrapper kept as the default export so
-  // future re-gating is a one-line change.
-  return (
-    <>
-      <Onchain />
-    </>
-  );
+  // Each tab is its own URL so clicking forces a full route change and a
+  // fresh component mount, instead of just flipping local state. Prior
+  // tab-as-state design got into stuck loading states the user couldn't
+  // recover from without a hard refresh. URL-routed tabs sidestep that.
+  //   /onchain              → redirect to /onchain/activity
+  //   /onchain/activity     → activity feed
+  //   /onchain/marketplace  → marketplace browse
+  const params = useParams<{ tab?: string }>();
+  const tab = params.tab as OnchainTab | undefined;
+  if (!tab) return <Navigate to="/onchain/activity" replace />;
+  if (tab !== "activity" && tab !== "marketplace") {
+    return <Navigate to="/onchain/activity" replace />;
+  }
+  return <Onchain activeTab={tab} />;
 }
 
-function Onchain() {
-  const [activeTab, setActiveTab] = useState<OnchainTab>("activity");
+function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   const [typeFilter, setTypeFilter] = useState("");
   const [marketplaceSort, setMarketplaceSort] = useState<MarketplaceSort>("price-asc");
   const queryClient = useQueryClient();
@@ -392,15 +397,19 @@ function Onchain() {
           </Button>
         </div>
 
-        {/* Section tabs — keeps the page extensible for Top Sales / Spins later. */}
+        {/* Section tabs — each is its own URL (/onchain/activity,
+            /onchain/marketplace) so clicking forces a full route change
+            and a fresh component mount. Earlier tab-as-state design got
+            stuck on stale loading states the user couldn't recover from
+            without a hard refresh; URL routing sidesteps that. */}
         <div className="flex gap-2 mb-4 border-b border-border/50">
           {([
             { v: "activity",    label: "Activity",    Icon: ActivityIcon },
             { v: "marketplace", label: "Marketplace", Icon: Store },
           ] as const).map(({ v, label, Icon }) => (
-            <button
+            <Link
               key={v}
-              onClick={() => setActiveTab(v)}
+              to={`/onchain/${v}`}
               className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === v
                   ? "text-foreground border-primary"
@@ -408,7 +417,7 @@ function Onchain() {
               }`}
             >
               <Icon className="w-4 h-4" /> {label}
-            </button>
+            </Link>
           ))}
         </div>
 
