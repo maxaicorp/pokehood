@@ -70,6 +70,44 @@ async function checkCardCoverage(
   return { ok: true, message: `${n.toLocaleString()} cards displayable on the site` };
 }
 
+// "Are the 24h/7d/30d price deltas actually populated?" The site's % change
+// columns depend on latest_card_prices.{price_1d, price_7d, price_30d}.
+// If those are null on most cards, every row shows "—" instead of a
+// percentage — which historically looked like a frontend bug but was
+// really a snapshot-history gap.
+async function checkDeltasComputed(
+  supabase: any,
+): Promise<CheckResult> {
+  const { count: total, error: e1 } = await supabase
+    .from("latest_card_prices")
+    .select("card_id", { count: "exact", head: true })
+    .not("card_id", "like", "sealed-%");
+  if (e1) return { ok: false, message: "DB query failed", detail: e1.message };
+
+  const { count: withDeltas, error: e2 } = await supabase
+    .from("latest_card_prices")
+    .select("card_id", { count: "exact", head: true })
+    .not("card_id", "like", "sealed-%")
+    .not("price_1d", "is", null);
+  if (e2) return { ok: false, message: "DB query failed", detail: e2.message };
+
+  const t = total ?? 0;
+  const w = withDeltas ?? 0;
+  const pct = t > 0 ? (w / t) * 100 : 0;
+  const detail = { total: t, with_deltas: w, pct };
+  if (t === 0) return { ok: false, message: "latest_card_prices is empty" };
+  if (pct < 50) return {
+    ok: false,
+    message: `Only ${pct.toFixed(0)}% of cards have 24h deltas (${w.toLocaleString()}/${t.toLocaleString()}). Site will show "—" for most % change columns.`,
+    detail,
+  };
+  return {
+    ok: true,
+    message: `${pct.toFixed(0)}% of cards have 24h/7d/30d % change deltas computed (${w.toLocaleString()}/${t.toLocaleString()}).`,
+    detail,
+  };
+}
+
 // "Is the precomputed cache the site reads fresh?" Looks at the most recent
 // refreshed_at in latest_card_prices. The cache is refreshed at the end of
 // every successful snapshot run via refresh_latest_card_prices(). If this is
@@ -323,10 +361,11 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [freshness, coverage, liveCache, sealedFreshness, scrydex, statsRpc, images, snapshotHistory] = await Promise.all([
+  const [freshness, coverage, liveCache, deltasComputed, sealedFreshness, scrydex, statsRpc, images, snapshotHistory] = await Promise.all([
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
     checkLiveCacheFreshness(supabase),
+    checkDeltasComputed(supabase),
     checkSealedFreshness(supabase),
     checkScrydexProxy(apiKey, teamId),
     checkCardStatsRpc(supabase),
@@ -340,9 +379,11 @@ serve(async (req) => {
   // Order matters here — this is the order they render on the admin page.
   // live_cache_freshness goes first because it's the most important single
   // signal: "is the site showing fresh data right now?" Everything else is
-  // upstream-pipeline detail.
+  // upstream-pipeline detail. deltas_computed sits right after because it's
+  // the signal for "are the % change columns going to render?"
   const checks = {
     live_cache_freshness: liveCache,
+    deltas_computed: deltasComputed,
     card_coverage: coverage,
     price_snapshot_freshness: freshness,
     sealed_freshness: sealedFreshness,

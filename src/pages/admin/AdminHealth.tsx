@@ -30,6 +30,7 @@ interface HealthReport {
 
 const CHECK_LABELS: Record<string, string> = {
   live_cache_freshness: "Live site cache freshness",
+  deltas_computed: "24h / 7d / 30d % change deltas",
   card_coverage: "Cards displayable on the site",
   price_snapshot_freshness: "Price snapshot freshness",
   sealed_freshness: "Sealed snapshot freshness",
@@ -43,6 +44,8 @@ const CHECK_LABELS: Record<string, string> = {
 const CHECK_HELP: Record<string, string> = {
   live_cache_freshness:
     "The single most important signal: when was the precomputed table the site reads (latest_card_prices) last refreshed? Goes red if older than 36 hours, regardless of whether the snapshot cron itself ran successfully.",
+  deltas_computed:
+    "Percentage of cards in latest_card_prices that have populated price_1d / price_7d / price_30d values. If low, most rows on Market will show '—' for their 24h/7d % change columns — usually means the snapshot history is too thin (e.g. less than a day old).",
   daily_snapshot_run:
     "Daily cron writes ~7-12k card rows. Should run every day. If stale, check Supabase → Database → Cron Jobs.",
   full_snapshot_run:

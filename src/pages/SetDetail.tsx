@@ -2,56 +2,139 @@
 //
 // URL: /sets/:slug   e.g. /sets/ascended-heroes
 //
-// This is the SEO-critical page: when someone Googles "ascended heroes card
-// list" or "prismatic evolutions prices", we want THIS page to rank. Three
-// requirements drive the design:
+// SEO-critical: when someone Googles "ascended heroes card list" or
+// "prismatic evolutions prices", we want THIS page to rank. The card
+// list IS the page — not a tab on Explore. Comes with JSON-LD ItemList
+// of every card as a Product/Offer.
 //
-//   1. Stable, keyword-rich URL  → `/sets/{kebab(setName)}`
-//   2. Real content in the HTML  → render the card table directly, not behind
-//                                  a tab/filter on Explore. The card list IS
-//                                  the page.
-//   3. Structured data           → ItemList JSON-LD with every priced card as
-//                                  a Product/Offer so Google/AI engines can
-//                                  quote prices and surface us as a price-list
-//                                  source.
+// Layout intentionally mirrors Explore's set-mode view (grid OR list,
+// sort dropdown, filter row at top, no sidebar). Same data-fetching
+// pattern: getSetCards paginated + enrichPageWithPricing for prices.
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { getSets, getSetCardsByPrice, getMarketPrice, formatPrice, type PokemonCard, type PokemonSet } from "@/lib/pokemon-api";
+import {
+  getSets,
+  getSetCards,
+  getMarketPrice,
+  formatPrice,
+  enrichPageWithPricing,
+  type PokemonCard,
+  type PokemonSet,
+} from "@/lib/pokemon-api";
 import { findSetBySlug, cardPath, setSlug } from "@/lib/slug";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Calendar, Layers } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Calendar, Layers, Grid3X3, LayoutList } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import SEO from "@/components/SEO";
 
 const BASE = "https://collectiblez.app";
+const PAGE_SIZE = 60;
+
+type SortKey = "number-asc" | "number-desc" | "price-desc" | "price-asc";
+const SORTS: { value: SortKey; label: string }[] = [
+  { value: "number-asc",  label: "Card Number: Low → High" },
+  { value: "number-desc", label: "Card Number: High → Low" },
+  { value: "price-desc",  label: "Price: High → Low" },
+  { value: "price-asc",   label: "Price: Low → High" },
+];
 
 export default function SetDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [sortKey, setSortKey] = useState<SortKey>("number-asc");
 
+  // Resolve slug → set object.
   const { data: setsResult } = useQuery({
     queryKey: ["all-sets"],
     queryFn: getSets,
     staleTime: Infinity,
   });
-
   const set = useMemo<PokemonSet | undefined>(() => {
     if (!setsResult?.data || !slug) return undefined;
     return findSetBySlug(slug, setsResult.data);
   }, [setsResult, slug]);
 
-  const { data: cards = [], isLoading: cardsLoading } = useQuery({
-    queryKey: ["set-cards-by-price", set?.id],
-    queryFn: () => getSetCardsByPrice(set!.id),
+  // Fetch every card in the set via the same infinite-paginated path Explore
+  // uses for set mode. Pages of PAGE_SIZE; load more on scroll.
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ["set-cards", set?.id],
+    queryFn: ({ pageParam = 1 }) => getSetCards(set!.id, pageParam, PAGE_SIZE),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + (p.data?.length ?? 0), 0);
+      const total = lastPage.totalCount ?? loaded;
+      return loaded < total ? allPages.length + 1 : undefined;
+    },
     enabled: !!set,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60_000,
   });
 
-  // ─── 404: slug doesn't match any set ───────────────────────────────────────
+  const rawCards = useMemo(
+    () => (data?.pages.flatMap((p) => p.data ?? []) ?? []) as PokemonCard[],
+    [data],
+  );
+
+  // Hydrate prices for the rows we've loaded.
+  const { data: enrichedCards = [], isFetching: isPricingLoading } = useQuery({
+    queryKey: ["set-cards-priced", set?.id, rawCards.length],
+    queryFn: () => enrichPageWithPricing(rawCards),
+    enabled: rawCards.length > 0,
+    staleTime: 60_000,
+  });
+
+  // Client-side sort on the enriched set so all four sort options work
+  // without re-fetching from Scrydex.
+  const cards = useMemo(() => {
+    const arr = [...enrichedCards];
+    arr.sort((a, b) => {
+      switch (sortKey) {
+        case "number-asc":
+        case "number-desc": {
+          const na = parseInt(a.number, 10) || 0;
+          const nb = parseInt(b.number, 10) || 0;
+          return sortKey === "number-asc" ? na - nb : nb - na;
+        }
+        case "price-desc":
+        case "price-asc": {
+          const pa = getMarketPrice(a) ?? -1;
+          const pb = getMarketPrice(b) ?? -1;
+          return sortKey === "price-desc" ? pb - pa : pa - pb;
+        }
+      }
+    });
+    return arr;
+  }, [enrichedCards, sortKey]);
+
+  // Infinite-scroll sentinel — load more when this enters the viewport.
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage();
+    }, { rootMargin: "600px" });
+    obs.observe(sentinelRef.current);
+    return () => obs.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // ─── 404 ───────────────────────────────────────────────────────────────────
   if (setsResult && !set) {
     return (
       <div className="min-h-screen bg-background">
@@ -74,10 +157,6 @@ export default function SetDetail() {
   }
 
   // ─── SEO copy + JSON-LD ────────────────────────────────────────────────────
-  //
-  // Title/description are written as factual statements so AI engines
-  // (Perplexity, ChatGPT) feel comfortable quoting them. No marketing.
-
   const year = set?.releaseDate ? set.releaseDate.slice(0, 4) : "";
   const cardCount = set?.printedTotal || set?.total || 0;
   const setName = set?.name ?? "Set";
@@ -89,10 +168,10 @@ export default function SetDetail() {
     : "";
 
   const jsonLd = useMemo(() => {
-    if (!set || !cards.length) return undefined;
-    // Cap the ItemList at the top 100 by price — Google ignores enormous lists
-    // and the most expensive cards are the ones people search for anyway.
-    const top = cards.slice(0, 100);
+    if (!set || cards.length === 0) return undefined;
+    const top = [...cards]
+      .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
+      .slice(0, 100);
     return [
       {
         "@context": "https://schema.org",
@@ -135,8 +214,6 @@ export default function SetDetail() {
     ];
   }, [set, cards, setName]);
 
-  // ─── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       {set && (
@@ -159,7 +236,7 @@ export default function SetDetail() {
 
         {/* Hero */}
         {set ? (
-          <div className="flex items-start gap-4 sm:gap-6 mb-8">
+          <div className="flex items-start gap-4 sm:gap-6 mb-6">
             <img
               src={`/data/logos/${set.id}.png`}
               alt={`${setName} logo`}
@@ -189,37 +266,77 @@ export default function SetDetail() {
             </div>
           </div>
         ) : (
-          <Skeleton className="h-24 w-full mb-8" />
+          <Skeleton className="h-24 w-full mb-6" />
         )}
 
-        {/* Card list */}
-        <div className="rounded-xl border border-border overflow-hidden">
-          <div className="px-4 py-3 bg-muted/30 border-b border-border text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            All cards · sorted by market price
+        {/* Toolbar — sort + view toggle (no sidebar) */}
+        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+          <p className="text-sm text-muted-foreground">
+            {cards.length > 0 && `${cards.length} of ${cardCount} cards loaded`}
+          </p>
+          <div className="flex items-center gap-2">
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+              <SelectTrigger className="w-[200px] bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SORTS.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex rounded-md border border-border overflow-hidden">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-2 ${viewMode === "grid" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"}`}
+                aria-label="Grid view"
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-2 ${viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:text-foreground"}`}
+                aria-label="List view"
+              >
+                <LayoutList className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          {cardsLoading || !set ? (
-            <div className="divide-y divide-border/40">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-3">
-                  <Skeleton className="w-12 h-16" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-40" />
-                    <Skeleton className="h-3 w-24" />
-                  </div>
-                  <Skeleton className="h-5 w-16" />
+        </div>
+
+        {/* Card grid/list */}
+        {isLoading && cards.length === 0 ? (
+          <div className={viewMode === "grid"
+            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4"
+            : "space-y-3"
+          }>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="rounded-xl overflow-hidden border border-border/50 bg-card">
+                <Skeleton className="aspect-[2.5/3.5] w-full" />
+                <div className="p-3 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/2" />
                 </div>
-              ))}
-            </div>
-          ) : cards.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              No card data available for this set yet.
-            </div>
-          ) : (
-            <div className="divide-y divide-border/40">
-              {cards.map((c, i) => (
-                <CardRow key={c.id} card={c} index={i} set={set} />
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
+        ) : cards.length === 0 ? (
+          <div className="text-center py-12 text-sm text-muted-foreground">
+            No cards available for this set yet.
+          </div>
+        ) : viewMode === "grid" ? (
+          <CardGrid cards={cards} set={set!} isPricingLoading={isPricingLoading} />
+        ) : (
+          <CardList cards={cards} set={set!} isPricingLoading={isPricingLoading} />
+        )}
+
+        {/* Sentinel + tail status */}
+        <div ref={sentinelRef} className="py-8 flex justify-center">
+          {isFetchingNextPage && (
+            <span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+          )}
+          {!hasNextPage && cards.length > 0 && (
+            <p className="text-xs text-muted-foreground">All {cards.length} cards loaded</p>
           )}
         </div>
       </div>
@@ -227,39 +344,91 @@ export default function SetDetail() {
   );
 }
 
-function CardRow({ card, index, set }: { card: PokemonCard; index: number; set: PokemonSet }) {
-  const price = getMarketPrice(card);
+// ─── Grid view ───────────────────────────────────────────────────────────────
+
+function CardGrid({ cards, set, isPricingLoading }: { cards: PokemonCard[]; set: PokemonSet; isPricingLoading: boolean }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.01, 0.3) }}
-    >
-      <Link
-        to={cardPath(set, card)}
-        className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors group"
-      >
-        <span className="text-xs font-mono text-muted-foreground tabular-nums w-8 text-right shrink-0">
-          {index + 1}
-        </span>
-        <img
-          src={card.images.small}
-          alt={card.name}
-          className="w-12 aspect-[3/4] rounded-md shadow-sm object-cover bg-muted shrink-0"
-          loading="lazy"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-            {card.name}
-          </p>
-          <p className="text-xs text-muted-foreground tabular-nums">
-            #{card.number}/{set.printedTotal || set.total}
-          </p>
-        </div>
-        <p className="text-sm font-bold text-foreground tabular-nums shrink-0">
-          {price != null ? formatPrice(price) : "—"}
-        </p>
-      </Link>
-    </motion.div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+      {cards.map((card, i) => {
+        const price = getMarketPrice(card);
+        return (
+          <Link
+            key={card.id}
+            to={cardPath(set, card)}
+            className="block group"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i * 0.01, 0.3) }}
+              className="rounded-xl overflow-hidden bg-card border border-border/50 hover:border-primary/40 transition-colors h-full flex flex-col"
+            >
+              <div className="bg-background/50 p-1.5 sm:p-2">
+                <img
+                  src={card.images.small}
+                  alt={card.name}
+                  className="w-full rounded-lg"
+                  loading="lazy"
+                />
+              </div>
+              <div className="p-2 sm:p-3 space-y-0.5 sm:space-y-1 flex-1 flex flex-col justify-end">
+                <p className="text-xs sm:text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                  {card.name}
+                </p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                  {card.rarity ?? ""}{card.rarity && card.number ? " · " : ""}#{card.number}/{set.printedTotal || set.total}
+                </p>
+                <div className="flex items-center justify-between pt-1 mt-auto">
+                  {isPricingLoading
+                    ? <Skeleton className="h-4 w-12" />
+                    : <span className="text-xs sm:text-sm font-bold text-foreground">{price != null ? formatPrice(price) : "—"}</span>
+                  }
+                </div>
+              </div>
+            </motion.div>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── List view ───────────────────────────────────────────────────────────────
+
+function CardList({ cards, set, isPricingLoading }: { cards: PokemonCard[]; set: PokemonSet; isPricingLoading: boolean }) {
+  return (
+    <div className="space-y-2">
+      {cards.map((card, i) => {
+        const price = getMarketPrice(card);
+        return (
+          <Link
+            key={card.id}
+            to={cardPath(set, card)}
+            className="block group"
+          >
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: Math.min(i * 0.008, 0.3) }}
+              className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:bg-card/80 transition-colors"
+            >
+              <img src={card.images.small} alt={card.name} className="w-10 sm:w-12 rounded-md shrink-0" loading="lazy" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs sm:text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                  {card.name}
+                </p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                  #{card.number}/{set.printedTotal || set.total}{card.rarity ? ` · ${card.rarity}` : ""}
+                </p>
+              </div>
+              {isPricingLoading
+                ? <Skeleton className="h-4 w-14 shrink-0" />
+                : <span className="text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">{price != null ? formatPrice(price) : "—"}</span>
+              }
+            </motion.div>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
