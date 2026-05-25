@@ -35,6 +35,7 @@ import { ChevronRight, ArrowLeft, ExternalLink, ChevronDown, TrendingUp, Trendin
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import PriceChart from "@/components/PriceChart";
+import GradedPriceTiles from "@/components/GradedPriceTiles";
 import SEO from "@/components/SEO";
 
 // ─── Type styling ─────────────────────────────────────────────────────────────
@@ -465,6 +466,9 @@ export default function CardDetail() {
             <CardSentimentWidget sentiment={sentiment} onVote={handleVote} />
           </div>
         </div>
+
+        {/* ── Graded price tiles (PSA / BGS / CGC × 10, 9) ── */}
+        {id && <GradedPriceTiles cardId={id} />}
 
         {/* ── More from this set ── */}
         {suggestions.length > 0 && (

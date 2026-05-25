@@ -35,10 +35,75 @@ export interface ScrydexCardPrice {
   is_perfect: boolean;
   is_signed: boolean;
   is_error: boolean;
-  type: string;
+  type: string;            // "raw" | "graded"
   low: number;
   market: number;
   currency: string;
+  // ─── Fields present only when type === "graded" ───
+  // Scrydex omits these on raw entries. We keep them optional so existing
+  // raw-only code (snapshot-prices, market reads) is untouched.
+  mid?: number;
+  high?: number;
+  grade?: number;          // 10, 9.5, 9, 8.5, 8, 7, ...
+  company?: string;        // "PSA" | "CGC" | "BGS" | "TAG" | "SGC" | "ACE"
+}
+
+// ─── Graded price helpers ────────────────────────────────────────────────────
+//
+// Used by the GradedPriceTiles component on CardDetail. Selects the 6 specific
+// (company, grade) combos the tile row shows. Excludes signed / error / perfect
+// variants — those are collectible specialities that would mislead a generic
+// "what does a PSA 10 of this card sell for" comparison.
+export const GRADED_TILE_KEYS = [
+  { company: "PSA", grade: 10 },
+  { company: "PSA", grade: 9  },
+  { company: "BGS", grade: 10 },
+  { company: "BGS", grade: 9  },
+  { company: "CGC", grade: 10 },
+  { company: "CGC", grade: 9  },
+] as const;
+
+export interface GradedTilePrice {
+  company: string;
+  grade: number;
+  market: number | null;
+  low: number | null;
+  high: number | null;
+  mid: number | null;
+  currency: string;
+}
+
+/** Pluck the 6 standard graded-tile prices out of a Scrydex card.
+ *  Returns one entry per tile key, with `market` (and friends) null when
+ *  Scrydex has no data for that (company, grade). Picking by the first
+ *  matching variant — most cards only have one variant carrying graded data
+ *  (e.g. "holofoil"), and Scrydex doesn't disambiguate graded prices across
+ *  variants anyway. */
+export function extractGradedTilePrices(card: ScrydexCard): GradedTilePrice[] {
+  return GRADED_TILE_KEYS.map(({ company, grade }) => {
+    let match: ScrydexCardPrice | undefined;
+    for (const v of card.variants ?? []) {
+      match = (v.prices ?? []).find(
+        (p) =>
+          p.type === "graded" &&
+          p.company === company &&
+          p.grade === grade &&
+          !p.is_signed &&
+          !p.is_error &&
+          !p.is_perfect,
+      );
+      if (match) break;
+    }
+    return {
+      company,
+      grade,
+      market: match?.market ?? null,
+      low: match?.low ?? null,
+      high: match?.high ?? null,
+      mid: match?.mid ?? null,
+      currency: match?.currency ?? "USD",
+    };
+  });
 }
 
 export interface ScrydexCardVariant {
