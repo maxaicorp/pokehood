@@ -4,6 +4,7 @@ import { Search, X, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { searchCardsAdvanced, PokemonCard } from "@/lib/pokemon-api";
+import { cardPath } from "@/lib/slug";
 
 interface SearchResult {
   id: string;
@@ -82,7 +83,14 @@ export default function GlobalSearch() {
     setOpen(false);
     setQuery("");
     setResults([]);
-    navigate(`/card/${card.id}`);
+    // Fall back to legacy /card/:id if set info is somehow missing — the
+    // legacy route still works and will 301 to the canonical URL once the
+    // card loads.
+    if (card.set?.name) {
+      navigate(cardPath(card.set, { name: card.name, number: card.localId }));
+    } else {
+      navigate(`/card/${card.id}`);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

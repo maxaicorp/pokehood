@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { PokemonCard, getMarketPrice, formatPrice } from "@/lib/pokemon-api";
 import { formatPct } from "@/lib/price-snapshots";
+import { cardPath } from "@/lib/slug";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards, senti
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: Math.min(i * 0.01, 0.3) }}
             className="group relative rounded-xl overflow-hidden bg-card border border-border/50 hover:border-primary/40 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
-            onClick={() => navigate(`/card/${card.id}`)}
+            onClick={() => navigate(cardPath(card.set, card))}
           >
             <div className="aspect-[5/7] relative overflow-hidden bg-muted">
               <img

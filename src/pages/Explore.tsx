@@ -23,6 +23,7 @@ import {
   PRODUCT_TYPES,
 } from "@/lib/pokemon-api";
 import { getLatestSnapshotPrices } from "@/lib/price-snapshots";
+import { cardPath } from "@/lib/slug";
 import { addToCollection } from "@/lib/collection-store";
 import { recordSearchHits, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
 import AppHeader from "@/components/AppHeader";
@@ -585,7 +586,7 @@ function CardGrid({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
               transition={{ delay: i * 0.02 }}
               whileHover={{ y: -4 }}
               className="h-full cursor-pointer"
-              onClick={() => navigate(`/card/${card.id}`)}
+              onClick={() => navigate(cardPath(card.set, card))}
             >
               <MagicCard className="group flex flex-col h-full rounded-xl bg-card border-border/50 overflow-hidden">
                 <div className="relative bg-background/50 p-1.5 sm:p-2">
@@ -647,7 +648,7 @@ function CardList({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.02 }}
-            onClick={() => navigate(`/card/${card.id}`)}
+            onClick={() => navigate(cardPath(card.set, card))}
           >
             <img src={card.images.small} alt={card.name} className="w-10 sm:w-12 rounded-md" loading="lazy" />
             <div className="flex-1 min-w-0">

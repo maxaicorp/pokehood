@@ -121,6 +121,17 @@ export default function CardDetail() {
     }
   }, [card?.id]);
 
+  // Legacy URL migration. Users arriving via /card/:id (old shareable links,
+  // Google's cached pages, our own GlobalSearch fallback) get bounced to the
+  // canonical /sets/:slug/:cardSlug URL once the card loads. `replace: true`
+  // means the back button doesn't strand them on the legacy URL.
+  useEffect(() => {
+    if (!card || !params.id) return;          // only when we arrived via /card/:id
+    if (card.id.includes("::")) return;        // skip virtual variants (shadowless, etc.) — they have no slug route yet
+    const canonical = cardPath(card.set, { name: card.name, number: card.number });
+    if (canonical) navigate(canonical, { replace: true });
+  }, [card?.id, params.id, navigate]);
+
   useEffect(() => {
     if (!card) return;
     getSetSentiment([card.id]).then((map) => {

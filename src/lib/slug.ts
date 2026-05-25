@@ -46,6 +46,23 @@ export function cardPath(set: { name: string }, card: { name: string; number?: s
   return `/sets/${setSlug(set)}/${cardSlug(card)}`;
 }
 
+/** Build the canonical slug path from just a tcg_api_id + name + set name.
+ *  Used by the Most-Visited stat rows on Market, which have these three
+ *  pieces but no card.number. Scrydex IDs are `{expansion_id}-{local_id}`
+ *  (e.g. "sv8pt5-161", "base1-4") so the local number is everything after
+ *  the last "-". Strips our own "::variant" suffix first since Scrydex
+ *  doesn't know about it. */
+export function cardPathFromApiId(
+  tcgApiId: string,
+  name: string,
+  setName: string,
+): string {
+  const baseId = tcgApiId.split("::")[0];
+  const idx = baseId.lastIndexOf("-");
+  const number = idx >= 0 ? baseId.slice(idx + 1) : baseId;
+  return cardPath({ name: setName }, { name, number });
+}
+
 /** Full path for a set. */
 export function setPath(set: { name: string }): string {
   return `/sets/${setSlug(set)}`;

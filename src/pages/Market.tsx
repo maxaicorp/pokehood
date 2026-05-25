@@ -45,6 +45,7 @@ import {
   hydrateCardsFromLatestPrices,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
+import { cardPath, cardPathFromApiId } from "@/lib/slug";
 import { formatPct, getLatestSnapshotPage } from "@/lib/price-snapshots";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
 import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
@@ -634,7 +635,7 @@ export default function Market() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: Math.min(i * 0.02, 0.3) }}
                     className="group relative rounded-xl overflow-hidden bg-card border border-border/50 hover:border-primary/40 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
-                    onClick={() => navigate(`/card/${stat.tcg_api_id}`)}
+                    onClick={() => navigate(cardPathFromApiId(stat.tcg_api_id, stat.name, stat.set_name))}
                   >
                     <div className="aspect-[5/7] relative overflow-hidden bg-muted">
                       {stat.image_small ? (
@@ -665,7 +666,7 @@ export default function Market() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(i * 0.03, 0.3) }}
                     className="grid grid-cols-[24px_1fr_auto] sm:grid-cols-[40px_1fr_160px_100px_44px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/card/${stat.tcg_api_id}`)}
+                    onClick={() => navigate(cardPathFromApiId(stat.tcg_api_id, stat.name, stat.set_name))}
                   >
                     <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -735,7 +736,7 @@ export default function Market() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(i * 0.008, 0.3) }}
                     className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/card/${card.id}`)}
+                    onClick={() => navigate(cardPath(card.set, card))}
                   >
                     {/* Desktop: grid row */}
                     <div className={`hidden sm:grid ${gridClasses} gap-2 px-4 py-2.5 items-center`}>
@@ -869,7 +870,7 @@ export default function Market() {
                       animate={{ opacity: 1 }}
                       transition={{ delay: Math.min(i * 0.005, 0.2) }}
                       className={`grid grid-cols-[24px_1fr_auto] ${gridClasses} gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors opacity-50`}
-                      onClick={() => navigate(`/card/${card.id}`)}
+                      onClick={() => navigate(cardPath(card.set, card))}
                     >
                       <span className="text-sm font-mono text-muted-foreground">—</span>
                       <div className="flex items-center gap-3 min-w-0">
