@@ -371,6 +371,126 @@ export type Database = {
           },
         ]
       }
+      nft_names: {
+        Row: {
+          cert_number: string | null
+          fetched_at: string
+          mint: string
+          name: string | null
+        }
+        Insert: {
+          cert_number?: string | null
+          fetched_at?: string
+          mint: string
+          name?: string | null
+        }
+        Update: {
+          cert_number?: string | null
+          fetched_at?: string
+          mint?: string
+          name?: string | null
+        }
+        Relationships: []
+      }
+      onchain_activities: {
+        Row: {
+          block_time: number
+          buyer: string | null
+          collection: string
+          image: string | null
+          ingested_at: string
+          price: number | null
+          price_info: Json | null
+          price_usd: number | null
+          seller: string | null
+          signature: string
+          source: string
+          token_mint: string | null
+          type: string
+        }
+        Insert: {
+          block_time: number
+          buyer?: string | null
+          collection: string
+          image?: string | null
+          ingested_at?: string
+          price?: number | null
+          price_info?: Json | null
+          price_usd?: number | null
+          seller?: string | null
+          signature: string
+          source?: string
+          token_mint?: string | null
+          type: string
+        }
+        Update: {
+          block_time?: number
+          buyer?: string | null
+          collection?: string
+          image?: string | null
+          ingested_at?: string
+          price?: number | null
+          price_info?: Json | null
+          price_usd?: number | null
+          seller?: string | null
+          signature?: string
+          source?: string
+          token_mint?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
+      onchain_listings: {
+        Row: {
+          collection: string
+          delisted_at: string | null
+          first_seen_at: string
+          image: string | null
+          last_seen_at: string
+          marketplace_url: string | null
+          name: string | null
+          pda_address: string
+          price: number
+          price_info: Json | null
+          price_usd: number | null
+          rarity_rank: number | null
+          seller: string
+          token_mint: string
+        }
+        Insert: {
+          collection: string
+          delisted_at?: string | null
+          first_seen_at?: string
+          image?: string | null
+          last_seen_at?: string
+          marketplace_url?: string | null
+          name?: string | null
+          pda_address: string
+          price: number
+          price_info?: Json | null
+          price_usd?: number | null
+          rarity_rank?: number | null
+          seller: string
+          token_mint: string
+        }
+        Update: {
+          collection?: string
+          delisted_at?: string | null
+          first_seen_at?: string
+          image?: string | null
+          last_seen_at?: string
+          marketplace_url?: string | null
+          name?: string | null
+          pda_address?: string
+          price?: number
+          price_info?: Json | null
+          price_usd?: number | null
+          rarity_rank?: number | null
+          seller?: string
+          token_mint?: string
+        }
+        Relationships: []
+      }
       price_snapshots: {
         Row: {
           card_id: string
@@ -758,6 +878,73 @@ export type Database = {
         }[]
       }
       get_my_game_stats: { Args: { p_game: string }; Returns: Json }
+      get_onchain_activity: {
+        Args: {
+          p_collection?: string
+          p_limit?: number
+          p_offset?: number
+          p_type?: string
+        }
+        Returns: {
+          block_time: number
+          buyer: string
+          collection: string
+          image: string
+          name: string
+          price: number
+          price_info: Json
+          price_usd: number
+          seller: string
+          signature: string
+          source: string
+          token_mint: string
+          type: string
+        }[]
+      }
+      get_onchain_listings: {
+        Args: {
+          p_collection?: string
+          p_limit?: number
+          p_offset?: number
+          p_sort?: string
+        }
+        Returns: {
+          collection: string
+          image: string
+          marketplace_url: string
+          name: string
+          pda_address: string
+          price: number
+          price_info: Json
+          price_usd: number
+          rarity_rank: number
+          seller: string
+          token_mint: string
+        }[]
+      }
+      get_onchain_top_sales: {
+        Args: {
+          p_collection?: string
+          p_limit?: number
+          p_min_usd?: number
+          p_window_days?: number
+        }
+        Returns: {
+          block_time: number
+          buyer: string
+          collection: string
+          image: string
+          name: string
+          price: number
+          price_info: Json
+          price_usd: number
+          seller: string
+          signature: string
+          source: string
+          token_mint: string
+          type: string
+        }[]
+      }
       get_set_sentiment: {
         Args: { p_set_ids: string[] }
         Returns: {

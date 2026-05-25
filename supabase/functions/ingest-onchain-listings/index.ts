@@ -119,7 +119,9 @@ async function ingestCollection(
   for (let page = 0; page < maxPages; page++) {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 15_000);
-    const url = `${ME_API}/collections/${collection}/listings?offset=${page * 100}&limit=100&sort=listPrice&_t=${Date.now()}`;
+    // ME returns 500 when `sort=listPrice` is passed; default (ascending price)
+    // is what we want anyway. Cachebusters also trigger 500s — omit both.
+    const url = `${ME_API}/collections/${collection}/listings?offset=${page * 100}&limit=100`;
     let raw: MeListing[] = [];
     try {
       const res = await fetch(url, { signal: ctl.signal, headers: { Accept: "application/json" } });
