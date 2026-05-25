@@ -157,23 +157,28 @@ async function checkDeltasComputed(
 }
 
 // "Is the precomputed cache the site reads fresh?" Looks at the most recent
-// refreshed_at in latest_card_prices. The cache is refreshed at the end of
+// updated_at in latest_card_prices. The cache is refreshed at the end of
 // every successful snapshot run via refresh_latest_card_prices(). If this is
 // stale, the snapshot may have run but the read-side table was never
 // updated — which means the site is serving yesterday's prices regardless
 // of whether the cron itself succeeded.
+//
+// Column name pedantry: the table schema uses `updated_at` (see migration
+// 20260519010000_latest_card_prices_table.sql:28). This check previously
+// queried `refreshed_at` which doesn't exist — every probe failed with
+// "column does not exist" until 2026-05-25.
 async function checkLiveCacheFreshness(
   supabase: any,
 ): Promise<CheckResult> {
   const { data, error } = await supabase
     .from("latest_card_prices")
-    .select("refreshed_at")
-    .order("refreshed_at", { ascending: false })
+    .select("updated_at")
+    .order("updated_at", { ascending: false })
     .limit(1);
 
   if (error) return { ok: false, message: "DB query failed", detail: error.message };
   const row = Array.isArray(data) ? data[0] : data;
-  const ts = row?.refreshed_at as string | undefined;
+  const ts = row?.updated_at as string | undefined;
   if (!ts) return { ok: false, message: "latest_card_prices is empty" };
   const ageMs = Date.now() - new Date(ts).getTime();
   const ageHours = ageMs / 3_600_000;
@@ -181,13 +186,13 @@ async function checkLiveCacheFreshness(
     return {
       ok: false,
       message: `Cache refreshed ${ageHours.toFixed(1)}h ago (${ts}). Site is showing stale prices.`,
-      detail: { refreshed_at: ts, age_hours: ageHours },
+      detail: { updated_at: ts, age_hours: ageHours },
     };
   }
   return {
     ok: true,
     message: `Cache refreshed ${ageHours < 1 ? `${Math.round(ageMs / 60_000)}m` : `${ageHours.toFixed(1)}h`} ago — site is showing current prices.`,
-    detail: { refreshed_at: ts, age_hours: ageHours },
+    detail: { updated_at: ts, age_hours: ageHours },
   };
 }
 
