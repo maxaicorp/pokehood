@@ -267,9 +267,16 @@ async function ingestCollection(
   // Helius enrich for any mints we don't already have cached.
   const resolved = await resolveNamesForNewMints(supabase, heliusKey, [...allMints]);
 
+  // Dedupe by signature within this run — ME occasionally returns the same
+  // signature twice across pages, and Postgres ON CONFLICT errors out if a
+  // single statement targets the same key twice.
+  const bySig = new Map<string, any>();
+  for (const r of allRows) bySig.set(r.signature, r);
+  const dedupedRows = [...bySig.values()];
+
   // Upsert in chunks of 500 to keep request bodies modest.
-  for (let i = 0; i < allRows.length; i += 500) {
-    const slice = allRows.slice(i, i + 500);
+  for (let i = 0; i < dedupedRows.length; i += 500) {
+    const slice = dedupedRows.slice(i, i + 500);
     const { error } = await supabase
       .from("onchain_activities")
       .upsert(slice, { onConflict: "signature" });
