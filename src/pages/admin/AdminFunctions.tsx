@@ -57,27 +57,52 @@ const FUNCTIONS: ProbeSpec[] = [
   },
   {
     name: "onchain-activity",
-    description: "Magic Eden activity feed for Collector Crypt + Helius name enrichment.",
+    description: "Reads onchain_activities (DB). Populated by ingest-onchain-activity cron.",
     query: "?collection=collector_crypt&limit=3",
     expectShape: (j) => {
       if (!Array.isArray(j)) return "expected array";
-      if (j.length === 0) return "empty response";
+      if (j.length === 0) return "WARNING: empty — ingest-onchain-activity cron may not have run yet";
       const first = j[0] as { tokenMint?: string; name?: string };
       if (!first.tokenMint) return "no tokenMint in first row";
-      // Names are best-effort, don't fail if absent — but flag it
-      return first.name ? null : "WARNING: no `name` (Helius enrichment may be skipped)";
+      return first.name ? null : "WARNING: no `name` — nft_names cache may not be backfilled yet";
     },
   },
   {
     name: "onchain-listings",
-    description: "Magic Eden listings for Collector Crypt, moonbirds filtered.",
+    description: "Reads onchain_listings (DB). Populated by ingest-onchain-listings cron.",
     query: "?collection=collector_crypt&limit=20",
     expectShape: (j) => {
       const o = j as { items?: unknown[] } | null;
       if (!o || !Array.isArray(o.items)) return "missing `items` array";
-      if (o.items.length === 0) return "WARNING: 0 items returned (filter may be too aggressive or ME has no listings)";
+      if (o.items.length === 0) return "WARNING: 0 items — ingest-onchain-listings cron may not have run yet";
       return null;
     },
+  },
+  {
+    name: "onchain-top-sales",
+    description: "Top sales by USD value in 1d/7d/30d window. Reads onchain_activities (DB).",
+    query: "?collection=collector_crypt&window=30&limit=5",
+    expectShape: (j) => {
+      const o = j as { items?: unknown[]; window?: number } | null;
+      if (!o || !Array.isArray(o.items)) return "missing `items` array";
+      if (o.window !== 30) return `unexpected window: ${o.window}`;
+      if (o.items.length === 0) return "WARNING: 0 sales in 30d window — ingest cron may not have run yet";
+      const first = o.items[0] as { priceUsd?: number };
+      if (typeof first.priceUsd !== "number") return "first row missing `priceUsd` — USD enrichment failed at ingest";
+      return null;
+    },
+  },
+  {
+    name: "ingest-onchain-activity",
+    description: "Cron worker: pulls ME activities + Helius names → onchain_activities. Requires CRON_SECRET.",
+    body: {},
+    okStatuses: [200, 401, 403],
+  },
+  {
+    name: "ingest-onchain-listings",
+    description: "Cron worker: pulls ME listings → onchain_listings. Requires CRON_SECRET.",
+    body: {},
+    okStatuses: [200, 401, 403],
   },
   {
     name: "scrydex-proxy",

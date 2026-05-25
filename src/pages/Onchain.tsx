@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Select,
   SelectContent,
@@ -12,7 +12,7 @@ import AppHeader from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, RefreshCw, AlertTriangle, Activity as ActivityIcon, Store } from "lucide-react";
+import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, RefreshCw, AlertTriangle, Activity as ActivityIcon, Store, TrendingUp } from "lucide-react";
 import SEO from "@/components/SEO";
 import { formatTradePrice, useSolPrice, type PriceInfo } from "@/lib/onchain-price";
 
@@ -89,7 +89,21 @@ interface Listing {
   marketplaceUrl: string;
 }
 
-type OnchainTab = "activity" | "marketplace";
+type OnchainTab = "activity" | "marketplace" | "top-sales";
+
+// Top Sales time-window pills. The DB-backed endpoint computes price_usd at
+// ingest (USDC trades use splPrice; SOL trades use spot SOL/USD), so the
+// leaderboard is consistent across both currencies. Sorted desc by price_usd.
+type TopSalesWindow = 1 | 7 | 30;
+const TOP_SALES_WINDOWS: { value: TopSalesWindow; label: string }[] = [
+  { value: 1,  label: "24h" },
+  { value: 7,  label: "7d" },
+  { value: 30, label: "30d" },
+];
+// Small noise filter — skip $1 test trades that pollute the leaderboard.
+// Time-window leaderboards do the real work; this is just sanity floor.
+const TOP_SALES_MIN_USD = 10;
+const TOP_SALES_LIMIT = 50;
 
 // Marketplace sort options. Magic Eden's listings endpoint only supports
 // ascending order, so "Price: High to Low" is implemented by walking offsets
@@ -119,7 +133,7 @@ export default function OnchainPage() {
   const params = useParams<{ tab?: string }>();
   const tab = params.tab as OnchainTab | undefined;
   if (!tab) return <Navigate to="/onchain/activity" replace />;
-  if (tab !== "activity" && tab !== "marketplace") {
+  if (tab !== "activity" && tab !== "marketplace" && tab !== "top-sales") {
     return <Navigate to="/onchain/activity" replace />;
   }
   return <Onchain activeTab={tab} />;
@@ -128,6 +142,7 @@ export default function OnchainPage() {
 function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   const [typeFilter, setTypeFilter] = useState("");
   const [marketplaceSort, setMarketplaceSort] = useState<MarketplaceSort>("price-asc");
+  const [topSalesWindow, setTopSalesWindow] = useState<TopSalesWindow>(7);
   const queryClient = useQueryClient();
 
   // Hard refresh — invalidates the cache for BOTH activity and listings
@@ -201,6 +216,47 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   });
 
   const activities = activityPages?.pages.flat() ?? [];
+
+  // ─── Top Sales: backed by /onchain-top-sales DB-RPC endpoint ───────────
+  //
+  // The ingest cron computes price_usd at write time, so this is a single
+  // indexed SELECT — no client-side USD math, no infinite scroll. The
+  // endpoint returns the top N sales by USD value within the selected
+  // time window (1d / 7d / 30d), already sorted desc.
+  interface TopSaleItem extends Omit<Activity, "price"> {
+    price: number;
+    priceUsd: number | null;
+  }
+  const {
+    data: topSalesData,
+    isLoading: isTopSalesLoading,
+    isError: isTopSalesError,
+    refetch: refetchTopSales,
+  } = useQuery({
+    queryKey: ["onchain-top-sales", topSalesWindow],
+    queryFn: async () => {
+      const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onchain-top-sales`;
+      const params = new URLSearchParams({
+        collection: "collector_crypt",
+        window: String(topSalesWindow),
+        limit: String(TOP_SALES_LIMIT),
+        min_usd: String(TOP_SALES_MIN_USD),
+      });
+      const res = await fetch(`${baseUrl}?${params}`, {
+        headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+      });
+      if (!res.ok) throw new Error(`Top sales unavailable (${res.status})`);
+      const json = (await res.json()) as { items: TopSaleItem[]; window: number; count: number };
+      return json;
+    },
+    enabled: activeTab === "top-sales",
+    refetchInterval: activeTab === "top-sales" ? 60_000 : false,
+    staleTime: 30_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+
+  const topSales: TopSaleItem[] = topSalesData?.items ?? [];
 
   // Sentinel-based scroll trigger: when this div enters the viewport, load
   // the next page. rootMargin gives us 600px of warning so the fetch starts
@@ -405,6 +461,7 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
         <div className="flex gap-2 mb-4 border-b border-border/50">
           {([
             { v: "activity",    label: "Activity",    Icon: ActivityIcon },
+            { v: "top-sales",   label: "Top Sales",   Icon: TrendingUp },
             { v: "marketplace", label: "Marketplace", Icon: Store },
           ] as const).map(({ v, label, Icon }) => (
             <Link
@@ -585,6 +642,151 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
             </div>
           </>
         )}
+        </>)}
+
+        {/* ─── Top Sales branch ───────────────────────────────────────────
+            Leaderboard of the top sales by USD value within a rolling
+            window. All filtering + USD math happens server-side in the
+            get_onchain_top_sales RPC, so the client just renders. */}
+        {activeTab === "top-sales" && (<>
+          {/* Window pills */}
+          <div className="flex gap-2 mb-4">
+            {TOP_SALES_WINDOWS.map((w) => (
+              <button
+                key={w.value}
+                onClick={() => setTopSalesWindow(w.value)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  topSalesWindow === w.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {w.label}
+              </button>
+            ))}
+          </div>
+          <div className="text-xs text-muted-foreground mb-4">
+            Top {TOP_SALES_LIMIT} sales in the last{" "}
+            {TOP_SALES_WINDOWS.find((w) => w.value === topSalesWindow)?.label} by USD value.
+          </div>
+
+          {isTopSalesError && (
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive mb-4">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Failed to load top sales</p>
+                <p className="text-xs opacity-80 mt-0.5">The onchain feed is temporarily unavailable. Try refreshing.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => refetchTopSales()} className="shrink-0 border-destructive/30 text-destructive hover:bg-destructive/10">
+                Retry
+              </Button>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {isTopSalesLoading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border/50">
+                  <Skeleton className="w-32 sm:w-44 aspect-[3/4] rounded-md" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-40" />
+                    <Skeleton className="h-4 w-56" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-6 w-20" />
+                </div>
+              ))
+            ) : topSales.length > 0 ? (
+              topSales.map((a, i) => (
+                <a
+                  key={a.signature}
+                  href={`https://solscan.io/tx/${a.signature}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:bg-card/80 transition-colors group"
+                >
+                  {/* Rank badge — gold/silver/bronze for top 3, muted otherwise */}
+                  <div className={`shrink-0 w-8 text-center text-sm font-bold tabular-nums ${
+                    i === 0 ? "text-yellow-500"
+                    : i === 1 ? "text-zinc-400"
+                    : i === 2 ? "text-amber-700"
+                    : "text-muted-foreground"
+                  }`}>
+                    #{i + 1}
+                  </div>
+                  {a.image ? (
+                    <img
+                      src={a.image}
+                      alt=""
+                      className="w-32 sm:w-44 aspect-[3/4] rounded-md object-cover bg-muted shrink-0"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <div className="w-32 sm:w-44 aspect-[3/4] rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
+                      NFT
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {typeIcon(a.type)}
+                      <span className="text-base font-semibold text-foreground">
+                        {typeLabel(a.type)}
+                      </span>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
+                        {a.source.replace("magiceden_v2", "Magic Eden")}
+                      </Badge>
+                    </div>
+                    {a.name ? (
+                      <p className="text-sm font-semibold text-foreground mt-1 truncate" title={a.name}>
+                        {a.name}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground mt-1 font-mono truncate">
+                        Mint: {shortenAddress(a.tokenMint)}
+                      </p>
+                    )}
+                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-x-3 gap-y-1 flex-wrap">
+                      {a.buyer && (
+                        <span>Buyer: <span className="font-mono">{shortenAddress(a.buyer)}</span></span>
+                      )}
+                      {a.seller && (
+                        <span>Seller: <span className="font-mono">{shortenAddress(a.seller)}</span></span>
+                      )}
+                      <span>{timeAgo(a.blockTime)}</span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 self-start">
+                    {/* Top Sales leads with USD because the leaderboard IS ranked by USD —
+                        showing SOL primary would confuse "why is this one above that one". */}
+                    {a.priceUsd != null ? (
+                      <>
+                        <div className="text-lg font-bold tabular-nums text-foreground">
+                          ${a.priceUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </div>
+                        {(() => {
+                          const fmt = formatTradePrice(a.price, a.priceInfo, solUsd);
+                          return fmt.primary ? (
+                            <div className="text-xs text-muted-foreground tabular-nums mt-0.5">
+                              {fmt.primary}
+                            </div>
+                          ) : null;
+                        })()}
+                      </>
+                    ) : (
+                      <div className="text-sm text-muted-foreground">—</div>
+                    )}
+                    <ExternalLink className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto mt-1" />
+                  </div>
+                </a>
+              ))
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                No sales in this window yet. The ingest cron may still be filling the table —
+                check back in a minute.
+              </div>
+            )}
+          </div>
         </>)}
 
         {/* ─── Marketplace branch ─────────────────────────────────────────── */}

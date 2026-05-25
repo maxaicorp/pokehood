@@ -373,6 +373,74 @@ async function checkCardStatsRpc(
   }
 }
 
+// ─── Onchain ingest freshness ────────────────────────────────────────────────
+//
+// The new /onchain page reads exclusively from onchain_activities +
+// onchain_listings. If either ingest cron stops firing, the corresponding tab
+// goes stale (no new activity rows / listings frozen). These checks read the
+// most-recent ingested_at / last_seen_at and alert when they age past the
+// expected cadence.
+
+async function checkOnchainActivityFreshness(
+  supabase: any,
+): Promise<CheckResult> {
+  const { data, error } = await supabase
+    .from("onchain_activities")
+    .select("ingested_at")
+    .order("ingested_at", { ascending: false })
+    .limit(1);
+  if (error) return { ok: false, message: "DB query failed", detail: error.message };
+  const row = Array.isArray(data) ? data[0] : data;
+  const ts = row?.ingested_at as string | undefined;
+  if (!ts) return { ok: false, message: "onchain_activities is empty — ingest-onchain-activity has never run" };
+  const ageMs = Date.now() - new Date(ts).getTime();
+  const ageMin = ageMs / 60_000;
+  // Cron is meant to fire every 60s. >10min is the alert threshold (worker
+  // missed several runs); below that it's normal jitter.
+  if (ageMin > 10) {
+    return {
+      ok: false,
+      message: `Last activity ingest was ${ageMin.toFixed(1)}m ago (${ts}). /onchain/activity is stale.`,
+      detail: { ingested_at: ts, age_minutes: ageMin },
+    };
+  }
+  return {
+    ok: true,
+    message: `Activity ingest ran ${ageMin.toFixed(1)}m ago — feed is current.`,
+    detail: { ingested_at: ts, age_minutes: ageMin },
+  };
+}
+
+async function checkOnchainListingsFreshness(
+  supabase: any,
+): Promise<CheckResult> {
+  const { data, error } = await supabase
+    .from("onchain_listings")
+    .select("last_seen_at")
+    .is("delisted_at", null)
+    .order("last_seen_at", { ascending: false })
+    .limit(1);
+  if (error) return { ok: false, message: "DB query failed", detail: error.message };
+  const row = Array.isArray(data) ? data[0] : data;
+  const ts = row?.last_seen_at as string | undefined;
+  if (!ts) return { ok: false, message: "onchain_listings has no active rows — ingest-onchain-listings may have never run" };
+  const ageMs = Date.now() - new Date(ts).getTime();
+  const ageMin = ageMs / 60_000;
+  // Listings cron is every 2min. >15min = alert.
+  if (ageMin > 15) {
+    return {
+      ok: false,
+      message: `Last listings ingest was ${ageMin.toFixed(1)}m ago (${ts}). /onchain/marketplace is stale.`,
+      detail: { last_seen_at: ts, age_minutes: ageMin },
+    };
+  }
+  return {
+    ok: true,
+    message: `Listings ingest ran ${ageMin.toFixed(1)}m ago — marketplace is current.`,
+    detail: { last_seen_at: ts, age_minutes: ageMin },
+  };
+}
+
 async function checkSampleImages(): Promise<CheckResult> {
   const results: string[] = [];
   for (const url of SAMPLE_IMAGES) {
@@ -431,7 +499,7 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [freshness, coverage, liveCache, deltasComputed, newSets, sealedFreshness, scrydex, statsRpc, images, snapshotHistory] = await Promise.all([
+  const [freshness, coverage, liveCache, deltasComputed, newSets, sealedFreshness, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings] = await Promise.all([
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
     checkLiveCacheFreshness(supabase),
@@ -442,6 +510,8 @@ serve(async (req) => {
     checkCardStatsRpc(supabase),
     checkSampleImages(),
     loadSnapshotHistory(supabase, 14),
+    checkOnchainActivityFreshness(supabase),
+    checkOnchainListingsFreshness(supabase),
   ]);
 
   const dailyRun = checkDailyRun(snapshotHistory.last_daily);
@@ -461,6 +531,8 @@ serve(async (req) => {
     sealed_freshness: sealedFreshness,
     daily_snapshot_run: dailyRun,
     full_snapshot_run: fullRun,
+    onchain_activity_freshness: onchainActivity,
+    onchain_listings_freshness: onchainListings,
     scrydex_proxy: scrydex,
     card_stats_rpc: statsRpc,
     sample_images: images,
