@@ -158,7 +158,7 @@ export default function WishlistDashboard() {
                   transition={{ delay: i * 0.02 }}
                 >
                   <div className="relative bg-background/50 p-1.5">
-                    <img src={card.imageSmall} alt={card.name} className="w-full rounded-lg" loading="lazy" />
+                    <img src={card.imageSmall} alt={card.name} className="w-full" loading="lazy" />
                     <button
                       onClick={() => handleRemoveCard(card.id)}
                       className="absolute top-2 right-2 w-6 h-6 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

@@ -791,7 +791,7 @@ export default function Market() {
                           <img
                             src={card.images.small}
                             alt={card.name}
-                            className="w-20 aspect-[3/4] rounded-lg shadow-md object-cover bg-muted"
+                            className="w-20 aspect-[3/4] shadow-md object-cover bg-muted"
                             loading="lazy"
                           />
                         </div>
@@ -874,7 +874,7 @@ export default function Market() {
                     >
                       <span className="text-sm font-mono text-muted-foreground">—</span>
                       <div className="flex items-center gap-3 min-w-0">
-                        <img src={card.images.small} alt={card.name} className="w-9 sm:w-10 rounded-md shrink-0 shadow-sm" loading="lazy" />
+                        <img src={card.images.small} alt={card.name} className="w-9 sm:w-10 shrink-0 shadow-sm" loading="lazy" />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
                           <p className="text-[10px] text-muted-foreground/60 truncate">#{card.number}/{card.set.printedTotal || card.set.total}</p>

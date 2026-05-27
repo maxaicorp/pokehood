@@ -95,7 +95,7 @@ export default function DemoProfile() {
                 transition={{ delay: 0.2 + i * 0.03 }}
               >
                 <div className="bg-background/50 p-1.5">
-                  <img src={card.img} alt={card.name} className="w-full rounded-lg" loading="lazy" />
+                  <img src={card.img} alt={card.name} className="w-full" loading="lazy" />
                 </div>
                 <div className="p-2 sm:p-3">
                   <p className="text-xs font-semibold text-foreground truncate">{card.name}</p>

@@ -37,6 +37,30 @@ const EARLY_VARIANT_SET_IDS = new Set([
   "neo1", "neo2", "neo3", "neo4",
 ]);
 
+// Scrydex sometimes returns the same physical set under two ID formats — a
+// zero-padded version (me01, me02.5) and an unpadded canonical (me1, me2pt5).
+// Our market-sets.json catalog uses the unpadded form, so any cards written
+// with the padded prefix get orphaned from /sets/{slug} pages and inflate
+// row counts. Normalize at write time.
+//
+// Conversion rules (mirror what's already in the catalog):
+//   me01    → me1
+//   me02    → me2
+//   me02.5  → me2pt5   (decimal → "pt")
+//   me03    → me3
+// Generalized: any "me0X.5" → "meXpt5", any "me0X" → "meX". Other prefixes
+// (sv, sm, swsh, ...) are untouched because we haven't observed padding
+// duplicates there.
+function normalizeScrydexCardId(id: string): string {
+  // me0X.5-... → meXpt5-...
+  let next = id.replace(/^me0?(\d+)\.5(-)/, (_m, n, sep) => `me${n}pt5${sep}`);
+  // me0X.5 with no leading zero pattern just in case → meXpt5-
+  next = next.replace(/^me(\d+)\.5(-)/, (_m, n, sep) => `me${n}pt5${sep}`);
+  // me0X-... → meX-...
+  next = next.replace(/^me0+(\d+)(-)/, (_m, n, sep) => `me${n}${sep}`);
+  return next;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ScrydexPrice {
@@ -154,7 +178,7 @@ function extractGradedPrices(card: ScrydexCard, today: string): GradedSnapshotRo
       if (seen.has(key)) continue;
       seen.add(key);
       rows.push({
-        card_id: card.id,
+        card_id: normalizeScrydexCardId(card.id),
         company: p.company,
         grade: gradeNum,
         is_perfect: !!p.is_perfect,
@@ -362,7 +386,7 @@ async function runPass(opts: {
         // We append the variant name to make it unique in the DB
         const suffix = vp.variant !== "normal" ? `::${vp.variant}` : "";
         buffer.push({
-          card_id: `${card.id}${suffix}`,
+          card_id: `${normalizeScrydexCardId(card.id)}${suffix}`,
           card_name: card.name ?? "",
           set_name: card.expansion?.name ?? "",
           price: vp.price,
@@ -457,7 +481,7 @@ async function runSetBackfill(opts: {
       for (const vp of variantPrices) {
         const suffix = vp.variant !== "normal" ? `::${vp.variant}` : "";
         buffer.push({
-          card_id: `${card.id}${suffix}`,
+          card_id: `${normalizeScrydexCardId(card.id)}${suffix}`,
           card_name: card.name ?? "",
           set_name: card.expansion?.name ?? "",
           price: vp.price,

@@ -643,12 +643,37 @@ export async function searchCardsAdvanced(
     : cards.filter((c) => physicalSetIds.has(c.set.id));
 
   if (query) {
-    const q = query.toLowerCase();
-    filtered = filtered.filter((c) =>
-      c.name.toLowerCase().includes(q) ||
-      c.set.name.toLowerCase().includes(q) ||
-      c.set.id.toLowerCase().includes(q)
-    );
+    // Per-token matching across name / set / number, so multi-word queries
+    // like "charmander 38" find a specific Charmander #38. Previously the
+    // whole query was substring-matched only against name + set, which
+    // returned zero results the moment the user added a card number.
+    //
+    // Rules per token:
+    //   - Numeric token (digits only) matches if the card's number,
+    //     printed_number, or trailing card_id portion includes it.
+    //   - Alphabetic token matches name OR set name OR set id.
+    //   - All tokens must match (logical AND) so adding tokens narrows.
+    const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+    if (tokens.length > 0) {
+      filtered = filtered.filter((c) => {
+        const name = c.name.toLowerCase();
+        const setName = c.set.name.toLowerCase();
+        const setId = c.set.id.toLowerCase();
+        const number = (c.number ?? "").toLowerCase();
+        return tokens.every((tok) => {
+          if (/^\d+$/.test(tok)) {
+            // Numeric: match the local card number. Lenient — accepts both
+            // "38" and "038" against a number like "38" or "038".
+            const padded = tok.padStart(3, "0");
+            return number === tok
+              || number === padded
+              || number.replace(/^0+/, "") === tok.replace(/^0+/, "")
+              || number.includes(tok);
+          }
+          return name.includes(tok) || setName.includes(tok) || setId.includes(tok);
+        });
+      });
+    }
   }
   // Filter by sets
   if (filters.setId) {
