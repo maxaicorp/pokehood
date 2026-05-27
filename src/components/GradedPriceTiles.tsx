@@ -146,15 +146,22 @@ export default function GradedPriceTiles({ cardId }: Props) {
     };
   });
 
+  // Caption swaps based on whether we have any populated tiles. The "coming
+  // soon" message is the truthful state until the Scrydex plan is upgraded
+  // to a tier that includes graded prices in /cards?include=prices —
+  // until then the snapshot pipeline finds nothing to write.
+  const anyData = rows.some((r) => r.market != null && r.market > 0);
+  const caption = anyData
+    ? "Market · Source: Scrydex (daily snapshot)"
+    : "Graded data coming soon";
+
   return (
     <section className="mt-8">
       <div className="flex items-baseline justify-between mb-3">
         <h3 className="font-display font-semibold text-foreground">
           Graded Prices
         </h3>
-        <span className="text-[10px] text-muted-foreground">
-          Market · Source: Scrydex (daily snapshot)
-        </span>
+        <span className="text-[10px] text-muted-foreground">{caption}</span>
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
         {rows.map((r) => (
