@@ -138,6 +138,42 @@ export async function persistReviewDecision(review: AdminReview, decision: Revie
   });
 }
 
+export async function persistTokenSubmission(review: AdminReview): Promise<void> {
+  if (!appConfig.supabaseConfigured) return;
+
+  await supabaseFetch("/rest/v1/verified_tokens?on_conflict=mint", {
+    body: JSON.stringify({
+      balance: review.token.balance,
+      change_24h: review.token.change24h,
+      decimals: review.token.decimals,
+      liquidity_usd: review.token.liquidityUsd,
+      logo_url: review.token.logoUrl,
+      mint: review.token.mint,
+      name: review.token.name,
+      price_usd: review.token.priceUsd,
+      risk_level: review.token.riskLevel,
+      status: "pending",
+      symbol: review.token.symbol,
+      updated_at: new Date().toISOString()
+    }),
+    headers: {
+      Prefer: "resolution=merge-duplicates,return=minimal"
+    },
+    method: "POST"
+  });
+
+  await supabaseFetch("/rest/v1/token_reviews", {
+    body: JSON.stringify({
+      mint: review.token.mint,
+      note: review.note,
+      status: "pending",
+      submitted_at: review.submittedAt,
+      submitted_by: review.submittedBy
+    }),
+    method: "POST"
+  });
+}
+
 export async function persistSwapEvent(event: SwapEventInput): Promise<void> {
   if (!appConfig.supabaseConfigured) return;
 

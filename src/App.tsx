@@ -8,11 +8,13 @@ import {
   Clock3,
   Eye,
   Pause,
+  Plus,
   RefreshCcw,
   Search,
   Wallet,
   X
 } from "lucide-react";
+import { PublicKey } from "@solana/web3.js";
 import {
   approvedTokens,
   createTradePreview,
@@ -44,6 +46,7 @@ import {
   persistPriceSnapshots,
   persistReviewDecision,
   persistSwapEvent,
+  persistTokenSubmission,
   type ReviewDecision,
   type SwapEventInput
 } from "./tokenStore";
@@ -69,6 +72,17 @@ type LiveToken = Token & {
   lastPriceUpdatedAt?: string;
 };
 
+type TokenSubmissionInput = {
+  mint: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoUrl: string;
+  liquidityUsd: number;
+  riskLevel: Token["riskLevel"];
+  note: string;
+};
+
 export function App() {
   const [amount, setAmount] = useState(125);
   const [walletConnection, setWalletConnection] = useState<WalletConnection | null>(null);
@@ -88,6 +102,7 @@ export function App() {
   const [tokenQuery, setTokenQuery] = useState("");
   const [adminStatus, setAdminStatus] = useState("");
   const [swapHistory, setSwapHistory] = useState<SwapHistoryEvent[]>([]);
+  const [tokenSubmissionOpen, setTokenSubmissionOpen] = useState(false);
 
   const verifiedTokens = useMemo(() => getVerifiedTokens(tokens), [tokens]);
   const sortedTokens = useMemo(
@@ -243,6 +258,67 @@ export function App() {
     }
   }
 
+  async function handleTokenSubmission(submission: TokenSubmissionInput) {
+    if (!isAdminWallet) {
+      setAdminStatus("Connect the configured admin wallet before adding tokens to the review queue.");
+      setWalletMenuOpen(true);
+      return;
+    }
+
+    let normalizedMint = "";
+    try {
+      normalizedMint = new PublicKey(submission.mint.trim()).toBase58();
+    } catch {
+      setAdminStatus("Enter a valid Solana mint address.");
+      return;
+    }
+
+    const symbol = submission.symbol.trim().toUpperCase();
+    const name = submission.name.trim();
+    if (!symbol || !name) {
+      setAdminStatus("Token symbol and name are required.");
+      return;
+    }
+
+    if (tokens.some((token) => token.mint === normalizedMint) || reviews.some((review) => review.token.mint === normalizedMint)) {
+      setAdminStatus(`${symbol} is already in the token list or review queue.`);
+      return;
+    }
+
+    const token: Token = {
+      balance: 0,
+      change24h: 0,
+      decimals: submission.decimals,
+      liquidityUsd: submission.liquidityUsd,
+      logoUrl: submission.logoUrl.trim() || `https://placehold.co/80x80/111820/eef3f8?text=${encodeURIComponent(symbol.slice(0, 1))}`,
+      mint: normalizedMint,
+      name,
+      priceUsd: 0,
+      riskLevel: submission.riskLevel,
+      status: "pending",
+      symbol
+    };
+    const review: AdminReview = {
+      id: `local-${normalizedMint}-${Date.now()}`,
+      note: submission.note.trim() || "Manual admin submission. Verify Jupiter route, liquidity, metadata, and token authority before approval.",
+      submittedAt: new Date().toISOString(),
+      submittedBy: walletConnection?.address ?? appConfig.adminEmails[0] ?? "local-admin",
+      token
+    };
+
+    setReviews((currentReviews) => [review, ...currentReviews]);
+    setTokens((currentTokens) => [token, ...currentTokens]);
+    setTokenSubmissionOpen(false);
+    setAdminStatus(`${symbol} added to the local review queue.`);
+
+    try {
+      await persistTokenSubmission(review);
+      setAdminStatus(`${symbol} added to the review queue and saved to Supabase.`);
+    } catch {
+      setAdminStatus(`${symbol} added locally. Supabase admin writes need auth policies or an edge function.`);
+    }
+  }
+
   async function handleSwapSent(event: SwapEventInput) {
     const historyEvent: SwapHistoryEvent = {
       ...event,
@@ -329,6 +405,7 @@ export function App() {
           <DiscoverSection tokens={latestTokens} onSelectToken={selectToken} />
           <AdminPanel
             isAdmin={isAdminWallet}
+            onAddToken={() => setTokenSubmissionOpen(true)}
             onReviewDecision={handleReviewDecision}
             onSelectToken={selectToken}
             reviews={reviews}
@@ -365,6 +442,13 @@ export function App() {
           <SwapHistoryPanel events={swapHistory} />
         </aside>
       </div>
+
+      {tokenSubmissionOpen && (
+        <TokenSubmissionModal
+          onClose={() => setTokenSubmissionOpen(false)}
+          onSubmit={handleTokenSubmission}
+        />
+      )}
     </div>
   );
 }
@@ -436,7 +520,7 @@ function TokenChart({ range, token }: { range: ChartRange; token: LiveToken }) {
         {status === "loading"
           ? "Loading history..."
           : status === "live"
-            ? `Live from Jupiter${token.lastPriceUpdatedAt ? ` • ${formatUpdatedAgo(token.lastPriceUpdatedAt)}` : ""}`
+            ? `Live from Jupiter${token.lastPriceUpdatedAt ? ` - ${formatUpdatedAgo(token.lastPriceUpdatedAt)}` : ""}`
             : "Collecting Jupiter history"}
       </span>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${token.symbol} chart`}>
@@ -536,7 +620,7 @@ function VerifiedTokenList({
       <div className="section-heading">
         <div>
           <h2>Actively traded</h2>
-          <small>{priceStatus === "live" ? "Sorted by verified liquidity" : priceStatus === "loading" ? "Refreshing prices..." : "Seed prices"}</small>
+          <small>{priceStatus === "live" ? "Prices live from Jupiter" : priceStatus === "loading" ? "Refreshing prices..." : "Seed prices"}</small>
         </div>
         <button className="panel-icon-button" onClick={onRefresh} title="Refresh prices">
           <RefreshCcw size={18} />
@@ -972,12 +1056,14 @@ function getFriendlySwapError(error: unknown): string {
 
 function AdminPanel({
   isAdmin,
+  onAddToken,
   onReviewDecision,
   onSelectToken,
   reviews,
   status
 }: {
   isAdmin: boolean;
+  onAddToken: () => void;
   onReviewDecision: (review: AdminReview, decision: ReviewDecision) => void;
   onSelectToken: (token: Token) => void;
   reviews: AdminReview[];
@@ -990,7 +1076,7 @@ function AdminPanel({
           <p>Admin workspace</p>
           <h2>Token verification queue</h2>
         </div>
-        <button><Search size={17} /> Add mint address</button>
+        <button onClick={onAddToken}><Plus size={17} /> Add mint address</button>
       </div>
       <div className={isAdmin ? "admin-status ready" : "admin-status"}>
         <BadgeCheck size={15} />
@@ -1020,6 +1106,150 @@ function AdminPanel({
         )) : <div className="empty-review-state">No pending tokens to review.</div>}
       </div>
     </section>
+  );
+}
+
+function TokenSubmissionModal({
+  onClose,
+  onSubmit
+}: {
+  onClose: () => void;
+  onSubmit: (submission: TokenSubmissionInput) => void;
+}) {
+  const [form, setForm] = useState<TokenSubmissionInput>({
+    decimals: 6,
+    liquidityUsd: 0,
+    logoUrl: "",
+    mint: "",
+    name: "",
+    note: "",
+    riskLevel: "medium",
+    symbol: ""
+  });
+  const [formError, setFormError] = useState("");
+
+  function updateForm<K extends keyof TokenSubmissionInput>(key: K, value: TokenSubmissionInput[K]) {
+    setForm((currentForm) => ({ ...currentForm, [key]: value }));
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError("");
+
+    try {
+      new PublicKey(form.mint.trim());
+    } catch {
+      setFormError("Enter a valid Solana mint address.");
+      return;
+    }
+
+    if (!form.symbol.trim() || !form.name.trim()) {
+      setFormError("Token symbol and name are required.");
+      return;
+    }
+
+    if (!Number.isInteger(form.decimals) || form.decimals < 0 || form.decimals > 12) {
+      setFormError("Decimals must be a whole number from 0 to 12.");
+      return;
+    }
+
+    onSubmit(form);
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="trade-modal token-submit-modal" role="dialog" aria-modal="true" aria-label="Add token review">
+        <div className="modal-head">
+          <div>
+            <p>Admin review</p>
+            <h2>Add mint address</h2>
+          </div>
+          <button onClick={onClose} title="Close form"><X size={20} /></button>
+        </div>
+
+        <form className="token-submit-form" onSubmit={handleSubmit}>
+          <label>
+            <span>Mint address</span>
+            <input
+              autoFocus
+              onChange={(event) => updateForm("mint", event.target.value)}
+              placeholder="Solana token mint"
+              value={form.mint}
+            />
+          </label>
+          <div className="form-grid">
+            <label>
+              <span>Symbol</span>
+              <input
+                maxLength={12}
+                onChange={(event) => updateForm("symbol", event.target.value)}
+                placeholder="SOL"
+                value={form.symbol}
+              />
+            </label>
+            <label>
+              <span>Decimals</span>
+              <input
+                max="12"
+                min="0"
+                onChange={(event) => updateForm("decimals", Number(event.target.value))}
+                type="number"
+                value={form.decimals}
+              />
+            </label>
+          </div>
+          <label>
+            <span>Name</span>
+            <input
+              onChange={(event) => updateForm("name", event.target.value)}
+              placeholder="Token name"
+              value={form.name}
+            />
+          </label>
+          <div className="form-grid">
+            <label>
+              <span>Liquidity estimate</span>
+              <input
+                min="0"
+                onChange={(event) => updateForm("liquidityUsd", Number(event.target.value) || 0)}
+                type="number"
+                value={form.liquidityUsd}
+              />
+            </label>
+            <label>
+              <span>Risk</span>
+              <select
+                onChange={(event) => updateForm("riskLevel", event.target.value as Token["riskLevel"])}
+                value={form.riskLevel}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            <span>Logo URL</span>
+            <input
+              onChange={(event) => updateForm("logoUrl", event.target.value)}
+              placeholder="Optional"
+              value={form.logoUrl}
+            />
+          </label>
+          <label>
+            <span>Review note</span>
+            <textarea
+              onChange={(event) => updateForm("note", event.target.value)}
+              placeholder="Manual review notes"
+              rows={3}
+              value={form.note}
+            />
+          </label>
+          {formError && <div className="quote-state error compact"><AlertTriangle size={16} /> {formError}</div>}
+          <button className="primary-action" type="submit">Add to review queue</button>
+        </form>
+      </section>
+    </div>
   );
 }
 

@@ -22,7 +22,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -828,6 +829,11 @@ small {
   justify-content: flex-start;
 }
 
+.quote-state.compact {
+  min-height: auto;
+  padding: 12px 14px;
+}
+
 .trade-summary {
   border-bottom: 1px solid #27313b;
   display: flex;
@@ -838,6 +844,58 @@ small {
 
 .trade-summary strong {
   font-size: 34px;
+}
+
+.token-submit-modal {
+  max-width: 560px;
+}
+
+.token-submit-form {
+  display: grid;
+  gap: 13px;
+}
+
+.token-submit-form label {
+  display: grid;
+  gap: 7px;
+}
+
+.token-submit-form span {
+  color: #8191a4;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.token-submit-form input,
+.token-submit-form select,
+.token-submit-form textarea {
+  background: #151c24;
+  border: 1px solid #27313d;
+  border-radius: 8px;
+  color: #eef3f8;
+  min-height: 44px;
+  outline: 0;
+  padding: 0 12px;
+  width: 100%;
+}
+
+.token-submit-form textarea {
+  line-height: 1.45;
+  min-height: 92px;
+  padding-block: 10px;
+  resize: vertical;
+}
+
+.token-submit-form input:focus,
+.token-submit-form select:focus,
+.token-submit-form textarea:focus {
+  border-color: #c7ff72;
+}
+
+.form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 140px;
 }
 
 .modal-grid {
@@ -971,6 +1029,10 @@ small {
 }
 
 @media (max-width: 720px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
   .discover-grid {
     grid-template-columns: 1fr;
   }
