@@ -43,13 +43,15 @@ interface ScrydexPrice {
   market: number;
   low: number;
   currency: string;
-  condition: string;  // "NM" | "LP" | "MP" | "HP" | "DMG" (raw only)
-  type: string;       // "raw" | "graded"
+  condition?: string;        // "NM" | "LP" | "MP" | "HP" | "DMG" (raw only; absent on graded)
+  type: string;              // "raw" | "graded"
   // ─── Graded-only fields (present when type === "graded") ───
   mid?: number;
   high?: number;
-  grade?: number;     // 10, 9.5, 9, ...
-  company?: string;   // "PSA" | "CGC" | "BGS" | "TAG" | "SGC" | "ACE"
+  // Per Scrydex docs sample, grade arrives as a STRING ("10", "9.5") in
+  // the JSON response — NOT a number. Accept both; coerce in extractor.
+  grade?: number | string;
+  company?: string;          // "PSA" | "CGC" | "BGS" | "TAG" | "SGC" | "ACE"
   is_perfect?: boolean;
   is_signed?: boolean;
   is_error?: boolean;
@@ -135,16 +137,26 @@ function extractGradedPrices(card: ScrydexCard, today: string): GradedSnapshotRo
   for (const v of card.variants ?? []) {
     for (const p of v.prices ?? []) {
       if (p.type !== "graded") continue;
-      if (!p.company || typeof p.grade !== "number") continue;
+      if (!p.company) continue;
+      // BUG FIX 2026-05-26: Scrydex returns `grade` as a string ("10",
+      // "9.5") per their docs sample — NOT a number. The previous
+      // `typeof p.grade !== "number"` check was rejecting every graded
+      // entry, so graded_price_snapshots stayed empty after a full run.
+      // Coerce to number for storage in the NUMERIC column.
+      const gradeNum =
+        typeof p.grade === "number" ? p.grade
+        : typeof p.grade === "string" ? Number.parseFloat(p.grade)
+        : NaN;
+      if (!Number.isFinite(gradeNum)) continue;
       // De-dup within the same card across variants (since Scrydex echoes
       // graded prices on each variant). Key: company+grade+flags.
-      const key = `${p.company}|${p.grade}|${p.is_perfect ?? false}|${p.is_signed ?? false}|${p.is_error ?? false}`;
+      const key = `${p.company}|${gradeNum}|${p.is_perfect ?? false}|${p.is_signed ?? false}|${p.is_error ?? false}`;
       if (seen.has(key)) continue;
       seen.add(key);
       rows.push({
         card_id: card.id,
         company: p.company,
-        grade: p.grade,
+        grade: gradeNum,
         is_perfect: !!p.is_perfect,
         is_signed: !!p.is_signed,
         is_error: !!p.is_error,
