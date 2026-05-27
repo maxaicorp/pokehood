@@ -1,29 +1,51 @@
 // GradedPriceTiles — 6 stat tiles showing PSA/BGS/CGC 10 + 9 market prices
 // for a card. Lives under the main hero row on CardDetail.
 //
-// Data source: Scrydex /cards/{id}?include=prices. Scrydex returns raw and
-// graded entries in the same variants[].prices[] array, distinguished by
-// `type` and (for graded) `company` + `grade`. extractGradedTilePrices()
-// in lib/scrydex-api.ts owns the picking logic.
+// Data flow:
+//   snapshot-prices (daily) → graded_price_snapshots → latest_graded_prices
+//   → get_graded_tiles_for_card RPC → this component
 //
-// Why these 6 specific tiles: PSA + BGS + CGC are the dominant grading
-// companies for Pokémon TCG. Grades 10 and 9 cover the cards collectors
-// actually trade — sub-9 graded cards are a niche market that would dilute
-// the at-a-glance comparison this row is meant to provide. If we want
-// more grades later (8.5, 8, etc.), expand GRADED_TILE_KEYS in scrydex-api.ts.
+// No Scrydex call on read. Sub-50ms render. Zero extra Scrydex credits
+// because graded entries come in the same /cards?include=prices response
+// raw prices already use; snapshot-prices just stopped throwing them away.
+//
+// Empty state: when the RPC returns < 6 rows, the missing combos render as
+// greyed-out em-dash tiles so the row is always visible and the user knows
+// "we checked, no PSA 8 data" rather than "section is broken/missing."
 
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getScrydexCard, extractGradedTilePrices, type GradedTilePrice } from "@/lib/scrydex-api";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
-  // Card id from our index. Strips ::variant suffix before querying Scrydex
-  // because graded prices don't change per variant in Scrydex's data model.
+  // Card id from our index. Strips ::variant suffix before querying — graded
+  // prices don't change per variant in Scrydex's data model.
   cardId: string;
 }
 
+// Tile order — mirrors GRADED_TILE_KEYS in lib/scrydex-api.ts. Kept here as a
+// constant so the row layout is stable even when the RPC returns nothing.
+const TILE_KEYS: Array<{ company: string; grade: number }> = [
+  { company: "PSA", grade: 10 },
+  { company: "PSA", grade: 9  },
+  { company: "BGS", grade: 10 },
+  { company: "BGS", grade: 9  },
+  { company: "CGC", grade: 10 },
+  { company: "CGC", grade: 9  },
+];
+
+interface TileRow {
+  company: string;
+  grade: number;
+  market: number | null;
+  low: number | null;
+  mid: number | null;
+  high: number | null;
+  currency: string;
+}
+
 function formatUsd(n: number | null): string {
-  if (n == null) return "—";
+  if (n == null || n <= 0) return "—";
   return n.toLocaleString(undefined, {
     style: "currency",
     currency: "USD",
@@ -31,12 +53,13 @@ function formatUsd(n: number | null): string {
   });
 }
 
-function Tile({ price }: { price: GradedTilePrice }) {
-  const hasData = price.market != null && price.market > 0;
+function Tile({ row }: { row: TileRow }) {
+  const hasData = row.market != null && row.market > 0;
   // Show low–high range only when we have both AND they're not identical to
   // market (Scrydex sometimes returns market=low=high for thin-data cards).
   const showRange =
-    price.low != null && price.high != null && price.low !== price.high;
+    hasData &&
+    row.low != null && row.high != null && row.low !== row.high;
 
   return (
     <div
@@ -45,18 +68,18 @@ function Tile({ price }: { price: GradedTilePrice }) {
       }`}
     >
       <div className="text-xs font-semibold text-muted-foreground tracking-wide">
-        {price.company} {price.grade}
+        {row.company} {row.grade}
       </div>
       <div
         className={`mt-1.5 text-base sm:text-lg font-bold tabular-nums ${
           hasData ? "text-foreground" : "text-muted-foreground"
         }`}
       >
-        {formatUsd(price.market)}
+        {formatUsd(row.market)}
       </div>
       {showRange ? (
         <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
-          {formatUsd(price.low)} – {formatUsd(price.high)}
+          {formatUsd(row.low)} – {formatUsd(row.high)}
         </div>
       ) : (
         // Reserve a line of vertical space so all tiles align even when the
@@ -68,29 +91,30 @@ function Tile({ price }: { price: GradedTilePrice }) {
 }
 
 export default function GradedPriceTiles({ cardId }: Props) {
-  // Strip our ::variant suffix — Scrydex doesn't know about it. Vintage
-  // variant rows (e.g. "base1-4::shadowless") still share the same graded
-  // dataset on Scrydex's side.
-  const scrydexId = cardId.split("::")[0];
+  // Strip our ::variant suffix — graded data is tied to the physical card,
+  // not the foil variant.
+  const baseCardId = cardId.split("::")[0];
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["graded-prices", scrydexId],
-    queryFn: async () => {
-      const card = await getScrydexCard(scrydexId);
-      if (!card) return null;
-      return extractGradedTilePrices(card);
+  const { data, isLoading } = useQuery({
+    queryKey: ["graded-tiles", baseCardId],
+    queryFn: async (): Promise<Map<string, TileRow>> => {
+      const { data, error } = await supabase.rpc("get_graded_tiles_for_card", {
+        p_card_id: baseCardId,
+      });
+      if (error) {
+        console.warn("[GradedPriceTiles] RPC error:", error.message);
+        return new Map();
+      }
+      const map = new Map<string, TileRow>();
+      for (const r of (data ?? []) as TileRow[]) {
+        map.set(`${r.company}-${r.grade}`, r);
+      }
+      return map;
     },
-    staleTime: 60 * 60_000,           // 1 hour — graded prices update slowly
+    staleTime: 60 * 60_000,           // 1 hour — graded prices update daily at most
     refetchOnWindowFocus: false,
-    enabled: !!scrydexId,
+    enabled: !!baseCardId,
   });
-
-  if (isError) {
-    // Silent fail — the page is still useful without graded tiles. Log so
-    // /admin/functions probing surfaces it.
-    console.warn("[GradedPriceTiles] failed to load");
-    return null;
-  }
 
   if (isLoading) {
     return (
@@ -107,13 +131,20 @@ export default function GradedPriceTiles({ cardId }: Props) {
     );
   }
 
-  if (!data) return null;
-
-  // Hide the entire section if Scrydex has no graded data at all for this
-  // card (common on commons, sealed-only products, and very new releases).
-  // Showing 6 "—" tiles would be visual noise.
-  const anyData = data.some((d) => d.market != null && d.market > 0);
-  if (!anyData) return null;
+  // Always render all 6 tiles, even if the cache has no data for some. The
+  // Tile component handles the "no data" state internally (em-dash + dimmed
+  // border). This is intentional — see comments above on why we don't hide
+  // the section. Previous "anyData ? render : null" guard was confusing
+  // because chase cards would silently lose the section if Scrydex's graded
+  // data hadn't been ingested yet.
+  const rows: TileRow[] = TILE_KEYS.map((k) => {
+    const found = data?.get(`${k.company}-${k.grade}`);
+    return found ?? {
+      company: k.company,
+      grade: k.grade,
+      market: null, low: null, mid: null, high: null, currency: "USD",
+    };
+  });
 
   return (
     <section className="mt-8">
@@ -121,11 +152,13 @@ export default function GradedPriceTiles({ cardId }: Props) {
         <h3 className="font-display font-semibold text-foreground">
           Graded Prices
         </h3>
-        <span className="text-[10px] text-muted-foreground">Market · Source: Scrydex</span>
+        <span className="text-[10px] text-muted-foreground">
+          Market · Source: Scrydex (daily snapshot)
+        </span>
       </div>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
-        {data.map((p) => (
-          <Tile key={`${p.company}-${p.grade}`} price={p} />
+        {rows.map((r) => (
+          <Tile key={`${r.company}-${r.grade}`} row={r} />
         ))}
       </div>
     </section>

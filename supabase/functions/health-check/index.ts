@@ -378,6 +378,43 @@ async function checkCardStatsRpc(
   }
 }
 
+// "Are graded prices being snapshotted?" The CardDetail tile row reads from
+// latest_graded_prices. Empty or stale = tiles will all show "—". Cheap to
+// answer: count distinct cards with at least one graded row, and check the
+// newest snapshot date.
+async function checkGradedPricesFreshness(
+  supabase: any,
+): Promise<CheckResult> {
+  const { data, error } = await supabase
+    .from("latest_graded_prices")
+    .select("updated_at, card_id")
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (error) return { ok: false, message: "DB query failed", detail: error.message };
+  const row = Array.isArray(data) ? data[0] : data;
+  const ts = row?.updated_at as string | undefined;
+  if (!ts) {
+    return {
+      ok: false,
+      message: "latest_graded_prices is empty — snapshot-prices hasn't written graded data yet. Run snapshot once and check again.",
+    };
+  }
+  const ageMs = Date.now() - new Date(ts).getTime();
+  const ageHours = ageMs / 3_600_000;
+  if (ageHours > 36) {
+    return {
+      ok: false,
+      message: `Graded cache refreshed ${ageHours.toFixed(1)}h ago (${ts}). CardDetail graded tiles will be stale.`,
+      detail: { updated_at: ts, age_hours: ageHours },
+    };
+  }
+  return {
+    ok: true,
+    message: `Graded cache refreshed ${ageHours < 1 ? `${Math.round(ageMs / 60_000)}m` : `${ageHours.toFixed(1)}h`} ago — CardDetail tiles current.`,
+    detail: { updated_at: ts, age_hours: ageHours },
+  };
+}
+
 // ─── Onchain ingest freshness ────────────────────────────────────────────────
 //
 // The new /onchain page reads exclusively from onchain_activities +
@@ -504,7 +541,7 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [freshness, coverage, liveCache, deltasComputed, newSets, sealedFreshness, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings] = await Promise.all([
+  const [freshness, coverage, liveCache, deltasComputed, newSets, sealedFreshness, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings, gradedFreshness] = await Promise.all([
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
     checkLiveCacheFreshness(supabase),
@@ -517,6 +554,7 @@ serve(async (req) => {
     loadSnapshotHistory(supabase, 14),
     checkOnchainActivityFreshness(supabase),
     checkOnchainListingsFreshness(supabase),
+    checkGradedPricesFreshness(supabase),
   ]);
 
   const dailyRun = checkDailyRun(snapshotHistory.last_daily);
@@ -538,6 +576,7 @@ serve(async (req) => {
     full_snapshot_run: fullRun,
     onchain_activity_freshness: onchainActivity,
     onchain_listings_freshness: onchainListings,
+    graded_prices_freshness: gradedFreshness,
     scrydex_proxy: scrydex,
     card_stats_rpc: statsRpc,
     sample_images: images,
