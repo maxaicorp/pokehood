@@ -13,7 +13,10 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 const SLOT_COUNT = 20;
-const FLIP_ANIM_MS = 480; // keep in sync with .cm-flipper transition in index.css
+// Flip animation duration. Was 480ms — felt sluggish on mobile. 220ms is
+// near-instant but still reads as a "flip" gesture. MUST match the
+// transition duration in .cm-flipper (src/index.css).
+const FLIP_ANIM_MS = 220;
 // Time both no-match cards stay revealed before rotating back. Generous on
 // purpose so the second card is comfortably readable even when the network
 // roundtrip ate a chunk of perceived time.
@@ -116,18 +119,22 @@ export default function CardMatch() {
     setPhase("loading");
     try {
       const session: CardMatchSession = await startCardMatch();
-      // Preload all 10 unique card images before revealing the board so flips
-      // don't race the network. Best-effort: we don't block on preload errors.
-      if (session.image_urls && session.image_urls.length > 0) {
-        await preloadImagesAwait(session.image_urls);
-      }
+      // Show the board immediately — don't block on image preload. The first
+      // flip might race the network for a frame, but the user feels instant
+      // start instead of staring at a loading state. Preload still runs in
+      // background so subsequent flips are paint-ready.
       setSlots(hydrateSlots(session.slot_cards));
       setSessionId(session.session_id);
       // Use a CLIENT-side start timestamp so the displayed timer begins at 0:00
-      // the moment the board is revealed (after preload), not at session-insert
+      // the moment the board is revealed (now instant), not at session-insert
       // time on the server. The server still scores against its own clock.
       setStartedAt(Date.now());
       setPhase("playing");
+      if (session.image_urls && session.image_urls.length > 0) {
+        // Fire-and-forget; the .catch is just to silence the promise warning
+        // — preloadImagesAwait already swallows individual image errors.
+        preloadImagesAwait(session.image_urls).catch(() => undefined);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to start";
       setError(msg);

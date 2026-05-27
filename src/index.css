@@ -269,7 +269,9 @@
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  transition: transform 480ms cubic-bezier(0.2, 0.8, 0.25, 1);
+  /* Keep in sync with FLIP_ANIM_MS in CardMatch.tsx. Was 480ms, halved
+     to 220ms for snappier mobile feel. */
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.25, 1);
   transform: rotateY(0deg);
 }
 .cm-flipper.is-flipped {
