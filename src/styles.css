@@ -92,6 +92,96 @@
   --accent: #ff7a90;
 }
 
+.theme-pokedex-light {
+  --app-bg: #f7f9ff;
+  --panel-bg: #ffffff;
+  --panel-soft: #edf2fb;
+  --panel-raised: #e4ebf7;
+  --border: #d5dfef;
+  --border-strong: #b9c8dc;
+  --text: #172033;
+  --muted: #63758e;
+  --primary: #ffcb05;
+  --primary-text: #172033;
+  --positive: #168c55;
+  --negative: #d92d20;
+  --warning: #f59e0b;
+  --accent: #2a75bb;
+  --shadow: rgb(31 41 55 / 14%);
+}
+
+.theme-gym-leader-light {
+  --app-bg: #f5fbfb;
+  --panel-bg: #ffffff;
+  --panel-soft: #e8f5f3;
+  --panel-raised: #dcecea;
+  --border: #c8dddb;
+  --border-strong: #9bbfbb;
+  --text: #15272b;
+  --muted: #5d7478;
+  --primary: #f2aa4c;
+  --primary-text: #24190a;
+  --positive: #1aa99a;
+  --negative: #d9435f;
+  --warning: #d98b1f;
+  --accent: #1aa99a;
+  --shadow: rgb(21 39 43 / 14%);
+}
+
+.theme-pokeball-light {
+  --app-bg: #fff8f6;
+  --panel-bg: #ffffff;
+  --panel-soft: #f7ebe8;
+  --panel-raised: #eedbd6;
+  --border: #e6cbc3;
+  --border-strong: #ccaaa0;
+  --text: #1f2937;
+  --muted: #776b69;
+  --primary: #e3350d;
+  --primary-text: #fff8f6;
+  --positive: #178f52;
+  --negative: #c9230a;
+  --warning: #d6a600;
+  --accent: #1f2937;
+  --shadow: rgb(31 41 55 / 14%);
+}
+
+.theme-safari-light {
+  --app-bg: #fbfaed;
+  --panel-bg: #fffef6;
+  --panel-soft: #eff1d7;
+  --panel-raised: #e2e7c2;
+  --border: #d3d9b2;
+  --border-strong: #aeb985;
+  --text: #1f2a1d;
+  --muted: #667256;
+  --primary: #8bbd3d;
+  --primary-text: #10150f;
+  --positive: #5d9f2e;
+  --negative: #cc553d;
+  --warning: #d9a921;
+  --accent: #d9a921;
+  --shadow: rgb(31 42 29 / 14%);
+}
+
+.theme-elite-light {
+  --app-bg: #fbf8ff;
+  --panel-bg: #ffffff;
+  --panel-soft: #f0e9fb;
+  --panel-raised: #e3d8f3;
+  --border: #d4c4ea;
+  --border-strong: #b59bd6;
+  --text: #231a35;
+  --muted: #746889;
+  --primary: #b78aff;
+  --primary-text: #171228;
+  --positive: #168c73;
+  --negative: #df5572;
+  --warning: #d69f24;
+  --accent: #df5572;
+  --shadow: rgb(35 26 53 / 14%);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -253,14 +343,14 @@ button:disabled {
 }
 
 .theme-row {
-  align-items: center;
+  align-items: flex-start;
   background: var(--app-bg);
   border-bottom: 1px solid var(--border);
   display: flex;
   gap: 14px;
-  min-height: 54px;
+  min-height: 88px;
   overflow-x: auto;
-  padding: 0 60px 12px;
+  padding: 0 60px 14px;
   scrollbar-width: none;
 }
 
@@ -276,7 +366,27 @@ button:disabled {
   text-transform: uppercase;
 }
 
-.theme-row > div {
+.theme-groups {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.theme-groups section {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.theme-groups section > small {
+  color: var(--muted);
+  flex: 0 0 42px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.theme-groups section > div {
   display: flex;
   gap: 8px;
 }
