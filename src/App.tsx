@@ -65,6 +65,16 @@ import {
 
 const ranges: ChartRange[] = ["LIVE", "1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"];
 
+const themes = [
+  { id: "pokedex-night", label: "Pokedex Night", colors: ["#0b0f1a", "#ffcb05", "#2a75bb"] },
+  { id: "gym-leader", label: "Gym Leader", colors: ["#101820", "#f2aa4c", "#42e8c3"] },
+  { id: "pokeball", label: "Pokeball", colors: ["#0f1117", "#e3350d", "#f8fafc"] },
+  { id: "safari", label: "Safari", colors: ["#10150f", "#8fd14f", "#f4d35e"] },
+  { id: "elite-four", label: "Elite Four", colors: ["#101024", "#d9b8ff", "#ff7a90"] }
+] as const;
+
+type ThemeId = (typeof themes)[number]["id"];
+
 type SwapHistoryEvent = SwapEventInput & {
   id: string;
   createdAt: string;
@@ -114,6 +124,7 @@ export function App() {
   const [swapHistory, setSwapHistory] = useState<SwapHistoryEvent[]>([]);
   const [tokenSubmissionOpen, setTokenSubmissionOpen] = useState(false);
   const [navPanel, setNavPanel] = useState<"rewards" | "notifications" | null>(null);
+  const [theme, setTheme] = useState<ThemeId>("pokedex-night");
 
   const verifiedTokens = useMemo(() => getVerifiedTokens(tokens), [tokens]);
   const sortedTokens = useMemo(
@@ -393,7 +404,7 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell theme-${theme}`}>
       <header className="topbar">
         <div className="brand-mark">S</div>
         <div className="search-wrap">
@@ -438,6 +449,8 @@ export function App() {
           walletConnection={walletConnection}
         />
       </header>
+
+      <ThemeSwitcher activeTheme={theme} onThemeChange={setTheme} />
 
       <div className="dashboard-shell">
         <main className="left-scroll">
@@ -541,6 +554,35 @@ function SearchResults({ onSelectToken, tokens }: { onSelectToken: (token: Token
   );
 }
 
+function ThemeSwitcher({
+  activeTheme,
+  onThemeChange
+}: {
+  activeTheme: ThemeId;
+  onThemeChange: (theme: ThemeId) => void;
+}) {
+  return (
+    <div className="theme-row" aria-label="Theme options">
+      <span>Theme</span>
+      <div>
+        {themes.map((theme) => (
+          <button
+            className={activeTheme === theme.id ? "selected" : ""}
+            key={theme.id}
+            onClick={() => onThemeChange(theme.id)}
+            type="button"
+          >
+            <span className="theme-swatch" aria-hidden="true">
+              {theme.colors.map((color) => <i key={color} style={{ background: color }} />)}
+            </span>
+            {theme.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TokenChart({ range, token }: { range: ChartRange; token: LiveToken }) {
   const [points, setPoints] = useState<ChartPoint[]>([]);
 
@@ -579,7 +621,7 @@ function TokenChart({ range, token }: { range: ChartRange; token: LiveToken }) {
   const latestY = latestPoint
     ? Math.max(24, Math.min(height - 24, height - 24 - ((latestPoint.price - minPrice) / priceRange) * (height - 48)))
     : height / 2;
-  const chartColor = token.change24h >= 0 ? "#c7ff72" : "#ff5a8a";
+  const chartColor = token.change24h >= 0 ? "var(--positive)" : "var(--negative)";
 
   return (
     <div className="chart-wrap">
@@ -817,7 +859,7 @@ function SwapHistoryPanel({ events }: { events: SwapHistoryEvent[] }) {
 }
 
 function MiniSpark({ change }: { change: number }) {
-  const color = change >= 0 ? "#c7ff72" : "#ff5a8a";
+  const color = change >= 0 ? "var(--positive)" : "var(--negative)";
   return (
     <svg className="spark" viewBox="0 0 74 32" aria-hidden="true">
       <polyline
