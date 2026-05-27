@@ -791,7 +791,7 @@ export default function Market() {
                           <img
                             src={card.images.small}
                             alt={card.name}
-                            className="w-20 aspect-[3/4] shadow-md object-cover bg-muted"
+                            className="w-20 aspect-[5/7] shadow-md object-contain bg-muted"
                             loading="lazy"
                           />
                         </div>
