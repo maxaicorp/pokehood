@@ -141,9 +141,12 @@ export default function CardDetail() {
     });
   }, [card?.id]);
 
+  // Bump from 20 → 500 cards so the smart-suggestions filter below has a real
+  // pool to work with. The set cards come from the static index already in
+  // memory (loadCardIndex), so going wider doesn't cost a real fetch.
   const { data: setCardsResult } = useQuery({
     queryKey: ["set-cards-suggestions", card?.set.id],
-    queryFn: () => getSetCards(card!.set.id, 1, 20),
+    queryFn: () => getSetCards(card!.set.id, 1, 500),
     enabled: !!card?.set.id,
     staleTime: Infinity,
   });
@@ -237,9 +240,41 @@ export default function CardDetail() {
     ? ((trend - avgs.avg1) / avgs.avg1) * 100
     : null;
 
-  const suggestions = (setCardsResult?.data || [])
-    .filter((c) => c.id !== id)
-    .slice(0, 10);
+  // ─── Smart "More from this set" recommendations ──────────────────────────
+  // Previous behavior was "first 10 cards in API order" — meant viewing a
+  // $1400 chase card recommended ten $0.10 commons. Now: pick same-rarity
+  // cards first (most relevant: "you're looking at a Special Illustration
+  // Rare, here are the other SIRs from this set"), sorted by price desc.
+  // Pad with top-priced from the set if same-rarity has < 6 candidates.
+  const { suggestions, suggestionsHeading } = (() => {
+    const all = (setCardsResult?.data || []).filter((c) => c.id !== id);
+    const fallbackHeading = `More from ${card?.set.name ?? "this set"}`;
+    if (!card?.rarity) {
+      const sorted = [...all].sort(
+        (a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0),
+      );
+      return { suggestions: sorted.slice(0, 10), suggestionsHeading: fallbackHeading };
+    }
+    const sameRarity = [...all]
+      .filter((c) => c.rarity === card.rarity)
+      .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0));
+    if (sameRarity.length >= 6) {
+      return {
+        suggestions: sameRarity.slice(0, 10),
+        suggestionsHeading: `More ${card.rarity} from ${card.set.name}`,
+      };
+    }
+    // Fewer than 6 same-rarity — pad with top-priced from the rest of the
+    // set so the rail stays full instead of looking sparse.
+    const sameRarityIds = new Set(sameRarity.map((c) => c.id));
+    const others = all
+      .filter((c) => !sameRarityIds.has(c.id))
+      .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0));
+    return {
+      suggestions: [...sameRarity, ...others].slice(0, 10),
+      suggestionsHeading: fallbackHeading,
+    };
+  })();
 
   const buyQuery = card ? encodeURIComponent(`${card.name} ${card.set.name} pokemon card`) : "";
   const buyLinks = [
@@ -485,7 +520,7 @@ export default function CardDetail() {
         {suggestions.length > 0 && (
           <div className="mt-10">
             <h3 className="font-display font-semibold text-foreground mb-4">
-              More from {card?.set.name}
+              {suggestionsHeading}
             </h3>
             <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
               {suggestions.map((c) => (
