@@ -1076,7 +1076,7 @@ function AdminPanel({
           <p>Admin workspace</p>
           <h2>Token verification queue</h2>
         </div>
-        <button onClick={onAddToken}><Plus size={17} /> Add mint address</button>
+        <button onClick={onAddToken}><Plus size={17} /> Add new</button>
       </div>
       <div className={isAdmin ? "admin-status ready" : "admin-status"}>
         <BadgeCheck size={15} />
@@ -1162,7 +1162,7 @@ function TokenSubmissionModal({
         <div className="modal-head">
           <div>
             <p>Admin review</p>
-            <h2>Add mint address</h2>
+            <h2>Add new token</h2>
           </div>
           <button onClick={onClose} title="Close form"><X size={20} /></button>
         </div>
@@ -1246,7 +1246,7 @@ function TokenSubmissionModal({
             />
           </label>
           {formError && <div className="quote-state error compact"><AlertTriangle size={16} /> {formError}</div>}
-          <button className="primary-action" type="submit">Add to review queue</button>
+          <button className="primary-action" type="submit">Submit token</button>
         </form>
       </section>
     </div>
