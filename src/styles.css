@@ -282,7 +282,6 @@ button:disabled {
 .wallet-option {
   align-items: center;
   display: flex;
-  justify-content: space-between;
 }
 
 .wallet-menu-head {
@@ -307,6 +306,7 @@ button:disabled {
   border: 1px solid #2a3542;
   border-radius: 8px;
   color: #eef3f8;
+  gap: 11px;
   min-height: 48px;
   padding: 10px 12px;
 }
@@ -317,7 +317,47 @@ button:disabled {
   border-color: #365f2b;
 }
 
-.wallet-option span {
+.wallet-icon {
+  align-items: center;
+  background: #202832;
+  border-radius: 50%;
+  color: #eef3f8;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 800;
+  height: 34px;
+  justify-content: center;
+  overflow: hidden;
+  width: 34px;
+}
+
+.wallet-icon img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.wallet-option > span:not(.wallet-icon),
+.connected-wallet > span:not(.wallet-icon) {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+
+.wallet-option strong,
+.connected-wallet strong {
+  font-weight: 800;
+}
+
+.connected-wallet button {
+  background: transparent;
+  border: 0;
+  color: #c7ff72;
+  font-size: 12px;
   font-weight: 800;
 }
 

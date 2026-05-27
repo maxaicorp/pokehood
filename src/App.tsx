@@ -754,9 +754,11 @@ function WalletDropdown({
           </div>
           {walletConnection && (
             <div className="connected-wallet">
-              <BadgeCheck size={16} />
-              <span>{walletConnection.name}</span>
-              <small>{shortenAddress(walletConnection.address)}</small>
+              <WalletIcon option={options.find((option) => option.id === walletConnection.id)} walletName={walletConnection.name} />
+              <span>
+                <strong>{walletConnection.name}</strong>
+                <small>{shortenAddress(walletConnection.address)}</small>
+              </span>
               <button onClick={onRefreshBalances} disabled={portfolioStatus === "loading"}>
                 {portfolioStatus === "loading" ? "Syncing..." : "Sync balances"}
               </button>
@@ -765,8 +767,12 @@ function WalletDropdown({
           <div className="wallet-list">
             {options.map((option) => (
               <button className={walletConnection?.id === option.id ? "wallet-option connected" : "wallet-option"} key={option.id} onClick={() => onConnect(option.id)}>
-                <span>{option.name}</span>
-                <small>{option.installed ? "Installed" : "Not detected"}</small>
+                <WalletIcon option={option} walletName={option.name} />
+                <span>
+                  <strong>{option.name}</strong>
+                  <small>{option.installed ? "Installed" : "Not detected"}</small>
+                </span>
+                {walletConnection?.id === option.id && <BadgeCheck size={17} />}
               </button>
             ))}
           </div>
@@ -775,6 +781,16 @@ function WalletDropdown({
         </div>
       )}
     </div>
+  );
+}
+
+function WalletIcon({ option, walletName }: { option?: WalletOption; walletName: string }) {
+  return (
+    <span className="wallet-icon" aria-hidden="true">
+      {option?.iconUrl
+        ? <img src={option.iconUrl} alt="" />
+        : walletName.slice(0, 1)}
+    </span>
   );
 }
 
