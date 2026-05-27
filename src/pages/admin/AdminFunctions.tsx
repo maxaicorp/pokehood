@@ -105,6 +105,12 @@ const FUNCTIONS: ProbeSpec[] = [
     okStatuses: [200, 401, 403],
   },
   {
+    name: "cc-discovery-run",
+    description: "Admin-only valuation matcher. Probe without auth returns 401, with admin JWT runs full discovery (10-min cooldown).",
+    body: {},
+    okStatuses: [200, 401, 403, 429],
+  },
+  {
     name: "scrydex-proxy",
     description: "Proxy for Scrydex card-data API.",
     query: "?path=/health",

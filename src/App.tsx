@@ -33,6 +33,7 @@ const AdminGiveawayForm = lazy(() => import("./pages/admin/AdminGiveawayForm"));
 const AdminPrizes = lazy(() => import("./pages/admin/AdminPrizes"));
 const AdminHealth = lazy(() => import("./pages/admin/AdminHealth"));
 const AdminFunctions = lazy(() => import("./pages/admin/AdminFunctions"));
+const AdminCcDiscovery = lazy(() => import("./pages/admin/AdminCcDiscovery"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -87,6 +88,7 @@ const App = () => (
                   <Route path="/admin/prizes" element={<AdminPrizes />} />
                   <Route path="/admin/health" element={<AdminHealth />} />
                   <Route path="/admin/functions" element={<AdminFunctions />} />
+                  <Route path="/admin/cc-discovery" element={<AdminCcDiscovery />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>

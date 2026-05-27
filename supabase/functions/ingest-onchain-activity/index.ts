@@ -97,29 +97,86 @@ function computeUsd(price: number | null | undefined, priceInfo: any, solUsd: nu
   return null;
 }
 
-// ─── Helius name resolution ──────────────────────────────────────────────────
-// Returns a Map<mint, name> for mints we don't already have in nft_names.
-// Cache miss → single Helius RPC call (covers up to 1000 mints in one batch).
-// On any failure we return an empty Map; the caller proceeds without names
-// and the next ingest run will retry the same mints.
+// ─── Helius name + attribute resolution ──────────────────────────────────────
+// Returns a Map<mint, ResolvedNft> for mints we don't already have in
+// nft_names. Cache miss → single Helius RPC call (covers up to 1000 mints in
+// one batch). On any failure we return an empty Map; the caller proceeds
+// without names and the next ingest run will retry the same mints.
+//
+// We capture both the human-readable name AND the structured attribute array
+// so the upcoming CC-discovery matcher can join NFT slabs to Scrydex
+// graded_prices deterministically (rather than parsing free-form names).
+
+interface HeliusAttr { trait_type?: string; value?: unknown }
+interface ResolvedNft {
+  name: string | null;
+  cert_number: string | null;
+  attributes: HeliusAttr[];
+  card_name_attr: string | null;
+  set_hint: string | null;
+  card_number: string | null;
+  grading_company: string | null;
+  grade_value: number | null;
+  year_attr: string | null;
+}
+
+// Map a normalized trait_type (lowercased, punctuation-stripped) to one of
+// the canonical fields we extract. Collector Crypt's slab attributes use a
+// handful of common labels but we keep the dispatch table generous in case
+// labels vary across collections.
+function normalizeTraitType(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function parseGradingCompany(raw: unknown): string | null {
+  if (raw == null) return null;
+  const s = String(raw).toUpperCase().trim();
+  if (!s) return null;
+  // Canonicalize to short codes Scrydex uses.
+  if (s.includes("PSA")) return "PSA";
+  if (s.includes("CGC")) return "CGC";
+  if (s.includes("BGS") || s.includes("BECKETT")) return "BGS";
+  if (s.includes("TAG")) return "TAG";
+  if (s.includes("SGC")) return "SGC";
+  if (s.includes("ACE")) return "ACE";
+  return s; // unknown — store verbatim, matcher will handle
+}
+
+function parseGradeValue(raw: unknown): number | null {
+  if (raw == null) return null;
+  // Grades arrive as numbers ("10"), decimals ("9.5"), or strings with
+  // qualifiers ("Pristine 10", "Authentic"). parseFloat handles the first
+  // two and a leading "Pristine 10" string by skipping non-numeric prefix.
+  const s = String(raw).trim();
+  const m = s.match(/(\d+(?:\.\d+)?)/);
+  if (!m) return null;
+  const n = Number.parseFloat(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
 async function resolveNamesForNewMints(
   supabase: any,
   apiKey: string,
   mints: string[],
-): Promise<Map<string, { name: string | null; cert_number: string | null }>> {
-  const result = new Map<string, { name: string | null; cert_number: string | null }>();
+): Promise<Map<string, ResolvedNft>> {
+  const result = new Map<string, ResolvedNft>();
   if (!mints.length || !apiKey) return result;
 
-  // Filter to only mints we don't already have cached.
+  // Filter to mints we either don't have OR have but never extracted
+  // structured attributes for (legacy rows from before this column existed).
   const { data: existing, error } = await supabase
     .from("nft_names")
-    .select("mint")
+    .select("mint, attributes")
     .in("mint", mints);
   if (error) {
     console.warn("[helius] nft_names lookup failed:", error.message);
   }
-  const have = new Set((existing ?? []).map((r: { mint: string }) => r.mint));
-  const missing = mints.filter((m) => !have.has(m));
+  const fullyCached = new Set(
+    (existing ?? [])
+      .filter((r: { attributes: unknown }) => r.attributes != null)
+      .map((r: { mint: string }) => r.mint),
+  );
+  const missing = mints.filter((m) => !fullyCached.has(m));
   if (missing.length === 0) return result;
 
   try {
@@ -144,42 +201,124 @@ async function resolveNamesForNewMints(
     const j = await res.json() as {
       result?: Array<{
         id?: string;
-        content?: {
-          metadata?: { name?: string; attributes?: Array<{ trait_type?: string; value?: unknown }> };
-        };
+        content?: { metadata?: { name?: string; attributes?: HeliusAttr[] } };
       }>;
     };
     for (const asset of j.result ?? []) {
       const id = asset?.id;
       if (!id) continue;
       const name = asset?.content?.metadata?.name ?? null;
-      // Hunt for a PSA certificate # in the attributes — PSA flow will use
-      // this directly without needing a second Helius pass later.
       const attrs = asset?.content?.metadata?.attributes ?? [];
+
+      // Walk attributes once, dispatching by normalized trait_type into the
+      // structured fields. Generous on label variants because Collector
+      // Crypt + other graded-NFT projects don't share a consistent schema.
       let cert: string | null = null;
+      let cardName: string | null = null;
+      let setHint: string | null = null;
+      let cardNumber: string | null = null;
+      let gradingCompany: string | null = null;
+      let gradeValue: number | null = null;
+      let year: string | null = null;
+
       for (const a of attrs) {
-        const tt = (a?.trait_type ?? "").toString().toLowerCase();
-        if (tt === "certificate #" || tt === "certificate number" || tt === "cert number" || tt === "psa cert") {
-          const v = a?.value;
-          if (v != null) cert = String(v);
-          break;
+        const tt = normalizeTraitType((a?.trait_type ?? "").toString());
+        const v = a?.value;
+        if (v == null || v === "") continue;
+        switch (tt) {
+          case "certificate":
+          case "certificate number":
+          case "cert number":
+          case "cert":
+          case "psa cert":
+          case "psa certificate":
+          case "cgc certificate":
+          case "bgs certificate":
+            cert ??= String(v);
+            break;
+          case "card name":
+          case "name":
+          case "card":
+            cardName ??= String(v);
+            break;
+          case "set":
+          case "set name":
+          case "expansion":
+          case "series":
+            setHint ??= String(v);
+            break;
+          case "card number":
+          case "number":
+          case "card no":
+          case "card num":
+            cardNumber ??= String(v);
+            break;
+          case "grading company":
+          case "grader":
+          case "authenticator":
+          case "grading service":
+          case "tpa":
+            gradingCompany ??= parseGradingCompany(v);
+            break;
+          case "grade":
+          case "grade value":
+          case "overall grade":
+            gradeValue ??= parseGradeValue(v);
+            break;
+          case "year":
+          case "release year":
+            year ??= String(v);
+            break;
         }
       }
-      result.set(id, { name, cert_number: cert });
+
+      // Some collections embed grading company in the grade string itself
+      // (e.g. "PSA 10"). If we still don't have a company, try to extract.
+      if (!gradingCompany && gradeValue == null) {
+        for (const a of attrs) {
+          const tt = normalizeTraitType((a?.trait_type ?? "").toString());
+          if (tt === "grade" || tt === "overall grade") {
+            const s = String(a?.value ?? "");
+            const company = parseGradingCompany(s);
+            const value = parseGradeValue(s);
+            if (company) gradingCompany = company;
+            if (value != null) gradeValue = value;
+            break;
+          }
+        }
+      }
+
+      result.set(id, {
+        name,
+        cert_number: cert,
+        attributes: attrs,
+        card_name_attr: cardName,
+        set_hint: setHint,
+        card_number: cardNumber,
+        grading_company: gradingCompany,
+        grade_value: gradeValue,
+        year_attr: year,
+      });
     }
   } catch (e) {
     console.warn("[helius] getAssetBatch threw:", (e as Error).message);
     return result;
   }
 
-  // Upsert into nft_names so the next run skips these mints. We persist even
-  // when name is null so we don't re-query Helius for unresolvable mints on
-  // every cron tick (Helius isn't always going to find every PDA-style mint).
+  // Upsert. Persist even when fields are null so we don't re-hit Helius
+  // every cron tick for mints whose metadata is permanently sparse.
   if (result.size > 0) {
     const rows = [...result.entries()].map(([mint, v]) => ({
       mint,
       name: v.name,
       cert_number: v.cert_number,
+      attributes: v.attributes,
+      card_name_attr: v.card_name_attr,
+      set_hint: v.set_hint,
+      card_number: v.card_number,
+      grading_company: v.grading_company,
+      grade_value: v.grade_value,
+      year_attr: v.year_attr,
       fetched_at: new Date().toISOString(),
     }));
     const { error: upErr } = await supabase
