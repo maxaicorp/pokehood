@@ -515,6 +515,13 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
     return card;
   }
 
+  // Ensure the in-memory cache is populated from DB snapshots before we
+  // peek at it. Market/Explore explicitly seed on mount, but other pages
+  // (SetDetail, CardDetail, GlobalSearch) rely on this enrich path —
+  // without the seed every card returned "—" for price on those routes.
+  // The seed is a no-op after the first call (singleton promise).
+  await ensurePricingCacheSeeded();
+
   // Check in-memory cache (populated from DB snapshots via seedPricingCache at app init)
   if (pricingCache.has(card.id)) {
     const cached = pricingCache.get(card.id);
