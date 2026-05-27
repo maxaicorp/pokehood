@@ -473,6 +473,7 @@ export function App() {
               status={adminStatus}
               swapCount={swapHistory.length}
               swapVolumeUsd={swapVolumeUsd}
+              tokens={tokens}
               walletAddress={walletConnection.address}
             />
           )}
@@ -542,22 +543,18 @@ function SearchResults({ onSelectToken, tokens }: { onSelectToken: (token: Token
 
 function TokenChart({ range, token }: { range: ChartRange; token: LiveToken }) {
   const [points, setPoints] = useState<ChartPoint[]>([]);
-  const [status, setStatus] = useState<"loading" | "live" | "collecting">("loading");
 
   useEffect(() => {
     let cancelled = false;
-    setStatus("loading");
 
     fetchTokenHistory(token, range)
       .then((history) => {
         if (cancelled) return;
         setPoints(history);
-        setStatus(history.length > 1 ? "live" : "collecting");
       })
       .catch(() => {
         if (cancelled) return;
         setPoints([{ price: token.priceUsd, timestamp: Date.now() }]);
-        setStatus("collecting");
       });
 
     return () => {
@@ -586,13 +583,6 @@ function TokenChart({ range, token }: { range: ChartRange; token: LiveToken }) {
 
   return (
     <div className="chart-wrap">
-      <span className={status === "live" ? "chart-status live" : "chart-status"}>
-        {status === "loading"
-          ? "Loading history..."
-          : status === "live"
-            ? `Live from Jupiter${token.lastPriceUpdatedAt ? ` - ${formatUpdatedAgo(token.lastPriceUpdatedAt)}` : ""}`
-            : "Collecting Jupiter history"}
-      </span>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${token.symbol} chart`}>
         <line x1="0" x2={width} y1="150" y2="150" stroke="#2a333c" strokeDasharray="2 9" />
         <polyline points={svgPoints} fill="none" stroke={chartColor} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
@@ -621,8 +611,8 @@ function TokenStats({ token }: { token: LiveToken }) {
         <strong>{shortenAddress(token.mint)}</strong>
       </div>
       <div>
-        <small>Price source</small>
-        <strong>{token.lastPriceUpdatedAt ? `Jupiter ${formatUpdatedAgo(token.lastPriceUpdatedAt)}` : "Jupiter pending"}</strong>
+        <small>Updated</small>
+        <strong>{token.lastPriceUpdatedAt ? formatUpdatedAgo(token.lastPriceUpdatedAt) : "Pending"}</strong>
       </div>
     </div>
   );
@@ -1208,6 +1198,81 @@ function UserInfoPanel({
   );
 }
 
+function AdminHealthPanel({
+  latestPriceUpdate,
+  pendingReviews,
+  pricedTokens,
+  tokens,
+  verifiedTokens
+}: {
+  latestPriceUpdate: string | undefined;
+  pendingReviews: number;
+  pricedTokens: number;
+  tokens: LiveToken[];
+  verifiedTokens: number;
+}) {
+  const healthItems = [
+    {
+      detail: appConfig.jupiterApiKey ? `${pricedTokens}/${verifiedTokens} priced` : "Missing API key",
+      label: "Jupiter",
+      status: appConfig.jupiterApiKey && pricedTokens > 0 ? "online" : "warning"
+    },
+    {
+      detail: appConfig.heliusApiKey ? appConfig.cluster : "Missing API key",
+      label: "Helius",
+      status: appConfig.heliusApiKey ? "online" : "warning"
+    },
+    {
+      detail: appConfig.supabaseConfigured ? "Configured" : "Missing env",
+      label: "Supabase",
+      status: appConfig.supabaseConfigured ? "online" : "warning"
+    },
+    {
+      detail: latestPriceUpdate ? formatUpdatedAgo(latestPriceUpdate) : "No live update",
+      label: "Prices",
+      status: latestPriceUpdate ? "online" : "warning"
+    }
+  ];
+
+  return (
+    <div className="admin-health-panel">
+      <div className="section-heading">
+        <div>
+          <h2>System health</h2>
+          <small>Token data and provider status</small>
+        </div>
+      </div>
+      <div className="health-grid">
+        {healthItems.map((item) => (
+          <div className={`health-card ${item.status}`} key={item.label}>
+            <span />
+            <small>{item.label}</small>
+            <strong>{item.detail}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="token-health-table">
+        <div className="token-health-summary">
+          <span>{tokens.length} total tokens</span>
+          <span>{verifiedTokens} verified</span>
+          <span>{pendingReviews} pending</span>
+        </div>
+        {tokens.slice(0, 8).map((token) => (
+          <button key={token.mint} className="token-health-row" type="button">
+            <TokenAvatar token={token} />
+            <span>
+              <strong>{token.symbol}</strong>
+              <small>{token.status}</small>
+            </span>
+            <em>{formatUsd(token.priceUsd, token.priceUsd < 1 ? 6 : 2)}</em>
+            <small>{token.lastPriceUpdatedAt ? formatUpdatedAgo(token.lastPriceUpdatedAt) : "Pending"}</small>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AdminPanel({
   onAddToken,
   onReviewDecision,
@@ -1217,6 +1282,7 @@ function AdminPanel({
   swapCount,
   swapVolumeUsd,
   status,
+  tokens,
   walletAddress
 }: {
   onAddToken: () => void;
@@ -1227,8 +1293,17 @@ function AdminPanel({
   swapCount: number;
   swapVolumeUsd: number;
   status: string;
+  tokens: LiveToken[];
   walletAddress: string;
 }) {
+  const verifiedTokens = tokens.filter((token) => token.status === "verified");
+  const pricedTokens = verifiedTokens.filter((token) => Boolean(token.lastPriceUpdatedAt));
+  const latestPriceUpdate = pricedTokens
+    .map((token) => token.lastPriceUpdatedAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+
   return (
     <section className="admin-panel">
       <div className="admin-heading">
@@ -1260,6 +1335,13 @@ function AdminPanel({
           <strong>{swapCount}</strong>
         </div>
       </div>
+      <AdminHealthPanel
+        latestPriceUpdate={latestPriceUpdate}
+        pendingReviews={reviews.length}
+        pricedTokens={pricedTokens.length}
+        tokens={tokens}
+        verifiedTokens={verifiedTokens.length}
+      />
       <div className="review-table">
         {reviews.length ? reviews.map((review) => (
           <article key={review.id} className="review-row">
