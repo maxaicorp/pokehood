@@ -634,10 +634,10 @@ export default function Market() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: Math.min(i * 0.02, 0.3) }}
-                    className="group relative rounded-xl overflow-hidden bg-card border border-border/50 hover:border-primary/40 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
+                    className="group relative bg-card border border-border/50 hover:border-primary/40 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
                     onClick={() => navigate(cardPathFromApiId(stat.tcg_api_id, stat.name, stat.set_name))}
                   >
-                    <div className="aspect-[5/7] relative overflow-hidden bg-muted">
+                    <div className="aspect-[5/7] relative bg-muted">
                       {stat.image_small ? (
                         <img src={stat.image_small} alt={stat.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
                       ) : (
@@ -671,7 +671,7 @@ export default function Market() {
                     <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {stat.image_small && (
-                        <img src={stat.image_small} alt={stat.name} className="w-9 sm:w-10 rounded-md shrink-0 shadow-sm" loading="lazy" />
+                        <img src={stat.image_small} alt={stat.name} className="w-9 sm:w-10 shrink-0 shadow-sm" loading="lazy" />
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground truncate">{stat.name}</p>
@@ -742,7 +742,7 @@ export default function Market() {
                     <div className={`hidden sm:grid ${gridClasses} gap-2 px-4 py-2.5 items-center`}>
                       <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                       <div className="flex items-center gap-3 min-w-0">
-                        <img src={card.images.small} alt={card.name} className="w-10 rounded-md shrink-0 shadow-sm" loading="lazy" />
+                        <img src={card.images.small} alt={card.name} className="w-10 shrink-0 shadow-sm" loading="lazy" />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
                           <p className="text-[10px] text-muted-foreground/60 truncate">#{card.number}/{card.set.printedTotal || card.set.total}</p>

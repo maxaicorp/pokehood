@@ -588,9 +588,9 @@ function CardGrid({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
               className="h-full cursor-pointer"
               onClick={() => navigate(cardPath(card.set, card))}
             >
-              <MagicCard className="group flex flex-col h-full rounded-xl bg-card border-border/50 overflow-hidden">
+              <MagicCard className="group flex flex-col h-full bg-card border-border/50">
                 <div className="relative bg-background/50 p-1.5 sm:p-2">
-                  <img src={card.images.small} alt={card.name} className="w-full rounded-lg" loading="lazy" />
+                  <img src={card.images.small} alt={card.name} className="w-full" loading="lazy" />
                   <button
                     onClick={(e) => { e.stopPropagation(); onWishlist(card); }}
                     className={`absolute top-2.5 right-2.5 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
@@ -650,7 +650,7 @@ function CardList({ cards, onAdd, onWishlist, wishlistedIds, isPricingLoading }:
             transition={{ delay: i * 0.02 }}
             onClick={() => navigate(cardPath(card.set, card))}
           >
-            <img src={card.images.small} alt={card.name} className="w-10 sm:w-12 rounded-md" loading="lazy" />
+            <img src={card.images.small} alt={card.name} className="w-10 sm:w-12" loading="lazy" />
             <div className="flex-1 min-w-0">
               <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{card.name}</p>
               <p className="text-[10px] sm:text-xs text-muted-foreground truncate">

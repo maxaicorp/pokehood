@@ -544,12 +544,12 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
                   <img
                     src={a.image}
                     alt=""
-                    className="w-32 sm:w-44 aspect-[3/4] rounded-md object-cover bg-muted shrink-0"
+                    className="w-32 sm:w-44 aspect-[3/4] object-contain bg-muted shrink-0"
                     loading="lazy"
                     decoding="async"
                   />
                 ) : (
-                  <div className="w-32 sm:w-44 aspect-[3/4] rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
+                  <div className="w-32 sm:w-44 aspect-[3/4] bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
                     NFT
                   </div>
                 )}
@@ -718,12 +718,12 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
                     <img
                       src={a.image}
                       alt=""
-                      className="w-32 sm:w-44 aspect-[3/4] rounded-md object-cover bg-muted shrink-0"
+                      className="w-32 sm:w-44 aspect-[3/4] object-contain bg-muted shrink-0"
                       loading="lazy"
                       decoding="async"
                     />
                   ) : (
-                    <div className="w-32 sm:w-44 aspect-[3/4] rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
+                    <div className="w-32 sm:w-44 aspect-[3/4] bg-muted flex items-center justify-center text-muted-foreground text-xs shrink-0">
                       NFT
                     </div>
                   )}
@@ -838,7 +838,7 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
                   href={l.marketplaceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg bg-card border border-border/50 p-3 hover:border-primary/30 hover:bg-card/80 transition-colors group block"
+                  className="bg-card border border-border/50 p-3 hover:border-primary/30 hover:bg-card/80 transition-colors group block"
                 >
                   {/* 3:4 portrait aspect — physical TCG cards are taller than
                       they are wide. Square was leaving large empty bands on
@@ -847,12 +847,12 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
                     <img
                       src={l.image}
                       alt=""
-                      className="aspect-[3/4] w-full rounded-md object-cover bg-muted"
+                      className="aspect-[3/4] w-full object-contain bg-muted"
                       loading="lazy"
                       decoding="async"
                     />
                   ) : (
-                    <div className="aspect-[3/4] w-full rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                    <div className="aspect-[3/4] w-full bg-muted flex items-center justify-center text-muted-foreground text-xs">
                       NFT
                     </div>
                   )}

@@ -361,13 +361,13 @@ function CardGrid({ cards, set, isPricingLoading }: { cards: PokemonCard[]; set:
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i * 0.01, 0.3) }}
-              className="rounded-xl overflow-hidden bg-card border border-border/50 hover:border-primary/40 transition-colors h-full flex flex-col"
+              className="bg-card border border-border/50 hover:border-primary/40 transition-colors h-full flex flex-col"
             >
               <div className="bg-background/50 p-1.5 sm:p-2">
                 <img
                   src={card.images.small}
                   alt={card.name}
-                  className="w-full rounded-lg"
+                  className="w-full"
                   loading="lazy"
                 />
               </div>
@@ -412,7 +412,7 @@ function CardList({ cards, set, isPricingLoading }: { cards: PokemonCard[]; set:
               transition={{ delay: Math.min(i * 0.008, 0.3) }}
               className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:bg-card/80 transition-colors"
             >
-              <img src={card.images.small} alt={card.name} className="w-10 sm:w-12 rounded-md shrink-0" loading="lazy" />
+              <img src={card.images.small} alt={card.name} className="w-10 sm:w-12 shrink-0" loading="lazy" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                   {card.name}

@@ -34,10 +34,10 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards, senti
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: Math.min(i * 0.01, 0.3) }}
-            className="group relative rounded-xl overflow-hidden bg-card border border-border/50 hover:border-primary/40 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
+            className="group relative bg-card border border-border/50 hover:border-primary/40 cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/5"
             onClick={() => navigate(cardPath(card.set, card))}
           >
-            <div className="aspect-[5/7] relative overflow-hidden bg-muted">
+            <div className="aspect-[5/7] relative bg-muted">
               <img
                 src={card.images.small}
                 alt={card.name}

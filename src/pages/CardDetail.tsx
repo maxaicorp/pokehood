@@ -362,12 +362,12 @@ export default function CardDetail() {
           {/* Col 1 — Card image */}
           <div className="flex items-start justify-center lg:justify-start">
             {cardLoading ? (
-              <Skeleton className="aspect-[2.5/3.5] w-full max-w-[320px] rounded-2xl" />
+              <Skeleton className="aspect-[2.5/3.5] w-full max-w-[320px]" />
             ) : card ? (
               <motion.img
                 src={card.images.large}
                 alt={card.name}
-                className="w-full max-w-[320px] rounded-2xl shadow-2xl"
+                className="w-full max-w-[320px] shadow-2xl"
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
@@ -529,7 +529,7 @@ export default function CardDetail() {
                     <img
                       src={c.images.small}
                       alt={c.name}
-                      className="w-24 sm:w-28 rounded-lg shadow-md group-hover:shadow-lg transition-shadow"
+                      className="w-24 sm:w-28 shadow-md group-hover:shadow-lg transition-shadow"
                       loading="lazy"
                     />
                     <p className="text-[10px] text-muted-foreground mt-1 text-center truncate w-24 sm:w-28">
