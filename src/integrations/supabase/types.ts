@@ -306,6 +306,54 @@ export type Database = {
           },
         ]
       }
+      graded_price_snapshots: {
+        Row: {
+          card_id: string
+          company: string
+          currency: string
+          grade: number
+          high: number | null
+          id: string
+          is_error: boolean
+          is_perfect: boolean
+          is_signed: boolean
+          low: number | null
+          market: number | null
+          mid: number | null
+          recorded_at: string
+        }
+        Insert: {
+          card_id: string
+          company: string
+          currency?: string
+          grade: number
+          high?: number | null
+          id?: string
+          is_error?: boolean
+          is_perfect?: boolean
+          is_signed?: boolean
+          low?: number | null
+          market?: number | null
+          mid?: number | null
+          recorded_at?: string
+        }
+        Update: {
+          card_id?: string
+          company?: string
+          currency?: string
+          grade?: number
+          high?: number | null
+          id?: string
+          is_error?: boolean
+          is_perfect?: boolean
+          is_signed?: boolean
+          low?: number | null
+          market?: number | null
+          mid?: number | null
+          recorded_at?: string
+        }
+        Relationships: []
+      }
       latest_card_prices: {
         Row: {
           card_id: string
@@ -338,6 +386,42 @@ export type Database = {
           price_7d?: number | null
           recorded_at?: string
           set_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      latest_graded_prices: {
+        Row: {
+          card_id: string
+          company: string
+          currency: string
+          grade: number
+          high: number | null
+          low: number | null
+          market: number | null
+          mid: number | null
+          updated_at: string
+        }
+        Insert: {
+          card_id: string
+          company: string
+          currency?: string
+          grade: number
+          high?: number | null
+          low?: number | null
+          market?: number | null
+          mid?: number | null
+          updated_at?: string
+        }
+        Update: {
+          card_id?: string
+          company?: string
+          currency?: string
+          grade?: number
+          high?: number | null
+          low?: number | null
+          market?: number | null
+          mid?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -858,6 +942,18 @@ export type Database = {
           username: string
         }[]
       }
+      get_graded_tiles_for_card: {
+        Args: { p_card_id: string }
+        Returns: {
+          company: string
+          currency: string
+          grade: number
+          high: number
+          low: number
+          market: number
+          mid: number
+        }[]
+      }
       get_latest_price_page: {
         Args: {
           p_include_sealed?: boolean
@@ -985,6 +1081,7 @@ export type Database = {
         Returns: undefined
       }
       refresh_latest_card_prices: { Args: never; Returns: number }
+      refresh_latest_graded_prices: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
