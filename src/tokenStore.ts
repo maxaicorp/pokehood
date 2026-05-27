@@ -192,6 +192,14 @@ export async function persistSwapEvent(event: SwapEventInput): Promise<void> {
     }),
     method: "POST"
   });
+
+  await supabaseFetch("/rest/v1/rpc/record_swap_reward", {
+    body: JSON.stringify({
+      output_usd_input: event.outputUsd,
+      wallet_address_input: event.walletAddress
+    }),
+    method: "POST"
+  });
 }
 
 function rowToToken(row: VerifiedTokenRow): Token {

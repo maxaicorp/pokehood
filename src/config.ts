@@ -18,6 +18,7 @@ export const appConfig = {
     : "https://api.mainnet-beta.solana.com",
   jupiterPriceUrl: "https://api.jup.ag/price/v3",
   jupiterQuoteUrl: "https://api.jup.ag/swap/v1/quote",
+  jupiterTokenSearchUrl: "https://api.jup.ag/tokens/v2/search",
   adminEmails: parseCsv(import.meta.env.VITE_ADMIN_EMAILS),
   adminWallets: parseCsv(import.meta.env.VITE_ADMIN_WALLETS)
 };

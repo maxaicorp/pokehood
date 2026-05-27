@@ -3,10 +3,12 @@ import {
   AlertTriangle,
   ArrowDownUp,
   BadgeCheck,
+  Bell,
   Check,
   ChevronDown,
   Clock3,
   Eye,
+  Gift,
   Pause,
   Plus,
   RefreshCcw,
@@ -40,6 +42,7 @@ import { fetchTokenHistory, type ChartPoint, type ChartRange } from "./charts";
 import { appConfig } from "./config";
 import { fetchWalletPortfolio } from "./portfolio";
 import { refreshTokenPrices } from "./prices";
+import { detectTokenMetadata } from "./tokenMetadata";
 import {
   fetchStoredTokenReviews,
   fetchStoredVerifiedTokens,
@@ -66,6 +69,13 @@ type SwapHistoryEvent = SwapEventInput & {
   id: string;
   createdAt: string;
   persistenceStatus: "local" | "saved" | "error";
+};
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
 };
 
 type LiveToken = Token & {
@@ -103,6 +113,7 @@ export function App() {
   const [adminStatus, setAdminStatus] = useState("");
   const [swapHistory, setSwapHistory] = useState<SwapHistoryEvent[]>([]);
   const [tokenSubmissionOpen, setTokenSubmissionOpen] = useState(false);
+  const [navPanel, setNavPanel] = useState<"rewards" | "notifications" | null>(null);
 
   const verifiedTokens = useMemo(() => getVerifiedTokens(tokens), [tokens]);
   const sortedTokens = useMemo(
@@ -130,10 +141,50 @@ export function App() {
   );
   const portfolioValue = useMemo(() => getPortfolioValue(verifiedTokens), [verifiedTokens]);
   const buyingPower = verifiedTokens.find((token) => token.symbol === "USDC")?.balance ?? 0;
-  const latestTokens = useMemo(() => [...reviews.map((review) => review.token), ...verifiedTokens].slice(0, 6), [reviews, verifiedTokens]);
+  const swapVolumeUsd = useMemo(
+    () => swapHistory.reduce((total, event) => total + event.outputUsd, 0),
+    [swapHistory]
+  );
+  const rewardPoints = Math.floor(swapVolumeUsd);
   const isAdminWallet = Boolean(
     walletConnection && appConfig.adminWallets.some((wallet) => wallet.toLowerCase() === walletConnection.address.toLowerCase())
   );
+  const latestTokens = useMemo(
+    () => [...(isAdminWallet ? reviews.map((review) => review.token) : []), ...verifiedTokens].slice(0, 6),
+    [isAdminWallet, reviews, verifiedTokens]
+  );
+  const notifications = useMemo<NotificationItem[]>(() => {
+    const items: NotificationItem[] = [];
+
+    if (walletConnection) {
+      items.push({
+        body: `${shortenAddress(walletConnection.address)} is connected.`,
+        createdAt: new Date().toISOString(),
+        id: "wallet-connected",
+        title: "Wallet connected"
+      });
+    }
+
+    swapHistory.forEach((event) => {
+      items.push({
+        body: `${formatTokenAmount(event.inputAmount)} ${event.inputSymbol} swapped for ${formatTokenAmount(event.outputAmount)} ${event.outputSymbol}.`,
+        createdAt: event.createdAt,
+        id: event.id,
+        title: event.persistenceStatus === "saved" ? "Swap saved" : "Swap completed"
+      });
+    });
+
+    if (isAdminWallet && reviews.length) {
+      items.push({
+        body: `${reviews.length} token${reviews.length === 1 ? "" : "s"} waiting for manual review.`,
+        createdAt: new Date().toISOString(),
+        id: "admin-review-queue",
+        title: "Review queue"
+      });
+    }
+
+    return items.slice(0, 8);
+  }, [isAdminWallet, reviews.length, swapHistory, walletConnection]);
 
   useEffect(() => {
     setWalletOptions(getWalletOptions());
@@ -360,10 +411,19 @@ export function App() {
           {tokenQuery && <SearchResults onSelectToken={selectToken} tokens={visibleTokens.slice(0, 5)} />}
         </div>
         <nav>
-          <a>Rewards</a>
-          <a>Investing</a>
-          <a className="active">Crypto</a>
-          <a>Notifications<span className="dot" /></a>
+          <div className="nav-popover-wrap">
+            <button className={navPanel === "rewards" ? "active" : ""} onClick={() => setNavPanel((panel) => panel === "rewards" ? null : "rewards")}>
+              <Gift size={16} /> Rewards
+            </button>
+            {navPanel === "rewards" && <RewardsPopover points={rewardPoints} volumeUsd={swapVolumeUsd} />}
+          </div>
+          <div className="nav-popover-wrap">
+            <button className={navPanel === "notifications" ? "active" : ""} onClick={() => setNavPanel((panel) => panel === "notifications" ? null : "notifications")}>
+              <Bell size={16} /> Notifications
+              {notifications.length > 0 && <span className="dot" />}
+            </button>
+            {navPanel === "notifications" && <NotificationsPopover notifications={notifications} />}
+          </div>
         </nav>
         <WalletDropdown
           error={walletError}
@@ -403,14 +463,19 @@ export function App() {
           </section>
 
           <DiscoverSection tokens={latestTokens} onSelectToken={selectToken} />
-          <AdminPanel
-            isAdmin={isAdminWallet}
-            onAddToken={() => setTokenSubmissionOpen(true)}
-            onReviewDecision={handleReviewDecision}
-            onSelectToken={selectToken}
-            reviews={reviews}
-            status={adminStatus}
-          />
+          {isAdminWallet && walletConnection && (
+            <AdminPanel
+              onAddToken={() => setTokenSubmissionOpen(true)}
+              onReviewDecision={handleReviewDecision}
+              onSelectToken={selectToken}
+              reviews={reviews}
+              rewardPoints={rewardPoints}
+              status={adminStatus}
+              swapCount={swapHistory.length}
+              swapVolumeUsd={swapVolumeUsd}
+              walletAddress={walletConnection.address}
+            />
+          )}
         </main>
 
         <aside className="right-sidebar">
@@ -440,6 +505,11 @@ export function App() {
             walletConnection={walletConnection}
           />
           <SwapHistoryPanel events={swapHistory} />
+          <UserInfoPanel
+            events={swapHistory}
+            rewardPoints={rewardPoints}
+            walletConnection={walletConnection}
+          />
         </aside>
       </div>
 
@@ -1054,20 +1124,94 @@ function getFriendlySwapError(error: unknown): string {
   return message;
 }
 
+function RewardsPopover({ points, volumeUsd }: { points: number; volumeUsd: number }) {
+  return (
+    <div className="nav-popover rewards-popover">
+      <div className="reward-total">
+        <small>Reward points</small>
+        <strong>{points.toLocaleString()}</strong>
+      </div>
+      <p>Earn 1 point for every dollar swapped.</p>
+      <div className="mini-stat-row">
+        <span>Swap volume</span>
+        <strong>{formatUsd(volumeUsd)}</strong>
+      </div>
+    </div>
+  );
+}
+
+function NotificationsPopover({ notifications }: { notifications: NotificationItem[] }) {
+  return (
+    <div className="nav-popover notifications-popover">
+      <h3>Notifications</h3>
+      {notifications.length ? notifications.map((notification) => (
+        <article key={notification.id}>
+          <strong>{notification.title}</strong>
+          <span>{notification.body}</span>
+          <small>{formatUpdatedAgo(notification.createdAt)}</small>
+        </article>
+      )) : <p>No notifications yet.</p>}
+    </div>
+  );
+}
+
+function UserInfoPanel({
+  events,
+  rewardPoints,
+  walletConnection
+}: {
+  events: SwapHistoryEvent[];
+  rewardPoints: number;
+  walletConnection: WalletConnection | null;
+}) {
+  const totalVolume = events.reduce((sum, event) => sum + event.outputUsd, 0);
+
+  return (
+    <section className="user-info-panel">
+      <div className="section-heading">
+        <div>
+          <h2>User info</h2>
+          <small>{walletConnection ? shortenAddress(walletConnection.address) : "Connect a wallet to track activity"}</small>
+        </div>
+      </div>
+      <div className="user-metrics">
+        <div>
+          <small>Rewards</small>
+          <strong>{rewardPoints.toLocaleString()} pts</strong>
+        </div>
+        <div>
+          <small>Swap volume</small>
+          <strong>{formatUsd(totalVolume)}</strong>
+        </div>
+        <div>
+          <small>Swaps</small>
+          <strong>{events.length}</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function AdminPanel({
-  isAdmin,
   onAddToken,
   onReviewDecision,
   onSelectToken,
+  rewardPoints,
   reviews,
-  status
+  swapCount,
+  swapVolumeUsd,
+  status,
+  walletAddress
 }: {
-  isAdmin: boolean;
   onAddToken: () => void;
   onReviewDecision: (review: AdminReview, decision: ReviewDecision) => void;
   onSelectToken: (token: Token) => void;
+  rewardPoints: number;
   reviews: AdminReview[];
+  swapCount: number;
+  swapVolumeUsd: number;
   status: string;
+  walletAddress: string;
 }) {
   return (
     <section className="admin-panel">
@@ -1078,9 +1222,27 @@ function AdminPanel({
         </div>
         <button onClick={onAddToken}><Plus size={17} /> Add new</button>
       </div>
-      <div className={isAdmin ? "admin-status ready" : "admin-status"}>
+      <div className="admin-status ready">
         <BadgeCheck size={15} />
-        <span>{status || (isAdmin ? "Admin wallet connected. Manual review actions are enabled." : "Connect the admin wallet to approve, pause, or reject tokens.")}</span>
+        <span>{status || "Admin wallet connected. Manual review actions are enabled."}</span>
+      </div>
+      <div className="admin-user-summary">
+        <div>
+          <small>Active wallet</small>
+          <strong>{shortenAddress(walletAddress)}</strong>
+        </div>
+        <div>
+          <small>Rewards</small>
+          <strong>{rewardPoints.toLocaleString()} pts</strong>
+        </div>
+        <div>
+          <small>Swap volume</small>
+          <strong>{formatUsd(swapVolumeUsd)}</strong>
+        </div>
+        <div>
+          <small>Swaps</small>
+          <strong>{swapCount}</strong>
+        </div>
       </div>
       <div className="review-table">
         {reviews.length ? reviews.map((review) => (
@@ -1098,9 +1260,9 @@ function AdminPanel({
             <p>{review.note}</p>
             <div className="review-actions">
               <button onClick={() => onSelectToken(review.token)} title="View token"><Eye size={17} /></button>
-              <button disabled={!isAdmin} onClick={() => onReviewDecision(review, "approved")} title="Approve token"><Check size={17} /></button>
-              <button disabled={!isAdmin} onClick={() => onReviewDecision(review, "paused")} title="Pause token"><Pause size={17} /></button>
-              <button disabled={!isAdmin} onClick={() => onReviewDecision(review, "rejected")} title="Reject token"><X size={17} /></button>
+              <button onClick={() => onReviewDecision(review, "approved")} title="Approve token"><Check size={17} /></button>
+              <button onClick={() => onReviewDecision(review, "paused")} title="Pause token"><Pause size={17} /></button>
+              <button onClick={() => onReviewDecision(review, "rejected")} title="Reject token"><X size={17} /></button>
             </div>
           </article>
         )) : <div className="empty-review-state">No pending tokens to review.</div>}
@@ -1127,9 +1289,42 @@ function TokenSubmissionModal({
     symbol: ""
   });
   const [formError, setFormError] = useState("");
+  const [detectStatus, setDetectStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
 
   function updateForm<K extends keyof TokenSubmissionInput>(key: K, value: TokenSubmissionInput[K]) {
     setForm((currentForm) => ({ ...currentForm, [key]: value }));
+  }
+
+  async function handleDetectMetadata() {
+    setFormError("");
+
+    let normalizedMint = "";
+    try {
+      normalizedMint = new PublicKey(form.mint.trim()).toBase58();
+    } catch {
+      setFormError("Enter a valid Solana mint address before detecting metadata.");
+      return;
+    }
+
+    setDetectStatus("loading");
+    try {
+      const metadata = await detectTokenMetadata(normalizedMint);
+      setForm((currentForm) => ({
+        ...currentForm,
+        decimals: metadata.decimals,
+        liquidityUsd: metadata.liquidityUsd,
+        logoUrl: metadata.logoUrl,
+        mint: metadata.mint,
+        name: metadata.name,
+        note: currentForm.note || metadata.note,
+        riskLevel: metadata.riskLevel,
+        symbol: metadata.symbol
+      }));
+      setDetectStatus("ready");
+    } catch (error) {
+      setDetectStatus("error");
+      setFormError(error instanceof Error ? error.message : "Token metadata lookup failed.");
+    }
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -1168,15 +1363,24 @@ function TokenSubmissionModal({
         </div>
 
         <form className="token-submit-form" onSubmit={handleSubmit}>
-          <label>
-            <span>Mint address</span>
-            <input
-              autoFocus
-              onChange={(event) => updateForm("mint", event.target.value)}
-              placeholder="Solana token mint"
-              value={form.mint}
-            />
-          </label>
+          <div className="detect-row">
+            <label>
+              <span>Mint address</span>
+              <input
+                autoFocus
+                onChange={(event) => {
+                  updateForm("mint", event.target.value);
+                  setDetectStatus("idle");
+                }}
+                placeholder="Solana token mint"
+                value={form.mint}
+              />
+            </label>
+            <button disabled={detectStatus === "loading"} onClick={handleDetectMetadata} type="button">
+              {detectStatus === "loading" ? "Detecting..." : "Detect"}
+            </button>
+          </div>
+          {detectStatus === "ready" && <div className="detect-status"><BadgeCheck size={15} /> Metadata autofilled. Review before submitting.</div>}
           <div className="form-grid">
             <label>
               <span>Symbol</span>
