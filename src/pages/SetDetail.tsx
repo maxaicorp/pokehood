@@ -341,9 +341,9 @@ export default function SetDetail() {
               >
                 <LayoutList className="w-4 h-4" />
               </button>
-            </div>
           </div>
         </div>
+
 
         {/* Card grid/list */}
         {isLoading && cards.length === 0 ? (
