@@ -284,43 +284,39 @@ export default function SetDetail() {
                   {cardCount} cards
                 </span>
               </div>
-
-              {/* Set-completion bar — only for logged-in users. Shows how
-                  many distinct cards from this set they own. */}
-              {completion && completion.total > 0 && (
-                <div className="mt-3 max-w-md">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">Your collection</span>
-                    <span className="font-semibold text-foreground tabular-nums">
-                      {completion.ownedCount} / {completion.total}
-                      <span className="text-muted-foreground font-normal ml-1.5">
-                        ({completion.pct.toFixed(0)}%)
-                      </span>
-                    </span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all"
-                      style={{ width: `${completion.pct}%` }}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         ) : (
           <Skeleton className="h-24 w-full mb-6" />
         )}
 
-        {/* Toolbar — sort + view toggle (no sidebar) */}
-        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-          <p className="text-sm text-muted-foreground">
-            {cards.length > 0 && (
-              cards.length === cardCount
-                ? `${cards.length} cards`
-                : `${cards.length} cards (set lists ${cardCount} printed)`
-            )}
-          </p>
+        {/* Set-completion bar — full-width block BELOW the hero so it never
+            gets squished in the narrow text column next to the logo on
+            mobile. Logged-in users only. */}
+        {set && completion && completion.total > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="text-muted-foreground">Your collection</span>
+              <span className="font-semibold text-foreground tabular-nums">
+                {completion.ownedCount} / {completion.total}
+                <span className="text-muted-foreground font-normal ml-1.5">
+                  ({completion.pct.toFixed(0)}%)
+                </span>
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${completion.pct}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Toolbar — sort + view toggle (no sidebar). Card-count text
+            removed: it duplicated the "{cardCount} cards" already shown in
+            the hero meta + the completion bar's "X / Y" count. */}
+        <div className="flex items-center justify-end gap-3 mb-4 flex-wrap">
           <div className="flex items-center gap-2">
             <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
               <SelectTrigger className="w-[200px] bg-background">
