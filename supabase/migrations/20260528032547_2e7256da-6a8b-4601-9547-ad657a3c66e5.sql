@@ -1,0 +1,1 @@
+DELETE FROM public.card_stats WHERE tcg_api_id = 'me02.5-284';
