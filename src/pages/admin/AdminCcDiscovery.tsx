@@ -99,7 +99,7 @@ export default function AdminCcDiscovery() {
       const { data, error } = await supabase.rpc("get_cc_discovery_state");
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
-      return row ?? null;
+      return (row as DiscoveryState | undefined) ?? null;
     },
     refetchInterval: 5_000, // poll while a run is in flight so badges update
   });

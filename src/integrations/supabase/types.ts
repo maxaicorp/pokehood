@@ -50,6 +50,99 @@ export type Database = {
         }
         Relationships: []
       }
+      cc_discovery_results: {
+        Row: {
+          computed_at: string
+          delta_pct: number | null
+          listing_image: string | null
+          listing_name: string | null
+          listing_price_usd: number | null
+          market_price_usd: number | null
+          marketplace_url: string | null
+          match_confidence: number | null
+          match_method: string | null
+          matched_card_id: string | null
+          matched_card_name: string | null
+          matched_company: string | null
+          matched_grade: number | null
+          matched_set_name: string | null
+          pda_address: string
+          status: string
+          token_mint: string
+        }
+        Insert: {
+          computed_at?: string
+          delta_pct?: number | null
+          listing_image?: string | null
+          listing_name?: string | null
+          listing_price_usd?: number | null
+          market_price_usd?: number | null
+          marketplace_url?: string | null
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_card_id?: string | null
+          matched_card_name?: string | null
+          matched_company?: string | null
+          matched_grade?: number | null
+          matched_set_name?: string | null
+          pda_address: string
+          status: string
+          token_mint: string
+        }
+        Update: {
+          computed_at?: string
+          delta_pct?: number | null
+          listing_image?: string | null
+          listing_name?: string | null
+          listing_price_usd?: number | null
+          market_price_usd?: number | null
+          marketplace_url?: string | null
+          match_confidence?: number | null
+          match_method?: string | null
+          matched_card_id?: string | null
+          matched_card_name?: string | null
+          matched_company?: string | null
+          matched_grade?: number | null
+          matched_set_name?: string | null
+          pda_address?: string
+          status?: string
+          token_mint?: string
+        }
+        Relationships: []
+      }
+      cc_discovery_state: {
+        Row: {
+          id: number
+          last_error: string | null
+          last_run_at: string | null
+          matched_count: number
+          status: string
+          total_active: number
+          undervalued_count: number
+          unmatched_count: number
+        }
+        Insert: {
+          id?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          matched_count?: number
+          status?: string
+          total_active?: number
+          undervalued_count?: number
+          unmatched_count?: number
+        }
+        Update: {
+          id?: number
+          last_error?: string | null
+          last_run_at?: string | null
+          matched_count?: number
+          status?: string
+          total_active?: number
+          undervalued_count?: number
+          unmatched_count?: number
+        }
+        Relationships: []
+      }
       collection_cards: {
         Row: {
           added_at: string
@@ -62,6 +155,7 @@ export type Database = {
           manual_price: number | null
           market_price: number | null
           name: string
+          product_type: string
           quantity: number
           rarity: string
           sale_price: number | null
@@ -81,6 +175,7 @@ export type Database = {
           manual_price?: number | null
           market_price?: number | null
           name: string
+          product_type?: string
           quantity?: number
           rarity?: string
           sale_price?: number | null
@@ -100,6 +195,7 @@ export type Database = {
           manual_price?: number | null
           market_price?: number | null
           name?: string
+          product_type?: string
           quantity?: number
           rarity?: string
           sale_price?: number | null
@@ -457,22 +553,43 @@ export type Database = {
       }
       nft_names: {
         Row: {
+          attributes: Json | null
+          card_name_attr: string | null
+          card_number: string | null
           cert_number: string | null
           fetched_at: string
+          grade_value: number | null
+          grading_company: string | null
           mint: string
           name: string | null
+          set_hint: string | null
+          year_attr: string | null
         }
         Insert: {
+          attributes?: Json | null
+          card_name_attr?: string | null
+          card_number?: string | null
           cert_number?: string | null
           fetched_at?: string
+          grade_value?: number | null
+          grading_company?: string | null
           mint: string
           name?: string | null
+          set_hint?: string | null
+          year_attr?: string | null
         }
         Update: {
+          attributes?: Json | null
+          card_name_attr?: string | null
+          card_number?: string | null
           cert_number?: string | null
           fetched_at?: string
+          grade_value?: number | null
+          grading_company?: string | null
           mint?: string
           name?: string | null
+          set_hint?: string | null
+          year_attr?: string | null
         }
         Relationships: []
       }
@@ -923,6 +1040,41 @@ export type Database = {
           price_7d: number
           recorded_at: string
           set_name: string
+        }[]
+      }
+      get_cc_discovery: {
+        Args: { p_limit?: number; p_offset?: number; p_status?: string }
+        Returns: {
+          computed_at: string
+          delta_pct: number
+          listing_image: string
+          listing_name: string
+          listing_price_usd: number
+          market_price_usd: number
+          marketplace_url: string
+          match_confidence: number
+          match_method: string
+          matched_card_id: string
+          matched_card_name: string
+          matched_company: string
+          matched_grade: number
+          matched_set_name: string
+          pda_address: string
+          status: string
+          token_mint: string
+        }[]
+      }
+      get_cc_discovery_state: {
+        Args: never
+        Returns: {
+          can_run_at: string
+          last_error: string
+          last_run_at: string
+          matched_count: number
+          status: string
+          total_active: number
+          undervalued_count: number
+          unmatched_count: number
         }[]
       }
       get_filter_summary: {
