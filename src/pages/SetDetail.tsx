@@ -11,9 +11,9 @@
 // sort dropdown, filter row at top, no sidebar). Same data-fetching
 // pattern: getSetCards paginated + enrichPageWithPricing for prices.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   getSets,
@@ -39,7 +39,6 @@ import AppHeader from "@/components/AppHeader";
 import SEO from "@/components/SEO";
 
 const BASE = "https://collectiblez.app";
-const PAGE_SIZE = 60;
 
 type SortKey = "number-asc" | "number-desc" | "price-desc" | "price-asc";
 const SORTS: { value: SortKey; label: string }[] = [
@@ -66,30 +65,26 @@ export default function SetDetail() {
     return findSetBySlug(slug, setsResult.data);
   }, [setsResult, slug]);
 
-  // Fetch every card in the set via the same infinite-paginated path Explore
-  // uses for set mode. Pages of PAGE_SIZE; load more on scroll.
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isLoading,
-  } = useInfiniteQuery({
+  // Fetch EVERY card in the set in a single call. We used to paginate at
+  // 60/page with infinite scroll, but that broke client-side sorting:
+  // clicking "Card Number: High → Low" only sorted what was loaded so far,
+  // so a 295-card set sorted-desc would start at #120 (the highest of the
+  // first 120 loaded), missing the secret rares above. Now we always have
+  // the whole set in memory and sort works correctly.
+  //
+  // No real cost — getSetCards reads from the static index already loaded
+  // into memory, so asking for 500 vs 60 is the same operation. Largest
+  // Pokémon TCG set is ~300 cards; 500 is comfortable headroom.
+  const { data: rawCardsResult, isLoading } = useQuery({
     queryKey: ["set-cards", set?.id],
-    queryFn: ({ pageParam = 1 }) => getSetCards(set!.id, pageParam, PAGE_SIZE),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) => {
-      const loaded = allPages.reduce((sum, p) => sum + (p.data?.length ?? 0), 0);
-      const total = lastPage.totalCount ?? loaded;
-      return loaded < total ? allPages.length + 1 : undefined;
-    },
+    queryFn: () => getSetCards(set!.id, 1, 500),
     enabled: !!set,
     staleTime: 5 * 60_000,
   });
 
   const rawCards = useMemo(
-    () => (data?.pages.flatMap((p) => p.data ?? []) ?? []) as PokemonCard[],
-    [data],
+    () => (rawCardsResult?.data ?? []) as PokemonCard[],
+    [rawCardsResult],
   );
 
   // Hydrate prices for the rows we've loaded.
@@ -123,16 +118,9 @@ export default function SetDetail() {
     return arr;
   }, [enrichedCards, sortKey]);
 
-  // Infinite-scroll sentinel — load more when this enters the viewport.
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const obs = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage();
-    }, { rootMargin: "600px" });
-    obs.observe(sentinelRef.current);
-    return () => obs.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  // Infinite-scroll sentinel removed — entire set now loads in a single
+  // useQuery so sorting works against the full card list (see comment on
+  // the rawCardsResult query above).
 
   // ─── 404 ───────────────────────────────────────────────────────────────────
   if (setsResult && !set) {
@@ -272,7 +260,11 @@ export default function SetDetail() {
         {/* Toolbar — sort + view toggle (no sidebar) */}
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
           <p className="text-sm text-muted-foreground">
-            {cards.length > 0 && `${cards.length} of ${cardCount} cards loaded`}
+            {cards.length > 0 && (
+              cards.length === cardCount
+                ? `${cards.length} cards`
+                : `${cards.length} cards (set lists ${cardCount} printed)`
+            )}
           </p>
           <div className="flex items-center gap-2">
             <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
@@ -330,15 +322,15 @@ export default function SetDetail() {
           <CardList cards={cards} set={set!} isPricingLoading={isPricingLoading} />
         )}
 
-        {/* Sentinel + tail status */}
-        <div ref={sentinelRef} className="py-8 flex justify-center">
-          {isFetchingNextPage && (
-            <span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" />
-          )}
-          {!hasNextPage && cards.length > 0 && (
-            <p className="text-xs text-muted-foreground">All {cards.length} cards loaded</p>
-          )}
-        </div>
+        {/* Total-loaded indicator. No infinite scroll anymore — the entire
+            set loads in one query so sorting works against all cards. */}
+        {cards.length > 0 && (
+          <div className="py-6 flex justify-center">
+            <p className="text-xs text-muted-foreground">
+              All {cards.length} cards loaded
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
