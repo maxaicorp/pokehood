@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowDownUp,
@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Clock3,
   Eye,
+  Gamepad2,
   Gift,
   Pause,
   Plus,
@@ -46,10 +47,12 @@ import { detectTokenMetadata } from "./tokenMetadata";
 import {
   fetchStoredTokenReviews,
   fetchStoredVerifiedTokens,
+  persistArcadeSession,
   persistPriceSnapshots,
   persistReviewDecision,
   persistSwapEvent,
   persistTokenSubmission,
+  type ArcadeSessionInput,
   type ReviewDecision,
   type SwapEventInput
 } from "./tokenStore";
@@ -66,6 +69,12 @@ import {
 const ranges: ChartRange[] = ["LIVE", "1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"];
 
 type SwapHistoryEvent = SwapEventInput & {
+  id: string;
+  createdAt: string;
+  persistenceStatus: "local" | "saved" | "error";
+};
+
+type ArcadeSessionEvent = ArcadeSessionInput & {
   id: string;
   createdAt: string;
   persistenceStatus: "local" | "saved" | "error";
@@ -112,6 +121,7 @@ export function App() {
   const [tokenQuery, setTokenQuery] = useState("");
   const [adminStatus, setAdminStatus] = useState("");
   const [swapHistory, setSwapHistory] = useState<SwapHistoryEvent[]>([]);
+  const [arcadeHistory, setArcadeHistory] = useState<ArcadeSessionEvent[]>([]);
   const [tokenSubmissionOpen, setTokenSubmissionOpen] = useState(false);
   const [navPanel, setNavPanel] = useState<"rewards" | "notifications" | null>(null);
 
@@ -145,7 +155,11 @@ export function App() {
     () => swapHistory.reduce((total, event) => total + event.outputUsd, 0),
     [swapHistory]
   );
-  const rewardPoints = Math.floor(swapVolumeUsd);
+  const arcadePoints = useMemo(
+    () => arcadeHistory.reduce((total, session) => total + session.pointsEarned, 0),
+    [arcadeHistory]
+  );
+  const rewardPoints = Math.floor(swapVolumeUsd) + arcadePoints;
   const isAdminWallet = Boolean(
     walletConnection && appConfig.adminWallets.some((wallet) => wallet.toLowerCase() === walletConnection.address.toLowerCase())
   );
@@ -174,6 +188,15 @@ export function App() {
       });
     });
 
+    arcadeHistory.forEach((session) => {
+      items.push({
+        body: `Score ${session.score.toLocaleString()} with a ${session.maxCombo}x best combo.`,
+        createdAt: session.createdAt,
+        id: session.id,
+        title: session.persistenceStatus === "saved" ? "Arcade points saved" : "Number Drop complete"
+      });
+    });
+
     if (isAdminWallet && reviews.length) {
       items.push({
         body: `${reviews.length} token${reviews.length === 1 ? "" : "s"} waiting for manual review.`,
@@ -184,7 +207,7 @@ export function App() {
     }
 
     return items.slice(0, 8);
-  }, [isAdminWallet, reviews.length, swapHistory, walletConnection]);
+  }, [arcadeHistory, isAdminWallet, reviews.length, swapHistory, walletConnection]);
 
   useEffect(() => {
     setWalletOptions(getWalletOptions());
@@ -392,6 +415,28 @@ export function App() {
     }
   }
 
+  async function handleArcadeSession(session: ArcadeSessionInput) {
+    const historyEvent: ArcadeSessionEvent = {
+      ...session,
+      createdAt: new Date().toISOString(),
+      id: `${session.seed}-${Date.now()}`,
+      persistenceStatus: "local"
+    };
+
+    setArcadeHistory((currentHistory) => [historyEvent, ...currentHistory].slice(0, 6));
+
+    try {
+      await persistArcadeSession(session);
+      setArcadeHistory((currentHistory) => currentHistory.map((item) =>
+        item.id === historyEvent.id ? { ...item, persistenceStatus: "saved" } : item
+      ));
+    } catch {
+      setArcadeHistory((currentHistory) => currentHistory.map((item) =>
+        item.id === historyEvent.id ? { ...item, persistenceStatus: "error" } : item
+      ));
+    }
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -411,6 +456,9 @@ export function App() {
           {tokenQuery && <SearchResults onSelectToken={selectToken} tokens={visibleTokens.slice(0, 5)} />}
         </div>
         <nav>
+          <button onClick={() => document.getElementById("arcade")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+            <Gamepad2 size={16} /> Arcade
+          </button>
           <div className="nav-popover-wrap">
             <button className={navPanel === "rewards" ? "active" : ""} onClick={() => setNavPanel((panel) => panel === "rewards" ? null : "rewards")}>
               <Gift size={16} /> Rewards
@@ -491,6 +539,7 @@ export function App() {
           />
           <SwapHistoryPanel events={swapHistory} />
           <UserInfoPanel
+            arcadeSessions={arcadeHistory}
             events={swapHistory}
             rewardPoints={rewardPoints}
             walletConnection={walletConnection}
@@ -498,6 +547,10 @@ export function App() {
         </aside>
 
         <section className="below-main">
+          <ArcadePanel
+            onSessionComplete={handleArcadeSession}
+            walletConnection={walletConnection}
+          />
           <DiscoverSection tokens={latestTokens} onSelectToken={selectToken} />
           {isAdminWallet && walletConnection && (
             <AdminPanel
@@ -784,6 +837,264 @@ function WalletIcon({ option, walletName }: { option?: WalletOption; walletName:
         : walletName.slice(0, 1)}
     </span>
   );
+}
+
+type GameStatus = "idle" | "playing" | "finished";
+
+type MathProblem = {
+  answer: number;
+  expression: string;
+  id: number;
+};
+
+function ArcadePanel({
+  onSessionComplete,
+  walletConnection
+}: {
+  onSessionComplete: (session: ArcadeSessionInput) => void;
+  walletConnection: WalletConnection | null;
+}) {
+  const durationSeconds = 60;
+  const [status, setStatus] = useState<GameStatus>("idle");
+  const [seed, setSeed] = useState("");
+  const [score, setScore] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [maxCombo, setMaxCombo] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
+  const [missedCount, setMissedCount] = useState(0);
+  const [lives, setLives] = useState(3);
+  const [answerInput, setAnswerInput] = useState("");
+  const [problem, setProblem] = useState<MathProblem | null>(null);
+  const [problemStartedAt, setProblemStartedAt] = useState(0);
+  const [problemTimeLimitMs, setProblemTimeLimitMs] = useState(6200);
+  const [endsAt, setEndsAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  const submittedRef = useRef(false);
+
+  const timeRemaining = status === "playing" ? Math.max(0, Math.ceil((endsAt - now) / 1000)) : durationSeconds;
+  const problemProgress = status === "playing" && problem
+    ? Math.min(1, Math.max(0, (now - problemStartedAt) / problemTimeLimitMs))
+    : 0;
+
+  function startGame() {
+    const nextSeed = `number-drop-${Date.now().toString(36)}`;
+    const firstProblem = createMathProblem(0);
+    submittedRef.current = false;
+    setSeed(nextSeed);
+    setScore(0);
+    setCombo(0);
+    setMaxCombo(0);
+    setCorrectCount(0);
+    setWrongCount(0);
+    setMissedCount(0);
+    setLives(3);
+    setAnswerInput("");
+    setProblem(firstProblem);
+    setProblemStartedAt(Date.now());
+    setProblemTimeLimitMs(getProblemTimeLimit(0));
+    setEndsAt(Date.now() + durationSeconds * 1000);
+    setStatus("playing");
+    setNow(Date.now());
+  }
+
+  function nextProblem(nextCorrectCount: number) {
+    setProblem(createMathProblem(nextCorrectCount));
+    setProblemStartedAt(Date.now());
+    setProblemTimeLimitMs(getProblemTimeLimit(nextCorrectCount));
+    setAnswerInput("");
+  }
+
+  function finishGame(overrides: Partial<ArcadeSessionInput> = {}) {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    setStatus("finished");
+    const finalScore = overrides.score ?? score;
+    onSessionComplete({
+      correctCount: overrides.correctCount ?? correctCount,
+      durationSeconds,
+      gameKey: "number_drop",
+      maxCombo: overrides.maxCombo ?? maxCombo,
+      missedCount: overrides.missedCount ?? missedCount,
+      pointsEarned: overrides.pointsEarned ?? finalScore,
+      score: finalScore,
+      seed,
+      walletAddress: walletConnection?.address ?? "",
+      wrongCount: overrides.wrongCount ?? wrongCount
+    });
+  }
+
+  function handleMiss() {
+    const nextMissed = missedCount + 1;
+    const nextLives = lives - 1;
+    setMissedCount(nextMissed);
+    setLives(Math.max(0, nextLives));
+    setCombo(0);
+
+    if (nextLives <= 0) {
+      finishGame({ missedCount: nextMissed });
+      return;
+    }
+
+    nextProblem(correctCount);
+  }
+
+  function submitAnswer() {
+    if (status !== "playing" || !problem || !answerInput) return;
+
+    if (Number(answerInput) === problem.answer) {
+      const nextCorrect = correctCount + 1;
+      const nextCombo = combo + 1;
+      const speedBonus = Math.max(0, Math.ceil((1 - problemProgress) * 6));
+      const gained = 10 + Math.min(nextCombo, 20) + speedBonus;
+      const nextScore = score + gained;
+      setCorrectCount(nextCorrect);
+      setCombo(nextCombo);
+      setMaxCombo(Math.max(maxCombo, nextCombo));
+      setScore(nextScore);
+      nextProblem(nextCorrect);
+      return;
+    }
+
+    setWrongCount((count) => count + 1);
+    setCombo(0);
+    setAnswerInput("");
+  }
+
+  function updateInput(value: string) {
+    if (status !== "playing") return;
+    if (value === "back") {
+      setAnswerInput((current) => current.slice(0, -1));
+      return;
+    }
+    if (value === "enter") {
+      submitAnswer();
+      return;
+    }
+    setAnswerInput((current) => `${current}${value}`.slice(0, 5));
+  }
+
+  useEffect(() => {
+    if (status !== "playing" || !problem) return;
+
+    const intervalId = window.setInterval(() => {
+      const nextNow = Date.now();
+      setNow(nextNow);
+
+      if (nextNow >= endsAt) {
+        finishGame();
+        return;
+      }
+
+      if (nextNow - problemStartedAt >= problemTimeLimitMs) {
+        handleMiss();
+      }
+    }, 80);
+
+    return () => window.clearInterval(intervalId);
+  });
+
+  return (
+    <section className="arcade-panel" id="arcade">
+      <div className="arcade-head">
+        <div>
+          <p>Arcade</p>
+          <h2>Number Drop</h2>
+        </div>
+        <div className="arcade-score">
+          <small>Score</small>
+          <strong>{score.toLocaleString()}</strong>
+        </div>
+      </div>
+
+      <div className="arcade-layout">
+        <div className="game-stage" tabIndex={0} onKeyDown={(event) => {
+          if (/^\d$/.test(event.key)) updateInput(event.key);
+          if (event.key === "Backspace") updateInput("back");
+          if (event.key === "Enter") updateInput("enter");
+        }}>
+          {status === "playing" && problem ? (
+            <>
+              <div className="stage-hud">
+                <span>{timeRemaining}s</span>
+                <span>{lives} lives</span>
+                <span>{combo}x combo</span>
+              </div>
+              <div className="drop-lane">
+                <div className="falling-problem" style={{ top: `${problemProgress * 72}%` }}>
+                  {problem.expression}
+                </div>
+                <div className="danger-line" />
+              </div>
+            </>
+          ) : (
+            <div className="game-over-card">
+              <Gamepad2 size={30} />
+              <h3>{status === "finished" ? "Run complete" : "Ready?"}</h3>
+              <p>{status === "finished" ? `${score.toLocaleString()} points earned.` : "Solve drops before they hit the line."}</p>
+              <button className="primary-action" onClick={startGame}>{status === "finished" ? "Play again" : "Start game"}</button>
+            </div>
+          )}
+        </div>
+
+        <div className="answer-console">
+          <div className="answer-display">
+            <small>Answer</small>
+            <strong>{answerInput || "0"}</strong>
+          </div>
+          <div className="keypad">
+            {["1", "2", "3", "4", "5", "6", "7", "8", "9", "back", "0", "enter"].map((key) => (
+              <button key={key} onClick={() => updateInput(key)}>
+                {key === "back" ? "Back" : key === "enter" ? "Go" : key}
+              </button>
+            ))}
+          </div>
+          <div className="arcade-stats">
+            <span><small>Correct</small><strong>{correctCount}</strong></span>
+            <span><small>Missed</small><strong>{missedCount}</strong></span>
+            <span><small>Best combo</small><strong>{maxCombo}x</strong></span>
+          </div>
+          <p>{walletConnection ? "Points save to your connected wallet." : "Connect a wallet to save arcade points."}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function getProblemTimeLimit(correctCount: number) {
+  return Math.max(1900, 6200 - correctCount * 150);
+}
+
+function createMathProblem(correctCount: number): MathProblem {
+  const id = Date.now() + Math.floor(Math.random() * 1000);
+  const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  if (correctCount < 7) {
+    const a = randomInt(2, 14);
+    const b = randomInt(2, 14);
+    return { answer: a + b, expression: `${a} + ${b}`, id };
+  }
+
+  if (correctCount < 15) {
+    const a = randomInt(12, 42);
+    const b = randomInt(2, 24);
+    const subtraction = Math.random() > 0.45;
+    const high = Math.max(a, b);
+    const low = Math.min(a, b);
+    return subtraction
+      ? { answer: high - low, expression: `${high} - ${low}`, id }
+      : { answer: a + b, expression: `${a} + ${b}`, id };
+  }
+
+  if (correctCount < 26) {
+    const a = randomInt(3, 12);
+    const b = randomInt(3, 12);
+    return { answer: a * b, expression: `${a} x ${b}`, id };
+  }
+
+  const answer = randomInt(3, 16);
+  const divisor = randomInt(2, 9);
+  return { answer, expression: `${answer * divisor} / ${divisor}`, id };
 }
 
 function SwapHistoryPanel({ events }: { events: SwapHistoryEvent[] }) {
@@ -1139,7 +1450,7 @@ function RewardsPopover({ points, volumeUsd }: { points: number; volumeUsd: numb
         <small>Reward points</small>
         <strong>{points.toLocaleString()}</strong>
       </div>
-      <p>Earn 1 point for every dollar swapped.</p>
+      <p>Earn points from swaps and arcade runs.</p>
       <div className="mini-stat-row">
         <span>Swap volume</span>
         <strong>{formatUsd(volumeUsd)}</strong>
@@ -1164,10 +1475,12 @@ function NotificationsPopover({ notifications }: { notifications: NotificationIt
 }
 
 function UserInfoPanel({
+  arcadeSessions,
   events,
   rewardPoints,
   walletConnection
 }: {
+  arcadeSessions: ArcadeSessionEvent[];
   events: SwapHistoryEvent[];
   rewardPoints: number;
   walletConnection: WalletConnection | null;
@@ -1194,6 +1507,10 @@ function UserInfoPanel({
         <div>
           <small>Swaps</small>
           <strong>{events.length}</strong>
+        </div>
+        <div>
+          <small>Games</small>
+          <strong>{arcadeSessions.length}</strong>
         </div>
       </div>
     </section>

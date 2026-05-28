@@ -45,6 +45,19 @@ export type StoredPriceSnapshot = {
   recordedAt: string;
 };
 
+export type ArcadeSessionInput = {
+  walletAddress: string;
+  gameKey: string;
+  score: number;
+  pointsEarned: number;
+  maxCombo: number;
+  correctCount: number;
+  missedCount: number;
+  wrongCount: number;
+  durationSeconds: number;
+  seed: string;
+};
+
 export async function fetchStoredVerifiedTokens(): Promise<Token[]> {
   if (!appConfig.supabaseConfigured) return [];
 
@@ -200,6 +213,36 @@ export async function persistSwapEvent(event: SwapEventInput): Promise<void> {
     }),
     method: "POST"
   });
+}
+
+export async function persistArcadeSession(session: ArcadeSessionInput): Promise<void> {
+  if (!appConfig.supabaseConfigured) return;
+
+  await supabaseFetch("/rest/v1/arcade_sessions", {
+    body: JSON.stringify({
+      correct_count: session.correctCount,
+      duration_seconds: session.durationSeconds,
+      game_key: session.gameKey,
+      max_combo: session.maxCombo,
+      missed_count: session.missedCount,
+      points_earned: session.pointsEarned,
+      score: session.score,
+      seed: session.seed,
+      wallet_address: session.walletAddress || null,
+      wrong_count: session.wrongCount
+    }),
+    method: "POST"
+  });
+
+  if (session.walletAddress && session.pointsEarned > 0) {
+    await supabaseFetch("/rest/v1/rpc/record_arcade_reward", {
+      body: JSON.stringify({
+        points_input: session.pointsEarned,
+        wallet_address_input: session.walletAddress
+      }),
+      method: "POST"
+    });
+  }
 }
 
 function rowToToken(row: VerifiedTokenRow): Token {

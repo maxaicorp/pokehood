@@ -605,10 +605,203 @@ small {
   width: 36px;
 }
 
+.arcade-panel {
+  margin-top: 24px;
+  overflow: hidden;
+}
+
+.arcade-head {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  padding: 16px 18px;
+}
+
+.arcade-head p {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  margin: 0 0 5px;
+  text-transform: uppercase;
+}
+
+.arcade-head h2 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.arcade-score {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arcade-score strong {
+  font-size: 30px;
+}
+
+.arcade-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  padding: 16px;
+}
+
+.game-stage {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary) 12%, transparent), transparent 46%),
+    var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-height: 360px;
+  outline: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.stage-hud {
+  color: var(--muted);
+  display: flex;
+  font-size: 12px;
+  font-weight: 800;
+  justify-content: space-between;
+  left: 16px;
+  position: absolute;
+  right: 16px;
+  top: 14px;
+  z-index: 2;
+}
+
+.drop-lane {
+  inset: 46px 18px 26px;
+  position: absolute;
+}
+
+.falling-problem {
+  align-items: center;
+  background: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 76%, var(--border));
+  border-radius: 999px;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--primary) 30%, transparent);
+  color: var(--primary-text);
+  display: inline-flex;
+  font-size: 30px;
+  font-weight: 800;
+  left: 50%;
+  min-height: 70px;
+  min-width: 150px;
+  justify-content: center;
+  padding: 0 24px;
+  position: absolute;
+  transform: translateX(-50%);
+  transition: top 80ms linear;
+}
+
+.danger-line {
+  border-top: 2px dashed var(--negative);
+  bottom: 16px;
+  left: 0;
+  opacity: 0.32;
+  position: absolute;
+  right: 0;
+}
+
+.game-over-card {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  inset: 0;
+  justify-content: center;
+  padding: 28px;
+  position: absolute;
+  text-align: center;
+}
+
+.game-over-card h3 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.game-over-card p {
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+
+.answer-console {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.answer-display {
+  align-items: end;
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  min-height: 62px;
+  padding: 10px 12px;
+}
+
+.answer-display strong {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.keypad {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.keypad button {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-weight: 800;
+  min-height: 48px;
+}
+
+.keypad button:hover {
+  border-color: var(--primary);
+  color: var(--accent);
+}
+
+.arcade-stats {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.arcade-stats span {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+}
+
+.answer-console p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0;
+}
+
 .verified-panel,
 .swap-box,
 .swap-history-panel,
 .user-info-panel,
+.arcade-panel,
 .admin-health-panel,
 .watchlist {
   background: var(--app-bg);
@@ -685,7 +878,7 @@ small {
 .admin-user-summary {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   padding: 14px 16px;
 }
 
@@ -1498,6 +1691,30 @@ small {
 
   .discover-grid {
     grid-template-columns: 1fr;
+  }
+
+  .arcade-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .game-stage {
+    min-height: 300px;
+  }
+
+  .answer-console {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+  }
+
+  .falling-problem {
+    font-size: 24px;
+    min-height: 58px;
+    min-width: 126px;
+  }
+
+  .keypad button {
+    min-height: 54px;
   }
 
   .review-row {
