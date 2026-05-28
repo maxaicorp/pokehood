@@ -12,6 +12,19 @@ interface CardIdentifier {
   imageSmall?: string;
 }
 
+// Normalize Scrydex card IDs before writing stats. Scrydex returned some
+// sets under both a padded (me02.5-284) and unpadded (me2pt5-284) prefix
+// during the TCGdex→Scrydex transition, which split the same card across
+// two card_stats rows (the "duplicate Mega Gengar" bug). The DB dedupe
+// migration (20260528000000) merges existing splits; this guards future
+// writes so they always land on the canonical unpadded ID.
+//   me02.5-284 → me2pt5-284 ; me01-001 → me1-001
+function normalizeCardId(id: string): string {
+  return id
+    .replace(/^me0?(\d+)\.5-/, "me$1pt5-")
+    .replace(/^me0+(\d+)-/, "me$1-");
+}
+
 // Dedupe rapid-fire identical events (e.g. React strict-mode double-mount)
 const recentEvents = new Map<string, number>();
 const DEDUPE_MS = 5_000; // ignore same card+stat within 5 s
@@ -33,10 +46,11 @@ function isDuplicate(cardId: string, stat: StatType): boolean {
 }
 
 async function recordStat(card: CardIdentifier, stat: StatType) {
-  if (isDuplicate(card.id, stat)) return;
+  const cardId = normalizeCardId(card.id);
+  if (isDuplicate(cardId, stat)) return;
   try {
     await (supabase.rpc as any)("increment_card_stat", {
-      p_tcg_api_id: card.id,
+      p_tcg_api_id: cardId,
       p_name: card.name,
       p_set_name: card.setName ?? "",
       p_image_small: card.imageSmall ?? "",
