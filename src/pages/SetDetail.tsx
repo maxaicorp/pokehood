@@ -25,6 +25,8 @@ import {
   type PokemonSet,
 } from "@/lib/pokemon-api";
 import { findSetBySlug, cardPath, setSlug } from "@/lib/slug";
+import { getCollection } from "@/lib/collection-store";
+import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +53,7 @@ const SORTS: { value: SortKey; label: string }[] = [
 export default function SetDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortKey, setSortKey] = useState<SortKey>("number-asc");
 
@@ -117,6 +120,33 @@ export default function SetDetail() {
     });
     return arr;
   }, [enrichedCards, sortKey]);
+
+  // ─── Set-completion progress (logged-in users only) ──────────────────────
+  // Fetch the user's collection and compute how many DISTINCT cards from
+  // this set they own (counting unique card numbers, not total copies).
+  // The set page is public/SEO-facing, so this is gated behind auth — a
+  // logged-out visitor just doesn't see the bar.
+  const { data: myCollection = [] } = useQuery({
+    queryKey: ["my-collection-for-set", user?.id],
+    queryFn: getCollection,
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  const completion = useMemo(() => {
+    if (!set || !user) return null;
+    // Match on setId. Count distinct card numbers owned so 3 copies of one
+    // card still counts as "1 of N collected".
+    const owned = new Set(
+      myCollection
+        .filter((c) => c.setId === set.id)
+        .map((c) => c.cardNumber),
+    );
+    const total = rawCards.length || (set.printedTotal || set.total || 0);
+    const ownedCount = owned.size;
+    const pct = total > 0 ? Math.min(100, (ownedCount / total) * 100) : 0;
+    return { ownedCount, total, pct };
+  }, [myCollection, set, user, rawCards.length]);
 
   // Infinite-scroll sentinel removed — entire set now loads in a single
   // useQuery so sorting works against the full card list (see comment on
@@ -254,6 +284,28 @@ export default function SetDetail() {
                   {cardCount} cards
                 </span>
               </div>
+
+              {/* Set-completion bar — only for logged-in users. Shows how
+                  many distinct cards from this set they own. */}
+              {completion && completion.total > 0 && (
+                <div className="mt-3 max-w-md">
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-muted-foreground">Your collection</span>
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {completion.ownedCount} / {completion.total}
+                      <span className="text-muted-foreground font-normal ml-1.5">
+                        ({completion.pct.toFixed(0)}%)
+                      </span>
+                    </span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${completion.pct}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
