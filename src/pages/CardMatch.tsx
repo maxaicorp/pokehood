@@ -20,7 +20,10 @@ const FLIP_ANIM_MS = 220;
 // Time both no-match cards stay revealed before rotating back. Generous on
 // purpose so the second card is comfortably readable even when the network
 // roundtrip ate a chunk of perceived time.
-const FLIP_BACK_DELAY_MS = 1800;
+// Was 1800ms — felt sluggish once the rest of the perf fixes landed.
+// 900ms is still long enough to comfortably read both cards but no longer
+// drags between turns.
+const FLIP_BACK_DELAY_MS = 900;
 
 interface SlotState {
   card: SlotCard | null; // card data persists across flip-back so the image renders during rotation
