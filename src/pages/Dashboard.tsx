@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCollection, getTotalValue, getCollectionBySet, addToCollection } from "@/lib/collection-store";
@@ -30,7 +30,14 @@ type Tab = "collection" | "wishlists" | "mypage" | "analytics";
 export default function Dashboard() {
   const { user, loading, isPro, limits } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<Tab>("collection");
+  // Honor ?tab= so external links (e.g. the account-menu "Wishlist"
+  // shortcut) can deep-link straight to a Dashboard tab.
+  const [searchParams] = useSearchParams();
+  const initialTab = ((): Tab => {
+    const t = searchParams.get("tab");
+    return t === "wishlists" || t === "mypage" || t === "analytics" ? t : "collection";
+  })();
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [importParsed, setImportParsed] = useState<CsvRow[]>([]);
