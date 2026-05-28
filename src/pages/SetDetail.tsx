@@ -228,7 +228,10 @@ export default function SetDetail() {
             <img
               src={`/data/logos/${set.id}.png`}
               alt={`${setName} logo`}
-              className="w-24 sm:w-32 h-auto object-contain shrink-0"
+              /* Height-driven so the logo visually matches the title + meta
+                 block beside it instead of looking like a tiny thumbnail.
+                 max-w guards against very wide logos dominating the row. */
+              className="h-16 sm:h-24 w-auto max-w-[220px] object-contain shrink-0"
               onError={(e) => {
                 const img = e.currentTarget;
                 if (img.src !== set.images.logo) img.src = set.images.logo;

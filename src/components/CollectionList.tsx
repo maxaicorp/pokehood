@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { CollectionCard, removeFromCollection, updateCardCondition, toggleForSale } from "@/lib/collection-store";
+import { CollectionCard, removeFromCollection, updateCardCondition, toggleForSale, updateCardQuantity } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, DollarSign } from "lucide-react";
+import { Trash2, DollarSign, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -49,6 +49,25 @@ export default function CollectionList({ cards, onUpdate }: Props) {
     });
   };
 
+  const handleQuantityChange = async (card: CollectionCard, delta: number) => {
+    const next = card.quantity + delta;
+    if (next < 1) {
+      // Decrementing below 1 removes the card entirely — matches the mental
+      // model of "I no longer own any of these".
+      await handleRemove(card);
+      return;
+    }
+    setUpdatingIds((prev) => new Set(prev).add(card.id));
+    const success = await updateCardQuantity(card.id, next);
+    if (success) onUpdate();
+    else toast.error("Failed to update quantity.");
+    setUpdatingIds((prev) => {
+      const n = new Set(prev);
+      n.delete(card.id);
+      return n;
+    });
+  };
+
   const handleToggleForSale = async (card: CollectionCard) => {
     const newForSale = !card.forSale;
     setUpdatingIds((prev) => new Set(prev).add(card.id));
@@ -80,7 +99,7 @@ export default function CollectionList({ cards, onUpdate }: Props) {
       {cards.map((card, i) => (
         <motion.div
           key={card.id}
-          className="group relative rounded-xl bg-card border border-border/50 overflow-hidden card-shine"
+          className="group relative bg-card border border-border/50 card-shine"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.03 }}
@@ -118,10 +137,48 @@ export default function CollectionList({ cards, onUpdate }: Props) {
               </SelectContent>
             </Select>
 
+            {/* Quantity stepper. Decrementing to 0 removes the card. The ×N
+                badge on the image and the collection total value both react
+                to this immediately via onUpdate(). */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Qty</span>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  onClick={() => handleQuantityChange(card, -1)}
+                  disabled={updatingIds.has(card.id)}
+                  title={card.quantity <= 1 ? "Remove from collection" : "Decrease quantity"}
+                >
+                  <Minus className="w-3 h-3" />
+                </Button>
+                <span className="text-sm font-semibold tabular-nums w-6 text-center">{card.quantity}</span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  onClick={() => handleQuantityChange(card, 1)}
+                  disabled={updatingIds.has(card.id)}
+                  title="Increase quantity"
+                >
+                  <Plus className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-primary">
-                {formatPrice(card.manualPrice ?? card.marketPrice)}
-              </span>
+              {/* Show per-card price × qty so the user sees the line-item total. */}
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-primary">
+                  {formatPrice((card.manualPrice ?? card.marketPrice ?? 0) * card.quantity)}
+                </span>
+                {card.quantity > 1 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {formatPrice(card.manualPrice ?? card.marketPrice)} each
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-1">
                 {/* For-sale toggle */}
                 <Button
