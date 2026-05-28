@@ -254,14 +254,13 @@ export default function SetDetail() {
 
         {/* Hero */}
         {set ? (
-          <div className="flex items-start gap-4 sm:gap-6 mb-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6 mb-6">
             <img
               src={`/data/logos/${set.id}.png`}
               alt={`${setName} logo`}
-              /* Height-driven so the logo visually matches the title + meta
-                 block beside it instead of looking like a tiny thumbnail.
-                 max-w guards against very wide logos dominating the row. */
-              className="h-16 sm:h-24 w-auto max-w-[220px] object-contain shrink-0"
+              /* On mobile the logo stacks above the title (larger, centered).
+                 From sm+ it sits beside the text block. */
+              className="h-24 sm:h-24 w-auto max-w-[260px] sm:max-w-[220px] object-contain shrink-0"
               onError={(e) => {
                 const img = e.currentTarget;
                 if (img.src !== set.images.logo) img.src = set.images.logo;
@@ -272,7 +271,7 @@ export default function SetDetail() {
               <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">
                 {setName}
               </h1>
-              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
+              <div className="flex items-center justify-center sm:justify-start gap-4 mt-2 text-sm text-muted-foreground flex-wrap">
                 {set.releaseDate && (
                   <span className="inline-flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
