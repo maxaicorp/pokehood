@@ -9,6 +9,7 @@ import {
   type SealedProduct,
 } from "@/lib/sealed-store";
 import { formatPrice } from "@/lib/pokemon-api";
+import { addSealedToCollection } from "@/lib/collection-store";
 import { formatPct } from "@/lib/price-snapshots";
 import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import CardSentimentWidget from "@/components/CardSentimentWidget";
@@ -85,9 +86,18 @@ export default function SealedDetail() {
     await castVote(sentimentKey, user.id, current, voteType);
   };
 
-  const handleAddToCollection = () => {
+  const [addingToCollection, setAddingToCollection] = useState(false);
+  const handleAddToCollection = async () => {
     if (!user) { toast.info("Sign in to track sealed products"); navigate("/auth"); return; }
-    toast.info("Sealed product collections coming soon");
+    if (!product) return;
+    setAddingToCollection(true);
+    const result = await addSealedToCollection(product, user.id, 1);
+    if (result) {
+      toast.success(`${product.name} added to your collection`);
+    } else {
+      toast.error("Failed to add to collection");
+    }
+    setAddingToCollection(false);
   };
 
   const handleWishlist = () => {
@@ -297,10 +307,11 @@ export default function SealedDetail() {
 
             <Button
               onClick={handleAddToCollection}
+              disabled={addingToCollection}
               variant="outline"
               className="w-full h-12 text-base"
             >
-              Add to Collection
+              {addingToCollection ? "Adding…" : "Add to Collection"}
             </Button>
 
             <Button

@@ -119,23 +119,31 @@ export default function CollectionList({ cards, onUpdate }: Props) {
             <p className="text-xs font-semibold text-foreground truncate">{card.name}</p>
             <p className="text-xs text-muted-foreground truncate">{card.setName}</p>
 
-            {/* Condition selector */}
-            <Select
-              value={card.condition}
-              onValueChange={(val) => handleConditionChange(card, val)}
-              disabled={updatingIds.has(card.id)}
-            >
-              <SelectTrigger className="h-7 text-[10px] w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CONDITIONS.map((c) => (
-                  <SelectItem key={c.value} value={c.value} className="text-xs">
-                    {c.value} — {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Condition selector — cards only. Sealed products have no
+                condition; show a "Sealed" badge in its place so the tile
+                layout stays consistent. */}
+            {card.productType === "sealed" ? (
+              <div className="h-7 flex items-center justify-center rounded-md border border-border/60 bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Sealed
+              </div>
+            ) : (
+              <Select
+                value={card.condition}
+                onValueChange={(val) => handleConditionChange(card, val)}
+                disabled={updatingIds.has(card.id)}
+              >
+                <SelectTrigger className="h-7 text-[10px] w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONDITIONS.map((c) => (
+                    <SelectItem key={c.value} value={c.value} className="text-xs">
+                      {c.value} — {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {/* Quantity stepper. Decrementing to 0 removes the card. The ×N
                 badge on the image and the collection total value both react

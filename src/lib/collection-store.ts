@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { PokemonCard, getMarketPrice, enrichCardWithPricing } from "./pokemon-api";
+import type { SealedProduct } from "./sealed-store";
+import { getSealedMarketPrice } from "./sealed-store";
 
 export interface CollectionCard {
   id: string;
@@ -18,6 +20,9 @@ export interface CollectionCard {
   addedAt: string;
   forSale: boolean;
   salePrice: number | null;
+  // 'card' (single) or 'sealed' (booster box, ETB, etc.). Sealed rows have
+  // no meaningful condition and render differently in the collection view.
+  productType: "card" | "sealed";
 }
 
 /** Map DB row → app type */
@@ -39,6 +44,7 @@ function rowToCard(row: any): CollectionCard {
     addedAt: row.added_at,
     forSale: row.for_sale,
     salePrice: row.sale_price,
+    productType: row.product_type ?? "card",
   };
 }
 
@@ -137,6 +143,69 @@ export async function addToCollection(
 
   if (error) {
     console.error("Failed to add card:", error);
+    return null;
+  }
+  return rowToCard(data);
+}
+
+/** Add a sealed product (or increment quantity if already owned). Mirrors
+ *  addToCollection but stores product_type='sealed' and skips condition
+ *  (sealed products are, by definition, sealed). */
+export async function addSealedToCollection(
+  product: SealedProduct,
+  userId: string,
+  quantity = 1,
+): Promise<CollectionCard | null> {
+  const { data: existing, error: lookupError } = await supabase
+    .from("collection_cards")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("tcg_api_id", product.id)
+    .eq("product_type", "sealed")
+    .maybeSingle();
+
+  if (lookupError) {
+    console.error("Failed to check existing sealed product:", lookupError);
+    return null;
+  }
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("collection_cards")
+      .update({ quantity: existing.quantity + quantity })
+      .eq("id", existing.id)
+      .select()
+      .single();
+    if (error) {
+      console.error("Failed to update sealed quantity:", error);
+      return null;
+    }
+    return rowToCard(data);
+  }
+
+  const { data, error } = await supabase
+    .from("collection_cards")
+    .insert({
+      user_id: userId,
+      tcg_api_id: product.id,
+      name: product.name,
+      set_name: product.expansionName,
+      set_id: product.expansionId,
+      card_number: "",                 // sealed products have no card number
+      rarity: product.type || "Sealed",
+      condition: "SEALED",             // sentinel; UI hides the condition picker
+      quantity,
+      manual_price: null,
+      market_price: getSealedMarketPrice(product),
+      image_small: product.imageSmall,
+      image_large: product.imageMedium ?? product.imageSmall,
+      product_type: "sealed",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Failed to add sealed product:", error);
     return null;
   }
   return rowToCard(data);
