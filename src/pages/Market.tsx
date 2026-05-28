@@ -659,6 +659,15 @@ export default function Market() {
               </div>
             ) : (
               <div>
+                {/* Header row — matches the other data tables' top bar.
+                    Same grid template as the rows below so columns line up. */}
+                <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
+                  <span>#</span>
+                  <span>Card</span>
+                  <span>Set</span>
+                  <span className="text-right">Total Views</span>
+                  <span />
+                </div>
                 {mostVisitedCards.map((stat, i) => (
                   <motion.div
                     key={stat.tcg_api_id}
