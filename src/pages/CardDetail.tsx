@@ -517,22 +517,27 @@ export default function CardDetail() {
         {id && <GradedPriceTiles cardId={id} />}
 
         {/* ── More from this set ── */}
+        {/* Was a horizontal scroll strip with tiny w-28 thumbs; user wanted
+            the cards to scale up and fill the container width like every
+            other section on the page. Switched to a responsive grid that
+            wraps — mobile 3-per-row, sm 4, md 5 — so the 10 suggestions
+            land in 2-3 clean rows instead of overflowing to the right. */}
         {suggestions.length > 0 && (
           <div className="mt-10">
             <h3 className="font-display font-semibold text-foreground mb-4">
               {suggestionsHeading}
             </h3>
-            <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
               {suggestions.map((c) => (
-                <Link key={c.id} to={cardPath(c.set, { name: c.name, number: c.number })} className="shrink-0 group">
+                <Link key={c.id} to={cardPath(c.set, { name: c.name, number: c.number })} className="group">
                   <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }}>
                     <img
                       src={c.images.small}
                       alt={c.name}
-                      className="w-24 sm:w-28 shadow-md group-hover:shadow-lg transition-shadow"
+                      className="w-full shadow-md group-hover:shadow-lg transition-shadow"
                       loading="lazy"
                     />
-                    <p className="text-[10px] text-muted-foreground mt-1 text-center truncate w-24 sm:w-28">
+                    <p className="text-xs text-muted-foreground mt-1.5 text-center truncate">
                       {c.name}
                     </p>
                   </motion.div>
