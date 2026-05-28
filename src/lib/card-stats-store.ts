@@ -83,9 +83,16 @@ export interface CardStatRow {
   wishlist_add_count: number;
 }
 
+// The health-check edge function probes increment_card_stat with a sentinel
+// card (__health_check__ / "Health Check" / "System") on every run, which
+// otherwise floods the top of Most Visited. Exclude it from every stats read.
+const STATS_SELECT = "tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count";
+const HEALTH_CHECK_SENTINEL = "__health_check__";
+
 export async function getMostViewed(limit = 20): Promise<CardStatRow[]> {
   const { data } = await (supabase.from as any)("card_stats")
-    .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
+    .select(STATS_SELECT)
+    .neq("tcg_api_id", HEALTH_CHECK_SENTINEL)
     .order("view_count", { ascending: false })
     .limit(limit);
   return (data as CardStatRow[] | null) ?? [];
@@ -93,7 +100,8 @@ export async function getMostViewed(limit = 20): Promise<CardStatRow[]> {
 
 export async function getMostSearched(limit = 20): Promise<CardStatRow[]> {
   const { data } = await (supabase.from as any)("card_stats")
-    .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
+    .select(STATS_SELECT)
+    .neq("tcg_api_id", HEALTH_CHECK_SENTINEL)
     .order("search_hit_count", { ascending: false })
     .limit(limit);
   return (data as CardStatRow[] | null) ?? [];
@@ -101,7 +109,8 @@ export async function getMostSearched(limit = 20): Promise<CardStatRow[]> {
 
 export async function getMostCollected(limit = 20): Promise<CardStatRow[]> {
   const { data } = await (supabase.from as any)("card_stats")
-    .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
+    .select(STATS_SELECT)
+    .neq("tcg_api_id", HEALTH_CHECK_SENTINEL)
     .order("collection_add_count", { ascending: false })
     .limit(limit);
   return (data as CardStatRow[] | null) ?? [];
@@ -109,7 +118,8 @@ export async function getMostCollected(limit = 20): Promise<CardStatRow[]> {
 
 export async function getMostWishlisted(limit = 20): Promise<CardStatRow[]> {
   const { data } = await (supabase.from as any)("card_stats")
-    .select("tcg_api_id, name, set_name, image_small, view_count, search_hit_count, collection_add_count, wishlist_add_count")
+    .select(STATS_SELECT)
+    .neq("tcg_api_id", HEALTH_CHECK_SENTINEL)
     .order("wishlist_add_count", { ascending: false })
     .limit(limit);
   return (data as CardStatRow[] | null) ?? [];
