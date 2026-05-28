@@ -65,21 +65,6 @@ import {
 
 const ranges: ChartRange[] = ["LIVE", "1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"];
 
-const themes = [
-  { id: "pokedex-night", label: "Pokedex Night", mode: "Dark", colors: ["#0b0f1a", "#ffcb05", "#2a75bb"] },
-  { id: "gym-leader", label: "Gym Leader", mode: "Dark", colors: ["#101820", "#f2aa4c", "#42e8c3"] },
-  { id: "pokeball", label: "Pokeball", mode: "Dark", colors: ["#0f1117", "#e3350d", "#f8fafc"] },
-  { id: "safari", label: "Safari", mode: "Dark", colors: ["#10150f", "#8fd14f", "#f4d35e"] },
-  { id: "elite-four", label: "Elite Four", mode: "Dark", colors: ["#101024", "#d9b8ff", "#ff7a90"] },
-  { id: "pokedex-light", label: "Pokedex Light", mode: "Light", colors: ["#f7f9ff", "#ffcb05", "#2a75bb"] },
-  { id: "gym-leader-light", label: "Gym Light", mode: "Light", colors: ["#f5fbfb", "#f2aa4c", "#1aa99a"] },
-  { id: "pokeball-light", label: "Ball Light", mode: "Light", colors: ["#fff8f6", "#e3350d", "#1f2937"] },
-  { id: "safari-light", label: "Safari Light", mode: "Light", colors: ["#fbfaed", "#8bbd3d", "#d9a921"] },
-  { id: "elite-light", label: "Elite Light", mode: "Light", colors: ["#fbf8ff", "#b78aff", "#df5572"] }
-] as const;
-
-type ThemeId = (typeof themes)[number]["id"];
-
 type SwapHistoryEvent = SwapEventInput & {
   id: string;
   createdAt: string;
@@ -129,7 +114,6 @@ export function App() {
   const [swapHistory, setSwapHistory] = useState<SwapHistoryEvent[]>([]);
   const [tokenSubmissionOpen, setTokenSubmissionOpen] = useState(false);
   const [navPanel, setNavPanel] = useState<"rewards" | "notifications" | null>(null);
-  const [theme, setTheme] = useState<ThemeId>("pokedex-light");
 
   const verifiedTokens = useMemo(() => getVerifiedTokens(tokens), [tokens]);
   const sortedTokens = useMemo(
@@ -409,7 +393,7 @@ export function App() {
   }
 
   return (
-    <div className={`app-shell theme-${theme}`}>
+    <div className="app-shell">
       <header className="topbar">
         <div className="brand-mark">S</div>
         <div className="search-wrap">
@@ -454,8 +438,6 @@ export function App() {
           walletConnection={walletConnection}
         />
       </header>
-
-      <ThemeSwitcher activeTheme={theme} onThemeChange={setTheme} />
 
       <div className="dashboard-shell">
         <main className="left-scroll">
@@ -555,44 +537,6 @@ function SearchResults({ onSelectToken, tokens }: { onSelectToken: (token: Token
           <em>{formatCompactUsd(token.liquidityUsd)}</em>
         </button>
       )) : <p>No verified tokens found</p>}
-    </div>
-  );
-}
-
-function ThemeSwitcher({
-  activeTheme,
-  onThemeChange
-}: {
-  activeTheme: ThemeId;
-  onThemeChange: (theme: ThemeId) => void;
-}) {
-  const themeGroups = ["Light", "Dark"] as const;
-
-  return (
-    <div className="theme-row" aria-label="Theme options">
-      <span>Theme</span>
-      <div className="theme-groups">
-        {themeGroups.map((mode) => (
-          <section key={mode}>
-            <small>{mode}</small>
-            <div>
-              {themes.filter((theme) => theme.mode === mode).map((theme) => (
-                <button
-                  className={activeTheme === theme.id ? "selected" : ""}
-                  key={theme.id}
-                  onClick={() => onThemeChange(theme.id)}
-                  type="button"
-                >
-                  <span className="theme-swatch" aria-hidden="true">
-                    {theme.colors.map((color) => <i key={color} style={{ background: color }} />)}
-                  </span>
-                  {theme.label}
-                </button>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
     </div>
   );
 }
