@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap");
 
 :root {
+  --page-gutter: 44px;
   --app-bg: #f7f9ff;
   --panel-bg: #ffffff;
   --panel-soft: #edf2fb;
@@ -64,7 +65,7 @@ button:disabled {
   gap: 26px;
   grid-template-columns: 64px minmax(260px, 600px) 1fr auto;
   min-height: 86px;
-  padding: 0 60px;
+  padding: 0 var(--page-gutter);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -396,7 +397,13 @@ button:disabled {
 
 .left-scroll {
   min-width: 0;
-  padding: 28px 44px 56px;
+  padding: 28px var(--page-gutter) 0;
+}
+
+.below-main {
+  grid-column: 1;
+  min-width: 0;
+  padding: 0 var(--page-gutter) 56px;
 }
 
 .right-sidebar {
@@ -1257,16 +1264,35 @@ small {
 }
 
 @media (max-width: 1180px) {
+  :root {
+    --page-gutter: 24px;
+  }
+
   .topbar {
-    grid-template-columns: 48px 1fr;
+    gap: 18px;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
     min-height: auto;
-    padding: 16px 24px;
+    padding: 16px var(--page-gutter);
+  }
+
+  .brand-mark {
+    grid-column: 1;
+  }
+
+  .search-wrap {
+    grid-column: 2;
   }
 
   .topbar nav {
     grid-column: 1 / -1;
     justify-content: flex-start;
     overflow-x: auto;
+  }
+
+  .wallet-dropdown {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
   }
 
   .dashboard-shell {
@@ -1280,11 +1306,185 @@ small {
   }
 
   .left-scroll {
-    padding-inline: 24px;
+    padding-inline: var(--page-gutter);
+  }
+
+  .below-main {
+    padding-inline: var(--page-gutter);
   }
 }
 
 @media (max-width: 720px) {
+  :root {
+    --page-gutter: 22px;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+
+  .topbar {
+    align-items: center;
+    gap: 14px;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    padding: 18px var(--page-gutter) 12px;
+  }
+
+  .brand-mark {
+    font-size: 26px;
+    height: 38px;
+    justify-content: flex-start;
+    width: 38px;
+  }
+
+  .wallet-button {
+    min-height: 42px;
+    padding: 0 14px;
+  }
+
+  .search-wrap {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .search {
+    min-height: 48px;
+  }
+
+  .topbar nav {
+    gap: 26px;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    padding: 4px 0 2px;
+  }
+
+  .topbar nav button {
+    font-size: 14px;
+  }
+
+  .wallet-menu {
+    border-radius: 18px 18px 0 0;
+    border-width: 1px 0 0;
+    bottom: 0;
+    box-shadow: 0 -24px 60px var(--shadow);
+    left: 0;
+    min-width: 0;
+    padding: 18px var(--page-gutter) 24px;
+    position: fixed;
+    right: 0;
+    top: auto;
+    z-index: 50;
+  }
+
+  .wallet-menu::before {
+    background: var(--border-strong);
+    border-radius: 999px;
+    content: "";
+    display: block;
+    height: 4px;
+    margin: 0 auto 14px;
+    width: 48px;
+  }
+
+  .wallet-option,
+  .connected-wallet {
+    min-height: 58px;
+  }
+
+  .nav-popover {
+    left: 0;
+    right: auto;
+    top: calc(100% + 10px);
+  }
+
+  .dashboard-shell {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .left-scroll {
+    order: 1;
+    padding: 28px var(--page-gutter) 10px;
+  }
+
+  .right-sidebar {
+    order: 2;
+  }
+
+  .below-main {
+    order: 3;
+    padding: 8px var(--page-gutter) 36px;
+  }
+
+  .asset-hero {
+    min-height: auto;
+  }
+
+  .account-switch {
+    font-size: 24px;
+  }
+
+  h1 {
+    font-size: 46px;
+  }
+
+  .chart-wrap {
+    height: clamp(240px, 46vh, 340px);
+    margin-top: 44px;
+  }
+
+  .range-tabs {
+    gap: 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .range-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .range-tabs button {
+    flex: 0 0 auto;
+  }
+
+  .token-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .right-sidebar {
+    border-left: 0;
+    gap: 14px;
+    padding: 4px var(--page-gutter) 28px;
+  }
+
+  .verified-panel {
+    order: 2;
+  }
+
+  .swap-box {
+    order: 1;
+  }
+
+  .swap-history-panel {
+    order: 3;
+  }
+
+  .user-info-panel {
+    order: 4;
+  }
+
+  .swap-token-panel {
+    min-height: 86px;
+  }
+
+  .preview-grid {
+    font-size: 14px;
+  }
+
+  .primary-action {
+    min-height: 52px;
+  }
+
   .form-grid {
     grid-template-columns: 1fr;
   }
@@ -1308,7 +1508,22 @@ small {
     grid-template-columns: 36px 1fr 70px;
   }
 
+  .token-row .price-cell {
+    grid-column: 3;
+  }
+
   .spark {
     display: none;
+  }
+
+  .trade-modal {
+    border-radius: 18px 18px 0 0;
+    bottom: 0;
+    left: 0;
+    max-width: none;
+    padding: 22px var(--page-gutter) 26px;
+    position: fixed;
+    right: 0;
+    width: 100%;
   }
 }

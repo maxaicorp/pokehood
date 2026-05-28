@@ -461,22 +461,6 @@ export function App() {
               <strong>{formatUsd(buyingPower)}</strong>
             </div>
           </section>
-
-          <DiscoverSection tokens={latestTokens} onSelectToken={selectToken} />
-          {isAdminWallet && walletConnection && (
-            <AdminPanel
-              onAddToken={() => setTokenSubmissionOpen(true)}
-              onReviewDecision={handleReviewDecision}
-              onSelectToken={selectToken}
-              reviews={reviews}
-              rewardPoints={rewardPoints}
-              status={adminStatus}
-              swapCount={swapHistory.length}
-              swapVolumeUsd={swapVolumeUsd}
-              tokens={tokens}
-              walletAddress={walletConnection.address}
-            />
-          )}
         </main>
 
         <aside className="right-sidebar">
@@ -512,6 +496,24 @@ export function App() {
             walletConnection={walletConnection}
           />
         </aside>
+
+        <section className="below-main">
+          <DiscoverSection tokens={latestTokens} onSelectToken={selectToken} />
+          {isAdminWallet && walletConnection && (
+            <AdminPanel
+              onAddToken={() => setTokenSubmissionOpen(true)}
+              onReviewDecision={handleReviewDecision}
+              onSelectToken={selectToken}
+              reviews={reviews}
+              rewardPoints={rewardPoints}
+              status={adminStatus}
+              swapCount={swapHistory.length}
+              swapVolumeUsd={swapVolumeUsd}
+              tokens={tokens}
+              walletAddress={walletConnection.address}
+            />
+          )}
+        </section>
       </div>
 
       {tokenSubmissionOpen && (
