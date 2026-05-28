@@ -31,7 +31,11 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [hasMore, setHasMore] = useState(true);
   const loadingMore = useRef(false);
-  const [sortCol, setSortCol] = useState<SortCol>("price");
+  // Default to newest-first. The "set" sort column sorts by
+  // expansionReleaseDate (despite the "Set" label), so desc = newest sealed
+  // products on top — a more natural default for browsing than price.
+  // Clicking the Set column header toggles to oldest-first.
+  const [sortCol, setSortCol] = useState<SortCol>("set");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // Reset when filter or sort changes
