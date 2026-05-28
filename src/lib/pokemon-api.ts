@@ -181,18 +181,26 @@ export async function hydrateCardsFromLatestPrices(prices: LatestPrice[]): Promi
   const priceMap = new Map(prices.map((p) => [p.cardId, p]));
   appendPricingCache(priceMap);
 
+  // latest_card_prices only stores set_name, not the set's card totals — so
+  // the old hardcoded printedTotal:0/total:0 made every Market row render
+  // "#161/0". Pull the real totals from the static set index (already in
+  // memory) and key by setId for O(1) lookup while mapping.
+  const { sets } = await loadCardIndex();
+  const setMetaById = new Map(sets.map((s) => [s.id, s]));
+
   return prices.map((price) => {
     const [baseId, variant] = price.cardId.split("::");
     const setId = baseId.split("-").slice(0, -1).join("-") || baseId;
     const number = baseId.split("-").at(-1) ?? "";
+    const meta = setMetaById.get(setId);
     const baseSet = {
       id: setId,
       name: price.setName,
-      series: "",
-      printedTotal: 0,
-      total: 0,
-      releaseDate: "",
-      images: { symbol: "", logo: "" },
+      series: meta?.series ?? "",
+      printedTotal: meta?.printedTotal ?? meta?.total ?? 0,
+      total: meta?.total ?? meta?.printedTotal ?? 0,
+      releaseDate: meta?.releaseDate ?? "",
+      images: meta?.images ?? { symbol: "", logo: "" },
     };
     const enriched: PokemonCard = {
       id: price.cardId,
