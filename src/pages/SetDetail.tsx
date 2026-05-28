@@ -315,18 +315,17 @@ export default function SetDetail() {
         {/* Toolbar — sort + view toggle (no sidebar). Card-count text
             removed: it duplicated the "{cardCount} cards" already shown in
             the hero meta + the completion bar's "X / Y" count. */}
-        <div className="flex items-center justify-end gap-3 mb-4 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-              <SelectTrigger className="w-[200px] bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SORTS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex items-center gap-3 mb-4">
+          <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+            <SelectTrigger className="flex-1 sm:w-[240px] sm:flex-none bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORTS.map((s) => (
+                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
             <div className="flex rounded-md border border-border overflow-hidden">
               <button
                 onClick={() => setViewMode("grid")}
