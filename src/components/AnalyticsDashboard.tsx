@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { CollectionCard } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
+import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -255,7 +256,9 @@ export default function AnalyticsDashboard({ collection }: Props) {
 
   const handleUpgrade = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout");
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: STRIPE_CONFIG.pro.price_id },
+      });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     } catch {

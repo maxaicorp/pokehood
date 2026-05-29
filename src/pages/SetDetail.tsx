@@ -148,6 +148,54 @@ export default function SetDetail() {
     return { ownedCount, total, pct };
   }, [myCollection, set, user, rawCards.length]);
 
+  const jsonLd = useMemo(() => {
+    if (!set || cards.length === 0) return undefined;
+    const sName = set.name ?? "Set";
+    const top = [...cards]
+      .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
+      .slice(0, 100);
+    return [
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Sets", item: `${BASE}/sets` },
+          { "@type": "ListItem", position: 2, name: sName, item: `${BASE}/sets/${setSlug(set)}` },
+        ],
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: `${sName} Card List`,
+        numberOfItems: top.length,
+        itemListElement: top.map((c, i) => {
+          const price = getMarketPrice(c);
+          return {
+            "@type": "ListItem",
+            position: i + 1,
+            item: {
+              "@type": "Product",
+              name: c.name,
+              sku: c.number,
+              image: c.images?.small,
+              url: `${BASE}${cardPath(set, c)}`,
+              brand: { "@type": "Brand", name: "Pokémon" },
+              category: "Trading Card",
+              ...(price != null && {
+                offers: {
+                  "@type": "Offer",
+                  price: price.toFixed(2),
+                  priceCurrency: "USD",
+                  availability: "https://schema.org/InStock",
+                },
+              }),
+            },
+          };
+        }),
+      },
+    ];
+  }, [set, cards]);
+
   // Infinite-scroll sentinel removed — entire set now loads in a single
   // useQuery so sorting works against the full card list (see comment on
   // the rawCardsResult query above).
@@ -184,53 +232,6 @@ export default function SetDetail() {
   const seoDescription = set
     ? `Full ${setName} card list with live market prices for all ${cardCount} cards from the ${series} series. Updated daily.`
     : "";
-
-  const jsonLd = useMemo(() => {
-    if (!set || cards.length === 0) return undefined;
-    const top = [...cards]
-      .sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0))
-      .slice(0, 100);
-    return [
-      {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Sets", item: `${BASE}/sets` },
-          { "@type": "ListItem", position: 2, name: setName, item: `${BASE}/sets/${setSlug(set)}` },
-        ],
-      },
-      {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        name: `${setName} Card List`,
-        numberOfItems: top.length,
-        itemListElement: top.map((c, i) => {
-          const price = getMarketPrice(c);
-          return {
-            "@type": "ListItem",
-            position: i + 1,
-            item: {
-              "@type": "Product",
-              name: c.name,
-              sku: c.number,
-              image: c.images?.small,
-              url: `${BASE}${cardPath(set, c)}`,
-              brand: { "@type": "Brand", name: "Pokémon" },
-              category: "Trading Card",
-              ...(price != null && {
-                offers: {
-                  "@type": "Offer",
-                  price: price.toFixed(2),
-                  priceCurrency: "USD",
-                  availability: "https://schema.org/InStock",
-                },
-              }),
-            },
-          };
-        }),
-      },
-    ];
-  }, [set, cards, setName]);
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">

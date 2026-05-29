@@ -13,6 +13,7 @@ import {
   WishlistCard,
 } from "@/lib/wishlist-store";
 import { formatPrice } from "@/lib/pokemon-api";
+import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -104,7 +105,9 @@ export default function WishlistDashboard() {
 
   const handleUpgrade = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout");
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: STRIPE_CONFIG.pro.price_id },
+      });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     } catch {
