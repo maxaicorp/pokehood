@@ -5,6 +5,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { getLatestSnapshotPrices, type LatestPrice } from "@/lib/price-snapshots";
+import { PRICE_CACHE_TTL_MS, registerCacheResetter } from "@/lib/cache-invalidation";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -124,6 +125,7 @@ const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
 const CARD_INDEX_VERSION = "2026-04-13-ascended-heroes-fix";
 let pricingSeedPromise: Promise<void> | null = null;
+let pricingSeededAt = 0;
 
 /**
  * Pre-populate the pricing cache from database snapshot prices + % changes.
@@ -226,14 +228,26 @@ export async function hydrateCardsFromLatestPrices(prices: LatestPrice[]): Promi
 }
 
 async function ensurePricingCacheSeeded(): Promise<void> {
-  if (pricingCache.size > 0) return;
+  // Fresh = seeded AND within TTL. A long-open tab past the TTL re-seeds on the
+  // next access; an explicit reset (force-refresh) clears it immediately.
+  const fresh = pricingCache.size > 0 && Date.now() - pricingSeededAt < PRICE_CACHE_TTL_MS;
+  if (fresh) return;
   if (!pricingSeedPromise) {
     pricingSeedPromise = getLatestSnapshotPrices().then((prices) => {
       seedPricingCache(prices);
-    }).catch(() => undefined);
+      pricingSeededAt = Date.now();
+    }).catch(() => undefined).finally(() => { pricingSeedPromise = null; });
   }
   await pricingSeedPromise;
 }
+
+/** Drop the seeded pricing so the next read re-pulls from the DB. */
+export function resetPricingCache(): void {
+  pricingCache.clear();
+  pricingSeedPromise = null;
+  pricingSeededAt = 0;
+}
+registerCacheResetter(resetPricingCache);
 
 // ─── Loader ───────────────────────────────────────────────────────────────────
 

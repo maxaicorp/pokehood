@@ -7,6 +7,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { type LatestPrice } from "@/lib/price-snapshots";
+import { PRICE_CACHE_TTL_MS, registerCacheResetter } from "@/lib/cache-invalidation";
 
 // PostgREST caps a single response at 1,000 rows — paginate past it.
 const DB_PAGE = 1000;
@@ -57,6 +58,7 @@ export interface SealedSearchResult {
 // ─── In-memory cache ──────────────────────────────────────────────────────────
 
 let sealedCache: SealedProduct[] | null = null;
+let sealedCacheAt = 0;
 
 /** Map a snake_case `sealed_products` DB row to the camelCase SealedProduct. */
 function mapCatalogRow(r: Record<string, unknown>): SealedProduct {
@@ -77,7 +79,7 @@ function mapCatalogRow(r: Record<string, unknown>): SealedProduct {
 }
 
 async function loadSealedProducts(): Promise<SealedProduct[]> {
-  if (sealedCache) return sealedCache;
+  if (sealedCache && Date.now() - sealedCacheAt < PRICE_CACHE_TTL_MS) return sealedCache;
 
   // Primary source: the sealed_products catalog table (cron-maintained).
   // New sets appear here automatically within 24h — no manual sync, no
@@ -98,6 +100,7 @@ async function loadSealedProducts(): Promise<SealedProduct[]> {
     }
     if (rows.length > 0) {
       sealedCache = rows.map(mapCatalogRow);
+      sealedCacheAt = Date.now();
       return sealedCache;
     }
     console.warn("sealed_products table empty — falling back to static JSON");
@@ -161,9 +164,10 @@ export function getSealedMarketPrice(product: SealedProduct): number | null {
 
 let sealedPriceMap: Map<string, LatestPrice> | null = null;
 let sealedPriceMapPromise: Promise<Map<string, LatestPrice>> | null = null;
+let sealedPriceMapAt = 0;
 
 async function loadSealedPriceMap(): Promise<Map<string, LatestPrice>> {
-  if (sealedPriceMap) return sealedPriceMap;
+  if (sealedPriceMap && Date.now() - sealedPriceMapAt < PRICE_CACHE_TTL_MS) return sealedPriceMap;
   if (sealedPriceMapPromise) return sealedPriceMapPromise;
   // Read sealed-* rows DIRECTLY from latest_card_prices. The previous code went
   // through getLatestSnapshotPrices() → get_all_latest_prices RPC, which has a
@@ -200,10 +204,21 @@ async function loadSealedPriceMap(): Promise<Map<string, LatestPrice>> {
       from += DB_PAGE;
     }
     sealedPriceMap = map;
+    sealedPriceMapAt = Date.now();
     return map;
   })();
   return sealedPriceMapPromise;
 }
+
+/** Drop both sealed caches so the next read refetches catalog + prices. */
+export function resetSealedCaches(): void {
+  sealedCache = null;
+  sealedCacheAt = 0;
+  sealedPriceMap = null;
+  sealedPriceMapPromise = null;
+  sealedPriceMapAt = 0;
+}
+registerCacheResetter(resetSealedCaches);
 
 /** Get 1d and 7d percent changes from DB snapshots */
 export function getSealedTrends(product: SealedProduct): {

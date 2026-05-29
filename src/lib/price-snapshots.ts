@@ -2,6 +2,7 @@
 // Also provides historical chart data from the price_snapshots table.
 
 import { supabase } from "@/integrations/supabase/client";
+import { PRICE_CACHE_TTL_MS, registerCacheResetter } from "@/lib/cache-invalidation";
 
 export interface PriceChange {
   cardId: string;
@@ -192,10 +193,23 @@ async function fetchAllLatestRows(): Promise<LatestRow[]> {
 }
 
 let allLatestRowsPromise: Promise<LatestRow[]> | null = null;
+let allLatestRowsAt = 0;
 function getAllLatestRows(): Promise<LatestRow[]> {
-  if (!allLatestRowsPromise) allLatestRowsPromise = fetchAllLatestRows();
+  // TTL so a long-open tab eventually pulls fresh prices on its own; the
+  // explicit reset (force-refresh / realtime push) clears it immediately.
+  if (allLatestRowsPromise && Date.now() - allLatestRowsAt < PRICE_CACHE_TTL_MS) {
+    return allLatestRowsPromise;
+  }
+  allLatestRowsAt = Date.now();
+  allLatestRowsPromise = fetchAllLatestRows();
   return allLatestRowsPromise;
 }
+/** Drop the cached latest-rows so the next read refetches from the DB. */
+export function resetLatestPricesCache(): void {
+  allLatestRowsPromise = null;
+  allLatestRowsAt = 0;
+}
+registerCacheResetter(resetLatestPricesCache);
 
 /** Fetch one visible Market page from the latest-per-card RPC, sorted by price.
  *  Excludes sealed-* rows — sealed products have their own tab and shouldn't
