@@ -871,6 +871,54 @@ export type Database = {
         }
         Relationships: []
       }
+      sealed_products: {
+        Row: {
+          description: string | null
+          expansion_id: string | null
+          expansion_logo: string | null
+          expansion_name: string | null
+          expansion_release_date: string | null
+          expansion_series: string | null
+          id: string
+          image_medium: string | null
+          image_small: string | null
+          name: string
+          type: string
+          updated_at: string
+          variants: Json | null
+        }
+        Insert: {
+          description?: string | null
+          expansion_id?: string | null
+          expansion_logo?: string | null
+          expansion_name?: string | null
+          expansion_release_date?: string | null
+          expansion_series?: string | null
+          id: string
+          image_medium?: string | null
+          image_small?: string | null
+          name: string
+          type?: string
+          updated_at?: string
+          variants?: Json | null
+        }
+        Update: {
+          description?: string | null
+          expansion_id?: string | null
+          expansion_logo?: string | null
+          expansion_name?: string | null
+          expansion_release_date?: string | null
+          expansion_series?: string | null
+          id?: string
+          image_medium?: string | null
+          image_small?: string | null
+          name?: string
+          type?: string
+          updated_at?: string
+          variants?: Json | null
+        }
+        Relationships: []
+      }
       set_sentiment_votes: {
         Row: {
           card_id: string
