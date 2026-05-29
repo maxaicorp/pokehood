@@ -35,7 +35,14 @@ Deferred to Phase 2 (needs editing the functions anyway): function **version sta
 - Move the catalog (cards, sets) into DB tables populated by the cron, like `sealed_products` — eliminates the static JSON files and the dead-anon-key scripts so new sets appear automatically.
 
 ## Status
-- [ ] Phase 1 — verification
-- [ ] Phase 2 — coverage-guarded refresh
+- [x] Phase 1 — verification (end-to-end read probe + sealed delta coverage)
+- [x] Phase 2 — coverage-guarded refresh, page retries, credit pre-flight, version stamps; **only the full run prunes, and only when complete** (so a partial run can never delete middle-card history); snapshot-sealed now refreshes the read cache itself
 - [ ] Phase 3 — frontend cache lifetime
 - [ ] Phase 4 — hardening + catalog-to-DB
+
+### A known limitation (by design)
+Daily/full/sets run in the background and return HTTP 202 immediately, so the
+*HTTP response* always says `success: true` — the real partial/complete outcome
+is in the logs and is what gates the prune/refresh. Detection of a bad run is
+the health-check's job (end-to-end read + coverage + run-history thresholds),
+not the 202 response.

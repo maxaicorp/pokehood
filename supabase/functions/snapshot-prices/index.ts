@@ -28,9 +28,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Bump on every deploy so the health check / logs can confirm which code is
+// actually live (we've been bitten by old deployed functions still running).
+const FUNCTION_VERSION = "2026-05-28-phase2-coverage-guard";
+
 const PAGE_SIZE = 100;
 const DAILY_PAGE_LIMIT = 60; // 60 pages newest + 60 pages oldest = 120 credits/day
 const DELAY_MS = 150;        // ~6-7 req/sec, well under 100/sec limit
+const FETCH_RETRIES = 2;     // retry a failed Scrydex page before declaring the run incomplete
 const EARLY_VARIANT_SET_IDS = new Set([
   "base1", "base2", "base3", "base4", "base5", "base6",
   "gym1", "gym2",
@@ -233,21 +238,45 @@ async function scrydexFetch(
   apiKey: string,
   teamId: string,
 ): Promise<{ data: ScrydexCard[]; total_count: number } | null> {
+  // Retry transient failures (timeouts, 429, 5xx, network blips) before giving
+  // up. A page that fails ALL attempts marks the whole run incomplete, which
+  // makes the caller skip the destructive 90-day prune + cache refresh. So the
+  // retry is what keeps a single Scrydex hiccup from freezing every update.
+  for (let attempt = 0; attempt <= FETCH_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20_000);
+      const res = await fetch(`https://api.scrydex.com${endpoint}`, {
+        headers: { "X-Api-Key": apiKey, "X-Team-ID": teamId },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (res.ok) return await res.json();
+      console.error(`Scrydex ${res.status} for ${endpoint} (attempt ${attempt + 1}/${FETCH_RETRIES + 1})`);
+    } catch (e) {
+      console.error(`Scrydex fetch error for ${endpoint} (attempt ${attempt + 1}/${FETCH_RETRIES + 1}):`, e);
+    }
+    if (attempt < FETCH_RETRIES) await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+  }
+  return null;
+}
+
+// Free balance probe — /account/v1/usage does NOT cost a credit. Used for the
+// pre-flight check so we abort a doomed run instead of 403ing every page.
+async function getScrydexCredits(apiKey: string, teamId: string): Promise<number | null> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20_000);
-    const res = await fetch(`https://api.scrydex.com${endpoint}`, {
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    const res = await fetch("https://api.scrydex.com/account/v1/usage", {
       headers: { "X-Api-Key": apiKey, "X-Team-ID": teamId },
       signal: controller.signal,
     });
     clearTimeout(timeout);
-    if (!res.ok) {
-      console.error(`Scrydex ${res.status} for ${endpoint}`);
-      return null;
-    }
-    return await res.json();
-  } catch (e) {
-    console.error("Scrydex fetch error:", e);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const c = data?.data?.credits_remaining;
+    return typeof c === "number" ? c : null;
+  } catch {
     return null;
   }
 }
@@ -345,8 +374,11 @@ async function runPass(opts: {
   gradedBuffer: GradedSnapshotRow[];
   counters: { inserted: number; skipped: number };
   gradedCounters: { inserted: number; skipped: number };
+  // Shared across passes. Set to failed if any page hard-fails after retries —
+  // the caller then skips the prune + refresh to protect last-good data.
+  runState: { failed: boolean };
 }): Promise<number> {
-  const { label, orderBy, pageLimit, apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters } = opts;
+  const { label, orderBy, pageLimit, apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters, runState } = opts;
   const startPage = Math.max(1, opts.startPage ?? 1);
   let page = startPage;
   let totalPages = 1;
@@ -358,7 +390,8 @@ async function runPass(opts: {
     const result = await scrydexFetch(endpoint, apiKey, teamId);
 
     if (!result) {
-      console.error(`[${label}] Page ${page}: fetch failed, stopping pass`);
+      console.error(`[${label}] Page ${page}: fetch failed after retries — marking run INCOMPLETE`);
+      runState.failed = true;
       break;
     }
 
@@ -445,8 +478,9 @@ async function runSetBackfill(opts: {
   gradedBuffer: GradedSnapshotRow[];
   counters: { inserted: number; skipped: number };
   gradedCounters: { inserted: number; skipped: number };
+  runState: { failed: boolean };
 }): Promise<{ pages: number; cardsWithPrice: number }> {
-  const { setId, apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters } = opts;
+  const { setId, apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters, runState } = opts;
   // Scrydex caps page_size at 100 for the cards endpoint; asking for 250 silently truncates
   // and reports total_count == returned, leading to "page 1/1" with missing cards.
   const pageSize = 100;
@@ -461,7 +495,8 @@ async function runSetBackfill(opts: {
       `&page=${page}&page_size=${pageSize}&include=prices`;
     const result = await scrydexFetch(endpoint, apiKey, teamId);
     if (!result) {
-      console.error(`[set:${setId}] Page ${page}: fetch failed, stopping`);
+      console.error(`[set:${setId}] Page ${page}: fetch failed after retries — marking run INCOMPLETE`);
+      runState.failed = true;
       break;
     }
     if (page === 1) {
@@ -579,7 +614,7 @@ serve(async (req: Request) => {
       ? body.setIds.filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
       : [];
 
-    console.log(`snapshot-prices [${mode}] starting — ${today}`);
+    console.log(`snapshot-prices [${mode}] starting — ${today} — ${FUNCTION_VERSION}`);
 
     // Idempotency guard. Counts today's existing card snapshots (excluding sealed).
     // A typical successful daily run writes ~12,000 rows; full mode writes ~22,000.
@@ -615,6 +650,33 @@ serve(async (req: Request) => {
       }
     }
 
+    // Pre-flight credit check (free — /account/v1/usage costs nothing). A
+    // credit-starved run 403s every page; abort cleanly with a specific reason
+    // so the health check shows WHY nothing updated, instead of a vague partial.
+    const estCost =
+      mode === "full"  ? 235 :
+      mode === "chunk" ? chunkPageLimit :
+      mode === "sets"  ? Math.max(2, setIds.length * 2) :
+      120; // daily
+    const creditsRemaining = await getScrydexCredits(apiKey, teamId);
+    if (creditsRemaining != null && creditsRemaining < estCost) {
+      console.warn(`[preflight] ${creditsRemaining} credits < est ${estCost} for ${mode} — aborting (insufficient_credits). ${FUNCTION_VERSION}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          reason: "insufficient_credits",
+          credits_remaining: creditsRemaining,
+          estimated_cost: estCost,
+          mode,
+          version: FUNCTION_VERSION,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 },
+      );
+    }
+
+    // Shared completeness flag. Any hard page failure flips this; the prune +
+    // cache refresh are then skipped so a partial run never corrupts the cache.
+    const runState = { failed: false };
     const seenIds = new Set<string>();
     const buffer: SnapshotRow[] = [];
     const gradedBuffer: GradedSnapshotRow[] = [];
@@ -635,7 +697,7 @@ serve(async (req: Request) => {
       const work = (async () => {
         for (const setId of setIds) {
           const { pages, cardsWithPrice } = await runSetBackfill({
-            setId, apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters,
+            setId, apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters, runState,
           });
           pagesProcessed += pages;
           setSummaries.push({ setId, pages, priced: cardsWithPrice });
@@ -647,9 +709,16 @@ serve(async (req: Request) => {
         const gradedResult = await flushGradedRows(supabase, gradedBuffer);
         gradedCounters.inserted += gradedResult.inserted;
         gradedCounters.skipped += gradedResult.skipped;
-        console.log(`[sets] BACKGROUND DONE — sets=${setIds.length} inserted=${counters.inserted} skipped=${counters.skipped} graded=${gradedCounters.inserted}`, setSummaries);
-        await refreshLatestCardPrices(supabase);
-        await refreshLatestGradedPrices(supabase);
+        // Only refresh the read cache if the backfill completed. A partial
+        // backfill leaves last-good data intact (targeted backfills are cheap
+        // to re-run, never worth risking the cache on incomplete data).
+        if (!runState.failed) {
+          await refreshLatestCardPrices(supabase);
+          await refreshLatestGradedPrices(supabase);
+          console.log(`[sets] BACKGROUND DONE (complete) — sets=${setIds.length} inserted=${counters.inserted} graded=${gradedCounters.inserted} — refreshed. ${FUNCTION_VERSION}`, setSummaries);
+        } else {
+          console.warn(`[sets] BACKGROUND DONE (PARTIAL) — a page hard-failed; skipped cache refresh to protect last-good data. ${FUNCTION_VERSION}`, setSummaries);
+        }
       })();
       // @ts-ignore — EdgeRuntime is available in Supabase Edge runtime
       if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
@@ -669,7 +738,7 @@ serve(async (req: Request) => {
         orderBy,
         pageLimit: chunkPageLimit,
         startPage,
-        apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters,
+        apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters, runState,
       });
     } else if (mode === "full") {
       // Full mode: single pass newest-first through all pages (~235 credits).
@@ -683,7 +752,7 @@ serve(async (req: Request) => {
             orderBy: "-expansion.release_date",
             pageLimit: Infinity,
             startPage: fullStartPage,
-            apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters,
+            apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters, runState,
           });
           const { inserted, skipped } = await flushRows(supabase, buffer);
           counters.inserted += inserted;
@@ -691,15 +760,22 @@ serve(async (req: Request) => {
           const gradedResult = await flushGradedRows(supabase, gradedBuffer);
           gradedCounters.inserted += gradedResult.inserted;
           gradedCounters.skipped += gradedResult.skipped;
-          // 90-day cleanup (raw + graded)
-          const cutoff = new Date();
-          cutoff.setDate(cutoff.getDate() - 90);
-          const cutoffStr = cutoff.toISOString().split("T")[0];
-          await supabase.from("price_snapshots").delete().lt("recorded_at", cutoffStr);
-          await supabase.from("graded_price_snapshots").delete().lt("recorded_at", cutoffStr);
-          console.log(`[full] BACKGROUND DONE — pages=${pagesProcessed} inserted=${counters.inserted} skipped=${counters.skipped} graded=${gradedCounters.inserted}`);
-          await refreshLatestCardPrices(supabase);
-          await refreshLatestGradedPrices(supabase);
+          // CRITICAL: the 90-day prune + cache refresh run ONLY on a verified-
+          // complete pass. If any page hard-failed, skipping the prune is what
+          // stops middle-numbered cards (only refreshed by the full run) from
+          // aging out and vanishing — the recurring "prices disappeared" bug.
+          if (!runState.failed) {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - 90);
+            const cutoffStr = cutoff.toISOString().split("T")[0];
+            await supabase.from("price_snapshots").delete().lt("recorded_at", cutoffStr);
+            await supabase.from("graded_price_snapshots").delete().lt("recorded_at", cutoffStr);
+            await refreshLatestCardPrices(supabase);
+            await refreshLatestGradedPrices(supabase);
+            console.log(`[full] BACKGROUND DONE (complete) — pages=${pagesProcessed} inserted=${counters.inserted} graded=${gradedCounters.inserted} — pruned + refreshed. ${FUNCTION_VERSION}`);
+          } else {
+            console.warn(`[full] BACKGROUND DONE (PARTIAL) — pages=${pagesProcessed} inserted=${counters.inserted}; a page hard-failed, so SKIPPED the 90-day prune + cache refresh to protect last-good data. Cron will retry. ${FUNCTION_VERSION}`);
+          }
         } catch (e) {
           console.error("[full] background error:", e);
         }
@@ -730,7 +806,7 @@ serve(async (req: Request) => {
             orderBy: "-expansion.release_date",
             pageLimit: DAILY_PAGE_LIMIT,
             startPage: 1,
-            apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters,
+            apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters, runState,
           });
 
           // Pass 2 — oldest 60 pages (~6,000 oldest cards), skip any already seen
@@ -739,7 +815,7 @@ serve(async (req: Request) => {
             orderBy: "expansion.release_date",
             pageLimit: DAILY_PAGE_LIMIT,
             startPage: 1,
-            apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters,
+            apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters, runState,
           });
 
           const { inserted, skipped } = await flushRows(supabase, buffer);
@@ -749,16 +825,17 @@ serve(async (req: Request) => {
           gradedCounters.inserted += gradedResult.inserted;
           gradedCounters.skipped += gradedResult.skipped;
 
-          // 90-day retention sweep (raw + graded)
-          const cutoff = new Date();
-          cutoff.setDate(cutoff.getDate() - 90);
-          const cutoffStr = cutoff.toISOString().split("T")[0];
-          await supabase.from("price_snapshots").delete().lt("recorded_at", cutoffStr);
-          await supabase.from("graded_price_snapshots").delete().lt("recorded_at", cutoffStr);
-
-          console.log(`[daily] BACKGROUND DONE — pages=${pagesProcessed} inserted=${counters.inserted} skipped=${counters.skipped} graded=${gradedCounters.inserted}`);
-          await refreshLatestCardPrices(supabase);
-          await refreshLatestGradedPrices(supabase);
+          // NOTE: daily intentionally does NOT prune. Daily only covers the
+          // newest+oldest pages, so pruning here could delete middle-numbered
+          // cards daily never refreshes. ALL deletion now happens only in the
+          // full run, and only when it completes — see the full-mode block.
+          if (!runState.failed) {
+            await refreshLatestCardPrices(supabase);
+            await refreshLatestGradedPrices(supabase);
+            console.log(`[daily] BACKGROUND DONE (complete) — pages=${pagesProcessed} inserted=${counters.inserted} graded=${gradedCounters.inserted} — refreshed. ${FUNCTION_VERSION}`);
+          } else {
+            console.warn(`[daily] BACKGROUND DONE (PARTIAL) — pages=${pagesProcessed} inserted=${counters.inserted}; a page hard-failed, so SKIPPED the cache refresh to keep last-good data. Cron will retry. ${FUNCTION_VERSION}`);
+          }
         } catch (e) {
           console.error("[daily] background error:", e);
         }
@@ -776,7 +853,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // ─ Reached only by sets/chunk modes that don't early-return above ─
+    // ─ Reached only by chunk mode (a partial page range) ─
     const { inserted, skipped } = await flushRows(supabase, buffer);
     counters.inserted += inserted;
     counters.skipped += skipped;
@@ -784,20 +861,21 @@ serve(async (req: Request) => {
     gradedCounters.inserted += gradedResult.inserted;
     gradedCounters.skipped += gradedResult.skipped;
 
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 90);
-    const cutoffStr = cutoff.toISOString().split("T")[0];
-    await supabase.from("price_snapshots").delete().lt("recorded_at", cutoffStr);
-    await supabase.from("graded_price_snapshots").delete().lt("recorded_at", cutoffStr);
-
-    // Refresh both precomputed caches after chunk/sets sync paths too.
-    await refreshLatestCardPrices(supabase);
-    await refreshLatestGradedPrices(supabase);
+    // Chunk mode never prunes (it only covers a slice of pages). Refresh the
+    // read cache only if the chunk completed without a hard page failure.
+    if (!runState.failed) {
+      await refreshLatestCardPrices(supabase);
+      await refreshLatestGradedPrices(supabase);
+    } else {
+      console.warn(`[chunk] PARTIAL — a page hard-failed; skipped cache refresh. ${FUNCTION_VERSION}`);
+    }
 
     const summary: Record<string, unknown> = {
-      success: true,
+      success: !runState.failed,
+      partial: runState.failed,
       mode,
       date: today,
+      version: FUNCTION_VERSION,
       pages_processed: pagesProcessed,
       prices_saved: counters.inserted,
       prices_skipped: counters.skipped,
@@ -808,6 +886,7 @@ serve(async (req: Request) => {
 
     return new Response(JSON.stringify(summary), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: runState.failed ? 207 : 200,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
