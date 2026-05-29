@@ -73,6 +73,14 @@ function normalize(s: string | null | undefined): string {
   return (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
 }
 
+// Non-Pokémon merch (sports cards, NFTs, swag). Mirrors the SQL is_merch_name()
+// used by the public feed RPCs — keep the two in sync. Sports/merch self-label
+// with brand names Pokémon cards never use, so this is high-precision.
+const MERCH_RX = /moonbirds|panini|topps|bowman|prizm|donruss|fleer|upper[ -]?deck|collector'?s edge|vaneck|\bnba\b|\bnfl\b|\bmlb\b|\bnhl\b|fifa|basketball|football|baseball|hockey|soccer/i;
+function isMerchName(name: string | null | undefined): boolean {
+  return !!name && MERCH_RX.test(name);
+}
+
 // Strip leading zeros from card numbers ("001" → "1"). Scrydex card_ids use
 // the unpadded form ("sv8pt5-1"), but slab attributes often pad ("001").
 function stripCardNumber(s: string | null | undefined): string {
@@ -386,6 +394,13 @@ serve(async (req: Request) => {
       });
     }
 
+    // Drop non-Pokémon merch up front (sports cards, NFTs, swag) so the
+    // unmatched tab + counts stay focused on real Pokémon cards. Same blocklist
+    // as the public feed's is_merch_name().
+    const beforeMerch = listings.length;
+    listings = listings.filter((l) => !isMerchName(l.name));
+    const merchSkipped = beforeMerch - listings.length;
+
     // ── Load price catalogs (paginated SELECT to bypass PostgREST cap). ──
     const cards: RawPriceRow[] = [];
     {
@@ -471,6 +486,7 @@ serve(async (req: Request) => {
       success: true,
       duration_ms: Date.now() - t0,
       total_active: listings.length,
+      merch_skipped: merchSkipped,
       matched: matched.length,
       unmatched: results.length - matched.length,
       undervalued: undervalued.length,
