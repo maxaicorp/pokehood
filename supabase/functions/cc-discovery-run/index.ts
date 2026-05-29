@@ -1,19 +1,23 @@
-// cc-discovery-run — Collector Crypt valuation matcher.
+// cc-discovery-run — Collector Crypt UNDERVALUED matcher (v2: CC marketplace API).
 //
-// Called by an admin from /admin/cc-discovery. Cooldown-gated (10 min) to
-// prevent accidental double-clicks. Per run:
-//   1. Verify admin + cooldown
-//   2. Pull active onchain_listings + joined nft_names attributes
-//   3. Match each listing to a card in latest_card_prices (raw, today) or
-//      latest_graded_prices (once Scrydex graded plan is active) via the
-//      structured attributes (set_hint + card_number + company + grade)
-//   4. TRUNCATE + INSERT cc_discovery_results, update cc_discovery_state
+// Admin-triggered from /admin/cc-discovery, cooldown-gated (10 min). Per run:
+//   1. Verify admin + cooldown; mark running
+//   2. Pull the ENTIRE CC marketplace from api.collectorcrypt.com (paginated)
+//      — keep listed English Pokémon slabs with a grade
+//   3. Match each to a Scrydex card (card-name + number) → look up the graded
+//      market price (card_id, company, grade) in latest_graded_prices
+//   4. delta_pct = (listing_usd - graded_market) / graded_market * 100
+//      (negative = listed BELOW graded market = undervalued)
+//   5. TRUNCATE + INSERT cc_discovery_results, update cc_discovery_state
 //
-// Today (no graded prices available), all matches are "raw vs raw" —
-// useless for graded slabs because graded carries a premium over raw. We
-// surface these anyway so the matcher's plumbing is exercised end-to-end;
-// the moment latest_graded_prices is populated, the same code starts
-// producing actionable undervalued signals automatically.
+// v2 change: source is now CC's public marketplace API, which carries clean
+// structured fields (gradeNum, gradingCompany, set, serial, itemName, listing
+// price in USDC/SOL) + a Category. This replaced the old onchain_listings +
+// sparse nft_names path, which matched almost nothing. Validated live: real
+// finds like PSA 10 listed at -97% vs graded market.
+//
+// Scope (user 2026-05-29): sales live in ingest-cc-native; this maps the whole
+// marketplace. We do NOT track listing state — each run is a fresh snapshot.
 
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
@@ -24,252 +28,121 @@ const corsHeaders = {
 };
 
 const COOLDOWN_MINUTES = 10;
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface ActiveListing {
-  pda_address: string;
-  token_mint: string;
-  name: string | null;
-  image: string | null;
-  price_usd: number | null;
-  marketplace_url: string | null;
-  // From nft_names join
-  card_name_attr: string | null;
-  set_hint: string | null;
-  card_number: string | null;
-  grading_company: string | null;
-  grade_value: number | null;
-}
-
-interface RawPriceRow {
-  card_id: string;
-  card_name: string;
-  set_name: string;
-  price: number;
-}
-
-interface GradedPriceRow {
-  card_id: string;
-  company: string;
-  grade: number;
-  market: number;
-}
-
-interface MatchResult {
-  matched_card_id: string | null;
-  matched_card_name: string | null;
-  matched_set_name: string | null;
-  matched_company: string | null;
-  matched_grade: number | null;
-  market_price_usd: number | null;
-  delta_pct: number | null;
-  match_method: "graded_attrs" | "raw_attrs" | "name_parse" | "none";
-  match_confidence: number;     // 0..1
-}
+const CC_API = "https://api.collectorcrypt.com/marketplace";
+const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function normalize(s: string | null | undefined): string {
   return (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
 }
-
-// Non-Pokémon merch (sports cards, NFTs, swag). Mirrors the SQL is_merch_name()
-// used by the public feed RPCs — keep the two in sync. Sports/merch self-label
-// with brand names Pokémon cards never use, so this is high-precision.
-const MERCH_RX = /moonbirds|panini|topps|bowman|prizm|donruss|fleer|upper[ -]?deck|collector'?s edge|vaneck|\bnba\b|\bnfl\b|\bmlb\b|\bnhl\b|fifa|basketball|football|baseball|hockey|soccer/i;
-function isMerchName(name: string | null | undefined): boolean {
-  return !!name && MERCH_RX.test(name);
-}
-
-// Strip leading zeros from card numbers ("001" → "1"). Scrydex card_ids use
-// the unpadded form ("sv8pt5-1"), but slab attributes often pad ("001").
 function stripCardNumber(s: string | null | undefined): string {
   if (!s) return "";
   const m = String(s).match(/^0*(\d+)/);
   return m ? m[1] : String(s).trim();
 }
 
-// ─── Matchers ────────────────────────────────────────────────────────────────
-//
-// Strategy: try the cheapest, most-specific match first; fall back as needed.
-//   1. graded_attrs: nft has (set_hint, card_number, company, grade) →
-//      look up latest_graded_prices by (card_id, company, grade) where
-//      card_id is found by matching set + number in latest_card_prices
-//   2. raw_attrs: nft has (set_hint, card_number) → look up
-//      latest_card_prices directly. Used today since latest_graded_prices
-//      is empty until the Scrydex upgrade.
-//   3. name_parse: regex-extract from the listing's display name. Last
-//      resort, lowest confidence.
-
-// Index helpers — built once per Run from latest_card_prices, keyed for
-// O(1) lookup. The catalog is ~23k rows; building the maps is cheap.
-interface CardIndex {
-  bySetNormAndNumber: Map<string, RawPriceRow>;
-  byCardNameNorm: Map<string, RawPriceRow[]>;
+// Parse the card name out of a CC itemName like
+//   "2023 #170 Squirtle PSA 10 Japanese Sv2a- 151 Pokemon"
+//   "2025 #060 Mega Gardevoir EX PSA 10 Meg EN-Mega Evolution"
+// → name between "#<serial> " and the grading company. Strips printing
+// prefixes ("Full Art/", "Reverse Holo/", ...).
+function parseCardName(itemName: string | null | undefined): string | null {
+  if (!itemName) return null;
+  const m = itemName.match(/^\d{4}\s+#?\d+\s+(.+?)\s+(PSA|CGC|BGS|TAG|SGC|ACE)\b/i);
+  if (!m) return null;
+  return m[1].replace(/^(full art|reverse holo|holo|alt art|art)\s*\/\s*/i, "").trim();
 }
 
-function buildCardIndex(rows: RawPriceRow[]): CardIndex {
-  const bySetNormAndNumber = new Map<string, RawPriceRow>();
-  const byCardNameNorm = new Map<string, RawPriceRow[]>();
+// SOL/USD spot (Jupiter primary, Pyth fallback) — only needed for SOL-priced
+// listings; USDC listings are 1:1. Both public, no key.
+async function getSolUsd(): Promise<number | null> {
+  try {
+    const r = await fetch(`https://lite-api.jup.ag/price/v2?ids=${SOL_MINT}`);
+    if (r.ok) { const j = await r.json(); const p = Number(j?.data?.[SOL_MINT]?.price); if (p > 0) return p; }
+  } catch { /* fall through */ }
+  try {
+    const r = await fetch("https://hermes.pyth.network/api/latest_price_feeds?ids[]=0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d");
+    if (r.ok) { const a = await r.json(); const f = Array.isArray(a) ? a[0] : null; const raw = Number(f?.price?.price); const e = Number(f?.price?.expo); if (raw > 0 && Number.isFinite(e)) return raw * Math.pow(10, e); }
+  } catch { /* fall through */ }
+  return null;
+}
+
+interface CCListing {
+  mint: string;
+  item_name: string;
+  card_name: string;
+  number: string;
+  company: string;
+  grade: number;
+  price_usd: number;
+  image: string | null;
+}
+
+// Pull listed English Pokémon slabs from the CC marketplace API.
+async function fetchCCPokemon(maxPages: number, solUsd: number | null): Promise<CCListing[]> {
+  const out: CCListing[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    let j: any;
+    try {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 15_000);
+      const r = await fetch(`${CC_API}?page=${page}`, { signal: ctl.signal, headers: { Accept: "application/json" } });
+      clearTimeout(t);
+      if (!r.ok) { console.warn(`[cc-api] page ${page} -> ${r.status}, stopping`); break; }
+      j = await r.json();
+    } catch (e) {
+      console.warn(`[cc-api] page ${page} threw: ${(e as Error).message}, stopping`);
+      break;
+    }
+    const items: any[] = j?.filterNFtCard ?? [];
+    if (items.length === 0) break;
+    for (const it of items) {
+      if (it.category !== "Pokemon") continue;                       // clean source filter
+      if (/japanese/i.test(`${it.set ?? ""}${it.language ?? ""}`)) continue; // EN catalog only
+      const price = Number(it?.listing?.price);
+      if (!(price > 0) || !it.gradeNum || !it.gradingCompany || !it.nftAddress) continue;
+      const cardName = parseCardName(it.itemName);
+      if (!cardName) continue;
+      const cur = it.listing.currency;
+      const usd = cur === "USDC" ? price : (solUsd ? price * solUsd : 0);
+      if (!(usd > 0)) continue; // SOL-priced and no spot → skip rather than store garbage
+      out.push({
+        mint: it.nftAddress,
+        item_name: it.itemName,
+        card_name: cardName,
+        number: stripCardNumber(it.serial),
+        company: String(it.gradingCompany).toUpperCase(),
+        grade: Number(it.gradeNum),
+        price_usd: Math.round(usd * 100) / 100,
+        image: it.frontImage ?? null,
+      });
+    }
+    if (items.length < 100) break; // last page
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  return out;
+}
+
+interface RawCard { card_id: string; card_name: string; set_name: string; }
+// name(normalized) → cards; used to resolve a CC slab to a Scrydex card_id.
+function buildNameIndex(rows: RawCard[]): Map<string, RawCard[]> {
+  const m = new Map<string, RawCard[]>();
   for (const r of rows) {
-    // Skip the ::variant suffix for matching since slabs map to base cards.
-    const baseId = r.card_id.split("::")[0];
-    // Set+number key. card_id format is "{setCode}-{localNumber}"; we want
-    // (normalized set name) + "|" + (unpadded number) as the join key.
-    const dashIdx = baseId.lastIndexOf("-");
-    const number = stripCardNumber(dashIdx >= 0 ? baseId.slice(dashIdx + 1) : "");
-    const setNorm = normalize(r.set_name);
-    if (setNorm && number) {
-      const key = `${setNorm}|${number}`;
-      // First write wins so we don't accidentally overwrite the base card
-      // with a vintage variant of the same set+number.
-      if (!bySetNormAndNumber.has(key)) bySetNormAndNumber.set(key, { ...r, card_id: baseId });
-    }
-    const nameNorm = normalize(r.card_name);
-    if (nameNorm) {
-      const arr = byCardNameNorm.get(nameNorm) ?? [];
-      arr.push({ ...r, card_id: baseId });
-      byCardNameNorm.set(nameNorm, arr);
-    }
+    const base = r.card_id.split("::")[0];
+    const key = normalize(r.card_name);
+    if (!key) continue;
+    const arr = m.get(key) ?? [];
+    arr.push({ ...r, card_id: base });
+    m.set(key, arr);
   }
-  return { bySetNormAndNumber, byCardNameNorm };
+  return m;
+}
+function cardNumberOf(cardId: string): string {
+  const b = cardId.split("::")[0];
+  const d = b.lastIndexOf("-");
+  return stripCardNumber(d >= 0 ? b.slice(d + 1) : "");
 }
 
-interface GradedIndex {
-  // Key: `${card_id}|${company}|${grade}` → market price
-  byCardCompanyGrade: Map<string, GradedPriceRow>;
-}
-
-function buildGradedIndex(rows: GradedPriceRow[]): GradedIndex {
-  const map = new Map<string, GradedPriceRow>();
-  for (const r of rows) {
-    const key = `${r.card_id}|${r.company}|${r.grade}`;
-    map.set(key, r);
-  }
-  return { byCardCompanyGrade: map };
-}
-
-function tryAttrMatch(
-  listing: ActiveListing,
-  cardIdx: CardIndex,
-  gradedIdx: GradedIndex,
-): MatchResult {
-  // Need at minimum a set + number to use the deterministic path.
-  if (!listing.set_hint || !listing.card_number) {
-    return { matched_card_id: null, matched_card_name: null, matched_set_name: null,
-      matched_company: null, matched_grade: null, market_price_usd: null,
-      delta_pct: null, match_method: "none", match_confidence: 0 };
-  }
-  const setNorm = normalize(listing.set_hint);
-  const number = stripCardNumber(listing.card_number);
-  const cardKey = `${setNorm}|${number}`;
-  const card = cardIdx.bySetNormAndNumber.get(cardKey);
-  if (!card) {
-    return { matched_card_id: null, matched_card_name: null, matched_set_name: null,
-      matched_company: null, matched_grade: null, market_price_usd: null,
-      delta_pct: null, match_method: "none", match_confidence: 0 };
-  }
-  // Have a card. Now try graded match if we have grade info.
-  if (listing.grading_company && listing.grade_value != null) {
-    const gKey = `${card.card_id}|${listing.grading_company}|${listing.grade_value}`;
-    const graded = gradedIdx.byCardCompanyGrade.get(gKey);
-    if (graded && graded.market > 0 && listing.price_usd != null) {
-      const deltaPct = ((listing.price_usd - graded.market) / graded.market) * 100;
-      return {
-        matched_card_id: card.card_id,
-        matched_card_name: card.card_name,
-        matched_set_name: card.set_name,
-        matched_company: graded.company,
-        matched_grade: graded.grade,
-        market_price_usd: graded.market,
-        delta_pct: deltaPct,
-        match_method: "graded_attrs",
-        match_confidence: 0.95,
-      };
-    }
-  }
-  // Fall back to raw comparison. Less useful for graded slabs but lets us
-  // surface the match so admin can see we found the card; just no
-  // actionable delta until graded prices land.
-  if (listing.price_usd != null && card.price > 0) {
-    const deltaPct = ((listing.price_usd - card.price) / card.price) * 100;
-    return {
-      matched_card_id: card.card_id,
-      matched_card_name: card.card_name,
-      matched_set_name: card.set_name,
-      matched_company: listing.grading_company,
-      matched_grade: listing.grade_value,
-      market_price_usd: card.price,
-      delta_pct: deltaPct,
-      match_method: "raw_attrs",
-      match_confidence: 0.70,
-    };
-  }
-  return { matched_card_id: card.card_id, matched_card_name: card.card_name,
-    matched_set_name: card.set_name, matched_company: listing.grading_company,
-    matched_grade: listing.grade_value, market_price_usd: null, delta_pct: null,
-    match_method: "raw_attrs", match_confidence: 0.50 };
-}
-
-// Last resort: parse the listing's display name string when structured
-// attributes were missing. Looks for patterns like
-//   "2024 Pokémon Prismatic Evolutions Umbreon ex #161 PSA 10"
-// Extracts: card name, card number, company, grade.
-function tryNameParse(
-  listing: ActiveListing,
-  cardIdx: CardIndex,
-  gradedIdx: GradedIndex,
-): MatchResult {
-  const empty: MatchResult = { matched_card_id: null, matched_card_name: null,
-    matched_set_name: null, matched_company: null, matched_grade: null,
-    market_price_usd: null, delta_pct: null, match_method: "none", match_confidence: 0 };
-  if (!listing.name) return empty;
-  const s = listing.name;
-  const numberMatch = s.match(/#\s*(\d+)|\b(\d{1,3})\s*\/\s*\d{1,3}\b/);
-  const number = stripCardNumber(numberMatch?.[1] ?? numberMatch?.[2] ?? "");
-  const companyMatch = s.match(/\b(PSA|CGC|BGS|TAG|SGC|ACE)\b/i);
-  const company = companyMatch ? companyMatch[1].toUpperCase() : null;
-  const gradeMatch = s.match(/\b(PSA|CGC|BGS|TAG|SGC|ACE)\s*(\d+(?:\.\d+)?)/i);
-  const grade = gradeMatch ? Number.parseFloat(gradeMatch[2]) : null;
-  if (!number) return empty;
-
-  // We don't know the set from the name. Search every card with a matching
-  // unpadded number — if exactly one matches, accept; otherwise bail.
-  const candidates: RawPriceRow[] = [];
-  for (const r of cardIdx.bySetNormAndNumber.values()) {
-    const baseId = r.card_id;
-    const dashIdx = baseId.lastIndexOf("-");
-    const num = stripCardNumber(dashIdx >= 0 ? baseId.slice(dashIdx + 1) : "");
-    if (num === number) candidates.push(r);
-  }
-  if (candidates.length !== 1) return empty;
-  const card = candidates[0];
-  if (company && grade != null) {
-    const gKey = `${card.card_id}|${company}|${grade}`;
-    const graded = gradedIdx.byCardCompanyGrade.get(gKey);
-    if (graded && graded.market > 0 && listing.price_usd != null) {
-      const deltaPct = ((listing.price_usd - graded.market) / graded.market) * 100;
-      return {
-        matched_card_id: card.card_id, matched_card_name: card.card_name,
-        matched_set_name: card.set_name, matched_company: company, matched_grade: grade,
-        market_price_usd: graded.market, delta_pct: deltaPct,
-        match_method: "name_parse", match_confidence: 0.65,
-      };
-    }
-  }
-  if (listing.price_usd != null && card.price > 0) {
-    const deltaPct = ((listing.price_usd - card.price) / card.price) * 100;
-    return {
-      matched_card_id: card.card_id, matched_card_name: card.card_name,
-      matched_set_name: card.set_name, matched_company: company, matched_grade: grade,
-      market_price_usd: card.price, delta_pct: deltaPct,
-      match_method: "name_parse", match_confidence: 0.45,
-    };
-  }
-  return empty;
-}
-
-// ─── Main ────────────────────────────────────────────────────────────────────
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -279,231 +152,118 @@ serve(async (req: Request) => {
     { auth: { persistSession: false } },
   );
 
-  // Admin-only — verify the JWT.
+  // Admin-only.
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const { data: u } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-  if (!u?.user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (!u?.user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: u.user.id, _role: "admin" });
-  if (!isAdmin) {
-    return new Response(JSON.stringify({ error: "Admin only" }), {
-      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (!isAdmin) return new Response(JSON.stringify({ error: "Admin only" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
   try {
-    // ── Cooldown check ──
-    const { data: state } = await supabase
-      .from("cc_discovery_state")
-      .select("last_run_at, status")
-      .eq("id", 1)
-      .single();
+    // Cooldown.
+    const { data: state } = await supabase.from("cc_discovery_state").select("last_run_at, status").eq("id", 1).single();
     if (state?.last_run_at) {
-      const minsSince = (Date.now() - new Date(state.last_run_at).getTime()) / 60_000;
-      if (minsSince < COOLDOWN_MINUTES) {
-        const waitMin = Math.ceil(COOLDOWN_MINUTES - minsSince);
-        return new Response(
-          JSON.stringify({
-            error: "cooldown",
-            message: `Wait ${waitMin}m before running again`,
-            can_run_at: new Date(new Date(state.last_run_at).getTime() + COOLDOWN_MINUTES * 60_000).toISOString(),
-          }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+      const mins = (Date.now() - new Date(state.last_run_at).getTime()) / 60_000;
+      if (mins < COOLDOWN_MINUTES) {
+        return new Response(JSON.stringify({ error: "cooldown", message: `Wait ${Math.ceil(COOLDOWN_MINUTES - mins)}m`, can_run_at: new Date(new Date(state.last_run_at).getTime() + COOLDOWN_MINUTES * 60_000).toISOString() }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
-    if (state?.status === "running") {
-      return new Response(
-        JSON.stringify({ error: "already_running", message: "A discovery run is already in progress" }),
-        { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
+    if (state?.status === "running") return new Response(JSON.stringify({ error: "already_running" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    // Mark running. last_run_at is updated at the END so cooldown timer
-    // starts from completion, not start (a long run shouldn't get a "free"
-    // second click while it's still going).
-    await supabase
-      .from("cc_discovery_state")
-      .update({ status: "running", last_error: null })
-      .eq("id", 1);
+    await supabase.from("cc_discovery_state").update({ status: "running", last_error: null }).eq("id", 1);
 
-    const t0 = Date.now();
+    const body = await req.json().catch(() => ({}));
+    const maxPages = Math.max(1, Math.min(706, Number(body.maxPages) || 150)); // ~default 150 pages
 
-    // ── Load active listings + their attribute data via join. ──
-    // PostgREST nested select syntax pulls nft_names columns alongside.
-    const { data: listingsRaw, error: lErr } = await supabase
-      .from("onchain_listings")
-      .select(`
-        pda_address, token_mint, name, image, price_usd, marketplace_url,
-        nft_names:nft_names!onchain_listings_token_mint_fkey ( card_name_attr, set_hint, card_number, grading_company, grade_value )
-      `)
-      .is("delisted_at", null)
-      .eq("collection", "collector_crypt");
-    // The named FK may not exist; fall back to two-query approach if join fails.
-    let listings: ActiveListing[];
-    if (lErr) {
-      console.warn("[cc-discovery] joined select failed, falling back:", lErr.message);
-      const { data: l2, error: l2err } = await supabase
-        .from("onchain_listings")
-        .select("pda_address, token_mint, name, image, price_usd, marketplace_url")
-        .is("delisted_at", null)
-        .eq("collection", "collector_crypt");
-      if (l2err) throw new Error(`listings query failed: ${l2err.message}`);
-      const mints = [...new Set((l2 ?? []).map((r: any) => r.token_mint).filter(Boolean))];
-      const { data: namesRows } = await supabase
-        .from("nft_names")
-        .select("mint, card_name_attr, set_hint, card_number, grading_company, grade_value")
-        .in("mint", mints);
-      const nameMap = new Map((namesRows ?? []).map((n: any) => [n.mint, n]));
-      listings = (l2 ?? []).map((r: any) => {
-        const n: any = nameMap.get(r.token_mint) ?? {};
-        return {
-          pda_address: r.pda_address, token_mint: r.token_mint,
-          name: r.name, image: r.image,
-          price_usd: r.price_usd != null ? Number(r.price_usd) : null,
-          marketplace_url: r.marketplace_url,
-          card_name_attr: n.card_name_attr ?? null,
-          set_hint: n.set_hint ?? null,
-          card_number: n.card_number ?? null,
-          grading_company: n.grading_company ?? null,
-          grade_value: n.grade_value != null ? Number(n.grade_value) : null,
-        };
-      });
-    } else {
-      listings = (listingsRaw ?? []).map((r: any) => {
-        const n = Array.isArray(r.nft_names) ? r.nft_names[0] : r.nft_names;
-        return {
-          pda_address: r.pda_address, token_mint: r.token_mint,
-          name: r.name, image: r.image,
-          price_usd: r.price_usd != null ? Number(r.price_usd) : null,
-          marketplace_url: r.marketplace_url,
-          card_name_attr: n?.card_name_attr ?? null,
-          set_hint: n?.set_hint ?? null,
-          card_number: n?.card_number ?? null,
-          grading_company: n?.grading_company ?? null,
-          grade_value: n?.grade_value != null ? Number(n.grade_value) : null,
-        };
-      });
-    }
+    // Heavy work in the background so the ~150s request timeout can't kill it.
+    const work = (async () => {
+      try {
+        const t0 = Date.now();
+        const solUsd = await getSolUsd();
+        const listings = await fetchCCPokemon(maxPages, solUsd);
 
-    // Drop non-Pokémon merch up front (sports cards, NFTs, swag) so the
-    // unmatched tab + counts stay focused on real Pokémon cards. Same blocklist
-    // as the public feed's is_merch_name().
-    const beforeMerch = listings.length;
-    listings = listings.filter((l) => !isMerchName(l.name));
-    const merchSkipped = beforeMerch - listings.length;
+        // Build Scrydex card-name index + graded index once.
+        const cards: RawCard[] = [];
+        { let from = 0; const P = 1000;
+          while (true) {
+            const { data, error } = await supabase.from("latest_card_prices").select("card_id, card_name, set_name").not("card_id", "like", "sealed-%").range(from, from + P - 1);
+            if (error) throw new Error(`latest_card_prices: ${error.message}`);
+            const rows = (data ?? []) as RawCard[]; cards.push(...rows);
+            if (rows.length < P) break; from += P;
+          } }
+        const nameIdx = buildNameIndex(cards);
 
-    // ── Load price catalogs (paginated SELECT to bypass PostgREST cap). ──
-    const cards: RawPriceRow[] = [];
-    {
-      const PAGE = 1000;
-      let from = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from("latest_card_prices")
-          .select("card_id, card_name, set_name, price")
-          .not("card_id", "like", "sealed-%")
-          .range(from, from + PAGE - 1);
-        if (error) throw new Error(`latest_card_prices query failed: ${error.message}`);
-        const rows = (data ?? []) as RawPriceRow[];
-        cards.push(...rows);
-        if (rows.length < PAGE) break;
-        from += PAGE;
+        // Graded index: `${card_id}|${company}|${grade}` → market.
+        const gradedMap = new Map<string, number>();
+        { let from = 0; const P = 1000;
+          while (true) {
+            const { data, error } = await supabase.from("latest_graded_prices").select("card_id, company, grade, market").range(from, from + P - 1);
+            if (error) throw new Error(`latest_graded_prices: ${error.message}`);
+            const rows = (data ?? []) as { card_id: string; company: string; grade: number; market: number }[];
+            for (const r of rows) if (r.market > 0) gradedMap.set(`${r.card_id}|${r.company}|${r.grade}`, Number(r.market));
+            if (rows.length < P) break; from += P;
+          } }
+
+        // Match.
+        const results = listings.map((l) => {
+          const cands = (nameIdx.get(normalize(l.card_name)) ?? []).filter((c) => cardNumberOf(c.card_id) === l.number);
+          let matched_card_id: string | null = null, matched_set: string | null = null, market: number | null = null, delta: number | null = null, method = "none", conf = 0;
+          if (cands.length > 0) {
+            const card = cands[0];
+            matched_card_id = card.card_id; matched_set = card.set_name;
+            const g = gradedMap.get(`${card.card_id}|${l.company}|${l.grade}`);
+            if (g && g > 0) {
+              market = g; delta = ((l.price_usd - g) / g) * 100;
+              method = "cc_api_graded"; conf = cands.length === 1 ? 0.9 : 0.7;
+            } else {
+              method = "cc_api_nograde"; conf = 0.5; // matched the card but no graded price for that grade
+            }
+          }
+          return {
+            pda_address: l.mint, token_mint: l.mint,
+            listing_name: l.item_name, listing_image: l.image, listing_price_usd: l.price_usd,
+            marketplace_url: `https://collectorcrypt.com/nft/${l.mint}`,
+            matched_card_id, matched_card_name: matched_card_id ? l.card_name : null, matched_set_name: matched_set,
+            matched_company: l.company, matched_grade: l.grade,
+            market_price_usd: market, delta_pct: delta,
+            match_method: method, match_confidence: conf,
+            status: matched_card_id != null && market != null ? "matched" : "unmatched",
+          };
+        });
+
+        // Replace results atomically (well, delete + insert).
+        await supabase.from("cc_discovery_results").delete().neq("pda_address", "");
+        for (let i = 0; i < results.length; i += 500) {
+          const { error } = await supabase.from("cc_discovery_results").insert(results.slice(i, i + 500));
+          if (error) console.error("[cc-discovery] insert chunk:", error.message);
+        }
+
+        const matched = results.filter((r) => r.status === "matched");
+        const undervalued = matched.filter((r) => (r.delta_pct ?? 0) < 0);
+        await supabase.from("cc_discovery_state").update({
+          last_run_at: new Date().toISOString(), status: "idle",
+          total_active: listings.length, matched_count: matched.length,
+          unmatched_count: results.length - matched.length, undervalued_count: undervalued.length,
+          last_error: null,
+        }).eq("id", 1);
+        console.log("cc-discovery-run done:", { dur_ms: Date.now() - t0, listed: listings.length, matched: matched.length, undervalued: undervalued.length });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("cc-discovery-run bg error:", msg);
+        await supabase.from("cc_discovery_state").update({ status: "error", last_error: msg }).eq("id", 1);
       }
-    }
-    const cardIdx = buildCardIndex(cards);
+    })();
+    // @ts-ignore EdgeRuntime is available in Supabase
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) EdgeRuntime.waitUntil(work);
+    else work.catch((e) => console.error("bg", e));
 
-    // Graded prices may be empty (Scrydex tier hasn't been upgraded yet);
-    // the index is still built and the matcher gracefully misses + falls
-    // back to raw comparison.
-    const graded: GradedPriceRow[] = [];
-    {
-      const { data } = await supabase
-        .from("latest_graded_prices")
-        .select("card_id, company, grade, market");
-      for (const r of (data ?? []) as GradedPriceRow[]) graded.push(r);
-    }
-    const gradedIdx = buildGradedIndex(graded);
-
-    // ── Match every listing. ──
-    const results = listings.map((l) => {
-      let m = tryAttrMatch(l, cardIdx, gradedIdx);
-      if (m.matched_card_id == null) m = tryNameParse(l, cardIdx, gradedIdx);
-      const status = m.matched_card_id != null ? "matched" : "unmatched";
-      return {
-        pda_address: l.pda_address,
-        token_mint: l.token_mint,
-        listing_name: l.name,
-        listing_image: l.image,
-        listing_price_usd: l.price_usd,
-        marketplace_url: l.marketplace_url,
-        matched_card_id: m.matched_card_id,
-        matched_card_name: m.matched_card_name,
-        matched_set_name: m.matched_set_name,
-        matched_company: m.matched_company,
-        matched_grade: m.matched_grade,
-        market_price_usd: m.market_price_usd,
-        delta_pct: m.delta_pct,
-        match_method: m.match_method,
-        match_confidence: m.match_confidence,
-        status,
-      };
-    });
-
-    // ── Replace cache atomically. ──
-    await supabase.from("cc_discovery_results").delete().neq("pda_address", "");
-    if (results.length > 0) {
-      // Chunk inserts for large batches (~400 today, but defensive).
-      for (let i = 0; i < results.length; i += 500) {
-        const slice = results.slice(i, i + 500);
-        const { error } = await supabase.from("cc_discovery_results").insert(slice);
-        if (error) console.error("[cc-discovery] insert chunk failed:", error.message);
-      }
-    }
-
-    const matched = results.filter((r) => r.status === "matched");
-    const undervalued = matched.filter((r) => (r.delta_pct ?? 0) < 0);
-
-    await supabase.from("cc_discovery_state").update({
-      last_run_at: new Date().toISOString(),
-      status: "idle",
-      total_active: listings.length,
-      matched_count: matched.length,
-      unmatched_count: results.length - matched.length,
-      undervalued_count: undervalued.length,
-      last_error: null,
-    }).eq("id", 1);
-
-    const summary = {
-      success: true,
-      duration_ms: Date.now() - t0,
-      total_active: listings.length,
-      merch_skipped: merchSkipped,
-      matched: matched.length,
-      unmatched: results.length - matched.length,
-      undervalued: undervalued.length,
-      graded_catalog_size: graded.length,
-    };
-    console.log("cc-discovery-run done:", summary);
-    return new Response(JSON.stringify(summary), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ success: true, status: "running", note: "Mapping CC marketplace in background — poll cc_discovery_state for completion." }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error("cc-discovery-run error:", msg);
-    await supabase.from("cc_discovery_state").update({
-      status: "error", last_error: msg,
-    }).eq("id", 1);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    await supabase.from("cc_discovery_state").update({ status: "error", last_error: msg }).eq("id", 1);
+    return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
