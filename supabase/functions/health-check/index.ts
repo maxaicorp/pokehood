@@ -214,6 +214,89 @@ async function checkSealedFreshness(
   return { ok: true, message: `${count} sealed product snapshots since ${cutoff}` };
 }
 
+// "Is the sealed CATALOG keeping up with sealed PRICES?" The 2026-04→05 outage:
+// snapshot-sealed kept writing prices daily, but the product catalog (which the
+// Sealed tab renders) came from a manual static-JSON script that silently died,
+// so new sets (Chaos Rising / me4) were priced in the DB but invisible. This
+// diffs the set of recently-priced sealed product IDs against the sealed_products
+// catalog table and flags any priced product missing from the catalog — which is
+// exactly the gap that went unnoticed for 7 weeks.
+async function checkSealedCatalogFreshness(
+  supabase: any,
+): Promise<CheckResult> {
+  const twoDaysAgo = new Date();
+  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const cutoff = twoDaysAgo.toISOString().split("T")[0];
+
+  // 1. Recently-priced sealed product ids (strip the "sealed-" prefix) + set name.
+  const pricedSets = new Map<string, string>();
+  let from = 0;
+  const PAGE = 1000;
+  while (true) {
+    const { data, error } = await supabase
+      .from("price_snapshots")
+      .select("card_id, set_name")
+      .like("card_id", "sealed-%")
+      .gte("recorded_at", cutoff)
+      .range(from, from + PAGE - 1);
+    if (error) return { ok: false, message: "price_snapshots query failed", detail: error.message };
+    const rows = (data ?? []) as { card_id: string; set_name: string }[];
+    for (const r of rows) pricedSets.set(r.card_id.replace(/^sealed-/, ""), r.set_name);
+    if (rows.length < PAGE) break;
+    from += PAGE;
+  }
+  if (pricedSets.size === 0) {
+    return { ok: true, message: "No recent sealed prices to compare against." };
+  }
+
+  // 2. Catalog ids.
+  const catalogIds = new Set<string>();
+  from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("sealed_products")
+      .select("id")
+      .range(from, from + PAGE - 1);
+    if (error) {
+      return {
+        ok: false,
+        message: "sealed_products catalog table missing or unreadable — run migration 20260528120000 + snapshot-sealed.",
+        detail: error.message,
+      };
+    }
+    const rows = (data ?? []) as { id: string }[];
+    for (const r of rows) catalogIds.add(r.id);
+    if (rows.length < PAGE) break;
+    from += PAGE;
+  }
+
+  // 3. Diff: priced-but-not-in-catalog, grouped by set.
+  const missingBySet = new Map<string, number>();
+  for (const [id, setName] of pricedSets) {
+    if (!catalogIds.has(id)) {
+      missingBySet.set(setName, (missingBySet.get(setName) ?? 0) + 1);
+    }
+  }
+  const missingTotal = [...missingBySet.values()].reduce((a, b) => a + b, 0);
+  if (missingTotal === 0) {
+    return {
+      ok: true,
+      message: `Catalog covers all ${pricedSets.size} priced sealed products (${catalogIds.size} in catalog).`,
+      detail: { priced: pricedSets.size, catalog: catalogIds.size },
+    };
+  }
+  const names = [...missingBySet.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([s, n]) => `${s} (${n})`)
+    .join(", ");
+  return {
+    ok: false,
+    message: `${missingTotal} priced sealed product(s) missing from the catalog across ${missingBySet.size} set(s): ${names}${missingBySet.size > 3 ? `, +${missingBySet.size - 3} more` : ""}. Run snapshot-sealed { force: true } to repopulate.`,
+    detail: { missing_total: missingTotal, by_set: Object.fromEntries(missingBySet) },
+  };
+}
+
 // ─── Snapshot-run history (last 14 days) ──────────────────────────────────────
 //
 // A successful daily run writes ~7-12k card rows. A successful full run writes
@@ -541,13 +624,14 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [freshness, coverage, liveCache, deltasComputed, newSets, sealedFreshness, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings, gradedFreshness] = await Promise.all([
+  const [freshness, coverage, liveCache, deltasComputed, newSets, sealedFreshness, sealedCatalog, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings, gradedFreshness] = await Promise.all([
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
     checkLiveCacheFreshness(supabase),
     checkDeltasComputed(supabase),
     checkNewSets(),
     checkSealedFreshness(supabase),
+    checkSealedCatalogFreshness(supabase),
     checkScrydexProxy(apiKey, teamId),
     checkCardStatsRpc(supabase),
     checkSampleImages(),
@@ -572,6 +656,7 @@ serve(async (req) => {
     card_coverage: coverage,
     price_snapshot_freshness: freshness,
     sealed_freshness: sealedFreshness,
+    sealed_catalog_freshness: sealedCatalog,
     daily_snapshot_run: dailyRun,
     full_snapshot_run: fullRun,
     onchain_activity_freshness: onchainActivity,

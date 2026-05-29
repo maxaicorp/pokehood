@@ -1,8 +1,21 @@
 // Sealed products data layer
-// Reads from /data/sealed-products.json (synced once daily via scripts/sync-scrydex-sealed.js)
-// Price trends come from DB price_snapshots (sealed-* IDs) via getLatestSnapshotPrices.
+// Catalog (which products exist) is read from the `sealed_products` DB table,
+// populated daily by the snapshot-sealed cron. The static
+// /data/sealed-products.json is a FALLBACK only (legacy; can go stale).
+// Price + 1d/7d/30d trends come from the precomputed `latest_card_prices`
+// table (sealed-* rows), refreshed at the end of every snapshot run.
 
-import { getLatestSnapshotPrices, type LatestPrice } from "@/lib/price-snapshots";
+import { supabase } from "@/integrations/supabase/client";
+import { type LatestPrice } from "@/lib/price-snapshots";
+
+// PostgREST caps a single response at 1,000 rows — paginate past it.
+const DB_PAGE = 1000;
+
+const numOrNull = (v: unknown): number | null => {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,8 +58,54 @@ export interface SealedSearchResult {
 
 let sealedCache: SealedProduct[] | null = null;
 
+/** Map a snake_case `sealed_products` DB row to the camelCase SealedProduct. */
+function mapCatalogRow(r: Record<string, unknown>): SealedProduct {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    type: (r.type as string) ?? "",
+    description: (r.description as string) ?? "",
+    imageSmall: (r.image_small as string) ?? "",
+    imageMedium: (r.image_medium as string) ?? "",
+    expansionId: (r.expansion_id as string) ?? "",
+    expansionName: (r.expansion_name as string) ?? "",
+    expansionSeries: (r.expansion_series as string) ?? "",
+    expansionReleaseDate: (r.expansion_release_date as string) ?? "",
+    expansionLogo: (r.expansion_logo as string) ?? "",
+    variants: (r.variants as SealedProduct["variants"]) ?? [],
+  };
+}
+
 async function loadSealedProducts(): Promise<SealedProduct[]> {
   if (sealedCache) return sealedCache;
+
+  // Primary source: the sealed_products catalog table (cron-maintained).
+  // New sets appear here automatically within 24h — no manual sync, no
+  // committed JSON, no redeploy. See migration 20260528120000.
+  try {
+    const rows: Record<string, unknown>[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await (supabase.from as any)("sealed_products")
+        .select("*")
+        .order("expansion_release_date", { ascending: false })
+        .range(from, from + DB_PAGE - 1);
+      if (error) throw error;
+      const page = data ?? [];
+      rows.push(...page);
+      if (page.length < DB_PAGE) break;
+      from += DB_PAGE;
+    }
+    if (rows.length > 0) {
+      sealedCache = rows.map(mapCatalogRow);
+      return sealedCache;
+    }
+    console.warn("sealed_products table empty — falling back to static JSON");
+  } catch (err) {
+    console.warn("sealed_products query failed, falling back to static JSON:", err);
+  }
+
+  // Fallback: legacy static JSON (only hit if the table is missing/empty).
   try {
     const res = await fetch("/data/sealed-products.json");
     if (!res.ok) {
@@ -106,25 +165,44 @@ let sealedPriceMapPromise: Promise<Map<string, LatestPrice>> | null = null;
 async function loadSealedPriceMap(): Promise<Map<string, LatestPrice>> {
   if (sealedPriceMap) return sealedPriceMap;
   if (sealedPriceMapPromise) return sealedPriceMapPromise;
-  sealedPriceMapPromise = getLatestSnapshotPrices().then((fullMap) => {
-    // Filter to sealed-* entries only
-    const sealed = new Map<string, LatestPrice>();
-    for (const [k, v] of fullMap) {
-      if (k.startsWith("sealed-")) sealed.set(k, v);
+  // Read sealed-* rows DIRECTLY from latest_card_prices. The previous code went
+  // through getLatestSnapshotPrices() → get_all_latest_prices RPC, which has a
+  // hard `WHERE card_id NOT LIKE 'sealed-%'` filter — so the sealed price map
+  // came back EMPTY and the Sealed tab showed "—" for every 1d/7d change.
+  // The deltas are already computed at write time by refresh_latest_card_prices;
+  // we just have to read the sealed rows the card RPC hides.
+  sealedPriceMapPromise = (async () => {
+    const map = new Map<string, LatestPrice>();
+    let from = 0;
+    while (true) {
+      const { data, error } = await (supabase.from as any)("latest_card_prices")
+        .select("card_id, card_name, set_name, price, price_1d, price_7d, price_30d")
+        .like("card_id", "sealed-%")
+        .range(from, from + DB_PAGE - 1);
+      if (error) {
+        console.warn("sealed price map query failed:", error.message);
+        break;
+      }
+      const page = data ?? [];
+      for (const r of page as Array<Record<string, unknown>>) {
+        const id = r.card_id as string;
+        map.set(id, {
+          cardId: id,
+          cardName: r.card_name as string,
+          setName: r.set_name as string,
+          price: Number(r.price),
+          price1d: numOrNull(r.price_1d),
+          price7d: numOrNull(r.price_7d),
+          price30d: numOrNull(r.price_30d),
+        });
+      }
+      if (page.length < DB_PAGE) break;
+      from += DB_PAGE;
     }
-    sealedPriceMap = sealed;
-    return sealed;
-  });
+    sealedPriceMap = map;
+    return map;
+  })();
   return sealedPriceMapPromise;
-}
-
-/** Seed the sealed price map externally (called from Market page to avoid duplicate fetches) */
-export function seedSealedPriceMap(allPrices: Map<string, LatestPrice>) {
-  const sealed = new Map<string, LatestPrice>();
-  for (const [k, v] of allPrices) {
-    if (k.startsWith("sealed-")) sealed.set(k, v);
-  }
-  sealedPriceMap = sealed;
 }
 
 /** Get 1d and 7d percent changes from DB snapshots */

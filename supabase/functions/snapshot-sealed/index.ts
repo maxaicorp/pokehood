@@ -23,9 +23,13 @@ interface ScrydexSealedProduct {
   id: string;
   name: string;
   type: string;
+  description?: string;
+  images?: Array<{ small?: string; medium?: string; large?: string }>;
   expansion: {
     id: string;
     name: string;
+    series?: string;
+    logo?: string;
     release_date?: string;
     language_code?: string;
     is_online_only?: boolean;
@@ -158,6 +162,7 @@ serve(async (req) => {
     let page = 1;
     let totalSaved = 0;
     let totalSkipped = 0;
+    let totalCatalog = 0;
     let creditsUsed = 0;
 
     while (true) {
@@ -175,6 +180,12 @@ serve(async (req) => {
         recorded_at: string;
       }> = [];
 
+      // Catalog rows — the product metadata the Sealed tab renders. Built from
+      // the SAME data this function already fetches for prices, so keeping the
+      // catalog current is essentially free. This is what eliminates the manual
+      // sync-scrydex-sealed.js step that silently broke for ~7 weeks.
+      const catalogRows: Array<Record<string, unknown>> = [];
+
       for (const product of res.data) {
         // English physical only — treat missing language_code as non-English
         if (product.expansion?.language_code !== "EN") continue;
@@ -191,6 +202,23 @@ serve(async (req) => {
           price,
           recorded_at: today,
         });
+
+        const img = product.images?.[0] ?? {};
+        catalogRows.push({
+          id: product.id,
+          name: product.name,
+          type: product.type ?? "",
+          description: product.description ?? "",
+          image_small: img.small ?? "",
+          image_medium: img.medium ?? "",
+          expansion_id: product.expansion?.id ?? "",
+          expansion_name: product.expansion?.name ?? "",
+          expansion_series: product.expansion?.series ?? "",
+          expansion_release_date: (product.expansion?.release_date ?? "").replace(/\//g, "-"),
+          expansion_logo: product.expansion?.logo ?? "",
+          variants: product.variants ?? [],
+          updated_at: new Date().toISOString(),
+        });
       }
 
       if (rows.length > 0) {
@@ -206,7 +234,18 @@ serve(async (req) => {
         }
       }
 
-      console.log(`Page ${page}: ${res.data.length} fetched, ${rows.length} saved`);
+      if (catalogRows.length > 0) {
+        const { error: catErr } = await supabase
+          .from("sealed_products")
+          .upsert(catalogRows, { onConflict: "id" });
+        if (catErr) {
+          console.error(`Page ${page}: catalog upsert error:`, catErr.message);
+        } else {
+          totalCatalog += catalogRows.length;
+        }
+      }
+
+      console.log(`Page ${page}: ${res.data.length} fetched, ${rows.length} priced, ${catalogRows.length} catalog`);
 
       if (res.data.length < pageSize) break;
       page++;
@@ -218,6 +257,7 @@ serve(async (req) => {
       date: today,
       sealed_saved: totalSaved,
       sealed_skipped: totalSkipped,
+      catalog_upserted: totalCatalog,
       pages_fetched: page,
       scrydex_credits_used: creditsUsed,
     };

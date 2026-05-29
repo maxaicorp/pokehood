@@ -35,6 +35,7 @@ const CHECK_LABELS: Record<string, string> = {
   card_coverage: "Cards displayable on the site",
   price_snapshot_freshness: "Price snapshot freshness",
   sealed_freshness: "Sealed snapshot freshness",
+  sealed_catalog_freshness: "Sealed catalog coverage",
   daily_snapshot_run: "Daily snapshot cron",
   full_snapshot_run: "Weekly full-coverage cron",
   scrydex_proxy: "Scrydex API reachability",
@@ -49,6 +50,8 @@ const CHECK_HELP: Record<string, string> = {
     "Percentage of cards in latest_card_prices that have populated price_1d / price_7d / price_30d values. If low, most rows on Market will show '—' for their 24h/7d % change columns — usually means the snapshot history is too thin (e.g. less than a day old).",
   new_sets:
     "Detects sets that have snapshot data (or are listed in Scrydex /expansions) but aren't in market-sets.json — meaning /sets/{slug} won't render them. When this fires, ingest the missing set into the static catalog so the frontend can show it.",
+  sealed_catalog_freshness:
+    "Diffs sealed products that have prices in the DB against the sealed_products catalog table the Sealed tab renders. Goes red when products are priced but missing from the catalog — the exact failure that hid Chaos Rising (me4) for 7 weeks. Fix: run snapshot-sealed with { force: true } to repopulate the catalog.",
   daily_snapshot_run:
     "Daily cron writes ~7-12k card rows. Should run every day. If stale, check Supabase → Database → Cron Jobs.",
   full_snapshot_run:
