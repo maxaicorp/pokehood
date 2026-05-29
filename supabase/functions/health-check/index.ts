@@ -417,6 +417,98 @@ function checkFullRun(last: SnapshotDayStat | null): CheckResult {
   };
 }
 
+// "Do SEALED products have their 1d deltas?" Mirror of checkDeltasComputed but
+// for sealed-% rows. checkDeltasComputed explicitly EXCLUDES sealed, so sealed
+// deltas were a blind spot — the exact bug where the Sealed tab showed "—" for
+// every 1d/7d change while every other check stayed green. Goes red if a large
+// fraction of sealed rows lack price_1d (0% = the read path is broken again).
+async function checkSealedDeltasComputed(
+  supabase: any,
+): Promise<CheckResult> {
+  const { count: total, error: e1 } = await supabase
+    .from("latest_card_prices")
+    .select("card_id", { count: "exact", head: true })
+    .like("card_id", "sealed-%");
+  if (e1) return { ok: false, message: "DB query failed", detail: e1.message };
+
+  const { count: withDeltas, error: e2 } = await supabase
+    .from("latest_card_prices")
+    .select("card_id", { count: "exact", head: true })
+    .like("card_id", "sealed-%")
+    .not("price_1d", "is", null);
+  if (e2) return { ok: false, message: "DB query failed", detail: e2.message };
+
+  const t = total ?? 0;
+  const w = withDeltas ?? 0;
+  const pct = t > 0 ? (w / t) * 100 : 0;
+  const detail = { total: t, with_deltas: w, pct };
+  if (t === 0) return { ok: false, message: "No sealed rows in latest_card_prices — sealed prices aren't reaching the read cache." };
+  if (pct < 50) return {
+    ok: false,
+    message: `Only ${pct.toFixed(0)}% of sealed products have 1d deltas (${w}/${t}). Sealed tab will show "—" for most % change columns.`,
+    detail,
+  };
+  return {
+    ok: true,
+    message: `${pct.toFixed(0)}% of sealed products have 1d deltas (${w}/${t}).`,
+    detail,
+  };
+}
+
+// "Does the REAL read path actually return priced data?" Every other check
+// inspects a stage in isolation (snapshot ran? deltas computed?). This one
+// exercises the exact accessors the frontend uses end-to-end and asserts a
+// user-visible value comes back. It would have caught BOTH recent bugs — the
+// sealed-excluding RPC and the empty sealed price map — on day one, because
+// those passed all the stage-level checks while the page rendered nothing.
+async function checkEndToEndReadProbe(
+  supabase: any,
+): Promise<CheckResult> {
+  // Card path: the homepage list reads get_latest_price_page. Ask for the top
+  // few by price and assert they come back with a real price.
+  const { data: cardRows, error: cardErr } = await supabase.rpc("get_latest_price_page", {
+    p_limit: 5,
+    p_offset: 0,
+    p_set_ids: null,
+    p_sort_dir: "desc",
+    p_include_sealed: false,
+  });
+  if (cardErr) return { ok: false, message: "get_latest_price_page RPC failed — Market card list is broken", detail: cardErr.message };
+  const cards = (cardRows ?? []) as Array<{ card_id: string; price: number | null }>;
+  const cardOk = cards.length > 0 && cards.every((r) => r.price != null && Number(r.price) > 0);
+  if (!cardOk) {
+    return {
+      ok: false,
+      message: `Card read path returned ${cards.length} rows but not all are priced — Market would render blank/—.`,
+      detail: cards,
+    };
+  }
+
+  // Sealed path: the Sealed tab reads sealed-% rows from latest_card_prices.
+  const { data: sealedRows, error: sealedErr } = await supabase
+    .from("latest_card_prices")
+    .select("card_id, price, price_1d")
+    .like("card_id", "sealed-%")
+    .order("price", { ascending: false })
+    .limit(5);
+  if (sealedErr) return { ok: false, message: "Sealed read path query failed", detail: sealedErr.message };
+  const sealed = (sealedRows ?? []) as Array<{ card_id: string; price: number | null }>;
+  const sealedOk = sealed.length > 0 && sealed.every((r) => r.price != null && Number(r.price) > 0);
+  if (!sealedOk) {
+    return {
+      ok: false,
+      message: `Sealed read path returned ${sealed.length} rows but not all are priced — Sealed tab would render blank/—.`,
+      detail: sealed,
+    };
+  }
+
+  return {
+    ok: true,
+    message: `Both read paths return priced data (top card $${Number(cards[0].price).toFixed(2)}, top sealed $${Number(sealed[0].price).toFixed(2)}).`,
+    detail: { sample_card: cards[0], sample_sealed: sealed[0] },
+  };
+}
+
 async function checkScrydexProxy(apiKey: string, teamId: string): Promise<CheckResult> {
   if (!apiKey || !teamId) return { ok: false, message: "Missing SCRYDEX_API_KEY or SCRYDEX_TEAM_ID" };
   try {
@@ -624,11 +716,13 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [freshness, coverage, liveCache, deltasComputed, newSets, sealedFreshness, sealedCatalog, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings, gradedFreshness] = await Promise.all([
+  const [freshness, coverage, liveCache, deltasComputed, sealedDeltas, endToEnd, newSets, sealedFreshness, sealedCatalog, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings, gradedFreshness] = await Promise.all([
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
     checkLiveCacheFreshness(supabase),
     checkDeltasComputed(supabase),
+    checkSealedDeltasComputed(supabase),
+    checkEndToEndReadProbe(supabase),
     checkNewSets(),
     checkSealedFreshness(supabase),
     checkSealedCatalogFreshness(supabase),
@@ -650,8 +744,10 @@ serve(async (req) => {
   // new_sets third ("is the frontend missing any sets we have data for?"),
   // then the upstream pipeline detail.
   const checks = {
+    end_to_end_read: endToEnd,
     live_cache_freshness: liveCache,
     deltas_computed: deltasComputed,
+    sealed_deltas_computed: sealedDeltas,
     new_sets: newSets,
     card_coverage: coverage,
     price_snapshot_freshness: freshness,

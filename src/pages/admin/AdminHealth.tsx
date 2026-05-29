@@ -29,8 +29,10 @@ interface HealthReport {
 }
 
 const CHECK_LABELS: Record<string, string> = {
+  end_to_end_read: "End-to-end read (what users see)",
   live_cache_freshness: "Live site cache freshness",
   deltas_computed: "24h / 7d / 30d % change deltas",
+  sealed_deltas_computed: "Sealed 1d deltas computed",
   new_sets: "New sets discovered",
   card_coverage: "Cards displayable on the site",
   price_snapshot_freshness: "Price snapshot freshness",
@@ -44,6 +46,10 @@ const CHECK_LABELS: Record<string, string> = {
 };
 
 const CHECK_HELP: Record<string, string> = {
+  end_to_end_read:
+    "The single truest signal. Exercises the exact read paths the frontend uses (get_latest_price_page for cards, latest_card_prices for sealed) and confirms real priced rows come back. Unlike the stage checks, this goes red whenever a filter or empty cache would blank the actual page — it would have caught both recent sealed bugs immediately.",
+  sealed_deltas_computed:
+    "Percent of sealed products in latest_card_prices that have a populated price_1d. Mirrors the card delta check, which excludes sealed — that blind spot is why the Sealed tab showed '—' for every change. 0% means the sealed read path is broken again.",
   live_cache_freshness:
     "The single most important signal: when was the precomputed table the site reads (latest_card_prices) last refreshed? Goes red if older than 36 hours, regardless of whether the snapshot cron itself ran successfully.",
   deltas_computed:
