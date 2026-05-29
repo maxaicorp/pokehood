@@ -256,8 +256,13 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
     return { cards: allCardsCache, sets: allSetsCache };
   }
 
+  // The ?v=CARD_INDEX_VERSION query param is the cache-buster: when the catalog
+  // is rebuilt the version changes → new URL → fresh fetch. So we WANT the
+  // browser to cache this 9.9 MB file aggressively between loads. The old
+  // `cache: "no-store"` re-downloaded all 9.9 MB on every navigation — that was
+  // the >1s blank-screen slowdown on dedicated pages.
   const res = await fetch(`/data/all-cards.json?v=${CARD_INDEX_VERSION}`, {
-    cache: "no-store",
+    cache: "force-cache",
   });
   if (!res.ok) throw new Error("Failed to load card index");
   const index: CardIndex = await res.json();
