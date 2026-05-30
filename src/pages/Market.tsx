@@ -46,7 +46,7 @@ import {
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import { cardPath, cardPathFromApiId } from "@/lib/slug";
-import { formatPct, getLatestSnapshotPage } from "@/lib/price-snapshots";
+import { formatPct, getLatestSnapshotPage, getLatestSnapshotAll } from "@/lib/price-snapshots";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
 import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import AppHeader from "@/components/AppHeader";
@@ -120,8 +120,6 @@ export default function Market() {
   const [isLoading, setIsLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const loadingMoreRef = useRef(false);
-  const [hasMore, setHasMore] = useState(true);
   const [setsData, setSetsData] = useState<{ data: PokemonSet[] } | null>(null);
   const [pricesReady, setPricesReady] = useState(false);
   // Bumping this re-triggers the data-loading effect — used by window-focus
@@ -175,30 +173,37 @@ export default function Market() {
     setIsLoading(true);
     setVisibleCount(VISIBLE_PAGE_SIZE);
 
-    setHasMore(true);
-    loadingMoreRef.current = true;
     const setIds = resolveMarketSetIds();
+    // Cap the full load to the same top-N the header summary uses (default 500).
+    // This keeps multi-set / "All" filters bounded while still handing the client
+    // the COMPLETE filtered set, so column sorts and Trending/Gainers/Losers sort
+    // over every card in the filter — not just the rows scrolled into view.
+    const cap = RECENT_CAPS[selectedSetId] ?? 500;
 
-    const cap = RECENT_CAPS[selectedSetId];
+    // Phase A — instant first paint with a tiny page so time-to-content stays
+    // fast. Phase B then swaps in the full (capped) set for correct sorting.
+    getLatestSnapshotPage({ setIds, limit: VISIBLE_PAGE_SIZE, offset: 0 })
+      .then(hydrateCardsFromLatestPrices)
+      .then((first) => {
+        // Don't clobber Phase B if it already landed (it returns the full set).
+        if (!cancelled) { setCards((cur) => (cur.length ? cur : first)); setIsLoading(false); }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setIsLoading(false);
+          // Surface failures instead of silently leaving an empty grid on screen.
+          // Without this toast, a broken DB query looked identical to "no cards in this set".
+          console.error("Market price fetch failed:", err);
+          toast.error("Could not load latest prices. Pull to refresh or try again.");
+        }
+      });
 
-    getLatestSnapshotPage({ setIds, limit: VISIBLE_PAGE_SIZE, offset: 0 }).then(hydrateCardsFromLatestPrices).then((result) => {
-      if (!cancelled) {
-        setCards(result);
-        setIsLoading(false);
-        const reachedCap = cap !== undefined && result.length >= cap;
-        setHasMore(result.length === VISIBLE_PAGE_SIZE && !reachedCap);
-        loadingMoreRef.current = false;
-      }
-    }).catch((err) => {
-      if (!cancelled) {
-        setIsLoading(false);
-        loadingMoreRef.current = false;
-        // Surface failures instead of silently leaving an empty grid on screen.
-        // Without this toast, a broken DB query looked identical to "no cards in this set".
-        console.error("Market price fetch failed:", err);
-        toast.error("Could not load latest prices. Pull to refresh or try again.");
-      }
-    });
+    // Phase B — the full filtered set (capped). Sorting, the mover tabs, and the
+    // infinite-scroll reveal all read from this once it lands.
+    getLatestSnapshotAll({ setIds, limit: cap })
+      .then(hydrateCardsFromLatestPrices)
+      .then((all) => { if (!cancelled && all.length) { setCards(all); setIsLoading(false); } })
+      .catch(() => { /* Phase A already painted something; leave it on screen */ });
 
     return () => { cancelled = true; };
   }, [pricesReady, resolveMarketSetIds, selectedSetId, setsData, refreshToken]);
@@ -279,46 +284,26 @@ export default function Market() {
 
   // Infinite scroll observer
   useEffect(() => {
-    // Defer attaching until the initial load is done. Otherwise the observer
-    // can fire while loadingMoreRef.current is still true (set by the data
-    // loader at the start of its fetch), the callback bails, and no new
-    // intersection event ever arrives — leaving the page stuck at 10 rows
-    // until the component re-mounts.
+    // Reveal more rows from the already-loaded full set — pure client-side
+    // pagination now, no network. The complete filtered set is fetched up front
+    // (Phase B in the loader above), so scrolling just uncovers more of the
+    // already-sorted list. Slicing clamps, so over-counting is harmless.
     if (isLoading) return;
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && hasMore && !loadingMoreRef.current && activeTab !== "sealed" && activeTab !== "most-visited") {
-          const cap = RECENT_CAPS[selectedSetId];
-          // Clamp the request so we never fetch past the cap, even if the user
-          // scrolls fast enough to trigger a load right at the boundary.
-          const remaining = cap !== undefined ? Math.max(0, cap - cards.length) : SCROLL_PAGE_SIZE;
-          const pageLimit = Math.min(SCROLL_PAGE_SIZE, remaining);
-          if (pageLimit <= 0) { setHasMore(false); return; }
-
-          loadingMoreRef.current = true;
-          getLatestSnapshotPage({ setIds: resolveMarketSetIds(), limit: pageLimit, offset: cards.length })
-            .then(hydrateCardsFromLatestPrices)
-            .then((nextCards) => {
-              setCards((prev) => [...prev, ...nextCards]);
-              setVisibleCount((prev) => prev + nextCards.length);
-              const reachedCap = cap !== undefined && (cards.length + nextCards.length) >= cap;
-              setHasMore(nextCards.length === pageLimit && !reachedCap);
-              loadingMoreRef.current = false;
-            })
-            .catch(() => { loadingMoreRef.current = false; });
+        if (entry.isIntersecting && activeTab !== "sealed" && activeTab !== "most-visited") {
+          setVisibleCount((v) => Math.min(v + SCROLL_PAGE_SIZE, cards.length));
         }
       },
-      // Prefetch deep: kick off the next page when the sentinel is 800px from the
-      // viewport, not 200px. The fetch then happens DURING the scroll instead of
-      // after the user has already hit the bottom, which hides the round-trip
-      // latency behind their existing scroll motion.
+      // Prefetch deep: reveal the next batch when the sentinel is 800px from the
+      // viewport so it happens during the scroll, not after hitting the bottom.
       { rootMargin: "800px" },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [activeTab, cards.length, hasMore, resolveMarketSetIds, selectedSetId, isLoading]);
+  }, [activeTab, cards.length, isLoading]);
 
   const handleSort = (col: "price" | "24h" | "7d") => {
     if (sortCol === col) {

@@ -9,9 +9,10 @@ Status: ✅ fixed · ⬜ to do.
 - ✅ 🔴 **Sealed tab blank 1d/7d deltas** → read `latest_card_prices` directly (earlier).
 - ✅ 🔴 **>1s blank pages** → removed `cache:"no-store"`; Market/Explore off the 9.9 MB file.
 - ✅ 🟡 **No password reset** → added "Forgot password?" + PASSWORD_RECOVERY set-new-password flow.
+- ✅ 🔴 **Market mover tabs + column-header sort only re-ordered the loaded page** → Market now loads the full filtered set up front (capped at 500, same top-N the header total uses) via `getLatestSnapshotAll`; first paint keeps a tiny page for speed, then Phase B swaps in the full set. Column sorts (Price/24h/7d) and Trending/Gainers/Losers now sort over every card in the filter; infinite scroll is pure client-side reveal (no more per-page network sort). User-reported symptom ("arrow flips but nothing sorts") fixed.
 
 ## ⬜ To fix — prioritized
-1. ⬜ 🔴 **Market Trending/Gainers/Losers are inaccurate.** They filter+sort only the *loaded* (price-desc) page, so a cheap card up +400% never appears. **Fix:** compute movers from the full latest-prices set (`getLatestSnapshotPrices`, which has every card's deltas), sort by Δ%, take top N — same lesson SetDetail already applies.
+1. ✅ 🔴 **Market Trending/Gainers/Losers + column sort** — DONE (full-set client sort; see fixed list above).
 2. ✅ 🟡 **Auth password reset** — DONE (forgot + set-new-password flow).
 3. ⬜ 🟡 **Onchain marketplace uses obsolete Magic-Eden offset-from-end sort** (`include_total`, reverse pages). The DB RPC sorts `price DESC` natively. **Fix:** drop the offset math, use the RPC sort. (Removes a bug-prone path + dead complexity.)
 4. ⬜ 🟡 **Merch/moonbirds blocklist lives in 3 places** (frontend `filterBlocked`, edge `NAME_BLOCKLIST`, SQL `is_merch_name`). **Fix:** single source (SQL helper); drop the dupes.

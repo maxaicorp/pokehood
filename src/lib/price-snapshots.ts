@@ -234,6 +234,19 @@ export async function getLatestSnapshotPage({
     .map(rowToLatestPrice);
 }
 
+/** Fetch the FULL filtered card set (capped) in one call, for client-side
+ *  sorting + the Trending/Gainers/Losers tabs. The cap keeps multi-set / "All"
+ *  filters bounded to the same top-N the header summary uses, and sorting by
+ *  price desc means the cap selects the most valuable cards. Without this the
+ *  Market only ever had the handful of rows scrolled into view, so a column
+ *  sort or a mover tab could only reorder that tiny subset. */
+export async function getLatestSnapshotAll({
+  setIds,
+  limit = 500,
+}: { setIds?: Set<string>; limit?: number } = {}): Promise<LatestPrice[]> {
+  return getLatestSnapshotPage({ setIds, limit, offset: 0, sortDir: "desc" });
+}
+
 export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice>> {
   const map = new Map<string, LatestPrice>();
   const rows = await getAllLatestRows();
