@@ -142,6 +142,23 @@ export default function OnchainPage() {
 function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   const [typeFilter, setTypeFilter] = useState("");
   const [marketplaceSort, setMarketplaceSort] = useState<MarketplaceSort>("price-asc");
+
+  // Total active CC listings in the DB — shown in the marketplace header so you
+  // can watch the count climb toward ~52k as the CC import (ingest-cc-marketplace)
+  // runs. Raw onchain_listings count (pre-merch-filter; the grid below hides
+  // merch via the RPC, so this can read a touch higher — fine as a coverage gauge).
+  const { data: listedCount } = useQuery({
+    queryKey: ["onchain-listed-count"],
+    queryFn: async () => {
+      const r = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/onchain_listings?collection=eq.collector_crypt&delisted_at=is.null&select=token_mint`,
+        { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Prefer: "count=exact", Range: "0-0" } },
+      );
+      return Number((r.headers.get("content-range") || "").split("/")[1]) || 0;
+    },
+    enabled: activeTab === "marketplace",
+    refetchInterval: activeTab === "marketplace" ? 30_000 : false,
+  });
   const [topSalesWindow, setTopSalesWindow] = useState<TopSalesWindow>(7);
   const queryClient = useQueryClient();
 
@@ -794,7 +811,10 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
           {/* Sort dropdown above the grid. Same three options Magic Eden's
               own UI shows. Changing the selection resets the infinite scroll
               (because marketplaceSort is in the query key). */}
-          <div className="flex justify-end mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {listedCount != null ? `${listedCount.toLocaleString()} listed` : " "}
+            </span>
             <Select value={marketplaceSort} onValueChange={(v) => setMarketplaceSort(v as MarketplaceSort)}>
               <SelectTrigger className="w-[200px] bg-background">
                 <SelectValue />
