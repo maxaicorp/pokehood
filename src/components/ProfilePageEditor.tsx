@@ -518,7 +518,7 @@ export default function ProfilePageEditor() {
 
             {/* Footer */}
             <p className="text-center text-[8px] text-muted-foreground mt-4">
-              Powered by <span className="font-display font-semibold text-foreground">PokeVault</span>
+              Powered by <span className="font-display font-semibold text-foreground">Collectiblez</span>
             </p>
           </div>
         </PhoneMockup>

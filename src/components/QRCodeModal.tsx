@@ -25,7 +25,7 @@ export default function QRCodeModal({ open, onOpenChange, url, title }: QRCodeMo
   const handleDownload = async () => {
     try {
       const slug = url.split("/").pop() || "profile";
-      await downloadQRCode(url, `pokevault-${slug}-qr.png`);
+      await downloadQRCode(url, `collectiblez-${slug}-qr.png`);
       toast.success("QR code downloaded!");
     } catch {
       toast.error("Failed to download QR code.");
@@ -90,7 +90,7 @@ export default function QRCodeModal({ open, onOpenChange, url, title }: QRCodeMo
         {/* Social Share Buttons */}
         <div className="grid grid-cols-4 gap-3 mb-6">
           <a
-            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent("Check out my collection on PokeVault!")}`}
+            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent("Check out my collection on Collectiblez!")}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-muted transition-colors"
@@ -112,7 +112,7 @@ export default function QRCodeModal({ open, onOpenChange, url, title }: QRCodeMo
             <span className="text-[10px] font-medium text-muted-foreground">Facebook</span>
           </a>
           <a
-            href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Check out my collection on PokeVault! " + url)}`}
+            href={`https://api.whatsapp.com/send?text=${encodeURIComponent("Check out my collection on Collectiblez! " + url)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-muted transition-colors"
@@ -123,7 +123,7 @@ export default function QRCodeModal({ open, onOpenChange, url, title }: QRCodeMo
             <span className="text-[10px] font-medium text-muted-foreground">WhatsApp</span>
           </a>
           <a
-            href={`https://reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent("Check out my collection on PokeVault!")}`}
+            href={`https://reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent("Check out my collection on Collectiblez!")}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-muted transition-colors"

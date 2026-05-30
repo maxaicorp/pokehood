@@ -22,12 +22,12 @@ export default function Terms() {
         <div className="prose prose-sm dark:prose-invert max-w-none space-y-6 text-foreground/80">
           <section>
             <h2 className="font-display font-semibold text-lg text-foreground">1. Acceptance of Terms</h2>
-            <p>By accessing or using PokeVault ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.</p>
+            <p>By accessing or using Collectiblez ("the Service"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Service.</p>
           </section>
 
           <section>
             <h2 className="font-display font-semibold text-lg text-foreground">2. Description of Service</h2>
-            <p>PokeVault is a Pokémon TCG collection tracking and portfolio management tool. We provide card search, collection organization, market price tracking, and shareable public profiles.</p>
+            <p>Collectiblez is a Pokémon TCG collection tracking and portfolio management tool. We provide card search, collection organization, market price tracking, and shareable public profiles.</p>
           </section>
 
           <section>
@@ -42,12 +42,12 @@ export default function Terms() {
 
           <section>
             <h2 className="font-display font-semibold text-lg text-foreground">4. Free & Pro Tiers</h2>
-            <p>PokeVault offers a free tier with card limits and a paid Pro tier with expanded features. Pro subscriptions are billed through Stripe. You may cancel at any time; access continues until the end of your billing period.</p>
+            <p>Collectiblez offers a free tier with card limits and a paid Pro tier with expanded features. Pro subscriptions are billed through Stripe. You may cancel at any time; access continues until the end of your billing period.</p>
           </section>
 
           <section>
             <h2 className="font-display font-semibold text-lg text-foreground">5. User Content</h2>
-            <p>You retain ownership of any content you submit (profile data, links, collection data). By publishing a public profile, you grant PokeVault a license to display that content publicly. You may unpublish your profile at any time.</p>
+            <p>You retain ownership of any content you submit (profile data, links, collection data). By publishing a public profile, you grant Collectiblez a license to display that content publicly. You may unpublish your profile at any time.</p>
           </section>
 
           <section>
@@ -67,7 +67,7 @@ export default function Terms() {
 
           <section>
             <h2 className="font-display font-semibold text-lg text-foreground">8. Limitation of Liability</h2>
-            <p>PokeVault shall not be liable for any indirect, incidental, or consequential damages arising from your use of the Service.</p>
+            <p>Collectiblez shall not be liable for any indirect, incidental, or consequential damages arising from your use of the Service.</p>
           </section>
 
           <section>

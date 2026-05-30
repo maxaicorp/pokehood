@@ -214,7 +214,7 @@ export default function ProfileSettings() {
         </div>
         <div className="flex items-center gap-0 rounded-md border border-input overflow-hidden">
           <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-r border-input whitespace-nowrap">
-            pokevault.app/u/
+            collectiblez.app/u/
           </span>
           <Input
             id="slug"

@@ -22,7 +22,7 @@ export default function Privacy() {
         <div className="prose prose-sm dark:prose-invert max-w-none space-y-6 text-foreground/80">
           <section>
             <h2 className="font-display font-semibold text-lg text-foreground">1. Information We Collect</h2>
-            <p>When you create a PokeVault account we collect your email address and, if you sign in via Google, your name and profile picture. We also store the Pokémon TCG card data you add to your collection, including card names, sets, conditions, quantities, and pricing information.</p>
+            <p>When you create a Collectiblez account we collect your email address and, if you sign in via Google, your name and profile picture. We also store the Pokémon TCG card data you add to your collection, including card names, sets, conditions, quantities, and pricing information.</p>
           </section>
 
           <section>
@@ -64,7 +64,7 @@ export default function Privacy() {
 
           <section>
             <h2 className="font-display font-semibold text-lg text-foreground">7. Children's Privacy</h2>
-            <p>PokeVault is not directed at children under 13. We do not knowingly collect personal information from children under 13.</p>
+            <p>Collectiblez is not directed at children under 13. We do not knowingly collect personal information from children under 13.</p>
           </section>
 
           <section>

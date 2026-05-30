@@ -94,6 +94,33 @@ and inefficiency. Severity: 🔴 broken/bug · 🟡 inefficiency/polish · 🟢 
 
 ---
 
+## Coverage map — what's audited vs still open (added 2026-05-30)
+
+Beyond the per-page passes, these surfaces exist and are NOT yet deep-audited.
+Recording them so "the audit" has a complete map.
+
+### Cross-cutting features (not single URLs)
+- 🟡 **AppHeader** — account menu, theme toggle, QR/share, search trigger, upgrade. **Gap: `customer-portal` (Manage Billing) is NOT wired anywhere** — a Pro user cannot cancel/manage their sub in-app, yet Terms says "cancel at any time." Edge fn exists; needs a menu item. *(fix queue)*
+- 🟡 **Avatar upload** — logic is **duplicated** in `ProfilePageEditor` AND `ProfileSettings` (both upload to the `avatars` storage bucket, webp-convert, getPublicUrl). Drift risk; verify storage RLS + size limits. Which editor is canonical?
+- 🟡 **Two profile editors** — `ProfilePageEditor` (Dashboard "My Page") vs `ProfileSettings` — overlapping responsibility; possible source of confusion/bugs.
+- 🔴 **Stale "PokeVault" branding** (rebrand to Collectiblez incomplete) — user-visible in `Terms.tsx` (×6), `Privacy.tsx` (×2), **`ProfilePageEditor` "Powered by PokeVault" footer on the public-profile preview**, `QRCodeModal` share text + filename (×4), and `ProfileSettings` shows the wrong **`pokevault.app/u/`** URL. (localStorage keys in ThemeToggle/qrcode are internal, harmless.)
+- 🟡 **Subscription lifecycle** — check-subscription ✅, create-checkout ✅ wired; customer-portal ✗; post-checkout return UX + Stripe webhook path unaudited.
+- 🟡 **Realtime** — Market subscribes to every `price_snapshots` INSERT (flood during cron). *(flagged earlier)*
+- 🟡 **Analytics writes** — `recordCardView`/`recordCollectionAdd`/`recordWishlistAdd`, `profile_views`, `link_clicks` — verify insert-only RLS and that failures stay silent.
+- 🟡 **Giveaway pipeline** — public entry → confirm (double opt-in), entry edge fns, winner draw (client `Math.random` flagged). Deep-audit before any real-prize giveaway.
+- 🟡 **Games** — `game-card-match-start/flip` scoring integrity (server-authoritative?), leaderboard RPC, prize claim. CardMatch image pipeline ✅ (local pool, no CDN).
+
+### Routes not deep-audited
+- **Privacy / Terms** — legal copy (branding above; verify accuracy).
+- **Admin (6)** — only a shallow pass. AdminGiveawayForm (create/edit), AdminPrizes, AdminOverview not deep-audited (admin-only, lower risk).
+
+### Whole pass still deferred
+- 🟡 **Mobile UI** — mega-audit explicitly deferred a dedicated small-viewport pass: bottom-nav vs header overlap, 44px touch targets, **sort controls hidden on mobile** (e.g. SealedTab `hidden sm:grid`), dialog/drawer consistency, card-detail layout. Big surface, untouched.
+- 🟡 **SEO prerendering** — sitemap.xml / robots.txt / llms.txt exist, but the SPA still serves blank HTML to non-JS crawlers (see SEO plan). Infra present, prerender/SSR not.
+- **Global search** — intentionally LAST in the plan.
+
+---
+
 ## Audit status: high-traffic surface covered (9 pages)
 **Bugs FIXED:** CardDetail "Card not found", Dashboard/Profile stale portfolio value.
 **Flagged to fix:** Market mover tabs (delta sort over full set), Onchain (obsolete ME offset-sort + triplicated blocklist), Giveaway server-side draw.
