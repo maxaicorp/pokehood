@@ -183,11 +183,11 @@ export async function hydrateCardsFromLatestPrices(prices: LatestPrice[]): Promi
   const priceMap = new Map(prices.map((p) => [p.cardId, p]));
   appendPricingCache(priceMap);
 
-  // latest_card_prices only stores set_name, not the set's card totals — so
-  // the old hardcoded printedTotal:0/total:0 made every Market row render
-  // "#161/0". Pull the real totals from the static set index (already in
-  // memory) and key by setId for O(1) lookup while mapping.
-  const { sets } = await loadCardIndex();
+  // Set totals/series/logo come from the LIGHTWEIGHT market-sets.json (~80 KB),
+  // NOT all-cards.json (~9.9 MB). Card images are derived from card_id below, so
+  // the list views (Market/Explore) never need to download the full card index.
+  // This is the core fix for the >1s blank-screen slowdown on list pages.
+  const { data: sets } = await getMarketSets();
   const setMetaById = new Map(sets.map((s) => [s.id, s]));
 
   return prices.map((price) => {
