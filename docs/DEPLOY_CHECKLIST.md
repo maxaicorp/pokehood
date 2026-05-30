@@ -15,6 +15,7 @@ apply yourself in the SQL editor.
 - [x] `20260529120000_filter_merch.sql` — merch filter RPCs (done)
 - [x] graded refresh: `SELECT refresh_latest_card_prices(); SELECT refresh_latest_graded_prices();` (done)
 - [x] cron switched to full-daily; dead 401 jobs removed (done)
+- [ ] **`20260511000000_privacy_respecting_rls.sql`** — ⚠️ NOT YET RUN. Enforces the `is_published` profile toggle at the DB layer (profiles/collection_cards/user_links SELECT now require `is_published = true OR owner`). Until this runs, a raw anon-key `curl` can still read any private profile's collection. The React-layer gate (Profile.tsx) is live on frontend deploy, but this migration is the real enforcement — run it.
 
 ## 3. Post-deploy verification (ping Claude to run these):
 - [ ] `snapshot-prices` response shows `"version":"2026-05-28-phase2-coverage-guard"` → Phase 2 live

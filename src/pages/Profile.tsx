@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { getCollectionByUserId, getTotalValue } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
@@ -16,6 +17,7 @@ const CARDS_PER_PAGE = 20;
 
 export default function Profile() {
   const { slug } = useParams();
+  const { user } = useAuth();
   const [qrOpen, setQrOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(CARDS_PER_PAGE);
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -115,6 +117,33 @@ export default function Profile() {
     );
   }
 
+  // Privacy gate: an unpublished profile must not expose its collection,
+  // links, or value to anyone but its owner. (The DB-level enforcement lives
+  // in migration 20260511000000_privacy_respecting_rls.sql; this is the
+  // client-side gate so the leak is closed the moment the frontend deploys,
+  // and so a private profile is never rendered/indexed for the public.)
+  const isOwner = !!user && user.id === profile.user_id;
+  if (!profile.is_published && !isOwner) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
+        <SEO
+          title="Private profile — Collectiblez"
+          description="This Collectiblez profile is private."
+          path={`/u/${slug}`}
+          noindex
+        />
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-muted border border-border">
+          <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground">Private Profile</span>
+        </div>
+        <p className="text-muted-foreground text-sm max-w-xs">This collection isn't public. The owner can make it visible from their dashboard.</p>
+        <Button variant="outline" asChild>
+          <Link to="/">Go Home</Link>
+        </Button>
+      </div>
+    );
+  }
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,6 +152,7 @@ export default function Profile() {
         description={profile?.bio?.slice(0, 160) || `View ${profile?.display_name || slug}'s public Pokémon TCG collection on Collectiblez.`}
         path={`/u/${slug}`}
         image={profile?.avatar_url}
+        noindex={!profile.is_published}
       />
       {/* Ambient glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[400px] sm:w-[600px] h-[300px] sm:h-[400px] bg-primary/8 rounded-full blur-[150px] pointer-events-none" />

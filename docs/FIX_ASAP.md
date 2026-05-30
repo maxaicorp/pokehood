@@ -9,6 +9,9 @@ Status: ✅ fixed · ⬜ to do.
 - ✅ 🔴 **Sealed tab blank 1d/7d deltas** → read `latest_card_prices` directly (earlier).
 - ✅ 🔴 **>1s blank pages** → removed `cache:"no-store"`; Market/Explore off the 9.9 MB file.
 - ✅ 🟡 **No password reset** → added "Forgot password?" + PASSWORD_RECOVERY set-new-password flow.
+- ✅ 🔴 **Private profiles leaked everything (collection/links/value) + got Google-indexed** → Profile.tsx now gates an unpublished profile behind an owner check (non-owners see a "Private Profile" screen, not the content) and emits `noindex` for any unpublished profile. ⚠️ DB enforcement still requires running `20260511000000_privacy_respecting_rls.sql` (see DEPLOY_CHECKLIST) — until then a raw anon-key curl can still read private rows.
+- ✅ 🔴 **Dashboard "Vault Full → Upgrade to Pro" button was dead** (`getElementById("upgrade-to-pro")` matched nothing) → wired to the real `create-checkout` Stripe flow.
+- ✅ 🟡 **CSV import**: progress bar never hit 100% with unmatched rows (denominator fix), fired error+success toasts together on a limit hit (one message now), and could render `NaN%` width (zero-guarded).
 - ✅ 🔴 **Market mover tabs + column-header sort only re-ordered the loaded page** → Market now loads the full filtered set up front (capped at 500, same top-N the header total uses) via `getLatestSnapshotAll`; first paint keeps a tiny page for speed, then Phase B swaps in the full set. Column sorts (Price/24h/7d) and Trending/Gainers/Losers now sort over every card in the filter; infinite scroll is pure client-side reveal (no more per-page network sort). User-reported symptom ("arrow flips but nothing sorts") fixed.
 
 ## ⬜ To fix — prioritized
