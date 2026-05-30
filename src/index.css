@@ -240,6 +240,29 @@
   100% { background-position: 100% 50%; }
 }
 
+/* Holographic sheen sweep — an iridescent highlight that travels across a
+   surface (used on the price chart to give it a "holo card" shimmer). */
+.holo-sheen {
+  background: linear-gradient(
+    115deg,
+    transparent 38%,
+    hsl(0 0% 100% / 0.10) 46%,
+    hsl(190 95% 70% / 0.10) 50%,
+    hsl(280 90% 75% / 0.08) 54%,
+    transparent 62%
+  );
+  background-size: 250% 100%;
+  mix-blend-mode: screen;
+  animation: holo-sheen-sweep 6s linear infinite;
+}
+@keyframes holo-sheen-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -80% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .holo-sheen { animation: none; }
+}
+
 /* Hide scrollbar for tab bars */
 .scrollbar-none {
   -ms-overflow-style: none;

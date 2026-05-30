@@ -179,6 +179,10 @@ export default function PriceChart({
         </div>
       ) : (
         <>
+         <div className="relative">
+          {/* Holographic sheen — an iridescent highlight sweeps across the
+              chart like a holo card. Purely decorative, sits above the SVG. */}
+          <div className="holo-sheen pointer-events-none absolute inset-0 z-10 rounded-lg" aria-hidden />
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart
               data={chartData}
@@ -186,10 +190,18 @@ export default function PriceChart({
             >
               <defs>
                 <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={lineColor} stopOpacity={0.45} />
-                  <stop offset="55%" stopColor={lineColor} stopOpacity={0.12} />
+                  <stop offset="0%" stopColor={lineColor} stopOpacity={0.5} />
+                  <stop offset="55%" stopColor={lineColor} stopOpacity={0.14} />
                   <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
                 </linearGradient>
+                {/* Luminous glow on the trend line */}
+                <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -230,9 +242,11 @@ export default function PriceChart({
                 fill={`url(#${gradId})`}
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--card))", fill: lineColor }}
+                style={{ filter: "url(#lineGlow)" }}
               />
             </AreaChart>
           </ResponsiveContainer>
+         </div>
           {isSynthetic && (
             <p className="text-[10px] text-muted-foreground mt-2 text-center">
               Based on Cardmarket rolling averages · Daily snapshots will fill in over time
