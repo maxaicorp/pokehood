@@ -1,0 +1,42 @@
+# Per-page audit (route-by-route)
+
+Each route has a main job; we audit them one at a time for bugs, broken UI,
+and inefficiency. Severity: 🔴 broken/bug · 🟡 inefficiency/polish · 🟢 ok.
+
+## Route map (17 page functions)
+| Route | Component | Audited |
+|---|---|---|
+| `/` | Market | ⬜ |
+| `/explore` | Explore | ⬜ |
+| `/card/:id`, `/sets/:slug/:cardSlug` | CardDetail | ✅ below |
+| `/sealed/:id` | SealedDetail | ⬜ |
+| `/sets`, `/sets/:slug` | Sets, SetDetail | ⬜ |
+| `/onchain`, `/onchain/:tab` | Onchain | ⬜ |
+| `/dashboard` | Dashboard | ⬜ |
+| `/u/:slug`, `/demo` | Profile, DemoProfile | ⬜ |
+| `/stats` | Stats | ⬜ |
+| `/games`, `/games/card-match` | Games, CardMatch | ⬜ |
+| `/giveaway`, `/giveaway/confirm` | Giveaway | ⬜ |
+| `/auth` | Auth | ⬜ |
+| `/admin/*` (6) | Admin pages | ⬜ |
+| `*` | NotFound | ⬜ |
+
+---
+
+## ✅ CardDetail — `/card/:id` + `/sets/:slug/:cardSlug`
+**Job:** show one card — image, price, 24h/7d trends, graded tiles, price chart, collection/wishlist/sentiment, buy links, "more from set."
+
+- 🔴 **"Card not found" for any card not in the static `all-cards.json`.** New-set cards (e.g. fresh Mega Evolution drops) have prices in the DB but aren't in the 9.9 MB static index → the page renders a **broken shell** ("Card not found" + empty chart + dead Buy/Collection buttons), exactly as seen in the wild. *Root cause: static catalog staleness.* **Fix: Phase 4 (fetch the card from DB), or fall back to a live Scrydex fetch when the index misses.**
+- 🟡 **Cold-load weight:** `getCardById` + `getSetCards(...,500)` both pull the **9.9 MB** index. `force-cache` makes it one-time, but first/SEO load is heavy. **Fix: Phase 4.**
+- 🟡 **Buy links are plain keyword searches** to TCGPlayer/eBay/Amazon — **no affiliate codes** = leaving commission on the table (there's a deferred TCGPlayer-affiliate plan). Quick revenue win.
+- 🟡 **`cardmarketAvgs` mislabeled** "from TCGdex" — it's actually fed by snapshot deltas now (the 24h % works). Stale comment, rename during cleanup.
+- 🟡 **Vote optimistic-update math** (`handleVote`) is convoluted and uses `card.id` through a *set*-sentiment function (`getSetSentiment`) — works, but worth simplifying; possible off-by-one on rapid toggles.
+- 🟢 SEO/jsonLd (canonical, breadcrumb, Product schema) is solid; legacy `/card/:id` → canonical redirect is correct.
+
+**Top action:** Phase 4 fixes the 🔴 *and* the 🟡 cold-load in one move. Affiliate links are an independent quick win.
+
+---
+
+## (Pending) — audited a few per pass
+Market, Explore, Onchain, Sets/SetDetail, Dashboard, Profile, Stats, Games,
+Giveaway, Auth, Admin, NotFound. Findings appended here as each is reviewed.
