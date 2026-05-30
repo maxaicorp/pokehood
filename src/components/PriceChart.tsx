@@ -126,12 +126,32 @@ export default function PriceChart({
   const maxP = Math.max(...prices);
   const pad = (maxP - minP) * 0.1 || 1;
 
+  // Trend over the visible range drives the chart color — green when the card
+  // gained over the window, red when it lost. Makes "cruising the charts" read
+  // like a trading view instead of a flat line.
+  const firstP = chartData[0]?.price ?? 0;
+  const lastP = chartData[chartData.length - 1]?.price ?? 0;
+  const rangePct = firstP > 0 ? ((lastP - firstP) / firstP) * 100 : 0;
+  const up = lastP >= firstP;
+  const lineColor = up ? "hsl(142 71% 45%)" : "hsl(0 72% 51%)"; // emerald-500 / red-500
+  const gradId = `priceGrad-${up ? "up" : "down"}`;
+
   return (
     <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display font-semibold text-foreground">
-          Price History
-        </h3>
+        <div className="flex items-baseline gap-2">
+          <h3 className="font-display font-semibold text-foreground">
+            Price History
+          </h3>
+          {hasData && (
+            <span
+              className="text-xs font-semibold tabular-nums"
+              style={{ color: lineColor }}
+            >
+              {rangePct >= 0 ? "+" : ""}{rangePct.toFixed(1)}%
+            </span>
+          )}
+        </div>
         <div className="flex gap-1">
           {(["7d", "30d", "90d"] as Range[])
             .filter((r) => !isSynthetic || r !== "90d")
@@ -165,9 +185,10 @@ export default function PriceChart({
               margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
             >
               <defs>
-                <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={lineColor} stopOpacity={0.45} />
+                  <stop offset="55%" stopColor={lineColor} stopOpacity={0.12} />
+                  <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
@@ -204,11 +225,11 @@ export default function PriceChart({
               <Area
                 type="monotone"
                 dataKey="price"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                fill="url(#priceGrad)"
+                stroke={lineColor}
+                strokeWidth={2.5}
+                fill={`url(#${gradId})`}
                 dot={false}
-                activeDot={{ r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--card))", fill: lineColor }}
               />
             </AreaChart>
           </ResponsiveContainer>

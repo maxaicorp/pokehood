@@ -520,24 +520,40 @@ function SlotTile({
       className={`cm-slot group relative aspect-[2.5/3.5] rounded-lg transition-transform ${ringClass} ${hoverClass}`}
     >
       <div className={`cm-flipper ${revealed ? "is-flipped" : ""}`}>
-        {/* Front face: card back with logo */}
-        <div className="cm-face">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/10 to-background" />
+        {/* Front face: a proper "card back" — patterned, with a circular
+            emblem holding the logo, a diagonal sheen, and an inner frame. */}
+        <div className="cm-face overflow-hidden">
+          {/* base gradient */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/15 to-background" />
+          {/* repeating dot pattern for texture */}
           <div
-            className="absolute inset-0 opacity-60"
+            className="absolute inset-0 opacity-[0.18]"
             style={{
-              background:
-                "radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.25) 0%, transparent 65%)",
+              backgroundImage: "radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1.2px)",
+              backgroundSize: "9px 9px",
             }}
           />
-          <div className="absolute inset-1.5 rounded-md border border-primary/25 group-hover:border-primary/50 transition-colors" />
+          {/* radial glow behind the emblem */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "radial-gradient(circle at 50% 50%, hsl(var(--primary) / 0.3) 0%, transparent 60%)",
+            }}
+          />
+          {/* diagonal sheen */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent" />
+          {/* inner frame */}
+          <div className="absolute inset-1.5 rounded-md border border-primary/30 group-hover:border-primary/60 transition-colors" />
+          {/* circular emblem badge with the logo */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <img
-              src="/logo.png"
-              alt=""
-              className="w-1/2 h-1/2 object-contain opacity-80 drop-shadow-[0_2px_6px_hsl(var(--primary)/0.4)] group-hover:opacity-100 transition-opacity"
-              draggable={false}
-            />
+            <div className="relative w-[55%] aspect-square rounded-full bg-background/40 border-2 border-primary/40 ring-2 ring-primary/15 flex items-center justify-center backdrop-blur-[1px] group-hover:scale-105 transition-transform">
+              <img
+                src="/logo.png"
+                alt=""
+                className="w-3/5 h-3/5 object-contain opacity-90 drop-shadow-[0_2px_6px_hsl(var(--primary)/0.5)] group-hover:opacity-100 transition-opacity"
+                draggable={false}
+              />
+            </div>
           </div>
         </div>
         {/* Back face: the actual card image (kept mounted during flip-back so it stays visible during rotation) */}
