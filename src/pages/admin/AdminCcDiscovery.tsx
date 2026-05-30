@@ -144,6 +144,19 @@ export default function AdminCcDiscovery() {
     [rows],
   );
 
+  // Matched-tab filters: grading company + minimum undervalued %. Client-side
+  // over the loaded rows so it's instant.
+  const [companyFilter, setCompanyFilter] = useState("all");
+  const [minUnder, setMinUnder] = useState(0);
+  const displayRows = useMemo(() => {
+    if (tab !== "matched") return rows;
+    return rows.filter((r) => {
+      if (companyFilter !== "all" && (r.matched_company ?? "").toUpperCase() !== companyFilter) return false;
+      if (minUnder > 0 && !((r.delta_pct ?? 0) <= -minUnder)) return false;
+      return true;
+    });
+  }, [rows, tab, companyFilter, minUnder]);
+
   // Live coverage counter — how much of CC's ~52k Pokémon marketplace we've
   // imported into onchain_listings. cc-* rows come from ingest-cc-marketplace
   // (the CC API); the rest are the small ME-sourced slice. Watch this climb
@@ -264,6 +277,37 @@ export default function AdminCcDiscovery() {
         </div>
       )}
 
+      {/* Matched-tab filters */}
+      {tab === "matched" && rows.length > 0 && (
+        <div className="flex items-center gap-3 mb-3 flex-wrap text-sm">
+          <select
+            value={companyFilter}
+            onChange={(e) => setCompanyFilter(e.target.value)}
+            className="h-8 rounded-md border border-border/60 bg-background px-2 text-xs"
+          >
+            <option value="all">All graders</option>
+            <option value="PSA">PSA</option>
+            <option value="CGC">CGC</option>
+            <option value="BGS">BGS</option>
+          </select>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            Undervalued ≥
+            <input
+              type="number"
+              min={0}
+              value={minUnder || ""}
+              onChange={(e) => setMinUnder(Number(e.target.value) || 0)}
+              placeholder="0"
+              className="h-8 w-16 rounded-md border border-border/60 bg-background px-2 text-xs text-foreground"
+            />
+            %
+          </label>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {displayRows.length} of {rows.length} shown
+          </span>
+        </div>
+      )}
+
       {/* Results table */}
       <div className="rounded-lg border border-border/50 overflow-hidden">
         {rowsQ.isLoading ? (
@@ -279,7 +323,7 @@ export default function AdminCcDiscovery() {
               : "Click \"Run discovery\" to populate."}
           </div>
         ) : tab === "matched" ? (
-          <MatchedTable rows={rows} />
+          <MatchedTable rows={displayRows} />
         ) : (
           <UnmatchedTable rows={rows} />
         )}
