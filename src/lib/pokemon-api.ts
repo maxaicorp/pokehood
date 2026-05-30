@@ -859,21 +859,33 @@ export const PRODUCT_TYPES = [
 // Full metadata (rarity/types/hp) is omitted until the catalog catches up.
 async function buildCardFromDb(id: string): Promise<PokemonCard | null> {
   const baseId = id.split("::")[0];
-  const { data } = await (supabase.from as any)("latest_card_prices")
+  // Full metadata from the `cards` catalog table (Phase 4). Falls back to the
+  // minimal latest_card_prices row if the catalog hasn't been populated yet.
+  const { data: c } = await (supabase.from as any)("cards")
+    .select("id, name, set_id, set_name, number, rarity, supertype, subtypes, types, hp, series")
+    .eq("id", baseId)
+    .maybeSingle();
+  const { data: p } = c ? { data: null } : await (supabase.from as any)("latest_card_prices")
     .select("card_id, card_name, set_name")
     .eq("card_id", baseId)
     .maybeSingle();
-  if (!data) return null;
-  const setId = baseId.split("-").slice(0, -1).join("-") || baseId;
-  const number = baseId.split("-").at(-1) ?? "";
+  const src = c ?? (p ? { id: baseId, name: p.card_name, set_name: p.set_name } : null);
+  if (!src) return null;
+
+  const setId = (c?.set_id as string) || baseId.split("-").slice(0, -1).join("-") || baseId;
+  const number = (c?.number as string) || baseId.split("-").at(-1) || "";
   let setMeta: PokemonSet | undefined;
   try { const { data: sets } = await getMarketSets(); setMeta = sets.find((s) => s.id === setId); } catch { /* tiny file; ignore */ }
   return {
     id: baseId,
-    name: data.card_name,
-    supertype: "Pokémon",
+    name: src.name,
+    supertype: (c?.supertype as string) ?? "Pokémon",
+    rarity: (c?.rarity as string) ?? undefined,
+    subtypes: (c?.subtypes as string[]) ?? undefined,
+    types: (c?.types as string[]) ?? undefined,
+    hp: (c?.hp as string) ?? undefined,
     set: {
-      id: setId, name: data.set_name, series: setMeta?.series ?? "",
+      id: setId, name: src.set_name, series: (c?.series as string) ?? setMeta?.series ?? "",
       printedTotal: setMeta?.printedTotal ?? setMeta?.total ?? 0,
       total: setMeta?.total ?? setMeta?.printedTotal ?? 0,
       releaseDate: setMeta?.releaseDate ?? "",
