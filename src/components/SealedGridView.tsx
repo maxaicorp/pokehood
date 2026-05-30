@@ -26,7 +26,7 @@ export default function SealedGridView({ products }: SealedGridViewProps) {
           >
           <Link
             to={`/sealed/${product.id}`}
-            className="relative rounded-xl overflow-hidden bg-card border border-border/50 block hover:border-primary/40 transition-colors"
+            className="relative overflow-hidden bg-card border border-border/50 block hover:border-primary/40 transition-colors"
           >
             {/* Product image */}
             <div className="aspect-square relative overflow-hidden bg-muted">
@@ -45,7 +45,7 @@ export default function SealedGridView({ products }: SealedGridViewProps) {
 
               {/* Price badge */}
               {price !== null && (
-                <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-background/90 backdrop-blur-sm border border-border/50">
+                <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-background/90 backdrop-blur-sm border border-border/50">
                   <span className="text-xs font-bold text-foreground tabular-nums">
                     {formatPrice(price)}
                   </span>
@@ -54,7 +54,7 @@ export default function SealedGridView({ products }: SealedGridViewProps) {
 
               {/* Trend badge */}
               {pct1d !== null && (
-                <div className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-md backdrop-blur-sm text-[10px] font-semibold tabular-nums ${
+                <div className={`absolute top-2 right-2 px-1.5 py-0.5 backdrop-blur-sm text-[10px] font-semibold tabular-nums ${
                   pct1d > 0
                     ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                     : pct1d < 0

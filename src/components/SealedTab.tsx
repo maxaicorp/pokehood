@@ -113,7 +113,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border/50">
             <Skeleton className="h-4 w-6" />
-            <Skeleton className="w-14 h-14 rounded-lg" />
+            <Skeleton className="w-14 h-14" />
             <div className="flex-1 space-y-1.5">
               <Skeleton className="h-4 w-48" />
               <Skeleton className="h-3 w-32" />
@@ -194,11 +194,11 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                     <img
                       src={image}
                       alt={product.name}
-                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover shrink-0 shadow-sm bg-muted"
+                      className="w-12 h-12 sm:w-14 sm:h-14 object-cover shrink-0 shadow-sm bg-muted"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-muted flex items-center justify-center shrink-0">
                       <Package className="w-5 h-5 text-muted-foreground" />
                     </div>
                   )}
