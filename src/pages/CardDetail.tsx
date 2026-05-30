@@ -37,6 +37,7 @@ import { motion } from "framer-motion";
 import PriceChart from "@/components/PriceChart";
 import GradedPriceTiles from "@/components/GradedPriceTiles";
 import SEO from "@/components/SEO";
+import CardImage from "@/components/CardImage";
 
 // ─── Type styling ─────────────────────────────────────────────────────────────
 
@@ -371,6 +372,13 @@ export default function CardDetail() {
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
+                onError={(e) => {
+                  // Fall back to the small image if the large one 404s, then to
+                  // a neutral placeholder so the hero never shows a broken glyph.
+                  const img = e.currentTarget as HTMLImageElement;
+                  if (img.src !== card.images.small && card.images.small) img.src = card.images.small;
+                  else img.style.visibility = "hidden";
+                }}
               />
             ) : null}
           </div>
@@ -531,7 +539,7 @@ export default function CardDetail() {
               {suggestions.map((c) => (
                 <Link key={c.id} to={cardPath(c.set, { name: c.name, number: c.number })} className="group">
                   <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.15 }}>
-                    <img
+                    <CardImage
                       src={c.images.small}
                       alt={c.name}
                       className="w-full shadow-md group-hover:shadow-lg transition-shadow"

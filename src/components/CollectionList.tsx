@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, DollarSign, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import CardImage from "@/components/CardImage";
 
 const CONDITIONS = [
   { value: "NM", label: "Near Mint" },
@@ -107,7 +108,7 @@ export default function CollectionList({ cards, onUpdate }: Props) {
         >
           {/* Card image with for-sale indicator */}
           <div className="relative">
-            <img src={card.imageSmall} alt={card.name} className="w-full" loading="lazy" />
+            <CardImage src={card.imageSmall} alt={card.name} className="w-full" loading="lazy" />
             {card.quantity > 1 && (
               <span className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
                 ×{card.quantity}

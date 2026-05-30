@@ -7,6 +7,7 @@ import { getCollectionByUserId, getTotalValue } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import { getPlatformIcon } from "@/lib/platform-icons";
 import QRCodeModal from "@/components/QRCodeModal";
+import CardImage from "@/components/CardImage";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Wallet, Loader2, Lock, Mail, Share } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -299,7 +300,7 @@ export default function Profile() {
                     transition={{ delay: Math.min(i, CARDS_PER_PAGE) * 0.04 }}
                     whileHover={{ scale: 1.05, zIndex: 10 }}
                   >
-                    <img src={card.imageSmall} alt={card.name} className="w-full" loading="lazy" />
+                    <CardImage src={card.imageSmall} alt={card.name} className="w-full" loading="lazy" />
                     {card.forSale && (
                       <span className="absolute top-1.5 left-1.5 z-10 w-3 h-3 rounded-full bg-green-500 border-2 border-background shadow-sm" title="For Sale" />
                     )}

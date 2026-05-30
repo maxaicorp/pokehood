@@ -68,6 +68,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import ViewToggle, { type ViewMode } from "@/components/ViewToggle";
 import CardGridView from "@/components/CardGridView";
+import CardImage from "@/components/CardImage";
 import SEO from "@/components/SEO";
 
 type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
@@ -624,7 +625,7 @@ export default function Market() {
                   >
                     <div className="aspect-[5/7] relative bg-muted">
                       {stat.image_small ? (
-                        <img src={stat.image_small} alt={stat.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+                        <CardImage src={stat.image_small} alt={stat.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Eye className="w-8 h-8 text-muted-foreground/30" />
@@ -665,7 +666,7 @@ export default function Market() {
                     <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {stat.image_small && (
-                        <img src={stat.image_small} alt={stat.name} className="w-9 sm:w-10 shrink-0 shadow-sm" loading="lazy" />
+                        <CardImage src={stat.image_small} alt={stat.name} className="w-9 sm:w-10 shrink-0 shadow-sm" loading="lazy" />
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground truncate">{stat.name}</p>
@@ -736,7 +737,7 @@ export default function Market() {
                     <div className={`hidden sm:grid ${gridClasses} gap-2 px-4 py-2.5 items-center`}>
                       <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                       <div className="flex items-center gap-3 min-w-0">
-                        <img src={card.images.small} alt={card.name} className="w-10 shrink-0 shadow-sm" loading="lazy" />
+                        <CardImage src={card.images.small} alt={card.name} className="w-10 shrink-0 shadow-sm" loading="lazy" />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
                           <p className="text-[10px] text-muted-foreground/60 truncate">#{card.number}/{card.set.printedTotal || card.set.total}</p>
@@ -782,7 +783,7 @@ export default function Market() {
                           <span className="absolute -top-1.5 -left-1.5 z-10 text-[10px] font-mono font-semibold text-foreground bg-background/95 backdrop-blur px-1.5 py-0.5 rounded-full border border-border/60 tabular-nums shadow-sm">
                             {i + 1}
                           </span>
-                          <img
+                          <CardImage
                             src={card.images.small}
                             alt={card.name}
                             className="w-20 aspect-[5/7] shadow-md object-contain bg-muted"
@@ -868,7 +869,7 @@ export default function Market() {
                     >
                       <span className="text-sm font-mono text-muted-foreground">—</span>
                       <div className="flex items-center gap-3 min-w-0">
-                        <img src={card.images.small} alt={card.name} className="w-9 sm:w-10 shrink-0 shadow-sm" loading="lazy" />
+                        <CardImage src={card.images.small} alt={card.name} className="w-9 sm:w-10 shrink-0 shadow-sm" loading="lazy" />
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{card.name}</p>
                           <p className="text-[10px] text-muted-foreground/60 truncate">#{card.number}/{card.set.printedTotal || card.set.total}</p>

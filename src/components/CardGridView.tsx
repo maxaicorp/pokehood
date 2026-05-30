@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SetSentimentBadge from "@/components/SetSentimentBadge";
+import CardImage from "@/components/CardImage";
 import type { SetSentiment, VoteType } from "@/lib/sentiment-store";
 
 interface CardGridViewProps {
@@ -38,7 +39,7 @@ export default function CardGridView({ cards, getPcts, onAdd, addingCards, senti
             onClick={() => navigate(cardPath(card.set, card))}
           >
             <div className="aspect-[5/7] relative bg-muted">
-              <img
+              <CardImage
                 src={card.images.small}
                 alt={card.name}
                 className="w-full h-full object-cover transition-transform group-hover:scale-105"
