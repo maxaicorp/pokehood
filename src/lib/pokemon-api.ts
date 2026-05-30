@@ -853,6 +853,41 @@ export const PRODUCT_TYPES = [
   { value: "pocket", label: "TCG Pocket" },
 ];
 
+// Fallback for cards missing from the static index (e.g. a brand-new set whose
+// catalog hasn't been rebuilt yet). Builds a minimal card from latest_card_prices
+// + a derived image so the page renders real data instead of "Card not found".
+// Full metadata (rarity/types/hp) is omitted until the catalog catches up.
+async function buildCardFromDb(id: string): Promise<PokemonCard | null> {
+  const baseId = id.split("::")[0];
+  const { data } = await (supabase.from as any)("latest_card_prices")
+    .select("card_id, card_name, set_name")
+    .eq("card_id", baseId)
+    .maybeSingle();
+  if (!data) return null;
+  const setId = baseId.split("-").slice(0, -1).join("-") || baseId;
+  const number = baseId.split("-").at(-1) ?? "";
+  let setMeta: PokemonSet | undefined;
+  try { const { data: sets } = await getMarketSets(); setMeta = sets.find((s) => s.id === setId); } catch { /* tiny file; ignore */ }
+  return {
+    id: baseId,
+    name: data.card_name,
+    supertype: "Pokémon",
+    set: {
+      id: setId, name: data.set_name, series: setMeta?.series ?? "",
+      printedTotal: setMeta?.printedTotal ?? setMeta?.total ?? 0,
+      total: setMeta?.total ?? setMeta?.printedTotal ?? 0,
+      releaseDate: setMeta?.releaseDate ?? "",
+      images: setMeta?.images ?? { symbol: "", logo: "" },
+    },
+    number,
+    images: {
+      small: `https://images.scrydex.com/pokemon/${baseId}/small`,
+      large: `https://images.scrydex.com/pokemon/${baseId}/large`,
+    },
+    tcgplayer: pricingCache.get(baseId),
+  };
+}
+
 export async function getCardById(id: string): Promise<PokemonCard | null> {
   await ensurePricingCacheSeeded();
   const { cards } = await loadCardIndex();
@@ -871,7 +906,11 @@ export async function getCardById(id: string): Promise<PokemonCard | null> {
     if (avgs) enriched.cardmarketAvgs = avgs;
     return enriched;
   }
-  return cards.find((c) => c.id === id) ?? null;
+  const found = cards.find((c) => c.id === id);
+  if (found) return found;
+  // Not in the static index → build from DB so new-set cards render instead of
+  // showing the broken "Card not found" shell.
+  return await buildCardFromDb(id);
 }
 
 // ─── Market leaderboard ───────────────────────────────────────────────────────
