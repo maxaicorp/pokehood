@@ -38,6 +38,7 @@ import PriceChart from "@/components/PriceChart";
 import GradedPriceTiles from "@/components/GradedPriceTiles";
 import SEO from "@/components/SEO";
 import CardImage from "@/components/CardImage";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // ─── Type styling ─────────────────────────────────────────────────────────────
 
@@ -442,13 +443,16 @@ export default function CardDetail() {
               </div>
             )}
 
-            {/* Price chart */}
+            {/* Price chart — scoped boundary so a bad data point in recharts
+                can't take down the whole card page. */}
             <div className="rounded-xl border border-border bg-card p-4 sm:p-5 flex-1">
-              <PriceChart
-                cardId={id!}
-                currentPrice={enrichedCard ? getMarketPrice(enrichedCard) : null}
-                cardmarketAvgs={enrichedCard?.cardmarketAvgs}
-              />
+              <ErrorBoundary label="PriceChart" fallback="Price history unavailable.">
+                <PriceChart
+                  cardId={id!}
+                  currentPrice={enrichedCard ? getMarketPrice(enrichedCard) : null}
+                  cardmarketAvgs={enrichedCard?.cardmarketAvgs}
+                />
+              </ErrorBoundary>
             </div>
           </div>
 

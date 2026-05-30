@@ -2,6 +2,12 @@ import { Component, ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
+  // When provided, a thrown child renders this compact fallback INSTEAD of the
+  // full-page one — used to isolate a single widget (chart, grid) so its crash
+  // doesn't blank the whole route. A string is rendered as muted text.
+  fallback?: ReactNode;
+  // Optional label for the console log so we can tell which boundary caught it.
+  label?: string;
 }
 
 interface State {
@@ -10,10 +16,9 @@ interface State {
 }
 
 /**
- * Top-level error boundary. Without this, a single thrown render anywhere in
- * the tree (a malformed price object, a bad image URL crashing a parent, etc.)
- * blanks the entire page with no message and no recovery short of a hard
- * refresh. This catches the throw and shows a recoverable fallback.
+ * Error boundary. At the top level it prevents a single thrown render anywhere
+ * (a malformed price, a bad image crashing a parent) from blanking the entire
+ * app. With a `fallback` it scopes the blast radius to one widget.
  */
 export default class ErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false, error: null };
@@ -24,7 +29,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: unknown) {
     // Surface to the console for debugging; a real logging sink can hook here.
-    console.error("Uncaught render error:", error, info);
+    console.error(`Uncaught render error${this.props.label ? ` [${this.props.label}]` : ""}:`, error, info);
   }
 
   handleReload = () => {
@@ -34,6 +39,16 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.hasError) return this.props.children;
+
+    // Scoped fallback: render the widget-level fallback in place, no reload.
+    if (this.props.fallback !== undefined) {
+      return typeof this.props.fallback === "string" ? (
+        <div className="p-4 text-center text-sm text-muted-foreground">{this.props.fallback}</div>
+      ) : (
+        this.props.fallback
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
         <h1 className="font-display font-bold text-xl text-foreground">Something went wrong</h1>

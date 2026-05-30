@@ -15,6 +15,7 @@ import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/l
 import CardSentimentWidget from "@/components/CardSentimentWidget";
 import AppHeader from "@/components/AppHeader";
 import PriceChart from "@/components/PriceChart";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -254,13 +255,15 @@ export default function SealedDetail() {
               </div>
             )}
 
-            {/* Price chart */}
+            {/* Price chart — scoped boundary (see CardDetail). */}
             {product && (
               <div className="rounded-xl border border-border bg-card p-4 sm:p-5 flex-1">
-                <PriceChart
-                  cardId={`sealed-${product.id}`}
-                  currentPrice={price}
-                />
+                <ErrorBoundary label="PriceChart(sealed)" fallback="Price history unavailable.">
+                  <PriceChart
+                    cardId={`sealed-${product.id}`}
+                    currentPrice={price}
+                  />
+                </ErrorBoundary>
               </div>
             )}
           </div>

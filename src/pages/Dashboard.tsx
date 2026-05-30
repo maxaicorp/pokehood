@@ -12,6 +12,7 @@ import ProfilePageEditor from "@/components/ProfilePageEditor";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import WishlistDashboard from "@/components/WishlistDashboard";
 import AppHeader from "@/components/AppHeader";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -289,7 +290,11 @@ export default function Dashboard() {
 
         {activeTab === "mypage" && <ProfilePageEditor />}
 
-        {activeTab === "analytics" && <AnalyticsDashboard collection={collection} />}
+        {activeTab === "analytics" && (
+          <ErrorBoundary label="AnalyticsDashboard" fallback="Analytics couldn't render. Try refreshing.">
+            <AnalyticsDashboard collection={collection} />
+          </ErrorBoundary>
+        )}
       </div>
 
       {/* Import Dialog */}
