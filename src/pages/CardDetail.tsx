@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getCardById,
-  getSets,
+  getMarketSets,
   getSetCards,
   getMarketPrice,
   enrichCardWithPricing,
@@ -69,8 +69,10 @@ export default function CardDetail() {
   const navigate = useNavigate();
 
   const { data: setsResult } = useQuery({
-    queryKey: ["all-sets"],
-    queryFn: getSets,
+    // Lightweight set list (84KB) — only needed to resolve a /sets/:slug URL
+    // to a set; virtual vintage sets aren't slug-routed so getMarketSets is enough.
+    queryKey: ["market-sets"],
+    queryFn: getMarketSets,
     staleTime: Infinity,
   });
   const setFromSlug = useMemo(() => {

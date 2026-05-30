@@ -327,6 +327,64 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
   return { cards, sets };
 }
 
+// Per-set card cache — set-scoped pages load one small file instead of the
+// 10MB monolith.
+const setCardCache = new Map<string, PokemonCard[]>();
+
+/** Derive the setId from a card id ("{setId}-{localId}"). Handles multi-dash
+ *  set ids like "tcgp-PB-11" → "tcgp-PB". */
+function setIdFromCardId(cardId: string): string {
+  const base = cardId.split("::")[0];
+  return base.split("-").slice(0, -1).join("-") || base;
+}
+
+/** Load a SINGLE set's cards from its per-set file
+ *  (public/data/cards/{setId}.json, ~50-200KB) instead of the 10MB
+ *  all-cards.json. Returns [] if the file is missing so callers can fall back
+ *  (e.g. buildCardFromDb for a brand-new card whose set file isn't built yet). */
+async function loadSetCardIndex(setId: string): Promise<PokemonCard[]> {
+  const cached = setCardCache.get(setId);
+  if (cached) return cached;
+  let res: Response;
+  try {
+    res = await fetch(`/data/cards/${encodeURIComponent(setId)}.json?v=${CARD_INDEX_VERSION}`, { cache: "force-cache" });
+  } catch {
+    return [];
+  }
+  if (!res.ok) return [];
+  const data = (await res.json()) as { set: CardIndexSet & { id: string }; cards: CardIndexCard[] };
+  const s = data.set;
+  const setMeta: PokemonCard["set"] = {
+    id: setId,
+    name: s?.name ?? setId,
+    series: s?.series ?? "Unknown",
+    printedTotal: s?.printedTotal ?? 0,
+    total: s?.total ?? 0,
+    releaseDate: s?.releaseDate ?? "2000-01-01",
+    images: { symbol: s?.symbol ?? "", logo: s?.logo ?? "" },
+  };
+  const seen = new Set<string>();
+  const cards: PokemonCard[] = [];
+  for (const c of data.cards ?? []) {
+    if (seen.has(c.id)) continue;
+    seen.add(c.id);
+    cards.push({
+      id: c.id,
+      name: c.name,
+      supertype: c.supertype ?? "Pokémon",
+      subtypes: c.subtypes,
+      types: c.types?.length ? c.types : undefined,
+      hp: c.hp ?? undefined,
+      rarity: c.rarity || undefined,
+      set: setMeta,
+      number: c.localId,
+      images: { small: c.imageSmall ?? "", large: c.imageLarge ?? "" },
+    });
+  }
+  setCardCache.set(setId, cards);
+  return cards;
+}
+
 function formatVariantName(variant: string): string {
   if (!variant) return "";
   switch (variant) {
@@ -807,11 +865,11 @@ export async function getSetCards(
   pageSize = 20,
 ): Promise<SearchResult> {
   await ensurePricingCacheSeeded();
-  const { cards } = await loadCardIndex();
   let baseSetId = setId;
   if (setId.includes("::")) baseSetId = setId.split("::")[0];
 
-  const filtered = cards.filter((c) => c.set.id === baseSetId);
+  // Per-set file — already scoped to this set, no full-index scan.
+  const filtered = await loadSetCardIndex(baseSetId);
   const expanded = expandVariants(filtered, new Set([setId]));
 
   expanded.sort((a, b) => a.number.padStart(5, "0").localeCompare(b.number.padStart(5, "0")));
@@ -958,12 +1016,13 @@ async function buildCardFromDb(id: string): Promise<PokemonCard | null> {
 
 export async function getCardById(id: string): Promise<PokemonCard | null> {
   await ensurePricingCacheSeeded();
-  const { cards } = await loadCardIndex();
+  // Load only the card's own set file (~100KB) instead of the 10MB monolith.
+  const cards = await loadSetCardIndex(setIdFromCardId(id));
   if (id.includes("::")) {
     const [baseId, variant] = id.split("::");
     const base = cards.find((c) => c.id === baseId);
     const priceData = pricingCache.get(id);
-    if (!base) return null;
+    if (!base) return await buildCardFromDb(id);
     const enriched: PokemonCard = { ...base, id, tcgplayer: priceData };
     if (variant) {
       const category = getVintageVariantCategory(variant);

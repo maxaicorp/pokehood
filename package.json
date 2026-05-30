@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "predev": "node scripts/sync-logos.mjs && node scripts/generate-sitemap.mjs",
+    "predev": "node scripts/sync-logos.mjs && node scripts/generate-sitemap.mjs && node scripts/split-cards-by-set.js",
     "dev": "vite",
-    "prebuild": "node scripts/sync-logos.mjs && node scripts/generate-sitemap.mjs",
+    "prebuild": "node scripts/sync-logos.mjs && node scripts/generate-sitemap.mjs && node scripts/split-cards-by-set.js",
     "build": "tsc --noEmit && vite build",
     "postbuild": "node scripts/prerender.mjs",
     "build:dev": "tsc --noEmit && vite build --mode development",

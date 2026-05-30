@@ -16,7 +16,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
-  getSets,
+  getMarketSets,
   getSetCards,
   getMarketPrice,
   formatPrice,
@@ -57,10 +57,11 @@ export default function SetDetail() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortKey, setSortKey] = useState<SortKey>("number-asc");
 
-  // Resolve slug → set object.
+  // Resolve slug → set object. Lightweight set list (84KB) instead of the
+  // 10MB monolith — this is an SEO landing page, first paint matters.
   const { data: setsResult } = useQuery({
-    queryKey: ["all-sets"],
-    queryFn: getSets,
+    queryKey: ["market-sets"],
+    queryFn: getMarketSets,
     staleTime: Infinity,
   });
   const set = useMemo<PokemonSet | undefined>(() => {
