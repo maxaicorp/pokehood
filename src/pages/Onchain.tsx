@@ -105,10 +105,8 @@ const TOP_SALES_WINDOWS: { value: TopSalesWindow; label: string }[] = [
 const TOP_SALES_MIN_USD = 10;
 const TOP_SALES_LIMIT = 50;
 
-// Marketplace sort options. Magic Eden's listings endpoint only supports
-// ascending order, so "Price: High to Low" is implemented by walking offsets
-// from the end of the listings array (we need the total count first, which
-// the edge function returns when ?include_total=1 is set).
+// Marketplace sort options. The get_onchain_listings RPC sorts both price
+// directions natively, so each option maps straight to a `sort` param.
 type MarketplaceSort = "price-asc" | "price-desc" | "recent";
 const MARKETPLACE_SORTS: { value: MarketplaceSort; label: string }[] = [
   { value: "price-asc", label: "Price: Low to High" },
@@ -297,16 +295,12 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
 
   // Marketplace — infinite scroll, 1000-listing cap, sortable.
   //
-  // The "Price: High to Low" sort is implemented by walking offsets from the
-  // end of the collection's listings array, because Magic Eden's listings
-  // endpoint only supports ascending sort. The first page fetched in this
-  // mode asks the edge function to attach the total listings count
-  // (?include_total=1), and subsequent pages compute their offsets from it.
-  // Each page's items are reversed before display so the user sees the
-  // most-expensive first.
-  //
-  // For "Price: Low to High" and "Recently Listed" the math is simpler —
-  // pageParam * 20 is the offset, items render as ME returns them.
+  // Reads from the onchain-listings edge fn, which is backed by the
+  // get_onchain_listings DB RPC and sorts BOTH price directions natively. So
+  // every sort is plain forward pagination: offset = page * BATCH, render the
+  // items as returned. (The old Magic-Eden-era "walk offsets from the end +
+  // include_total + reverse each page" gymnastics are gone — ME isn't on this
+  // path anymore.)
   const {
     data: listingsPages,
     isLoading: listingsLoading,
@@ -321,80 +315,36 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
     queryKey: ["onchain-listings", marketplaceSort],
     queryFn: async ({ pageParam }) => {
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onchain-listings`;
-      const sortField = marketplaceSort === "recent" ? "createdAt" : "listPrice";
-      const isReverse = marketplaceSort === "price-desc";
-      // For Price: High to Low we need the total count to compute offset from
-      // the end. We learn it on page 0 via ?include_total=1; subsequent pages
-      // pass it along in pageParam.total so we don't re-query stats.
-      let offset = pageParam.page * BATCH;
-      let total: number | null = pageParam.total;
-      if (isReverse && total != null) {
-        offset = Math.max(0, total - (pageParam.page + 1) * BATCH);
-      }
+      // The edge fn / get_onchain_listings RPC accept these sort tokens
+      // directly and sort natively in the DB — no offset-from-end math.
       const params = new URLSearchParams({
         collection: "collector_crypt",
-        offset: String(offset),
+        offset: String(pageParam * BATCH),
         limit: String(BATCH),
-        sort: sortField,
+        sort: marketplaceSort, // "price-asc" | "price-desc" | "recent"
       });
-      if (isReverse && total == null) params.set("include_total", "1");
       const res = await fetch(`${baseUrl}?${params}`, {
         headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
       });
       if (!res.ok) throw new Error(`Marketplace unavailable (${res.status})`);
-      const body = (await res.json()) as { items?: Listing[]; totalListings?: number | null };
+      const body = (await res.json()) as { items?: Listing[] };
 
-      // Client-side blocklist as defense-in-depth — even when the edge function
-      // hasn't deployed the latest filter, the page never shows these. Same list
-      // as supabase/functions/onchain-listings/index.ts NAME_BLOCKLIST.
-      // NOTE: keep items with no name. They may be legitimate listings whose
-      // metadata isn't indexed yet; rendering with just price+image is better
-      // than dropping them and blanking the page (which is exactly what
-      // happened when this filter was strict-required a name 2026-05-21).
-      const filterBlocked = (items: Listing[]) =>
-        items.filter((l) => {
-          const nm = (l.name ?? "").trim().toLowerCase();
-          return nm !== "moonbirds physical collectible";
-        });
-
-      if (isReverse && total == null && body.totalListings != null) {
-        total = body.totalListings;
-        // First reverse-sort fetch landed at offset 0 (default). Now that we
-        // know total, recompute and refetch from the actual end. Cheap — a
-        // single extra request and only on the first page of this sort.
-        if (offset === 0 && total > BATCH) {
-          const realOffset = Math.max(0, total - BATCH);
-          const reparams = new URLSearchParams({
-            collection: "collector_crypt",
-            offset: String(realOffset),
-            limit: String(BATCH),
-            sort: sortField,
-          });
-          const r2 = await fetch(`${baseUrl}?${reparams}`, {
-            headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-          });
-          if (r2.ok) {
-            const b2 = (await r2.json()) as { items?: Listing[] };
-            const items = filterBlocked((b2.items ?? []).slice().reverse());
-            return { items, total };
-          }
-        }
-      }
-      const raw = body.items ?? [];
-      const items = filterBlocked(isReverse ? raw.slice().reverse() : raw);
-      return { items, total };
+      // Thin client safety net only. Merch is filtered server-side by the RPC
+      // (is_merch_name); this catches the rare un-indexed straggler. Keep items
+      // with no name — they may be legit listings whose metadata isn't indexed
+      // yet, and dropping them blanked the page once (2026-05-21).
+      const items = (body.items ?? []).filter((l) => {
+        const nm = (l.name ?? "").trim().toLowerCase();
+        return nm !== "moonbirds physical collectible";
+      });
+      return { items };
     },
-    initialPageParam: { page: 0, total: null as number | null },
+    initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0);
       if (loaded >= ITEM_CAP) return undefined;
       if (lastPage.items.length < BATCH) return undefined;
-      // For reverse, also stop when we've hit offset 0.
-      if (marketplaceSort === "price-desc" && lastPage.total != null) {
-        const nextOffset = Math.max(0, lastPage.total - (allPages.length + 1) * BATCH);
-        if (nextOffset === 0 && allPages.length > 0) return undefined;
-      }
-      return { page: allPages.length, total: lastPage.total };
+      return allPages.length;
     },
     enabled: activeTab === "marketplace",
     refetchInterval: activeTab === "marketplace" ? 60_000 : false,

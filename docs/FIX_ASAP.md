@@ -23,8 +23,8 @@ Status: ✅ fixed · ⬜ to do.
 ## ⬜ To fix — prioritized
 1. ✅ 🔴 **Market Trending/Gainers/Losers + column sort** — DONE (full-set client sort; see fixed list above).
 2. ✅ 🟡 **Auth password reset** — DONE (forgot + set-new-password flow).
-3. ⬜ 🟡 **Onchain marketplace uses obsolete Magic-Eden offset-from-end sort** (`include_total`, reverse pages). The DB RPC sorts `price DESC` natively. **Fix:** drop the offset math, use the RPC sort. (Removes a bug-prone path + dead complexity.)
-4. ⬜ 🟡 **Merch/moonbirds blocklist lives in 3 places** (frontend `filterBlocked`, edge `NAME_BLOCKLIST`, SQL `is_merch_name`). **Fix:** single source (SQL helper); drop the dupes.
+3. ✅ 🟡 **Onchain marketplace obsolete ME offset-from-end sort** — DONE. Ripped out the `include_total` + walk-from-end + reverse-each-page + re-fetch gymnastics; the `onchain-listings` edge fn / `get_onchain_listings` RPC already sort `price-desc` natively, so it's now plain forward pagination (`offset = page * BATCH`, sort token passed through). `pageParam` collapsed from `{page,total}` to a number.
+4. ✅ 🟡 **Merch blocklist triplication** — reduced. The edge fn no longer carries its own `NAME_BLOCKLIST` (relies on the RPC's `is_merch_name`); frontend keeps only a thin one-line safety net for the rare un-indexed straggler. Effectively single-source (SQL) + intentional defense-in-depth one-liner.
 5. ⬜ 🟡 **Vote optimistic-update math duplicated** in Market + CardDetail (convoluted; possible off-by-one). **Fix:** extract one `applyVote()` helper.
 6. ⬜ 🟡 **Giveaway winner draw uses client `Math.random()`.** **Fix (only if prizes have real value):** server-side, auditable draw.
 7. ⬜ 🟡 **AdminFunctions probe counts secure 401/400 as "failures"** → "8 of 19 failed" noise. **Fix:** treat expected-auth-rejections as healthy.
