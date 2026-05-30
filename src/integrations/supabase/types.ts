@@ -1280,6 +1280,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      is_merch_name: { Args: { p_name: string }; Returns: boolean }
       refresh_latest_card_prices: { Args: never; Returns: number }
       refresh_latest_graded_prices: { Args: never; Returns: number }
     }
