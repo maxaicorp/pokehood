@@ -34,6 +34,16 @@ SELECT cron.schedule('ingest-cc-native-5m','*/5 * * * *',$$
     body:='{}'::jsonb); $$);
 ```
 
+## After cards catalog is populated → do Phase 4b (frontend)
+Once `sync-cards-catalog` has deployed + run and `SELECT count(*) FROM cards`
+returns ~23k:
+1. `getCardById` → try `buildCardFromDb` first for non-`::variant` ids (static index only as fallback / for variants).
+2. `getSetCards` → DB query on `cards WHERE set_id = ...`, then existing pricing/variant enrichment.
+3. `searchCardsAdvanced` → DB text + filter query instead of scanning `all-cards.json`.
+4. Then delete `public/data/all-cards.json` (9.9 MB) + the broken sync scripts.
+⚠️ Do NOT do this before the table is populated — `buildCardFromDb` falls back to
+`latest_card_prices`, which lacks rarity/types/hp, so card detail would lose metadata.
+
 ## Verify deployed code anytime
 Re-ping `snapshot-prices` (chunk, 1 page) and check for the `version` field — its
 presence = the new code is live. Absence = still old code (deploy didn't happen).
