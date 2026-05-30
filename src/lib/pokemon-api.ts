@@ -848,8 +848,10 @@ export function getLowPrice(card: PokemonCard): number | null {
   return priceData?.low ?? null;
 }
 
-export function formatPrice(price: number | null): string {
-  if (price === null) return "N/A";
+export function formatPrice(price: number | null | undefined): string {
+  // Guard null/undefined AND NaN/Infinity — a malformed price (e.g. Number("")
+  // → NaN) would otherwise render "$NaN" across the UI.
+  if (price == null || !Number.isFinite(price)) return "N/A";
   return `$${price.toFixed(2)}`;
 }
 

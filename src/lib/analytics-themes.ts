@@ -141,9 +141,19 @@ const STORAGE_KEY = "analytics-theme";
 
 export function getAnalyticsTheme(): AnalyticsThemeId {
   if (typeof window === "undefined") return "minimal-mono";
-  return (localStorage.getItem(STORAGE_KEY) as AnalyticsThemeId) || "minimal-mono";
+  // localStorage access throws in storage-disabled / locked-down browsers;
+  // never let a theme preference crash the analytics view.
+  try {
+    return (localStorage.getItem(STORAGE_KEY) as AnalyticsThemeId) || "minimal-mono";
+  } catch {
+    return "minimal-mono";
+  }
 }
 
 export function setAnalyticsTheme(id: AnalyticsThemeId) {
-  localStorage.setItem(STORAGE_KEY, id);
+  try {
+    localStorage.setItem(STORAGE_KEY, id);
+  } catch {
+    /* storage unavailable — preference just won't persist */
+  }
 }
