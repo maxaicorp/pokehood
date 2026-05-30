@@ -37,6 +37,17 @@ and inefficiency. Severity: 🔴 broken/bug · 🟡 inefficiency/polish · 🟢 
 
 ---
 
+## ✅ Market — `/`
+**Job:** homepage leaderboard — tabs (Top/Trending/Gainers/Losers/Most-Visited/Sealed), set filter, infinite scroll, live updates.
+
+- 🔴 **Trending/Gainers/Losers are wrong.** They filter+sort the *currently-loaded* cards client-side, but the list is paginated from the price-**desc** RPC (most expensive first). So they show "top movers among the priciest loaded cards," not the real top movers across all 22k. A $0.50 card up +400% never surfaces. **Fix: for these tabs, sort by Δ% across the full latest-prices set (`getLatestSnapshotPrices`, which has every card's deltas) — or add a delta-sorted RPC.**
+- 🟡 **Realtime subscription to *every* `price_snapshots` INSERT** — during a cron run (thousands of inserts) every connected browser gets the flood (debounced, but still streamed). Scaling cost. Consider a single "snapshot done" broadcast instead of per-row events.
+- 🟡 **Duplicated + convoluted vote math** — `handleVote` is copy-pasted in Market *and* CardDetail with the same hard-to-read optimistic-update arithmetic. Extract one helper; possible off-by-one on rapid toggles.
+- 🟡 `cardmarketAvgs` naming again (vestigial TCGdex label; now snapshot-fed).
+- 🟢 Infinite-scroll observer is careful (prefetch 800px, cap clamping, the "stuck at 10 rows" fix). Card images derived from `card_id` (good). Now off the 9.9 MB file (fixed earlier).
+
+**Top action:** fix the mover tabs (core feature, currently misleading).
+
 ## (Pending) — audited a few per pass
 Market, Explore, Onchain, Sets/SetDetail, Dashboard, Profile, Stats, Games,
 Giveaway, Auth, Admin, NotFound. Findings appended here as each is reviewed.
