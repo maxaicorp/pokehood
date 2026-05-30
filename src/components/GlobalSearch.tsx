@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, X, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { searchCardsAdvanced, PokemonCard } from "@/lib/pokemon-api";
+import { searchCardsAdvanced, searchCatalog, PokemonCard } from "@/lib/pokemon-api";
 import { cardPath } from "@/lib/slug";
 import CardImage from "@/components/CardImage";
 
@@ -14,6 +14,7 @@ interface SearchResult {
   image?: string;
   set?: { id: string; name: string };
   rarity?: string;
+  kind?: "card" | "sealed";
 }
 
 function mapCard(c: PokemonCard): SearchResult {
@@ -71,9 +72,25 @@ export default function GlobalSearch() {
     latestQuery.current = q;
     setLoading(true);
     try {
-      const { data } = await searchCardsAdvanced(q, {}, 1, 8);
+      // DB-backed, typo-tolerant, includes sealed products. Falls back to the
+      // client card index if the search_catalog RPC isn't deployed yet.
+      const db = await searchCatalog(q, 8);
+      let mapped: SearchResult[];
+      if (db) {
+        mapped = db.map((r) => ({
+          id: r.id,
+          name: r.name,
+          localId: "",
+          image: r.image || undefined,
+          set: { id: "", name: r.setName },
+          kind: r.kind,
+        }));
+      } else {
+        const { data } = await searchCardsAdvanced(q, {}, 1, 8);
+        mapped = data.map(mapCard);
+      }
       if (latestQuery.current !== q) return; // a newer query superseded this one
-      setResults(data.map(mapCard));
+      setResults(mapped);
       setSelectedIdx(0);
     } catch {
       if (latestQuery.current === q) setResults([]);
@@ -91,10 +108,15 @@ export default function GlobalSearch() {
     setOpen(false);
     setQuery("");
     setResults([]);
-    // Fall back to legacy /card/:id if set info is somehow missing — the
-    // legacy route still works and will 301 to the canonical URL once the
-    // card loads.
-    if (card.set?.name) {
+    if (card.kind === "sealed") {
+      navigate(`/sealed/${card.id}`);
+      return;
+    }
+    // Cards: use the canonical /sets/:slug/:cardSlug path when we have a set
+    // name AND a card number; otherwise the legacy /card/:id route (it 301s to
+    // the canonical URL once the card loads). DB results carry no number, so
+    // they take the legacy path.
+    if (card.set?.name && card.localId) {
       navigate(cardPath(card.set, { name: card.name, number: card.localId }));
     } else {
       navigate(`/card/${card.id}`);
@@ -285,14 +307,18 @@ function SearchResults({
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{card.name}</p>
             <p className="text-xs text-muted-foreground truncate">
-              {card.set?.name || card.id} · #{card.localId}
+              {card.set?.name || card.id}{card.localId ? ` · #${card.localId}` : ""}
             </p>
           </div>
-          {card.rarity && (
+          {card.kind === "sealed" ? (
+            <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
+              Sealed
+            </span>
+          ) : card.rarity ? (
             <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
               {card.rarity}
             </span>
-          )}
+          ) : null}
         </button>
       ))}
       <button

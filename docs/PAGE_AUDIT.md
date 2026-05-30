@@ -99,7 +99,7 @@ and inefficiency. Severity: 🔴 broken/bug · 🟡 inefficiency/polish · 🟢 
 - ✅ 🟡 **No relevance ranking** — `searchCardsAdvanced` default-sorted by card *number*, so "charizard" returned Charizards by number and token-via-set matches ranked equally with the obvious hit. Added a relevance mode (exact name → prefix → substring → token-only, tiebreak price then name) that triggers ONLY when no explicit `sortBy` is passed. GlobalSearch benefits; Explore (always passes sortBy) is unchanged.
 - ✅ 🟡 **Stale-response race** — rapid typing fired overlapping async searches; whichever resolved last won, so a slow earlier query could clobber newer results. Added a `latestQuery` ref guard (apply a response only if its query is still the latest).
 - ✅ 🟢 Swapped the result thumbnail to `CardImage` (placeholder fallback).
-- 🟡 Still client-side over the 9.9 MB index (Phase 4b territory — deferred). Token logic (numeric→number, alpha→name/set) is solid.
+- ✅ 🟢 **DB-backed + typo-tolerant + sealed** (2026-05-30) — new `search_catalog` pg_trgm RPC unifies cards (`latest_card_prices`) + sealed (`sealed_products`); matches misspellings via similarity(). GlobalSearch calls it with a graceful fallback to the client search if the RPC isn't deployed yet. Sealed results route to `/sealed/:id` with a "Sealed" tag. Migration is SQL-editor-runnable (no edge-fn deploy). Replaces the client-index scan once live.
 - 🟢 ⌘K, Escape, click-outside, arrow-key nav, debounce (150ms), `<2` char guard, mobile full-screen sheet — all correct.
 
 ## Coverage map — what's audited vs still open (added 2026-05-30)

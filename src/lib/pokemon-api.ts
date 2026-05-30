@@ -772,6 +772,35 @@ export async function searchCardsAdvanced(
   return paginate(sorted, page, pageSize);
 }
 
+// Unified catalog search result (cards + sealed) from the search_catalog RPC.
+export interface CatalogSearchResult {
+  id: string;
+  name: string;
+  setName: string;
+  kind: "card" | "sealed";
+  image: string;
+}
+
+/**
+ * DB-backed, typo-tolerant search across single cards AND sealed products via
+ * the search_catalog Postgres RPC (pg_trgm). Returns null if the RPC isn't
+ * present yet (migration not run) so callers can fall back to the client
+ * search — that keeps the box working before and after the migration.
+ */
+export async function searchCatalog(query: string, limit = 8): Promise<CatalogSearchResult[] | null> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const { data, error } = await (supabase.rpc as any)("search_catalog", { p_query: q, p_limit: limit });
+  if (error || !Array.isArray(data)) return null; // RPC missing/failed → fall back
+  return data.map((r: any) => ({
+    id: r.id,
+    name: r.name,
+    setName: r.set_name ?? "",
+    kind: r.kind === "sealed" ? "sealed" : "card",
+    image: r.image ?? "",
+  }));
+}
+
 export async function getSetCards(
   setId: string,
   page = 1,
