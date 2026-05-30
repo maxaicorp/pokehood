@@ -8,10 +8,11 @@ Status: ✅ fixed · ⬜ to do.
 - ✅ 🔴 **Portfolio value frozen at add-time prices** (Dashboard + public Profile) → `repriceLive()` against `latest_card_prices`.
 - ✅ 🔴 **Sealed tab blank 1d/7d deltas** → read `latest_card_prices` directly (earlier).
 - ✅ 🔴 **>1s blank pages** → removed `cache:"no-store"`; Market/Explore off the 9.9 MB file.
+- ✅ 🟡 **No password reset** → added "Forgot password?" + PASSWORD_RECOVERY set-new-password flow.
 
 ## ⬜ To fix — prioritized
 1. ⬜ 🔴 **Market Trending/Gainers/Losers are inaccurate.** They filter+sort only the *loaded* (price-desc) page, so a cheap card up +400% never appears. **Fix:** compute movers from the full latest-prices set (`getLatestSnapshotPrices`, which has every card's deltas), sort by Δ%, take top N — same lesson SetDetail already applies.
-2. ⬜ 🟡 **Auth has no password reset.** Email/password users are locked out if they forget. **Fix:** "Forgot password?" link → `supabase.auth.resetPasswordForEmail` + a reset page.
+2. ✅ 🟡 **Auth password reset** — DONE (forgot + set-new-password flow).
 3. ⬜ 🟡 **Onchain marketplace uses obsolete Magic-Eden offset-from-end sort** (`include_total`, reverse pages). The DB RPC sorts `price DESC` natively. **Fix:** drop the offset math, use the RPC sort. (Removes a bug-prone path + dead complexity.)
 4. ⬜ 🟡 **Merch/moonbirds blocklist lives in 3 places** (frontend `filterBlocked`, edge `NAME_BLOCKLIST`, SQL `is_merch_name`). **Fix:** single source (SQL helper); drop the dupes.
 5. ⬜ 🟡 **Vote optimistic-update math duplicated** in Market + CardDetail (convoluted; possible off-by-one). **Fix:** extract one `applyVote()` helper.
