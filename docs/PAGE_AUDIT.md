@@ -48,6 +48,16 @@ and inefficiency. Severity: 🔴 broken/bug · 🟡 inefficiency/polish · 🟢 
 
 **Top action:** fix the mover tabs (core feature, currently misleading).
 
+## ✅ Explore — `/explore`
+**Job:** searchable/filterable card browser (rarity, type, set, product type, sort), two-phase render.
+
+- 🟡 **New-set cards aren't searchable/filterable here** — `searchCardsAdvanced` runs over the static `all-cards.json`, so cards not yet in the index don't appear in Explore search/filter even though they're priced. Same catalog-staleness root cause as CardDetail. **Phase 4 fixes.**
+- 🟡 **Client-side search over ~23k cards + the 9.9 MB load** (force-cached now). Works, but heavy; a DB-backed search would be lighter and always-fresh.
+- 🟡 Dual query paths (paginated when no set, `useInfiniteQuery` when a set is selected) — works but adds complexity; the `pricesReady` flag in the query key triggers a refetch when prices land (intentional double-render).
+- 🟢 Filters/sort/product-type gating (TCG-Pocket hidden unless chosen) are correct.
+
+**Root cause = static catalog (shared with CardDetail). Phase 4 resolves the bulk.**
+
 ## (Pending) — audited a few per pass
 Market, Explore, Onchain, Sets/SetDetail, Dashboard, Profile, Stats, Games,
 Giveaway, Auth, Admin, NotFound. Findings appended here as each is reviewed.
