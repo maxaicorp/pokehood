@@ -61,6 +61,18 @@ export async function resolveImport(rows: CsvRow[]): Promise<ImportResult> {
   const found: { row: CsvRow; card: PokemonCard }[] = [];
   const notFound: CsvRow[] = [];
 
+  // Collapse duplicate lines within the file before resolving. Two identical
+  // "Charizard,Base,4" rows should become one row with merged quantity, not
+  // two separate collection adds. Key on name|set|number.
+  const merged = new Map<string, CsvRow>();
+  for (const r of rows) {
+    const key = `${r.name.toLowerCase()}|${(r.setName ?? "").toLowerCase()}|${r.number ?? ""}`;
+    const existing = merged.get(key);
+    if (existing) existing.quantity = (existing.quantity ?? 1) + (r.quantity ?? 1);
+    else merged.set(key, { ...r });
+  }
+  rows = [...merged.values()];
+
   // Batch by unique names to reduce API calls
   const uniqueNames = [...new Set(rows.map(r => r.name))];
 

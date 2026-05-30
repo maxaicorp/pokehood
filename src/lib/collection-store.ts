@@ -114,20 +114,25 @@ export async function addToCollection(
   // Enrich card with live pricing before storing
   card = await enrichCardWithPricing(card);
 
-  const { data: existing, error: lookupError } = await supabase
+  // Fetch with limit(1) rather than maybeSingle(): if a prior race left two
+  // rows for this (user, card, condition), maybeSingle() throws "multiple rows"
+  // FOREVER, permanently blocking any further add of that card. Taking the
+  // first row instead lets the user keep using the app; the
+  // collection_cards_uniq index (pending migration) prevents new duplicates.
+  const { data: existingRows, error: lookupError } = await supabase
     .from("collection_cards")
     .select("*")
     .eq("user_id", userId)
     .eq("tcg_api_id", card.id)
     .eq("condition", condition)
-    .maybeSingle();
+    .order("added_at", { ascending: true })
+    .limit(1);
 
-  // If lookup errored (e.g. multiple rows exist due to prior race condition),
-  // bail out rather than inserting another duplicate.
   if (lookupError) {
     console.error("Failed to check existing card:", lookupError);
     return null;
   }
+  const existing = existingRows?.[0];
 
   if (existing) {
     const { data, error } = await supabase
@@ -179,18 +184,20 @@ export async function addSealedToCollection(
   userId: string,
   quantity = 1,
 ): Promise<CollectionCard | null> {
-  const { data: existing, error: lookupError } = await supabase
+  const { data: existingRows, error: lookupError } = await supabase
     .from("collection_cards")
     .select("*")
     .eq("user_id", userId)
     .eq("tcg_api_id", product.id)
     .eq("product_type", "sealed")
-    .maybeSingle();
+    .order("added_at", { ascending: true })
+    .limit(1);
 
   if (lookupError) {
     console.error("Failed to check existing sealed product:", lookupError);
     return null;
   }
+  const existing = existingRows?.[0];
 
   if (existing) {
     const { data, error } = await supabase

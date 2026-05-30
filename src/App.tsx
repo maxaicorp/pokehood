@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import BackgroundLayer from "@/components/BackgroundLayer";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Lazy-loaded pages for code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -54,6 +55,7 @@ const App = () => (
           <AuthProvider>
             <BackgroundLayer />
             <main className="relative z-[1]">
+              <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Market />} />
@@ -92,6 +94,7 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>
+              </ErrorBoundary>
             </main>
           </AuthProvider>
         </BrowserRouter>
