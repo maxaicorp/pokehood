@@ -67,9 +67,16 @@ export default function Profile() {
   // Track profile view on mount (once per session)
   useEffect(() => {
     if (!profile?.user_id) return;
-    const key = `viewed_${profile.user_id}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
+    // Once-per-day cap (localStorage, date-keyed). sessionStorage counted a new
+    // view for every fresh tab, inflating analytics for shared profiles.
+    const today = new Date().toISOString().split("T")[0];
+    const key = `viewed_${profile.user_id}_${today}`;
+    try {
+      if (localStorage.getItem(key)) return;
+      localStorage.setItem(key, "1");
+    } catch {
+      // localStorage unavailable (private mode etc.) — just record the view.
+    }
     // Fire-and-forget insert
     supabase.from("profile_views").insert({ profile_user_id: profile.user_id })
       .then(({ error }) => { if (error) console.warn("Failed to record profile view:", error.message); });

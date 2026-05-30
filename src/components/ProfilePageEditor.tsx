@@ -137,7 +137,15 @@ export default function ProfilePageEditor() {
     },
     onError: (err: any) => {
       setSaveStatus("idle");
-      toast.error(err.message || "Failed to update profile");
+      // Slug uniqueness is checked client-side before save, but two users can
+      // pass that check within seconds; the DB unique index is the real guard
+      // and surfaces 23505. Translate it instead of showing a raw PG error.
+      if (err?.code === "23505") {
+        setSlugStatus("taken");
+        toast.error("That profile URL was just taken — try another.");
+      } else {
+        toast.error(err.message || "Failed to update profile");
+      }
     },
   });
 
