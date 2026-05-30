@@ -58,6 +58,16 @@ and inefficiency. Severity: 🔴 broken/bug · 🟡 inefficiency/polish · 🟢 
 
 **Root cause = static catalog (shared with CardDetail). Phase 4 resolves the bulk.**
 
+## ✅ Onchain — `/onchain`, `/onchain/:tab`
+**Job:** Collector Crypt on-chain — Activity feed, Marketplace browse, Top Sales.
+
+- 🟡 **Obsolete ME-era sort logic.** Marketplace "Price: High→Low" walks offsets *from the end of the array* + `include_total` because *Magic Eden's* listings API was ascending-only. But reads now come from `get_onchain_listings` (DB RPC), which sorts `price DESC` natively. So this offset-from-end math is **dead complexity** + bug-prone (off-by-one on the boundary). **Simplify to the RPC's native sort.**
+- 🟡 **Blocklist triplicated.** The merch/moonbirds filter exists in **3 places**: frontend `filterBlocked`, the `onchain-listings` edge fn `NAME_BLOCKLIST`, and SQL `is_merch_name()`. Drift risk. **Consolidate to the SQL helper.**
+- 🟡 Marketplace shows **391** (ME-sourced CC) now → ~52k once `ingest-cc-marketplace` deploys. The "X listed" counter we added will track it.
+- 🟢 Activity/Top-Sales read from DB (cron-backed), merch-filtered at the RPC, USD-normalized. Solid.
+
+**Theme: leftover Magic-Eden-era scaffolding after the DB rewrite — prune it.**
+
 ## (Pending) — audited a few per pass
 Market, Explore, Onchain, Sets/SetDetail, Dashboard, Profile, Stats, Games,
 Giveaway, Auth, Admin, NotFound. Findings appended here as each is reviewed.
