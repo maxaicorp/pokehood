@@ -48,6 +48,29 @@ function rowToCard(row: any): CollectionCard {
   };
 }
 
+/** Override each card's stored marketPrice with the LIVE price from
+ *  latest_card_prices, so portfolio totals reflect the current market instead of
+ *  the price captured at add-time. Queries only the collection's own card ids
+ *  (chunked to stay under PostgREST URL limits). manualPrice still wins downstream. */
+async function repriceLive(cards: CollectionCard[]): Promise<CollectionCard[]> {
+  const ids = [...new Set(cards.map((c) => c.tcgApiId).filter(Boolean))] as string[];
+  if (ids.length === 0) return cards;
+  const priceMap = new Map<string, number>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data } = await (supabase.from as any)("latest_card_prices")
+      .select("card_id, price")
+      .in("card_id", ids.slice(i, i + 200));
+    for (const p of (data ?? []) as Array<{ card_id: string; price: number }>) {
+      if (p.price != null) priceMap.set(p.card_id, Number(p.price));
+    }
+  }
+  for (const c of cards) {
+    const live = priceMap.get(c.tcgApiId);
+    if (live != null) c.marketPrice = live;
+  }
+  return cards;
+}
+
 /** Fetch the authenticated user's collection */
 export async function getCollection(): Promise<CollectionCard[]> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -63,7 +86,7 @@ export async function getCollection(): Promise<CollectionCard[]> {
     console.error("Failed to fetch collection:", error);
     return [];
   }
-  return (data || []).map(rowToCard);
+  return repriceLive((data || []).map(rowToCard));
 }
 
 /** Fetch a collection for a specific user (public profile view) */
@@ -78,7 +101,7 @@ export async function getCollectionByUserId(userId: string): Promise<CollectionC
     console.error("Failed to fetch user collection:", error);
     return [];
   }
-  return (data || []).map(rowToCard);
+  return repriceLive((data || []).map(rowToCard));
 }
 
 /** Add a card (or increment quantity if same card + condition exists) */
