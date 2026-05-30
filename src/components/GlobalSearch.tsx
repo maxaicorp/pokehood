@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { searchCardsAdvanced, PokemonCard } from "@/lib/pokemon-api";
 import { cardPath } from "@/lib/slug";
+import CardImage from "@/components/CardImage";
 
 interface SearchResult {
   id: string;
@@ -36,6 +37,11 @@ export default function GlobalSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  // Guards against out-of-order async responses: rapid typing fires several
+  // searches and whichever RESOLVES last would otherwise win, so a slower
+  // earlier query could clobber newer results. We only apply a response if its
+  // query is still the latest one issued.
+  const latestQuery = useRef("");
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -61,16 +67,18 @@ export default function GlobalSearch() {
   }, []);
 
   const searchCards = async (q: string) => {
-    if (q.length < 2) { setResults([]); return; }
+    if (q.length < 2) { setResults([]); latestQuery.current = q; return; }
+    latestQuery.current = q;
     setLoading(true);
     try {
       const { data } = await searchCardsAdvanced(q, {}, 1, 8);
+      if (latestQuery.current !== q) return; // a newer query superseded this one
       setResults(data.map(mapCard));
       setSelectedIdx(0);
     } catch {
-      setResults([]);
+      if (latestQuery.current === q) setResults([]);
     }
-    setLoading(false);
+    if (latestQuery.current === q) setLoading(false);
   };
 
   const handleChange = (val: string) => {
@@ -268,7 +276,7 @@ function SearchResults({
           )}
         >
           {card.image ? (
-            <img src={card.image} alt="" className="w-10 h-14 object-contain rounded" />
+            <CardImage src={card.image} alt="" className="w-10 h-14 object-contain rounded" />
           ) : (
             <div className="w-10 h-14 rounded bg-muted flex items-center justify-center">
               <Search className="w-4 h-4 text-muted-foreground" />

@@ -94,6 +94,14 @@ and inefficiency. Severity: 🔴 broken/bug · 🟡 inefficiency/polish · 🟢 
 
 ---
 
+## ✅ Global Search — `GlobalSearch` + `searchCardsAdvanced` (audited 2026-05-30)
+**Job:** ⌘K / header autocomplete (8 results) + "view all" → Explore.
+- ✅ 🟡 **No relevance ranking** — `searchCardsAdvanced` default-sorted by card *number*, so "charizard" returned Charizards by number and token-via-set matches ranked equally with the obvious hit. Added a relevance mode (exact name → prefix → substring → token-only, tiebreak price then name) that triggers ONLY when no explicit `sortBy` is passed. GlobalSearch benefits; Explore (always passes sortBy) is unchanged.
+- ✅ 🟡 **Stale-response race** — rapid typing fired overlapping async searches; whichever resolved last won, so a slow earlier query could clobber newer results. Added a `latestQuery` ref guard (apply a response only if its query is still the latest).
+- ✅ 🟢 Swapped the result thumbnail to `CardImage` (placeholder fallback).
+- 🟡 Still client-side over the 9.9 MB index (Phase 4b territory — deferred). Token logic (numeric→number, alpha→name/set) is solid.
+- 🟢 ⌘K, Escape, click-outside, arrow-key nav, debounce (150ms), `<2` char guard, mobile full-screen sheet — all correct.
+
 ## Coverage map — what's audited vs still open (added 2026-05-30)
 
 Beyond the per-page passes, these surfaces exist and are NOT yet deep-audited.

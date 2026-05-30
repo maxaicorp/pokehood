@@ -722,13 +722,38 @@ export async function searchCardsAdvanced(
 
   // Expand variants
   const expanded = expandVariants(filtered, filters.setId ? new Set([filters.setId]) : undefined);
+  const sorted = [...expanded];
 
-  // Sort
+  // Relevance mode: when there's a query and the caller didn't request an
+  // explicit sort (e.g. the global search box passes no sortBy), rank by how
+  // well the NAME matches so the obvious hit surfaces first. Previously
+  // "charizard" came back sorted by card number, burying Charizard under
+  // unrelated cards that merely shared a token in their set name. Explore
+  // always passes a sortBy, so its dropdown still wins.
+  if (query && filters.sortBy == null) {
+    const q = query.toLowerCase().trim();
+    const relevance = (c: PokemonCard): number => {
+      const n = c.name.toLowerCase();
+      if (n === q) return 0;          // exact name
+      if (n.startsWith(q)) return 1;  // name prefix
+      if (n.includes(q)) return 2;    // name substring
+      return 3;                        // matched only via set / number token
+    };
+    sorted.sort((a, b) => {
+      const ra = relevance(a), rb = relevance(b);
+      if (ra !== rb) return ra - rb;
+      // Tiebreak: more valuable cards first (the notable printings), then name.
+      const priceDelta = (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0);
+      if (priceDelta !== 0) return priceDelta;
+      return a.name.localeCompare(b.name);
+    });
+    return paginate(sorted, page, pageSize);
+  }
+
+  // Explicit sort (Explore dropdown, etc.)
   const sortBy = filters.sortBy || "number";
   const desc = sortBy.startsWith("-");
   const field = sortBy.replace(/^-/, "");
-
-  const sorted = [...expanded];
   sorted.sort((a, b) => {
     let cmp: number;
     if (field === "price") {
