@@ -68,6 +68,19 @@ and inefficiency. Severity: 🔴 broken/bug · 🟡 inefficiency/polish · 🟢 
 
 **Theme: leftover Magic-Eden-era scaffolding after the DB rewrite — prune it.**
 
+## ✅ SetDetail — `/sets/:slug`
+**Job:** SEO landing page listing every card in a set (JSON-LD ItemList).
+- 🟡 9.9 MB via `getSets` + `getSetCards` (Phase 4b makes these DB-first).
+- 🟢 **Sort is correct** — loads *all* set cards in one call, so price/number sort covers the whole set. *Note:* this is the exact fix Market's mover tabs still lack — a consistency gap (they learned the lesson here but not there).
+
+## ✅ Dashboard — `/dashboard`
+**Job:** portfolio (collection value, by-set, analytics), wishlists, profile editor, CSV import.
+- 🔴 **Portfolio total value was STALE → FIXED.** `getCollection`/`getCollectionByUserId` returned each card's `market_price` as stored *at add-time* and never re-priced, so the headline value (and public profile value) never moved with the market. Now `repriceLive()` overrides with `latest_card_prices` on load (queries only the user's own card ids, chunked; `manualPrice` still wins).
+- 🟢 Pro card-limit gating, deep-link tabs (`?tab=`), CSV import are sound.
+
+## ✅ SealedDetail — `/sealed/:id` (light)
+- Reads from `sealed-store` (deltas fixed earlier) + the `sealed_products` table (DB catalog, done). Should be solid once functions deploy. Deep-audit later if a specific issue surfaces.
+
 ## (Pending) — audited a few per pass
 Market, Explore, Onchain, Sets/SetDetail, Dashboard, Profile, Stats, Games,
 Giveaway, Auth, Admin, NotFound. Findings appended here as each is reviewed.
