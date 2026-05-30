@@ -95,6 +95,11 @@ export interface CardStatRow {
   search_hit_count: number;
   collection_add_count: number;
   wishlist_add_count: number;
+  // Optional live pricing, hydrated client-side (e.g. Market Most-Visited tab)
+  // from latest_card_prices. Not part of the card_stats table.
+  price?: number | null;
+  price1d?: number | null;
+  price7d?: number | null;
 }
 
 // The health-check edge function probes increment_card_stat with a sentinel

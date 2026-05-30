@@ -20,6 +20,11 @@ Status: ✅ fixed · ⬜ to do.
 - ✅ 🟠 **addToCollection duplicate-row permanent break** (mega-audit H1) → a prior race could leave 2 rows for one (user,card,condition), after which `maybeSingle()` threw "multiple rows" forever, blocking all future adds of that card. Frontend now uses `limit(1)` (tolerates dupes); migration `20260530120000_collection_cards_unique.sql` dedups + adds the unique index (deploy-gated).
 - ✅ 🔴 **Market mover tabs + column-header sort only re-ordered the loaded page** → Market now loads the full filtered set up front (capped at 500, same top-N the header total uses) via `getLatestSnapshotAll`; first paint keeps a tiny page for speed, then Phase B swaps in the full set. Column sorts (Price/24h/7d) and Trending/Gainers/Losers now sort over every card in the filter; infinite scroll is pure client-side reveal (no more per-page network sort). User-reported symptom ("arrow flips but nothing sorts") fixed.
 
+## ✅ Requested additions (2026-05-30)
+- ✅ **Most-Visited tab** now shows Price + 24h + 7d (hydrated from `latest_card_prices` via `getLatestPricesByIds`; 30d omitted to keep the row readable, data exists if wanted). Hidden on mobile, views still show there.
+- ✅ **Games page** — added 4 "Soon" roadmap tiles (Higher or Lower, Guess the Set, Price Sprint, TCG Trivia) so the grid isn't sparse.
+- ✅ **Giveaway hidden from public** — removed both nav links, `/giveaway` redirects to `/` (`/giveaway/confirm` kept live for in-flight emails). Admin still manages at `/admin/giveaways`.
+
 ## ⬜ To fix — prioritized
 1. ✅ 🔴 **Market Trending/Gainers/Losers + column sort** — DONE (full-set client sort; see fixed list above).
 2. ✅ 🟡 **Auth password reset** — DONE (forgot + set-new-password flow).

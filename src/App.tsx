@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import BackgroundLayer from "@/components/BackgroundLayer";
@@ -26,7 +26,6 @@ const Market = lazy(() => import("./pages/Market"));
 const Sets = lazy(() => import("./pages/Sets"));
 const SetDetail = lazy(() => import("./pages/SetDetail"));
 const Onchain = lazy(() => import("./pages/Onchain"));
-const Giveaway = lazy(() => import("./pages/Giveaway"));
 const GiveawayConfirm = lazy(() => import("./pages/GiveawayConfirm"));
 const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
 const AdminGiveaways = lazy(() => import("./pages/admin/AdminGiveaways"));
@@ -81,7 +80,11 @@ const App = () => (
                   <Route path="/games" element={<Games />} />
                   <Route path="/games/card-match" element={<CardMatch />} />
                   <Route path="/stats" element={<Stats />} />
-                  <Route path="/giveaway" element={<Giveaway />} />
+                  {/* Public giveaway page hidden for now (system needs review).
+                      Direct visits redirect home; /confirm stays live so any
+                      already-sent double-opt-in email links still work. Admins
+                      manage giveaways at /admin/giveaways. */}
+                  <Route path="/giveaway" element={<Navigate to="/" replace />} />
                   <Route path="/giveaway/confirm" element={<GiveawayConfirm />} />
                   <Route path="/admin" element={<AdminOverview />} />
                   <Route path="/admin/giveaways" element={<AdminGiveaways />} />

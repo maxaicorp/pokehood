@@ -46,7 +46,7 @@ import {
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import { cardPath, cardPathFromApiId } from "@/lib/slug";
-import { formatPct, getLatestSnapshotPage, getLatestSnapshotAll } from "@/lib/price-snapshots";
+import { formatPct, getLatestSnapshotPage, getLatestSnapshotAll, getLatestPricesByIds } from "@/lib/price-snapshots";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
 import { getSetSentiment, castVote, applyVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import AppHeader from "@/components/AppHeader";
@@ -146,7 +146,16 @@ export default function Market() {
   useEffect(() => {
     if (activeTab !== "most-visited") return;
     setMostVisitedLoading(true);
-    getMostViewed(10).then((rows) => {
+    getMostViewed(10).then(async (rows) => {
+      // Hydrate with live price + 1d/7d deltas (same data the other tabs show)
+      // so Most-Visited isn't a bare view-count list. Targeted by-id fetch.
+      try {
+        const priceMap = await getLatestPricesByIds(rows.map((r) => r.tcg_api_id));
+        rows = rows.map((r) => {
+          const p = priceMap.get(r.tcg_api_id);
+          return p ? { ...r, price: p.price, price1d: p.price1d, price7d: p.price7d } : r;
+        });
+      } catch { /* leave rows unpriced — the columns just render "—" */ }
       setMostVisitedCards(rows);
       setMostVisitedLoading(false);
     });
@@ -643,12 +652,14 @@ export default function Market() {
               <div>
                 {/* Header row — matches the other data tables' top bar.
                     Same grid template as the rows below so columns line up. */}
-                <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
+                <div className="hidden sm:grid grid-cols-[40px_1fr_140px_90px_70px_70px_80px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
                   <span>#</span>
                   <span>Card</span>
                   <span>Set</span>
-                  <span className="text-right">Total Views</span>
-                  <span />
+                  <span className="text-right">Price</span>
+                  <span className="text-right">24h</span>
+                  <span className="text-right">7d</span>
+                  <span className="text-right">Views</span>
                 </div>
                 {mostVisitedCards.map((stat, i) => (
                   <motion.div
@@ -656,7 +667,7 @@ export default function Market() {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                    className="grid grid-cols-[24px_1fr_auto] sm:grid-cols-[40px_1fr_160px_100px_44px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors"
+                    className="grid grid-cols-[24px_1fr_auto] sm:grid-cols-[40px_1fr_140px_90px_70px_70px_80px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors"
                     onClick={() => navigate(cardPathFromApiId(stat.tcg_api_id, stat.name, stat.set_name))}
                   >
                     <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
@@ -670,11 +681,28 @@ export default function Market() {
                       </div>
                     </div>
                     <p className="hidden sm:block text-sm text-muted-foreground truncate">{stat.set_name}</p>
+                    {/* Price + 24h/7d — hydrated from latest_card_prices. Hidden on
+                        mobile to keep the row readable (views still show there). */}
+                    <span className="hidden sm:block text-right text-sm font-medium text-foreground tabular-nums">
+                      {stat.price != null ? formatPrice(stat.price) : "—"}
+                    </span>
+                    {(() => {
+                      const d1 = stat.price != null && stat.price1d != null && stat.price1d !== 0
+                        ? ((stat.price - stat.price1d) / stat.price1d) * 100 : null;
+                      const d7 = stat.price != null && stat.price7d != null && stat.price7d !== 0
+                        ? ((stat.price - stat.price7d) / stat.price7d) * 100 : null;
+                      const p1 = formatPct(d1), p7 = formatPct(d7);
+                      return (
+                        <>
+                          <span className={`hidden sm:block text-right text-xs font-semibold tabular-nums ${p1.className}`}>{p1.text}</span>
+                          <span className={`hidden sm:block text-right text-xs font-semibold tabular-nums ${p7.className}`}>{p7.text}</span>
+                        </>
+                      );
+                    })()}
                     <div className="flex items-center justify-end gap-1.5">
                       <Eye className="w-3.5 h-3.5 text-muted-foreground" />
                       <span className="text-sm font-medium text-foreground tabular-nums">{stat.view_count}</span>
                     </div>
-                    <span />
                   </motion.div>
                 ))}
               </div>

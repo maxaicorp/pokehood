@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, TrendingUp, Layers, Link2, Gamepad2, BarChart3, Gift, Shield, Heart } from "lucide-react";
+import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, TrendingUp, Layers, Link2, Gamepad2, BarChart3, Shield, Heart } from "lucide-react";
 import GlobalSearch from "@/components/GlobalSearch";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -92,7 +92,8 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Sets</Link>
               <Link to="/onchain/activity" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Onchain</Link>
               <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Games</Link>
-              <Link to="/giveaway" className="px-4 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Giveaway</Link>
+              {/* Giveaway hidden from public nav for now — system needs more
+                  review before exposure. Admins still manage it at /admin/giveaways. */}
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -139,11 +140,6 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                   <DropdownMenuItem asChild>
                     <Link to="/stats">
                       <BarChart3 className="w-4 h-4 mr-2" /> My Stats
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/giveaway">
-                      <Gift className="w-4 h-4 mr-2" /> Giveaway
                     </Link>
                   </DropdownMenuItem>
                   {isAdmin && (

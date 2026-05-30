@@ -1,7 +1,15 @@
 import { Link } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
-import { Gamepad2, Trophy } from "lucide-react";
+import { Gamepad2, ArrowUpDown, Layers, Timer, Brain } from "lucide-react";
 import SEO from "@/components/SEO";
+
+// Roadmap tiles so the Games grid reads as "more coming" instead of empty.
+const COMING_SOON = [
+  { icon: ArrowUpDown, name: "Higher or Lower", tag: "Price guessing" },
+  { icon: Layers, name: "Guess the Set", tag: "Recognition" },
+  { icon: Timer, name: "Price Sprint", tag: "Speed · Skill" },
+  { icon: Brain, name: "TCG Trivia", tag: "Knowledge" },
+];
 
 export default function Games() {
   return (
@@ -20,7 +28,7 @@ export default function Games() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Link
             to="/games/card-match"
             className="group rounded-xl border border-border bg-card p-5 hover:border-primary/40 transition-colors"
@@ -39,12 +47,26 @@ export default function Games() {
             </p>
           </Link>
 
-          <div className="rounded-xl border border-dashed border-border/60 bg-muted/30 p-5 flex items-center justify-center text-center">
-            <div>
-              <Trophy className="w-6 h-6 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">More games coming soon</p>
+          {COMING_SOON.map((game) => (
+            <div
+              key={game.name}
+              className="rounded-xl border border-dashed border-border/60 bg-muted/20 p-5 relative"
+            >
+              <span className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70 bg-muted/60 px-2 py-0.5 rounded-full">
+                Soon
+              </span>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-muted/60 text-muted-foreground/60 flex items-center justify-center">
+                  <game.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="font-display font-semibold text-muted-foreground">{game.name}</h2>
+                  <p className="text-xs text-muted-foreground/70">{game.tag}</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground/70">Coming soon.</p>
             </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>

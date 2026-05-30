@@ -247,6 +247,23 @@ export async function getLatestSnapshotAll({
   return getLatestSnapshotPage({ setIds, limit, offset: 0, sortDir: "desc" });
 }
 
+/** Fetch latest price + 1d/7d/30d for a specific set of card ids (chunked to
+ *  stay under PostgREST URL limits). Used to hydrate small lists like
+ *  Most-Visited without pulling the whole latest-prices set. */
+export async function getLatestPricesByIds(ids: string[]): Promise<Map<string, LatestPrice>> {
+  const map = new Map<string, LatestPrice>();
+  const unique = [...new Set(ids)].filter(Boolean);
+  for (let i = 0; i < unique.length; i += 200) {
+    const { data } = await (supabase.from as any)("latest_card_prices")
+      .select("card_id, card_name, set_name, price, price_1d, price_7d, price_30d")
+      .in("card_id", unique.slice(i, i + 200));
+    for (const row of (data ?? []) as LatestRow[]) {
+      map.set(row.card_id, rowToLatestPrice(row));
+    }
+  }
+  return map;
+}
+
 export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice>> {
   const map = new Map<string, LatestPrice>();
   const rows = await getAllLatestRows();
