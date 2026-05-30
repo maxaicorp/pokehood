@@ -25,9 +25,9 @@ Status: ✅ fixed · ⬜ to do.
 2. ✅ 🟡 **Auth password reset** — DONE (forgot + set-new-password flow).
 3. ✅ 🟡 **Onchain marketplace obsolete ME offset-from-end sort** — DONE. Ripped out the `include_total` + walk-from-end + reverse-each-page + re-fetch gymnastics; the `onchain-listings` edge fn / `get_onchain_listings` RPC already sort `price-desc` natively, so it's now plain forward pagination (`offset = page * BATCH`, sort token passed through). `pageParam` collapsed from `{page,total}` to a number.
 4. ✅ 🟡 **Merch blocklist triplication** — reduced. The edge fn no longer carries its own `NAME_BLOCKLIST` (relies on the RPC's `is_merch_name`); frontend keeps only a thin one-line safety net for the rare un-indexed straggler. Effectively single-source (SQL) + intentional defense-in-depth one-liner.
-5. ⬜ 🟡 **Vote optimistic-update math duplicated** in Market + CardDetail (convoluted; possible off-by-one). **Fix:** extract one `applyVote()` helper.
+5. ✅ 🟡 **Vote optimistic-update math duplicated** — DONE. Extracted `applyVote()` in sentiment-store; Market + CardDetail both call it. (Both inline copies were actually correct, but the nested-ternary was unreadable and a drift risk — now one source.)
 6. ⬜ 🟡 **Giveaway winner draw uses client `Math.random()`.** **Fix (only if prizes have real value):** server-side, auditable draw.
-7. ⬜ 🟡 **AdminFunctions probe counts secure 401/400 as "failures"** → "8 of 19 failed" noise. **Fix:** treat expected-auth-rejections as healthy.
+7. ✅ 🟡 **AdminFunctions probe red 401/400 pills** — DONE. `failedCount` was already correct (okStatuses), but the status pill rendered red for expected auth-rejections (green check + red pill mismatch). Pill now colours by expected-ness (in okStatuses → green "expected", with a tooltip), only true unexpected statuses are red.
 8. ⬜ 🟡 **Phase 4b** — make `getCardById`/`getSetCards`/`searchCardsAdvanced` DB-first so the 9.9 MB `all-cards.json` is never downloaded (after the `cards` table is populated).
 
 ## 🧹 Cleanup (after Phase 4 deploy + verify the `cards` table is populated)

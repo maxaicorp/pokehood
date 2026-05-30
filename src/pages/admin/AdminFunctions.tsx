@@ -366,18 +366,30 @@ function FunctionRow({
               <XCircle className="w-4 h-4 text-red-500" />
             )}
             <span className="font-mono font-semibold text-sm">{spec.name}</span>
-            {result && (
-              <>
-                <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${
-                  typeof result.status === "number" && result.status < 400
-                    ? "bg-green-500/10 text-green-400"
-                    : "bg-red-500/10 text-red-400"
-                }`}>
-                  {result.status}
-                </span>
-                <span className="text-xs text-muted-foreground tabular-nums">{result.durationMs}ms</span>
-              </>
-            )}
+            {result && (() => {
+              // Colour the status pill by EXPECTED-ness, not by 2xx-ness. Many
+              // functions are auth-gated and answer 401/403 to an unauthed
+              // probe by design; those are listed in okStatuses, so show them
+              // green ("expected"), not red. Only a status outside okStatuses
+              // (or a network error/timeout) is a real red failure.
+              const allowed = new Set(spec.okStatuses ?? [200, 202]);
+              const expected = typeof result.status === "number" && allowed.has(result.status);
+              return (
+                <>
+                  <span
+                    className={`text-xs font-mono px-1.5 py-0.5 rounded ${
+                      expected ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
+                    }`}
+                    title={expected && typeof result.status === "number" && result.status >= 400
+                      ? "Expected auth/validation rejection for an unauthenticated probe"
+                      : undefined}
+                  >
+                    {result.status}
+                  </span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{result.durationMs}ms</span>
+                </>
+              );
+            })()}
           </div>
           <p className="text-xs text-muted-foreground mt-1">{spec.description}</p>
           {result?.shapeError && (

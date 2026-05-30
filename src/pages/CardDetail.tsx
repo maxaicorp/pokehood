@@ -19,7 +19,7 @@ import {
   addCardToWishlist,
   getAllWishlistCardIds,
 } from "@/lib/wishlist-store";
-import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
+import { getSetSentiment, castVote, applyVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import CardSentimentWidget from "@/components/CardSentimentWidget";
 import AppHeader from "@/components/AppHeader";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -172,14 +172,10 @@ export default function CardDetail() {
     }
     if (!card) return;
     const current = sentiment?.currentUserVote ?? null;
-    const newVote = current === voteType ? null : voteType;
-    // Optimistic update
-    setSentiment((prev) => {
-      const base = prev ?? { setId: card.id, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
-      const upvotes = Math.max(0, base.upvotes + (voteType === "up" ? (current === "up" ? -1 : 1) : (current === "up" ? -1 : 0)));
-      const downvotes = Math.max(0, base.downvotes + (voteType === "down" ? (current === "down" ? -1 : 1) : (current === "down" ? -1 : 0)));
-      return { ...base, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote };
-    });
+    // Optimistic update via the shared helper (single source of vote math).
+    setSentiment((prev) =>
+      applyVote(prev ?? { setId: card.id, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null }, voteType),
+    );
     await castVote(card.id, user.id, current, voteType);
   };
 

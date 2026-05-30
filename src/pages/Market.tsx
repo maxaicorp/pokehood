@@ -48,7 +48,7 @@ import { addToCollection } from "@/lib/collection-store";
 import { cardPath, cardPathFromApiId } from "@/lib/slug";
 import { formatPct, getLatestSnapshotPage, getLatestSnapshotAll } from "@/lib/price-snapshots";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
-import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
+import { getSetSentiment, castVote, applyVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import AppHeader from "@/components/AppHeader";
 import SetSentimentBadge from "@/components/SetSentimentBadge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -266,17 +266,13 @@ export default function Market() {
       navigate("/auth");
       return;
     }
-    const current = sentimentMap.get(cardId);
-    const currentVote = current?.currentUserVote ?? null;
-    const newVote = currentVote === voteType ? null : voteType;
+    const currentVote = sentimentMap.get(cardId)?.currentUserVote ?? null;
 
-    // Optimistic update
+    // Optimistic update via the shared helper (single source of vote math).
     setSentimentMap((prev) => {
       const next = new Map(prev);
       const old = prev.get(cardId) || { setId: cardId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
-      const upvotes = Math.max(0, old.upvotes + (voteType === "up" ? (currentVote === "up" ? -1 : 1) : (currentVote === "up" ? -1 : 0)));
-      const downvotes = Math.max(0, old.downvotes + (voteType === "down" ? (currentVote === "down" ? -1 : 1) : (currentVote === "down" ? -1 : 0)));
-      next.set(cardId, { ...old, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote });
+      next.set(cardId, applyVote(old, voteType));
       return next;
     });
 

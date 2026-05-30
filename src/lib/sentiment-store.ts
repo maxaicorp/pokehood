@@ -43,6 +43,29 @@ export async function getSetSentiment(cardIds: string[]): Promise<Map<string, Se
   return map;
 }
 
+/**
+ * Apply a vote toggle to an aggregate, returning the new OPTIMISTIC aggregate.
+ * Single source of truth for the up/down arithmetic that was previously
+ * hand-inlined as a hard-to-read nested ternary in both Market and CardDetail.
+ * Handles every transition: add, toggle-off, and switch (remove the old side
+ * AND add the new).
+ */
+export function applyVote(prev: SetSentiment, voteType: VoteType): SetSentiment {
+  const current = prev.currentUserVote;
+  const newVote = current === voteType ? null : voteType;
+  let upvotes = prev.upvotes;
+  let downvotes = prev.downvotes;
+  // Remove the previous vote's contribution …
+  if (current === "up") upvotes -= 1;
+  if (current === "down") downvotes -= 1;
+  // … then add the new one (null = toggled off).
+  if (newVote === "up") upvotes += 1;
+  if (newVote === "down") downvotes += 1;
+  upvotes = Math.max(0, upvotes);
+  downvotes = Math.max(0, downvotes);
+  return { ...prev, upvotes, downvotes, score: upvotes - downvotes, currentUserVote: newVote };
+}
+
 /** Cast or toggle a vote. Returns the new vote state (null if removed). */
 export async function castVote(
   cardId: string,
