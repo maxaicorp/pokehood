@@ -81,6 +81,23 @@ and inefficiency. Severity: 🔴 broken/bug · 🟡 inefficiency/polish · 🟢 
 ## ✅ SealedDetail — `/sealed/:id` (light)
 - Reads from `sealed-store` (deltas fixed earlier) + the `sealed_products` table (DB catalog, done). Should be solid once functions deploy. Deep-audit later if a specific issue surfaces.
 
-## (Pending) — audited a few per pass
+## ✅ Profile — `/u/:slug`, `/demo`
+- 🟢 **Portfolio value now live** (shares `getCollectionByUserId` → fixed above). Public seller value was stale too; resolved by the same fix.
+- (Re-check ProfilePageEditor render-pattern noise if it resurfaces — external audit called it a non-bug.)
+
+## ✅ Giveaway — `/giveaway`, `/giveaway/confirm`
+- 🟢 Public page is clean (loading/empty/active states, countdown, SEO, double-opt-in via submit→confirm email).
+- 🟡 **Admin winner draw uses client `Math.random()`** — fine for fun, but if prizes have real cash value, move the draw server-side (auditable/fair). Legal/trust concern, not a render bug.
+
+## ✅ Stats — `/stats`
+- 🟢 Card-Match game stats only (niche), auth-gated, DB-backed. No issues.
+
+---
+
+## Audit status: high-traffic surface covered (9 pages)
+**Bugs FIXED:** CardDetail "Card not found", Dashboard/Profile stale portfolio value.
+**Flagged to fix:** Market mover tabs (delta sort over full set), Onchain (obsolete ME offset-sort + triplicated blocklist), Giveaway server-side draw.
+**Root causes:** (1) static catalog → Phase 4 (built); (2) leftover Magic-Eden-era scaffolding → prune.
+**Remaining (lower-traffic):** Auth, Games/CardMatch, Admin (6), NotFound, + the global search system.
 Market, Explore, Onchain, Sets/SetDetail, Dashboard, Profile, Stats, Games,
 Giveaway, Auth, Admin, NotFound. Findings appended here as each is reviewed.
