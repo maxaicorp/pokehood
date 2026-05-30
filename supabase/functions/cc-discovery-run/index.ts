@@ -50,7 +50,18 @@ function parseCardName(itemName: string | null | undefined): string | null {
   if (!itemName) return null;
   const m = itemName.match(/^\d{4}\s+#?\d+\s+(.+?)\s+(PSA|CGC|BGS|TAG|SGC|ACE)\b/i);
   if (!m) return null;
-  return m[1].replace(/^(full art|reverse holo|holo|alt art|art)\s*\/\s*/i, "").trim();
+  // Strip printing/finish markers that aren't part of the card name, so the
+  // match against Scrydex card_name succeeds. Validated to lift the match rate
+  // ~34% (e.g. "Kabutops-Holo 1st Edition" → "Kabutops", "Blastoise-Holo" →
+  // "Blastoise"). Keeps EX/V/VMAX/VSTAR — those ARE part of the name.
+  const name = m[1]
+    .replace(/\b(reverse\s+holo|full\s+art|alt\s+art)\b/gi, " ")
+    .replace(/[-\s]+holo\b/gi, " ")
+    .replace(/\b(1st\s+edition|first\s+edition|shadowless|unlimited(\s+edition)?|staff|promo)\b/gi, " ")
+    .replace(/^[-\s/]+|[-\s/]+$/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return name || null;
 }
 
 // SOL/USD spot (Jupiter primary, Pyth fallback) — only needed for SOL-priced
