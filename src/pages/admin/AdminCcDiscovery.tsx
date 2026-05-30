@@ -144,6 +144,28 @@ export default function AdminCcDiscovery() {
     [rows],
   );
 
+  // Live coverage counter — how much of CC's ~52k Pokémon marketplace we've
+  // imported into onchain_listings. cc-* rows come from ingest-cc-marketplace
+  // (the CC API); the rest are the small ME-sourced slice. Watch this climb
+  // toward ~52k once ingest-cc-marketplace is deployed + running. Refetches
+  // every 15s so a running import shows live progress.
+  const { data: coverage } = useQuery({
+    queryKey: ["cc-coverage"],
+    queryFn: async () => {
+      const total = await (supabase.from as any)("onchain_listings")
+        .select("pda_address", { count: "exact", head: true })
+        .eq("collection", "collector_crypt").is("delisted_at", null);
+      const ccNative = await (supabase.from as any)("onchain_listings")
+        .select("pda_address", { count: "exact", head: true })
+        .eq("collection", "collector_crypt").like("pda_address", "cc-%").is("delisted_at", null);
+      return { total: (total.count as number) ?? 0, ccNative: (ccNative.count as number) ?? 0 };
+    },
+    refetchInterval: 15_000,
+  });
+  const CC_TARGET = 52000;
+  const ccTotal = coverage?.total ?? 0;
+  const ccNative = coverage?.ccNative ?? 0;
+
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
@@ -179,6 +201,27 @@ export default function AdminCcDiscovery() {
         first. Cooldown is 10 minutes between runs.
         {!state?.last_run_at && " The table is empty until the first run."}
       </p>
+
+      {/* CC marketplace import coverage — climbs toward ~52k as ingest-cc-marketplace runs */}
+      <div className="rounded-lg border border-border/60 bg-muted/20 p-4 mb-6">
+        <div className="flex items-baseline justify-between flex-wrap gap-2">
+          <span className="text-sm font-medium">Collector Crypt marketplace coverage</span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {ccTotal.toLocaleString()} / ~{CC_TARGET.toLocaleString()} listed
+          </span>
+        </div>
+        <div className="mt-2 h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full bg-sky-500 transition-all"
+            style={{ width: `${Math.min(100, (ccTotal / CC_TARGET) * 100).toFixed(1)}%` }}
+          />
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          {ccNative.toLocaleString()} imported via the CC API (ingest-cc-marketplace) ·{" "}
+          {(ccTotal - ccNative).toLocaleString()} from Magic Eden.
+          {ccNative === 0 && " — CC import not running yet (deploy ingest-cc-marketplace)."}
+        </p>
+      </div>
 
       {/* Summary cards */}
       {state && state.total_active > 0 && (
