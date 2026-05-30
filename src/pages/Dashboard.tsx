@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCollection, getTotalValue, getCollectionBySet, addToCollection } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
@@ -56,6 +58,25 @@ export default function Dashboard() {
     queryClient.invalidateQueries({ queryKey: ["my-collection"] });
   }, [queryClient]);
 
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  // The "Vault Full" banner button previously did
+  // `document.getElementById("upgrade-to-pro")?.click()`, but no element with
+  // that id exists anywhere — so it silently did nothing. Invoke the same
+  // Stripe checkout the header menu uses.
+  const handleUpgrade = useCallback(async () => {
+    setCheckoutLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { priceId: STRIPE_CONFIG.pro.price_id },
+      });
+      if (error) throw error;
+      if (data?.url) window.open(data.url, "_blank");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start checkout");
+    }
+    setCheckoutLoading(false);
+  }, []);
+
   const totalValue = getTotalValue(collection);
   const bySet = getCollectionBySet(collection);
   const setCount = Object.keys(bySet).length;
@@ -97,20 +118,30 @@ export default function Dashboard() {
   const handleImport = async () => {
     if (!user) return;
     setImporting(true);
+    // Total reflects only the matchable rows (the loop iterates result.found),
+    // so the progress bar can actually reach 100%. resolveImport runs first, so
+    // show an indeterminate-ish 0/0 until it returns.
     setImportProgress({ done: 0, total: importParsed.length });
     try {
       const result = await resolveImport(importParsed);
+      setImportProgress({ done: 0, total: result.found.length });
       let added = 0;
+      let limitHit = false;
       for (const { row, card } of result.found) {
         if (!isPro && (totalCards + added) >= limits.maxCards) {
-          toast.error(`Free tier limit reached (${limits.maxCards} cards). Upgrade to Pro for unlimited cards!`);
+          limitHit = true;
           break;
         }
         await addToCollection(card, user.id, row.condition || "NM", row.quantity || 1);
         added++;
-        setImportProgress({ done: added, total: importParsed.length });
+        setImportProgress({ done: added, total: result.found.length });
       }
-      toast.success(`Imported ${added} cards! ${result.notFound.length} not found.`);
+      // One coherent result toast — not an error + success pair on a limit hit.
+      if (limitHit) {
+        toast.error(`Imported ${added} cards, then hit the free-tier limit (${limits.maxCards}). Upgrade to Pro for unlimited cards!`);
+      } else {
+        toast.success(`Imported ${added} cards!${result.notFound.length ? ` ${result.notFound.length} not found.` : ""}`);
+      }
       setImportOpen(false);
       setImportParsed([]);
       refresh();
@@ -208,7 +239,8 @@ export default function Dashboard() {
                       <p className="text-sm text-muted-foreground">You've reached the free tier limit of {limits.maxCards} cards.</p>
                     </div>
                   </div>
-                  <Button onClick={() => document.getElementById("upgrade-to-pro")?.click()} className="bg-amber-500 hover:bg-amber-600 text-white shrink-0">
+                  <Button onClick={handleUpgrade} disabled={checkoutLoading} className="bg-amber-500 hover:bg-amber-600 text-white shrink-0">
+                    {checkoutLoading && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
                     Upgrade to Pro ✨
                   </Button>
                 </div>
@@ -273,7 +305,7 @@ export default function Dashboard() {
                 Importing {importProgress.done} / {importProgress.total} cards...
               </p>
               <div className="w-full bg-secondary rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(importProgress.done / importProgress.total) * 100}%` }} />
+                <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
               </div>
             </div>
           ) : (
