@@ -41,9 +41,10 @@ and optional JSON-LD. Titles are truncated to 60 chars, descriptions to 160.
 ## Social link previews (OG/Twitter unfurl)
 Crawlers (Discord/Twitter/iMessage/FB) don't run JS, so previews come from the
 **prerendered static HTML**, not the React SEO component.
-- ✅ **Per-route OG image now set** (fixed 2026-05-31 in `prerender.mjs`): card pages unfurl with the **card art**, set pages with the set's **chase card**. Previously every prerendered page kept the generic `og-image.jpg`.
-- ✅ Title + description are per-route on all prerendered pages.
-- ⚠️ **Coverage gap:** only home, `/sets`, 179 set pages, and **top-500 cards by price** are prerendered. The other **~20,000 cards** are NOT prerendered → their links unfurl with the generic banner + base title. Fix = Stage B (prerender all cards — heavy build) OR a bot-UA-detecting edge function that serves per-card meta on demand. (So a chase card like Mega Gengar ex unfurls correctly; an obscure common does not — yet.)
+- ✅ **Per-route OG image** (2026-05-31, `prerender.mjs`): card pages unfurl with the **card art**, set pages with the set's **chase card**. Was the generic `og-image.jpg` for all.
+- ✅ Title + description per-route on all prerendered pages.
+- ✅ **Full coverage (Stage B done):** EVERY card (~23k) is now prerendered, not just the top-500 — so any card link is crawlable + unfurls with its art. (Build now emits ~23k static HTML files; if deploy build-time/size becomes a problem, cap the card loop in `prerender.mjs`.)
+- ✅ **Set pages = full numbered card list + prices** in the crawlable body (was top-50) + ItemList JSON-LD ≤250 — targets the high-volume "&lt;set&gt; card list & prices" search.
 
 ## Known SEO gaps (pinned, non-blocking)
 1. **30 sets missing from `market-sets.json`** → their `/sets/{slug}` pages won't resolve/render until the static catalog is regenerated. Mostly sealed pseudo-sets + promo buckets (see below).
