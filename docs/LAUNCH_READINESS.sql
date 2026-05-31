@@ -1,13 +1,12 @@
 -- ============================================================================
 -- LAUNCH READINESS CHECK  (read-only, zero credits — run in the SQL editor)
 -- ----------------------------------------------------------------------------
--- One paste → a PASS/WARN/FAIL verdict for every critical system. It does NOT
--- just check "table has rows" — it CALLS the exact RPCs the frontend uses, so
--- a PASS means the real read path works. Run all 3 queries below.
--- FAIL = launch-blocking. WARN = look, but usually data still filling in.
+-- ONE query → a PASS/WARN/FAIL/CHECK verdict for every critical system in a
+-- single result table (the SQL editor only shows the LAST statement's output,
+-- so everything is unioned into one). It CALLS the exact RPCs the frontend
+-- uses — a PASS means the real read path works, not just "table has rows".
+-- Non-PASS rows sort to the top. FAIL = launch-blocking. WARN/CHECK = look.
 -- ============================================================================
-
--- ── QUERY 1 — data + every read RPC ─────────────────────────────────────────
 WITH r AS (
   SELECT 1 AS ord, 'MARKET' AS area, 'latest_card_prices fresh (<30h)' AS chk,
          CASE WHEN now()-max(updated_at) < interval '30 hours' THEN 'PASS' ELSE 'FAIL' END AS status,
@@ -60,23 +59,25 @@ WITH r AS (
   UNION ALL SELECT 17,'DISCOVERY','cc_discovery_results populated',
          CASE WHEN count(*)>0 THEN 'PASS' ELSE 'WARN' END, count(*)||' rows'
   FROM cc_discovery_results
+  -- CRONS: one row per expected job
+  UNION ALL
+  SELECT 20, 'CRON', e.jobname,
+         CASE WHEN j.jobname IS NULL THEN 'FAIL' ELSE 'PASS' END,
+         COALESCE(j.schedule, 'MISSING')
+  FROM (VALUES ('daily-snapshot-prices'),('weekly-snapshot-prices-full'),('daily-snapshot-sealed'),
+        ('refresh-latest-prices-daily'),('ingest-cc-marketplace-10m'),('ingest-cc-native-5m'),
+        ('ingest-onchain-activity-60s'),('ingest-onchain-listings-2m'),('daily-health-check')) e(jobname)
+  LEFT JOIN cron.job j ON j.jobname = e.jobname
+  -- RLS: exactly 1 SELECT policy per user table = privacy enforced
+  UNION ALL
+  SELECT 30, 'RLS', tablename,
+         CASE WHEN count(*)=1 THEN 'PASS' ELSE 'CHECK' END,
+         count(*)||' select policy(s)'
+  FROM pg_policies
+  WHERE schemaname='public' AND cmd='SELECT'
+    AND tablename IN ('profiles','collection_cards','user_links')
+  GROUP BY tablename
 )
-SELECT area, chk AS check, status, detail FROM r ORDER BY (status='PASS'), ord;
-
--- ── QUERY 2 — every expected cron present? ──────────────────────────────────
-WITH expected(jobname) AS (VALUES
-  ('daily-snapshot-prices'),('weekly-snapshot-prices-full'),('daily-snapshot-sealed'),
-  ('refresh-latest-prices-daily'),('ingest-cc-marketplace-10m'),('ingest-cc-native-5m'),
-  ('ingest-onchain-activity-60s'),('ingest-onchain-listings-2m'),('daily-health-check'))
-SELECT e.jobname,
-       CASE WHEN j.jobname IS NULL THEN '❌ MISSING' ELSE '✅ '||j.schedule END AS status
-FROM expected e LEFT JOIN cron.job j USING (jobname)
-ORDER BY (j.jobname IS NOT NULL), e.jobname;
-
--- ── QUERY 3 — privacy RLS enforced (exactly 1 SELECT policy per table) ──────
-SELECT tablename, count(*) AS select_policies,
-       CASE WHEN count(*)=1 THEN 'PASS' ELSE 'CHECK' END AS status
-FROM pg_policies
-WHERE schemaname='public' AND cmd='SELECT'
-  AND tablename IN ('profiles','collection_cards','user_links')
-GROUP BY tablename ORDER BY tablename;
+SELECT area, chk AS check, status, detail
+FROM r
+ORDER BY (status='PASS'), ord, chk;
