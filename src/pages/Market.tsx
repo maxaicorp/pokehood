@@ -86,7 +86,11 @@ const SCROLL_PAGE_SIZE = 25;
 // Verified 2026-05-18: at modern=500, the 500th card by price is ~$13;
 // the 1000th is still ~$4, so 500 leaves plenty of headroom above the
 // "should be > $2" rule of thumb if we ever want to bump it.
-const RECENT_CAPS: Record<string, number> = { recent5: 300, recent10: 500, modern: 500 };
+const RECENT_CAPS: Record<string, number> = { recent5: 750, recent10: 1000, modern: 1000 };
+// Default cap for "All Sets" + any single set (single sets have far fewer cards,
+// so this just means "load them all"). Raised 500 → 1000 so the All tab goes
+// deeper than the ~$200 floor 500 was hitting.
+const DEFAULT_CAP = 1000;
 
 // "Modern Era" = Scarlet & Violet onward (S&V + Mega Evolution series).
 // Series strings come from the Scrydex `expansion.series` field and must
@@ -188,7 +192,7 @@ export default function Market() {
     // This keeps multi-set / "All" filters bounded while still handing the client
     // the COMPLETE filtered set, so column sorts and Trending/Gainers/Losers sort
     // over every card in the filter — not just the rows scrolled into view.
-    const cap = RECENT_CAPS[selectedSetId] ?? 500;
+    const cap = RECENT_CAPS[selectedSetId] ?? DEFAULT_CAP;
 
     // Phase A — instant first paint with a tiny page so time-to-content stays
     // fast. Phase B then swaps in the full (capped) set for correct sorting.
@@ -415,7 +419,7 @@ export default function Market() {
   // {card_count, total_value} for the filter in one round-trip. The badge
   // stays hidden until this query resolves so the displayed number is final,
   // not an intermediate sum.
-  const filterCap = RECENT_CAPS[selectedSetId] ?? 500;
+  const filterCap = RECENT_CAPS[selectedSetId] ?? DEFAULT_CAP;
   const summarySetIds = (() => {
     if (!setsData) return null;
     if (selectedSetId === "modern") {

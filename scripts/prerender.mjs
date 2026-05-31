@@ -168,8 +168,15 @@ function fillTemplate({ title, description, canonical, jsonLd, body, image }) {
   return html
     // Insert canonical + JSON-LD just before </head>.
     .replace("</head>", `<link rel="canonical" href="${u}" />\n${ld}\n</head>`)
-    // Inject visible content into the root div so non-JS crawlers see real markup.
-    .replace(`<div id="root"></div>`, `<div id="root">${body}</div>`);
+    // Inject crawler content into #root, but VISUALLY HIDDEN (sr-only / clipped,
+    // inline so it applies before the CSS bundle loads). Non-JS crawlers still
+    // read the raw HTML, Googlebot renders the real app on top — but a human
+    // never sees the prerendered markup flash before React mounts (createRoot
+    // replaces #root's children on first render, removing this node).
+    .replace(
+      `<div id="root"></div>`,
+      `<div id="root"><div aria-hidden="true" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">${body}</div></div>`,
+    );
 }
 
 function writeRoute(routePath, html) {
