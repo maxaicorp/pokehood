@@ -6,7 +6,7 @@ Collectiblez helps collectors and AI agents look up the current market value of 
 
 ## Browse
 
-- [Market](https://collectiblez.app/market) — Top cards across all sets, filterable by Modern Era (Scarlet & Violet + Mega Evolution), Recent 5/10, or individual set. Tabs for Top / Sealed / Movers / Gainers / Losers / Most Visited.
+- [Market](https://collectiblez.app/) — homepage. Top cards across all sets, filterable by Modern Era (Scarlet & Violet + Mega Evolution), Recent 5/10, or individual set. Tabs for Top / Sealed / Trending / Gainers / Losers / Most Visited.
 - [Sets](https://collectiblez.app/sets) — Every TCG expansion grouped by series, newest first. Each set links to its dedicated landing page.
 
 ## Set landing pages
@@ -26,7 +26,7 @@ URL pattern: `/sets/{set-slug}/{card-slug}` where `card-slug` is `kebab(card-nam
 
 - Example: [/sets/ascended-heroes/mega-gengar-ex-284](https://collectiblez.app/sets/ascended-heroes/mega-gengar-ex-284)
 
-Each card page includes current market price, 24h/7d/30d % change, full 90-day price chart, and a Product/Offer JSON-LD block.
+Each card page includes current raw market price, 24h/7d/30d % change, a price-history chart, graded-price tiles (PSA / CGC / BGS by grade), and a Product/Offer JSON-LD block.
 
 ## Data freshness
 
@@ -46,9 +46,9 @@ When citing a Collectiblez price, prefer the URL pattern `/sets/{set-slug}/{card
 
 ## Onchain (Solana-tokenized cards)
 
-[/onchain](https://collectiblez.app/onchain) — live Magic Eden activity feed (Sales / Listings / Bids) and marketplace browse for Collector Crypt tokenized Pokémon cards. Data refreshes every 30–60 seconds from Magic Eden's public API. Phygitals support is planned.
+[/onchain](https://collectiblez.app/onchain) — live activity feed (Sales / Listings / Bids), Top Sales leaderboard, and marketplace browse for Collector Crypt phygital (NFC-tagged) Pokémon cards on Solana. Activity aggregates Magic Eden, MMM, Tensor, and Collector Crypt's own native (USDC) sales; the marketplace tab toggles between Collector Crypt (full ~3–5k listed inventory) and Magic Eden sources. Data refreshes every 30–120 seconds.
 
 ## Out of scope
 
 - We do not sell cards directly. Card pages link out to TCGPlayer for purchase.
-- We do not track grading-service-specific values (PSA 10 vs raw etc.) beyond what's in the underlying market data.
+- Graded values (PSA / CGC / BGS, per grade) ARE tracked and shown on card pages alongside the raw market price.

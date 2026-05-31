@@ -11,6 +11,7 @@ import { startCardMatch, flipCard, type CardMatchSession, type SlotCard } from "
 import { ArrowLeft, RotateCcw, Trophy, Clock, Target, Play, Pause, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { haptic } from "@/lib/haptics";
 
 const SLOT_COUNT = 20;
 // Flip animation duration. Was 480ms — felt sluggish on mobile. 220ms is
@@ -199,6 +200,7 @@ export default function CardMatch() {
     if (!sessionId || busy || completion || animating || paused) return;
     if (slots[slotIdx].matched || slots[slotIdx].revealed) return;
 
+    haptic("light");   // tactile tap on flip (Android; no-op on iOS web)
     // OPTIMISTIC FLIP: start the rotation immediately so the user sees instant
     // feedback. The actual back-face image is already known from session start,
     // so the tile flips straight to the loaded card without a loading redraw.
@@ -213,6 +215,7 @@ export default function CardMatch() {
       const res = await flipCard(sessionId, slotIdx);
 
       if (res.match === true) {
+        haptic("success");
         const bothMatched = res.otherSlot != null && !!res.otherCard;
         setSlots((prev) => {
           const next = [...prev];
@@ -228,6 +231,7 @@ export default function CardMatch() {
           queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
         }
       } else if (res.match === false) {
+        haptic("error");
         // Reveal both face-up with red flash, lock input, then flip back.
         setAnimating(true);
         setSlots((prev) => {
