@@ -244,11 +244,23 @@ serve(async (req: Request) => {
           };
         });
 
-        // Replace results atomically (well, delete + insert).
-        await supabase.from("cc_discovery_results").delete().neq("pda_address", "");
+        // Upsert results, THEN delete stale rows — never delete-first. The old
+        // delete-then-insert wiped the table at the start of the run; if the
+        // background work was then cut short before re-inserting, the UI showed
+        // an empty table while cc_discovery_state still held the prior run's
+        // counts (the "1,271 matched but no rows" bug). Stamp computed_at so we
+        // can prune anything not refreshed this run.
+        const runStamp = new Date().toISOString();
         for (let i = 0; i < results.length; i += 500) {
-          const { error } = await supabase.from("cc_discovery_results").insert(results.slice(i, i + 500));
-          if (error) console.error("[cc-discovery] insert chunk:", error.message);
+          const slice = results.slice(i, i + 500).map((r) => ({ ...r, computed_at: runStamp }));
+          const { error } = await supabase
+            .from("cc_discovery_results")
+            .upsert(slice, { onConflict: "pda_address" });
+          if (error) console.error("[cc-discovery] upsert chunk:", error.message);
+        }
+        // Remove listings no longer present this run (only if we actually wrote some).
+        if (results.length > 0) {
+          await supabase.from("cc_discovery_results").delete().lt("computed_at", runStamp);
         }
 
         const matched = results.filter((r) => r.status === "matched");

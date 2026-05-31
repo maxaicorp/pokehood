@@ -22,7 +22,7 @@ const corsHeaders = {
 };
 const CC_API = "https://api.collectorcrypt.com/marketplace";
 const SOL_MINT = "So11111111111111111111111111111111111111112";
-const FUNCTION_VERSION = "2026-05-29-cc-marketplace-v1";
+const FUNCTION_VERSION = "2026-05-30-cc-marketplace-v2-incremental";
 
 async function getSolUsd(): Promise<number | null> {
   try {
@@ -58,8 +58,22 @@ serve(async (req: Request) => {
 
   try {
     const solUsd = await getSolUsd();
-    const rows: Record<string, unknown>[] = [];
     let complete = true;
+    let listed = 0;
+    let upserted = 0;
+
+    // Upsert each page AS WE FETCH IT — never accumulate everything and write
+    // once at the end. The old all-at-end upsert meant that if the invocation
+    // was cut short (platform wall-clock, or a pg_net client disconnect) before
+    // the final write, ZERO rows persisted. Incremental writes survive that.
+    const flush = async (batch: Record<string, unknown>[]) => {
+      if (batch.length === 0) return;
+      const { error } = await supabase
+        .from("onchain_listings")
+        .upsert(batch.map((r) => ({ ...r, delisted_at: null })), { onConflict: "pda_address" });
+      if (error) console.error("[cc-mkt] upsert:", error.message);
+      else upserted += batch.length;
+    };
 
     for (let page = 1; page <= maxPages; page++) {
       let j: any;
@@ -73,13 +87,14 @@ serve(async (req: Request) => {
 
       const items: any[] = j?.filterNFtCard ?? [];
       if (items.length === 0) break;
+      const pageRows: Record<string, unknown>[] = [];
       for (const it of items) {
         if (it.category !== "Pokemon") continue;           // marketplace shows Pokémon (EN + JP)
         const price = Number(it?.listing?.price);
         if (!(price > 0) || !it.nftAddress) continue;
         const cur = it.listing.currency;
         const usd = cur === "USDC" ? price : (solUsd ? price * solUsd : null);
-        rows.push({
+        pageRows.push({
           pda_address: `cc-${it.nftAddress}`,
           collection: "collector_crypt",
           token_mint: it.nftAddress,
@@ -94,24 +109,16 @@ serve(async (req: Request) => {
           last_seen_at: new Date().toISOString(),
         });
       }
+      listed += pageRows.length;
+      await flush(pageRows);     // persist this page before fetching the next
       if (items.length < 100) break;
       await new Promise((r) => setTimeout(r, 120));
-    }
-
-    // Upsert current listings (chunked). first_seen_at defaults on insert;
-    // last_seen_at refreshed each run; delisted_at cleared so a re-listed item revives.
-    let upserted = 0;
-    for (let i = 0; i < rows.length; i += 500) {
-      const slice = rows.slice(i, i + 500).map((r) => ({ ...r, delisted_at: null }));
-      const { error } = await supabase.from("onchain_listings").upsert(slice, { onConflict: "pda_address" });
-      if (error) console.error("[cc-mkt] upsert:", error.message);
-      else upserted += slice.length;
     }
 
     // Soft-delete stale cc-* listings ONLY on a complete run (coverage guard:
     // a partial fetch must never delist real listings it just didn't reach).
     let delisted = 0;
-    if (complete && rows.length > 0) {
+    if (complete && listed > 0) {
       const { count } = await supabase
         .from("onchain_listings")
         .update({ delisted_at: new Date().toISOString() }, { count: "exact" })
@@ -121,7 +128,7 @@ serve(async (req: Request) => {
       delisted = count ?? 0;
     }
 
-    const summary = { success: true, version: FUNCTION_VERSION, complete, listed: rows.length, upserted, delisted, duration_ms: Date.now() - t0 };
+    const summary = { success: true, version: FUNCTION_VERSION, complete, listed, upserted, delisted, duration_ms: Date.now() - t0 };
     console.log("ingest-cc-marketplace done:", summary);
     return new Response(JSON.stringify(summary), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
