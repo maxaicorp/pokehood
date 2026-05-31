@@ -36,6 +36,10 @@ AS $$
             ELSE similarity(lower(lcp.card_name), q.t) END)::real AS score
     FROM public.latest_card_prices lcp, q
     WHERE lcp.card_id NOT LIKE 'sealed-%'
+      -- Exclude ::variant rows (e.g. base1-4::unlimitedHolofoil). They duplicate
+      -- the base card in results and produce invalid image URLs — the base id
+      -- (base1-4) is the canonical, image-valid entry.
+      AND lcp.card_id NOT LIKE '%::%'
       AND ( lower(lcp.card_name) LIKE '%' || q.t || '%'
             OR similarity(lower(lcp.card_name), q.t) > 0.25 )
 
