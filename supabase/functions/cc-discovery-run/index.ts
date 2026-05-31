@@ -251,25 +251,39 @@ serve(async (req: Request) => {
         // counts (the "1,271 matched but no rows" bug). Stamp computed_at so we
         // can prune anything not refreshed this run.
         const runStamp = new Date().toISOString();
-        for (let i = 0; i < results.length; i += 500) {
-          const slice = results.slice(i, i + 500).map((r) => ({ ...r, computed_at: runStamp }));
+        // De-dupe by pda_address BEFORE writing. The CC API repeats a mint
+        // across pages, and a single upsert can't touch the same ON CONFLICT
+        // target twice ("cannot affect row a second time") — one dup rejected
+        // the whole 500-row chunk, leaving cc_discovery_results EMPTY while the
+        // in-memory counts still updated cc_discovery_state. That's the
+        // "counts show, table empty" bug.
+        const seenPda = new Set<string>();
+        const uniqueResults = results.filter((r) => {
+          if (seenPda.has(r.pda_address)) return false;
+          seenPda.add(r.pda_address);
+          return true;
+        });
+        let writeErr: string | null = null;
+        for (let i = 0; i < uniqueResults.length; i += 500) {
+          const slice = uniqueResults.slice(i, i + 500).map((r) => ({ ...r, computed_at: runStamp }));
           const { error } = await supabase
             .from("cc_discovery_results")
             .upsert(slice, { onConflict: "pda_address" });
-          if (error) console.error("[cc-discovery] upsert chunk:", error.message);
+          if (error) { if (!writeErr) writeErr = error.message; console.error("[cc-discovery] upsert chunk:", error.message); }
         }
         // Remove listings no longer present this run (only if we actually wrote some).
-        if (results.length > 0) {
+        if (uniqueResults.length > 0 && !writeErr) {
           await supabase.from("cc_discovery_results").delete().lt("computed_at", runStamp);
         }
 
-        const matched = results.filter((r) => r.status === "matched");
+        // Counts come from the SAME deduped set we wrote, so state matches the table.
+        const matched = uniqueResults.filter((r) => r.status === "matched");
         const undervalued = matched.filter((r) => (r.delta_pct ?? 0) < 0);
         await supabase.from("cc_discovery_state").update({
           last_run_at: new Date().toISOString(), status: "idle",
-          total_active: listings.length, matched_count: matched.length,
-          unmatched_count: results.length - matched.length, undervalued_count: undervalued.length,
-          last_error: null,
+          total_active: uniqueResults.length, matched_count: matched.length,
+          unmatched_count: uniqueResults.length - matched.length, undervalued_count: undervalued.length,
+          last_error: writeErr,   // null on success; the upsert error if the write failed
         }).eq("id", 1);
         console.log("cc-discovery-run done:", { dur_ms: Date.now() - t0, listed: listings.length, matched: matched.length, undervalued: undervalued.length });
       } catch (e) {

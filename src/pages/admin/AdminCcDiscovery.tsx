@@ -167,10 +167,10 @@ export default function AdminCcDiscovery() {
     queryFn: async () => {
       const total = await (supabase.from as any)("onchain_listings")
         .select("pda_address", { count: "exact", head: true })
-        .eq("collection", "collector_crypt").is("delisted_at", null);
+        .in("collection", ["collector_crypt", "collector_crypt_cc"]).is("delisted_at", null);
       const ccNative = await (supabase.from as any)("onchain_listings")
         .select("pda_address", { count: "exact", head: true })
-        .eq("collection", "collector_crypt").like("pda_address", "cc-%").is("delisted_at", null);
+        .eq("collection", "collector_crypt_cc").is("delisted_at", null);
       return { total: (total.count as number) ?? 0, ccNative: (ccNative.count as number) ?? 0 };
     },
     refetchInterval: 15_000,
