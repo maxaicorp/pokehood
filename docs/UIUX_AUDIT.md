@@ -4,6 +4,12 @@ Companion to PAGE_AUDIT.md (which covered URLs/data). This pass covers the
 *visual/interaction* layer — layout, mobile, empty/loading states, touch
 targets, truncation. Severity: 🔴 broken · 🟡 rough · 🟢 ok/verified.
 
+## Status
+- ✅ **Haptics everywhere** — global `installGlobalHaptics()` (pointerdown delegate) fires a light pulse on any interactive tap (button/link/role/checkbox/tab/etc.), Android web only, respects reduced-motion, `data-haptic="off"` opt-out. Card Match adds success/error pulses.
+- ✅ **Onchain images** — migration `20260531120000_onchain_activity_image_fallback.sql` makes `get_onchain_activity` + `get_onchain_top_sales` borrow image+name from `onchain_listings` by token_mint when the activity row is null (CC-native sales were grey "NFT" tiles). **Run in SQL editor.**
+- ✅ **Dashboard stat smush** — Total Value full-width on mobile.
+- ⬜ **Dashboard full mobile reformat** — still pending (next).
+
 ## Found this pass (2026-05-31)
 - ✅ 🟡 **Dashboard stat cards smushed on mobile** — Total Value `$1,3…` truncated between the 3 grid-cols-3 cards. FIXED: Total Value now spans full width on mobile (`col-span-2 sm:col-span-1`), Cards/Sets share row 2. *Follow-up:* give Total Value its own section with a portfolio-value sparkline (bigger task — see below).
 - 🔴 **Onchain activity images not loading** — CC native sales (`source='collector_crypt_native'`) show the grey "NFT" placeholder. Root cause: `ingest-cc-native` writes `image: null` (it parses the on-chain tx, which has no metadata). **Fix options:** (a) the read RPC `get_onchain_activity` LEFT JOINs `onchain_listings` on `token_mint` to borrow the image (works since cc-marketplace rows carry `frontImage`); or (b) `ingest-cc-native` looks up the image from `onchain_listings`/`nft_names` at write time. (a) is cleaner (one migration, backfills existing rows). *Deploy-gated.*

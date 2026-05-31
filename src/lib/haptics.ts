@@ -33,3 +33,36 @@ export function haptic(kind: HapticKind = "light"): void {
     /* some browsers throw if called outside a user gesture — ignore */
   }
 }
+
+// Interactive elements that should give a tap pulse — covers "anything a user
+// can do" without wiring every onClick. Anchors, buttons, role-based controls,
+// form toggles, tabs, switches, and anything explicitly marked clickable.
+const TAP_SELECTOR =
+  'button, a[href], [role="button"], [role="tab"], [role="menuitem"], ' +
+  '[role="menuitemradio"], [role="switch"], [role="option"], summary, label, ' +
+  'input[type="checkbox"], input[type="radio"], select, [data-haptic]';
+
+/**
+ * Install ONE global listener that fires a light haptic on press of any
+ * interactive element. Call once at app start. pointerdown (not click) so the
+ * buzz lands the instant the finger touches, like a native app. Skips disabled
+ * controls and anything opted out with `data-haptic="off"`.
+ */
+export function installGlobalHaptics(): void {
+  if (typeof document === "undefined") return;
+  const w = window as unknown as { __hapticsInstalled?: boolean };
+  if (w.__hapticsInstalled) return;
+  w.__hapticsInstalled = true;
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!canVibrate()) return;
+      const el = (e.target as Element | null)?.closest?.(TAP_SELECTOR) as
+        | (HTMLElement & { disabled?: boolean })
+        | null;
+      if (!el || el.disabled || el.getAttribute("data-haptic") === "off") return;
+      haptic("light");
+    },
+    { capture: true, passive: true },
+  );
+}
