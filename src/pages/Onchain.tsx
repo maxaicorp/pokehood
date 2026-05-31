@@ -40,7 +40,6 @@ const TYPE_FILTERS = [
   { value: "", label: "All" },
   { value: "buyNow", label: "Sales" },
   { value: "list", label: "Listings" },
-  { value: "bid", label: "Bids" },
 ];
 
 const typeIcon = (type: string) => {
@@ -229,7 +228,8 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
         }
         return raw.filter((a) => a.type === typeFilter);
       }
-      return raw;
+      // Bids are bot noise — never surface them in the unfiltered feed.
+      return raw.filter((a) => a.type !== "bid");
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {

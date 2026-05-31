@@ -4,7 +4,7 @@
 // Card detail: Scrydex proxy
 
 import { supabase } from "@/integrations/supabase/client";
-import { getLatestSnapshotPrices, type LatestPrice } from "@/lib/price-snapshots";
+import { getLatestSnapshotPrices, getLatestPricesForSet, type LatestPrice } from "@/lib/price-snapshots";
 import { PRICE_CACHE_TTL_MS, registerCacheResetter } from "@/lib/cache-invalidation";
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -241,11 +241,32 @@ async function ensurePricingCacheSeeded(): Promise<void> {
   await pricingSeedPromise;
 }
 
+// Per-set seed timestamps so single-card / single-set pages can price just
+// their own set (~250 rows) instead of blocking on the full ~22k-row table.
+const seededSets = new Map<string, number>();
+
+/**
+ * Seed pricing for ONE set only (base + variant rows). This is the targeted
+ * path for CardDetail / SetDetail — it replaces ensurePricingCacheSeeded()'s
+ * full-table pull, which was the cause of the multi-second "extreme lag" on
+ * the first card/set page of a session. Cheap enough to call on every nav;
+ * a short per-set TTL guard avoids re-querying the same set repeatedly.
+ */
+async function seedPricesForSet(setId: string): Promise<void> {
+  if (!setId) return;
+  const at = seededSets.get(setId);
+  if (at && Date.now() - at < PRICE_CACHE_TTL_MS) return;
+  const prices = await getLatestPricesForSet(setId);
+  appendPricingCache(prices);
+  seededSets.set(setId, Date.now());
+}
+
 /** Drop the seeded pricing so the next read re-pulls from the DB. */
 export function resetPricingCache(): void {
   pricingCache.clear();
   pricingSeedPromise = null;
   pricingSeededAt = 0;
+  seededSets.clear();
 }
 registerCacheResetter(resetPricingCache);
 
@@ -600,12 +621,14 @@ export async function enrichCardWithPricing(card: PokemonCard): Promise<PokemonC
     return card;
   }
 
-  // Ensure the in-memory cache is populated from DB snapshots before we
-  // peek at it. Market/Explore explicitly seed on mount, but other pages
-  // (SetDetail, CardDetail, GlobalSearch) rely on this enrich path —
-  // without the seed every card returned "—" for price on those routes.
-  // The seed is a no-op after the first call (singleton promise).
-  await ensurePricingCacheSeeded();
+  // Ensure the in-memory cache holds THIS card's price before we peek at it.
+  // Market/Explore seed in bulk on mount; other pages (SetDetail, CardDetail,
+  // GlobalSearch) reach here. If the card isn't cached yet, seed only its set
+  // (~250 rows) — NOT the full ~22k table, which was the multi-second stall on
+  // the first card/set page of a session. No-op once the set is seeded.
+  if (!pricingCache.has(card.id)) {
+    await seedPricesForSet(setIdFromCardId(card.id));
+  }
 
   // Check in-memory cache (populated from DB snapshots via seedPricingCache at app init)
   if (pricingCache.has(card.id)) {
@@ -864,9 +887,11 @@ export async function getSetCards(
   page = 1,
   pageSize = 20,
 ): Promise<SearchResult> {
-  await ensurePricingCacheSeeded();
   let baseSetId = setId;
   if (setId.includes("::")) baseSetId = setId.split("::")[0];
+
+  // Price only this set (base + variant rows), not the full ~22k table.
+  await seedPricesForSet(baseSetId);
 
   // Per-set file — already scoped to this set, no full-index scan.
   const filtered = await loadSetCardIndex(baseSetId);
@@ -1015,7 +1040,9 @@ async function buildCardFromDb(id: string): Promise<PokemonCard | null> {
 }
 
 export async function getCardById(id: string): Promise<PokemonCard | null> {
-  await ensurePricingCacheSeeded();
+  // Price only this card's set (~250 rows) instead of the full ~22k table —
+  // the full pull was the "extreme lag" on the first card page of a session.
+  await seedPricesForSet(setIdFromCardId(id));
   // Load only the card's own set file (~100KB) instead of the 10MB monolith.
   const cards = await loadSetCardIndex(setIdFromCardId(id));
   if (id.includes("::")) {

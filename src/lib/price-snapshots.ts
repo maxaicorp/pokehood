@@ -264,6 +264,25 @@ export async function getLatestPricesByIds(ids: string[]): Promise<Map<string, L
   return map;
 }
 
+/**
+ * Latest prices for a SINGLE set (base + variant rows) in one indexed prefix
+ * query. The targeted alternative to getLatestSnapshotPrices() for single-card
+ * / single-set pages, which otherwise blocked on the full ~22k-row table just
+ * to price one card. The `-%` prefix is safe because the set/number delimiter
+ * is a literal "-" (e.g. "sv1-%" matches "sv1-1" / "sv1-1::reverseHolofoil"
+ * but never "sv10-1").
+ */
+export async function getLatestPricesForSet(setId: string): Promise<Map<string, LatestPrice>> {
+  const map = new Map<string, LatestPrice>();
+  const { data } = await (supabase.from as any)("latest_card_prices")
+    .select("card_id, card_name, set_name, price, price_1d, price_7d, price_30d")
+    .like("card_id", `${setId}-%`);
+  for (const row of (data ?? []) as LatestRow[]) {
+    map.set(row.card_id, rowToLatestPrice(row));
+  }
+  return map;
+}
+
 export async function getLatestSnapshotPrices(): Promise<Map<string, LatestPrice>> {
   const map = new Map<string, LatestPrice>();
   const rows = await getAllLatestRows();
