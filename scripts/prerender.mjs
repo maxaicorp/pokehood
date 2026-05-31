@@ -140,31 +140,36 @@ async function fetchPrices() {
 
 // ─── Template-substitution helpers ───────────────────────────────────────────
 
-function fillTemplate({ title, description, canonical, jsonLd, body }) {
+function fillTemplate({ title, description, canonical, jsonLd, body, image }) {
   const ld = jsonLd.map((obj) => `<script type="application/ld+json">${JSON.stringify(obj)}</script>`).join("\n");
   const t = escape(title);
   const d = escape(description);
   const u = escape(canonical);
-  return template
+  let html = template
     .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${d}" />`)
     // Open Graph
     .replace(/<meta property="og:title" content="[^"]*"\s*\/?>/, `<meta property="og:title" content="${t}" />`)
     .replace(/<meta property="og:description" content="[^"]*"\s*\/?>/, `<meta property="og:description" content="${d}" />`)
     .replace(/<meta property="og:url" content="[^"]*"\s*\/?>/, `<meta property="og:url" content="${u}" />`)
-    // Twitter card — keep image as-is, swap title + description to route-specific.
+    // Twitter
     .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${t}" />`)
-    .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${d}" />`)
+    .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${d}" />`);
+  // Per-route social image (card art / set chase card). Falls back to the
+  // template's default og-image.jpg when no image is supplied (home, /sets, etc.).
+  // This is what makes a shared card link unfurl with the actual card image
+  // instead of the generic banner.
+  if (image) {
+    const img = escape(image);
+    html = html
+      .replace(/<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${img}" />`)
+      .replace(/<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${img}" />`);
+  }
+  return html
     // Insert canonical + JSON-LD just before </head>.
-    .replace(
-      "</head>",
-      `<link rel="canonical" href="${u}" />\n${ld}\n</head>`,
-    )
+    .replace("</head>", `<link rel="canonical" href="${u}" />\n${ld}\n</head>`)
     // Inject visible content into the root div so non-JS crawlers see real markup.
-    .replace(
-      `<div id="root"></div>`,
-      `<div id="root">${body}</div>`,
-    );
+    .replace(`<div id="root"></div>`, `<div id="root">${body}</div>`);
 }
 
 function writeRoute(routePath, html) {
@@ -262,13 +267,15 @@ function generateSetPage(set) {
   const title = `${set.name} — Card List & Prices${year ? ` (${year})` : ""} | Collectiblez`;
   const description = `Full ${set.name} card list with live market prices for all ${cardCount} cards from the ${set.series ?? ""} series. Updated daily.`;
 
-  // Top 50 cards in the visible body for non-JS crawlers — enough for ranking
-  // signal without bloating the HTML.
-  const top = sorted.slice(0, 50);
+  // FULL card list in the visible body for non-JS crawlers — this is the
+  // highest-volume search ("<set> card list / prices"); competitors rank by
+  // listing every card with its number + price, so we do the same (all cards,
+  // not a top-50 sample).
+  const top = sorted;
   const body = `
     <header>
-      <h1>${escape(set.name)}</h1>
-      <p>${escape(set.series ?? "")} · Released ${escape(set.releaseDate ?? "")} · ${cardCount} cards</p>
+      <h1>${escape(set.name)} — Card List &amp; Prices</h1>
+      <p>${escape(set.series ?? "")} · Released ${escape(set.releaseDate ?? "")} · ${cardCount} cards · live market prices, updated daily</p>
     </header>
     <nav><a href="/sets">← All sets</a></nav>
     <ol>
@@ -281,7 +288,7 @@ function generateSetPage(set) {
     </ol>
   `;
 
-  const itemListItems = sorted.slice(0, 100).map((c, i) => {
+  const itemListItems = sorted.slice(0, 250).map((c, i) => {
     const cSlug = `${kebab(c.name)}-${kebab(String(c.localId))}`;
     const price = priceByCardId.get(c.id);
     return {
@@ -331,6 +338,7 @@ function generateSetPage(set) {
     canonical: `${BASE}/sets/${slug}`,
     jsonLd,
     body,
+    image: sorted[0]?.imageLarge || sorted[0]?.imageSmall,   // chase card as the set's preview image
   }));
 }
 
@@ -395,6 +403,7 @@ function generateCardPage(card, set) {
     canonical: `${BASE}/sets/${setSlug}/${cardSlug}`,
     jsonLd,
     body,
+    image: card.imageLarge || card.imageSmall,   // unfurl with the actual card art
   }));
 }
 
@@ -430,20 +439,22 @@ for (const s of sets) {
 }
 console.log(`✓ ${setCount} set landing pages`);
 
-// Top N cards by price.
-const ranked = [...priceByCardId.entries()]
-  .sort((a, b) => b[1] - a[1])
-  .slice(0, TOP_N_CARDS);
+// EVERY card (Stage B) — full coverage so each card link is indexed AND
+// unfurls with its own art on social. O(n): iterate the catalog once, skip
+// cards whose set we don't know (sealed/promo pseudo-sets). De-dupe ::variants
+// to the base card so we don't write the same file twice.
 let cardCount = 0;
-for (const [cardId] of ranked) {
-  // Find the card object
-  const card = (cardsJson.cards ?? []).find((c) => c.id === cardId);
-  if (!card) continue;
+const seenCardSlugs = new Set();
+for (const card of (cardsJson.cards ?? [])) {
+  if (!card?.id || card.id.includes("::")) continue;     // skip variant rows
   const set = setById.get(card.setId);
   if (!set) continue;
+  const key = `${card.setId}/${card.id}`;
+  if (seenCardSlugs.has(key)) continue;
+  seenCardSlugs.add(key);
   generateCardPage(card, set);
   cardCount++;
 }
-console.log(`✓ ${cardCount} top card pages`);
+console.log(`✓ ${cardCount} card pages (full catalog)`);
 
 console.log(`\nTotal: ${7 + setCount + cardCount} prerendered HTML files`);

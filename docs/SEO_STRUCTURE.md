@@ -38,6 +38,13 @@ and optional JSON-LD. Titles are truncated to 60 chars, descriptions to 160.
 | `/admin/*` | guarded, not linked |
 | `/stats`, `/games/card-match`, `/demo`, `/giveaway/confirm` | utility/no SEO value |
 
+## Social link previews (OG/Twitter unfurl)
+Crawlers (Discord/Twitter/iMessage/FB) don't run JS, so previews come from the
+**prerendered static HTML**, not the React SEO component.
+- ✅ **Per-route OG image now set** (fixed 2026-05-31 in `prerender.mjs`): card pages unfurl with the **card art**, set pages with the set's **chase card**. Previously every prerendered page kept the generic `og-image.jpg`.
+- ✅ Title + description are per-route on all prerendered pages.
+- ⚠️ **Coverage gap:** only home, `/sets`, 179 set pages, and **top-500 cards by price** are prerendered. The other **~20,000 cards** are NOT prerendered → their links unfurl with the generic banner + base title. Fix = Stage B (prerender all cards — heavy build) OR a bot-UA-detecting edge function that serves per-card meta on demand. (So a chase card like Mega Gengar ex unfurls correctly; an obscure common does not — yet.)
+
 ## Known SEO gaps (pinned, non-blocking)
 1. **30 sets missing from `market-sets.json`** → their `/sets/{slug}` pages won't resolve/render until the static catalog is regenerated. Mostly sealed pseudo-sets + promo buckets (see below).
 2. **SPA, not prerendered** — `scripts/prerender.mjs` runs at build, but confirm non-JS crawlers get real HTML for the indexed routes above (the core SEO concern from the original plan). Sitemaps exist: `public/sitemap*.xml`, `public/robots.txt`, `public/llms.txt`.
