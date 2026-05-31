@@ -243,6 +243,11 @@ export default function PriceChart({
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--card))", fill: lineColor }}
                 style={{ filter: "url(#lineGlow)" }}
+                // Re-running the draw animation on every range toggle re-rasterizes
+                // the gaussian-blur glow each frame → multi-hundred-ms freeze. The
+                // chart only changes on a deliberate toggle, so animation adds jank
+                // without value. Disable it.
+                isAnimationActive={false}
               />
             </AreaChart>
           </ResponsiveContainer>

@@ -42,33 +42,54 @@ export default function ShareCardButton({ card, price, pct24h, shareUrl }: Share
     return toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
   }
 
-  async function handleShareImage() {
-    setBusy(true);
+  async function handleShare() {
+    // Mobile (file share supported) → share the generated graphic, perfect for
+    // posting to socials. Desktop → share/copy the LINK, which unfurls with the
+    // card art via our per-card OG tags. We never silently produce an image on
+    // desktop — that's what the explicit Download button is for.
+    const canShareFiles =
+      typeof navigator.canShare === "function" &&
+      navigator.canShare({ files: [new File([], "x.png", { type: "image/png" })] });
+
+    if (canShareFiles) {
+      setBusy(true);
+      try {
+        const dataUrl = await buildPng();
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], fileName, { type: "image/png" });
+        await navigator.share({
+          files: [file],
+          title: card.name,
+          text: `${card.name}${price != null ? ` — ${formatPrice(price)}` : ""} on Collectiblez`,
+          url: shareUrl,
+        });
+      } catch (err) {
+        if ((err as Error)?.name !== "AbortError") toast.error("Couldn't generate image");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    // No file share → share the link (or copy it as a fallback).
     try {
-      const dataUrl = await buildPng();
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], fileName, { type: "image/png" });
-      const shareData = {
-        files: [file],
-        title: card.name,
-        text: `${card.name}${price != null ? ` — ${formatPrice(price)}` : ""} on Collectiblez`,
-        url: shareUrl,
-      };
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share(shareData);
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: card.name,
+          text: `${card.name}${price != null ? ` — ${formatPrice(price)}` : ""} on Collectiblez`,
+          url: shareUrl,
+        });
       } else {
-        // No file share (most desktops) → download the image instead.
-        const a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = fileName;
-        a.click();
-        toast.success("Image saved");
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied");
       }
     } catch (err) {
-      // AbortError = user dismissed the share sheet; not an error worth a toast.
-      if ((err as Error)?.name !== "AbortError") toast.error("Couldn't generate image");
-    } finally {
-      setBusy(false);
+      if ((err as Error)?.name !== "AbortError") {
+        await navigator.clipboard.writeText(shareUrl).then(
+          () => toast.success("Link copied"),
+          () => toast.error("Couldn't share"),
+        );
+      }
     }
   }
 
@@ -120,9 +141,9 @@ export default function ShareCardButton({ card, price, pct24h, shareUrl }: Share
             style={{ background: "linear-gradient(160deg, #0f172a 0%, #0b1220 55%, #062925 100%)" }}
           >
             <div className="p-5 flex flex-col items-center gap-4">
-              {/* Brand row */}
-              <div className="self-start flex items-center gap-2">
-                <span className="text-[15px] font-bold tracking-tight text-white">
+              {/* Brand row — centered wordmark */}
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-sm font-bold tracking-[0.25em] text-white uppercase">
                   Collectiblez
                 </span>
               </div>
@@ -162,7 +183,7 @@ export default function ShareCardButton({ card, price, pct24h, shareUrl }: Share
 
               {/* Footer */}
               <div className="self-stretch border-t border-white/10 pt-2.5 text-center">
-                <span className="text-emerald-400 text-xs font-semibold tracking-wide">
+                <span className="text-slate-300 text-xs font-medium tracking-wide">
                   collectiblez.app
                 </span>
               </div>
@@ -172,14 +193,14 @@ export default function ShareCardButton({ card, price, pct24h, shareUrl }: Share
 
         {/* ── Actions ── */}
         <div className="flex flex-col gap-2">
-          <Button onClick={handleShareImage} disabled={busy} className="gap-1.5">
+          <Button onClick={handleShare} disabled={busy} className="gap-1.5">
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-            Share image
+            Share
           </Button>
           <div className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={handleDownload} disabled={busy} className="gap-1.5">
               <Download className="w-4 h-4" />
-              Download
+              Download image
             </Button>
             <Button variant="outline" onClick={handleCopyLink} className="gap-1.5">
               <LinkIcon className="w-4 h-4" />

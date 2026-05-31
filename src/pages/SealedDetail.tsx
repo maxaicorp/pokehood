@@ -29,6 +29,7 @@ import { ArrowLeft, ChevronRight, ChevronDown, ExternalLink, Package, TrendingUp
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import SEO from "@/components/SEO";
+import CollectorCryptPromoItem from "@/components/CollectorCryptPromoItem";
 
 export default function SealedDetail() {
   const { id } = useParams<{ id: string }>();
@@ -305,6 +306,7 @@ export default function SealedDetail() {
                     </a>
                   </DropdownMenuItem>
                 ))}
+                <CollectorCryptPromoItem />
               </DropdownMenuContent>
             </DropdownMenu>
 

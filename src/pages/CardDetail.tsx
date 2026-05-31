@@ -40,6 +40,7 @@ import SEO from "@/components/SEO";
 import CardImage from "@/components/CardImage";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ShareCardButton from "@/components/ShareCardButton";
+import CollectorCryptPromoItem from "@/components/CollectorCryptPromoItem";
 
 // ─── Type styling ─────────────────────────────────────────────────────────────
 
@@ -505,6 +506,7 @@ export default function CardDetail() {
                     </a>
                   </DropdownMenuItem>
                 ))}
+                <CollectorCryptPromoItem />
               </DropdownMenuContent>
             </DropdownMenu>
 
