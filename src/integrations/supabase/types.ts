@@ -1283,6 +1283,19 @@ export type Database = {
       is_merch_name: { Args: { p_name: string }; Returns: boolean }
       refresh_latest_card_prices: { Args: never; Returns: number }
       refresh_latest_graded_prices: { Args: never; Returns: number }
+      search_catalog: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          id: string
+          image: string
+          kind: string
+          name: string
+          score: number
+          set_name: string
+        }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
