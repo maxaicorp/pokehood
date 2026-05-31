@@ -194,7 +194,7 @@ export default function Dashboard() {
         {activeTab === "collection" && (
           <div>
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
               {[
                 { icon: Wallet, label: "Total Value", num: totalValue, isCurrency: true, glow: true },
                 { icon: CreditCard, label: "Cards", num: totalCards },
@@ -205,7 +205,9 @@ export default function Dashboard() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
-                  className="h-full"
+                  // Total Value gets its own full-width row on mobile so the $ value
+                  // is never truncated between the two narrow stat cards.
+                  className={`h-full ${stat.isCurrency ? "col-span-2 sm:col-span-1" : ""}`}
                 >
                   <MagicCard className={`h-full p-3 sm:p-5 bg-card border-border/50 ${stat.glow ? "glow-primary" : ""}`}>
                     <div className="flex items-center gap-2 sm:gap-3">
