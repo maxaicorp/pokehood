@@ -39,6 +39,7 @@ import GradedPriceTiles from "@/components/GradedPriceTiles";
 import SEO from "@/components/SEO";
 import CardImage from "@/components/CardImage";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import ShareCardButton from "@/components/ShareCardButton";
 
 // ─── Type styling ─────────────────────────────────────────────────────────────
 
@@ -396,11 +397,19 @@ export default function CardDetail() {
                   <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
                     {card.name}
                   </h1>
-                  {card.rarity && (
-                    <Badge variant="secondary" className="shrink-0 text-xs mt-1">
-                      {card.rarity}
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0 mt-1">
+                    {card.rarity && (
+                      <Badge variant="secondary" className="text-xs">
+                        {card.rarity}
+                      </Badge>
+                    )}
+                    <ShareCardButton
+                      card={card}
+                      price={marketPrice}
+                      pct24h={pct24h}
+                      shareUrl={`https://collectiblez.app${cardPath(card.set, { name: card.name, number: card.number })}`}
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground flex-wrap">
                   <span>{card.set.name}</span>
