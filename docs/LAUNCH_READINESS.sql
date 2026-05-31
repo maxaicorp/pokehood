@@ -64,7 +64,9 @@ WITH r AS (
   SELECT 20, 'CRON', e.jobname,
          CASE WHEN j.jobname IS NULL THEN 'FAIL' ELSE 'PASS' END,
          COALESCE(j.schedule, 'MISSING')
-  FROM (VALUES ('daily-snapshot-prices'),('weekly-snapshot-prices-full'),('daily-snapshot-sealed'),
+  -- NOTE: weekly-snapshot-prices-full intentionally removed — daily-snapshot-prices
+  -- now runs mode:"full" every day (full coverage, no daily/weekly overlap).
+  FROM (VALUES ('daily-snapshot-prices'),('daily-snapshot-sealed'),
         ('refresh-latest-prices-daily'),('ingest-cc-marketplace-10m'),('ingest-cc-native-5m'),
         ('ingest-onchain-activity-60s'),('ingest-onchain-listings-2m'),('daily-health-check')) e(jobname)
   LEFT JOIN cron.job j ON j.jobname = e.jobname
