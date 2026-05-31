@@ -20,7 +20,7 @@ const cacheHeaders = {
   "Cache-Control": "public, max-age=30, s-maxage=30, stale-while-revalidate=60",
 };
 
-const COLLECTIONS = new Set(["collector_crypt", "collector_crypt_graded"]);
+const COLLECTIONS = new Set(["collector_crypt", "collector_crypt_graded", "collector_crypt_cc"]);
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

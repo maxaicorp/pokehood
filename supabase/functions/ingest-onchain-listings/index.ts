@@ -207,6 +207,11 @@ async function ingestCollection(
         .update({ delisted_at: new Date().toISOString() }, { count: "exact" })
         .eq("collection", collection)
         .is("delisted_at", null)
+        // Never touch cc-* rows — those are owned by ingest-cc-marketplace (the
+        // CC API source). Without this exclusion, the ME ingest delisted every
+        // CC-API listing within 2 minutes of it being written (they're not in
+        // ME's fetch), which kept the marketplace stuck at the ~391 ME rows.
+        .not("pda_address", "like", "cc-%")
         .not("pda_address", "in", `(${seenArr.map((s) => `"${s}"`).join(",")})`);
       if (error) {
         console.warn(`[${collection}] soft-delete failed:`, error.message);

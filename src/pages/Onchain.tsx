@@ -114,6 +114,19 @@ const MARKETPLACE_SORTS: { value: MarketplaceSort; label: string }[] = [
   { value: "recent", label: "Recently Listed" },
 ];
 
+// Marketplace listing sources. Each ingest owns its own `collection` value so
+// they never delist each other's rows. CC API (collector_crypt_cc) is the full
+// inventory; Magic Eden (collector_crypt) is the subset listed on ME.
+type MarketplaceSource = "cc" | "me";
+const MARKETPLACE_COLLECTION: Record<MarketplaceSource, string> = {
+  cc: "collector_crypt_cc",
+  me: "collector_crypt",
+};
+const MARKETPLACE_SOURCES: { value: MarketplaceSource; label: string }[] = [
+  { value: "cc", label: "Collector Crypt" },
+  { value: "me", label: "Magic Eden" },
+];
+
 // Infinite-scroll batch size + per-session cap. 1000 was chosen so the entire
 // session stays under ~50 ME requests per tab (well within the free tier's
 // limits) and the user gets ~50 screens of scroll before hitting the wall.
@@ -140,16 +153,18 @@ export default function OnchainPage() {
 function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   const [typeFilter, setTypeFilter] = useState("");
   const [marketplaceSort, setMarketplaceSort] = useState<MarketplaceSort>("price-asc");
+  // Two distinct listing sources, each owns its own `collection` value so the
+  // ingests never delete each other's rows: CC API (collector_crypt_cc) vs
+  // Magic Eden (collector_crypt). Default to CC — it's the fuller inventory.
+  const [marketplaceSource, setMarketplaceSource] = useState<MarketplaceSource>("cc");
+  const marketplaceCollection = MARKETPLACE_COLLECTION[marketplaceSource];
 
-  // Total active CC listings in the DB — shown in the marketplace header so you
-  // can watch the count climb toward ~52k as the CC import (ingest-cc-marketplace)
-  // runs. Raw onchain_listings count (pre-merch-filter; the grid below hides
-  // merch via the RPC, so this can read a touch higher — fine as a coverage gauge).
+  // Active listing count for the selected source — shown in the header.
   const { data: listedCount } = useQuery({
-    queryKey: ["onchain-listed-count"],
+    queryKey: ["onchain-listed-count", marketplaceSource],
     queryFn: async () => {
       const r = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/onchain_listings?collection=eq.collector_crypt&delisted_at=is.null&select=token_mint`,
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/onchain_listings?collection=eq.${marketplaceCollection}&delisted_at=is.null&select=token_mint`,
         { headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Prefer: "count=exact", Range: "0-0" } },
       );
       return Number((r.headers.get("content-range") || "").split("/")[1]) || 0;
@@ -310,15 +325,15 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
     hasNextPage: hasNextListings,
     isFetchingNextPage: isFetchingMoreListings,
   } = useInfiniteQuery({
-    // marketplaceSort in the key so switching the dropdown resets the list
-    // and refetches from page 0 with the new sort.
-    queryKey: ["onchain-listings", marketplaceSort],
+    // sort + source in the key so switching either resets the list and
+    // refetches from page 0.
+    queryKey: ["onchain-listings", marketplaceSort, marketplaceSource],
     queryFn: async ({ pageParam }) => {
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onchain-listings`;
       // The edge fn / get_onchain_listings RPC accept these sort tokens
       // directly and sort natively in the DB — no offset-from-end math.
       const params = new URLSearchParams({
-        collection: "collector_crypt",
+        collection: marketplaceCollection,
         offset: String(pageParam * BATCH),
         limit: String(BATCH),
         sort: marketplaceSort, // "price-asc" | "price-desc" | "recent"
@@ -765,6 +780,21 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
             <span className="text-sm text-muted-foreground tabular-nums">
               {listedCount != null ? `${listedCount.toLocaleString()} listed` : " "}
             </span>
+            <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
+              {MARKETPLACE_SOURCES.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setMarketplaceSource(s.value)}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    marketplaceSource === s.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
             <Select value={marketplaceSort} onValueChange={(v) => setMarketplaceSort(v as MarketplaceSort)}>
               <SelectTrigger className="w-[200px] bg-background">
                 <SelectValue />

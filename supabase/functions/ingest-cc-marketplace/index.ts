@@ -22,7 +22,7 @@ const corsHeaders = {
 };
 const CC_API = "https://api.collectorcrypt.com/marketplace";
 const SOL_MINT = "So11111111111111111111111111111111111111112";
-const FUNCTION_VERSION = "2026-05-30-cc-marketplace-v2-incremental";
+const FUNCTION_VERSION = "2026-05-30-cc-marketplace-v3-twotabs";
 
 async function getSolUsd(): Promise<number | null> {
   try {
@@ -61,6 +61,7 @@ serve(async (req: Request) => {
     let complete = true;
     let listed = 0;
     let upserted = 0;
+    let firstErr: string | null = null;   // surfaced in the summary for diagnosis
 
     // Upsert each page AS WE FETCH IT — never accumulate everything and write
     // once at the end. The old all-at-end upsert meant that if the invocation
@@ -68,11 +69,22 @@ serve(async (req: Request) => {
     // the final write, ZERO rows persisted. Incremental writes survive that.
     const flush = async (batch: Record<string, unknown>[]) => {
       if (batch.length === 0) return;
+      // De-dupe by pda within the batch — a single upsert can't touch the same
+      // ON CONFLICT target twice ("cannot affect row a second time"), and the CC
+      // API can repeat an nftAddress within/across a page. One dup would
+      // otherwise reject the entire page's write.
+      const seen = new Set<string>();
+      const deduped = batch.filter((r) => {
+        const p = r.pda_address as string;
+        if (seen.has(p)) return false;
+        seen.add(p);
+        return true;
+      });
       const { error } = await supabase
         .from("onchain_listings")
-        .upsert(batch.map((r) => ({ ...r, delisted_at: null })), { onConflict: "pda_address" });
-      if (error) console.error("[cc-mkt] upsert:", error.message);
-      else upserted += batch.length;
+        .upsert(deduped.map((r) => ({ ...r, delisted_at: null })), { onConflict: "pda_address" });
+      if (error) { if (!firstErr) firstErr = error.message; console.error("[cc-mkt] upsert:", error.message); }
+      else upserted += deduped.length;
     };
 
     for (let page = 1; page <= maxPages; page++) {
@@ -96,7 +108,7 @@ serve(async (req: Request) => {
         const usd = cur === "USDC" ? price : (solUsd ? price * solUsd : null);
         pageRows.push({
           pda_address: `cc-${it.nftAddress}`,
-          collection: "collector_crypt",
+          collection: "collector_crypt_cc",   // own source — kept separate from the ME ingest's "collector_crypt"
           token_mint: it.nftAddress,
           seller: it.listing.sellerId ?? "",
           price,
@@ -122,13 +134,13 @@ serve(async (req: Request) => {
       const { count } = await supabase
         .from("onchain_listings")
         .update({ delisted_at: new Date().toISOString() }, { count: "exact" })
-        .like("pda_address", "cc-%")
+        .eq("collection", "collector_crypt_cc")
         .is("delisted_at", null)
         .lt("last_seen_at", runStart);
       delisted = count ?? 0;
     }
 
-    const summary = { success: true, version: FUNCTION_VERSION, complete, listed, upserted, delisted, duration_ms: Date.now() - t0 };
+    const summary = { success: true, version: FUNCTION_VERSION, complete, listed, upserted, delisted, upsert_error: firstErr, duration_ms: Date.now() - t0 };
     console.log("ingest-cc-marketplace done:", summary);
     return new Response(JSON.stringify(summary), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
