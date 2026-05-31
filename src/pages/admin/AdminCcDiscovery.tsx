@@ -105,7 +105,12 @@ export default function AdminCcDiscovery() {
   });
 
   const rowsQ = useQuery({
-    queryKey: ["cc-discovery-rows", tab],
+    // Include last_run_at so the rows auto-refetch when a background run
+    // completes. Without it, the run returns 202 immediately, rowsQ refetches
+    // BEFORE the background write lands, and never again — the table looked
+    // permanently empty even after a successful run. stateQ polls every 5s, so
+    // when last_run_at advances this key changes and the rows reload.
+    queryKey: ["cc-discovery-rows", tab, stateQ.data?.last_run_at ?? null],
     queryFn: async (): Promise<DiscoveryRow[]> => {
       const { data, error } = await supabase.rpc("get_cc_discovery", {
         p_status: tab, p_limit: 200, p_offset: 0,

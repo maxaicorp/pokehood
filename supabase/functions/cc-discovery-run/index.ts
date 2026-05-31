@@ -64,6 +64,37 @@ function parseCardName(itemName: string | null | undefined): string | null {
   return name || null;
 }
 
+// set_id from a card_id ("base1-2" → "base1", "tcgp-PB-11" → "tcgp-PB").
+function setIdOf(cardId: string): string {
+  return cardId.split("-").slice(0, -1).join("-") || cardId;
+}
+
+// Loose set-name match between CC's set label and a Scrydex set_name.
+function setNameMatches(setName: string, ccSet: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const a = norm(setName), b = norm(ccSet);
+  if (!a || !b) return false;
+  return a.includes(b) || b.includes(a);
+}
+
+// set_id → release year, from the app's published market-sets.json. Used to
+// disambiguate same name+number across sets (a 2021 Blastoise must NOT match
+// the 1999 Base Set Blastoise). Best-effort: if it can't load, year matching
+// is simply skipped and we fall back to set-name / single-candidate logic.
+async function fetchSetYearMap(): Promise<Map<string, string>> {
+  const m = new Map<string, string>();
+  try {
+    const r = await fetch("https://collectiblez.lovable.app/data/market-sets.json");
+    if (!r.ok) return m;
+    const j = await r.json();
+    for (const s of (j?.sets ?? [])) {
+      const y = String(s.releaseDate ?? "").match(/(\d{4})/)?.[1];
+      if (s.id && y) m.set(s.id, y);
+    }
+  } catch { /* best effort */ }
+  return m;
+}
+
 // SOL/USD spot (Jupiter primary, Pyth fallback) — only needed for SOL-priced
 // listings; USDC listings are 1:1. Both public, no key.
 async function getSolUsd(): Promise<number | null> {
@@ -87,6 +118,8 @@ interface CCListing {
   grade: number;
   price_usd: number;
   image: string | null;
+  set: string;     // CC's set label (it.set) — disambiguates same name+number across sets
+  year: string;    // 4-digit year parsed from the start of itemName (e.g. "2021")
 }
 
 // Pull listed English Pokémon slabs from the CC marketplace API.
@@ -126,6 +159,8 @@ async function fetchCCPokemon(maxPages: number, solUsd: number | null): Promise<
         grade: Number(it.gradeNum),
         price_usd: Math.round(usd * 100) / 100,
         image: it.frontImage ?? null,
+        set: String(it.set ?? "").trim(),
+        year: String(it.itemName ?? "").match(/^\s*(\d{4})/)?.[1] ?? "",
       });
     }
     if (items.length < 100) break; // last page
@@ -205,6 +240,7 @@ serve(async (req: Request) => {
             if (rows.length < P) break; from += P;
           } }
         const nameIdx = buildNameIndex(cards);
+        const setYear = await fetchSetYearMap();   // set_id → release year
 
         // Graded index: `${card_id}|${company}|${grade}` → market.
         const gradedMap = new Map<string, number>();
@@ -220,9 +256,32 @@ serve(async (req: Request) => {
         // Match.
         const results = listings.map((l) => {
           const cands = (nameIdx.get(normalize(l.card_name)) ?? []).filter((c) => cardNumberOf(c.card_id) === l.number);
+
+          // Pick the RIGHT candidate, not just the first (which was usually the
+          // priciest vintage printing — a $39 2021 Blastoise was matching the
+          // $12.5k 1999 Base Set Blastoise, a false -99.7% "deal"). The slab's
+          // year is authoritative: prefer the candidate whose set release year
+          // matches; then a set-name match; then a single candidate. If the
+          // year is known and NO candidate's set year agrees, refuse to match
+          // rather than emit a wrong-era false positive.
+          let card: RawCard | undefined;
+          if (cands.length === 1) {
+            card = cands[0];
+          } else if (cands.length > 1) {
+            card = (l.year && cands.find((c) => setYear.get(setIdOf(c.card_id)) === l.year))
+              || (l.set && cands.find((c) => setNameMatches(c.set_name, l.set)))
+              || undefined;
+            if (!card && !l.year && !l.set) card = cands[0]; // no signal at all → legacy behavior
+          }
+          // Year cross-check even for a single candidate: a known slab year that
+          // disagrees with the candidate's set year is a mismatch, not a deal.
+          if (card && l.year) {
+            const cy = setYear.get(setIdOf(card.card_id));
+            if (cy && cy !== l.year) card = undefined;
+          }
+
           let matched_card_id: string | null = null, matched_set: string | null = null, market: number | null = null, delta: number | null = null, method = "none", conf = 0;
-          if (cands.length > 0) {
-            const card = cands[0];
+          if (card) {
             matched_card_id = card.card_id; matched_set = card.set_name;
             const g = gradedMap.get(`${card.card_id}|${l.company}|${l.grade}`);
             if (g && g > 0) {
