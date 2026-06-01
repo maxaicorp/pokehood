@@ -46,7 +46,7 @@ import {
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import { cardPath, cardPathFromApiId } from "@/lib/slug";
-import { formatPct, getLatestSnapshotPage, getLatestSnapshotAll, getLatestPricesByIds } from "@/lib/price-snapshots";
+import { formatPct, getLatestSnapshotPage, getLatestSnapshotAll, getLatestPricesByIds, getTopMovers } from "@/lib/price-snapshots";
 import { recordCollectionAdd } from "@/lib/card-stats-store";
 import { getSetSentiment, castVote, applyVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import AppHeader from "@/components/AppHeader";
@@ -71,7 +71,7 @@ import CardGridView from "@/components/CardGridView";
 import CardImage from "@/components/CardImage";
 import SEO from "@/components/SEO";
 
-type MarketTab = "top" | "trending" | "gainers" | "losers" | "most-visited" | "sealed";
+type MarketTab = "top" | "trending" | "most-visited" | "sealed";
 
 const VISIBLE_PAGE_SIZE = 10;
 // Scroll-load pages are larger than the first paint. The first paint stays at 10
@@ -103,8 +103,6 @@ const MARKET_TABS = [
   { key: "top", label: "Top", icon: Trophy },
   { key: "sealed", label: "Sealed", icon: Package },
   { key: "trending", label: "Movers", icon: Flame },
-  { key: "gainers", label: "Gainers", icon: TrendingUp },
-  { key: "losers", label: "Losers", icon: TrendingDown },
   { key: "most-visited", label: "Most Visited", icon: Eye },
 ] as const;
 type MarketTabKey = (typeof MARKET_TABS)[number]["key"];
@@ -205,6 +203,22 @@ export default function Market() {
     // over every card in the filter — not just the rows scrolled into view.
     const cap = RECENT_CAPS[selectedSetId] ?? DEFAULT_CAP;
 
+    // Movers tab: rank the WHOLE catalog (price >= $2) server-side by 24h move,
+    // not a client sort over the price-capped top set. Single bounded fetch.
+    if (activeTab === "trending") {
+      getTopMovers({ window: "24h", minPrice: 2, setIds, limit: 250 })
+        .then(hydrateCardsFromLatestPrices)
+        .then((movers) => { if (!cancelled) { setCards(movers); setIsLoading(false); } })
+        .catch((err) => {
+          if (!cancelled) {
+            setIsLoading(false);
+            console.error("Market movers fetch failed:", err);
+            toast.error("Could not load movers. Pull to refresh or try again.");
+          }
+        });
+      return () => { cancelled = true; };
+    }
+
     // Phase A — instant first paint with a tiny page so time-to-content stays
     // fast. Phase B then swaps in the full (capped) set for correct sorting.
     getLatestSnapshotPage({ setIds, limit: VISIBLE_PAGE_SIZE, offset: 0 })
@@ -231,7 +245,7 @@ export default function Market() {
       .catch(() => { /* Phase A already painted something; leave it on screen */ });
 
     return () => { cancelled = true; };
-  }, [pricesReady, resolveMarketSetIds, selectedSetId, setsData, refreshToken]);
+  }, [pricesReady, resolveMarketSetIds, selectedSetId, setsData, refreshToken, activeTab]);
 
   // Refresh on tab focus and on a custom "collectiblez:force-refresh" event
   // (broadcast by the admin Master Refresh button via localStorage). Without
@@ -399,17 +413,11 @@ export default function Market() {
       case "top":
         return sorted.sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0));
       case "trending":
+        // Server already ranked these by |24h move| (get_top_movers, all cards
+        // >= $2). Keep a client tiebreak so the order is stable as rows hydrate.
         return sorted
           .filter((c) => getPcts(c).raw24h !== null)
           .sort((a, b) => Math.abs(getPcts(b).raw24h ?? 0) - Math.abs(getPcts(a).raw24h ?? 0));
-      case "gainers":
-        return sorted
-          .filter((c) => (getPcts(c).raw24h ?? 0) > 0)
-          .sort((a, b) => (getPcts(b).raw24h ?? 0) - (getPcts(a).raw24h ?? 0));
-      case "losers":
-        return sorted
-          .filter((c) => (getPcts(c).raw24h ?? 0) < 0)
-          .sort((a, b) => (getPcts(a).raw24h ?? 0) - (getPcts(b).raw24h ?? 0));
       default:
         return sorted;
     }
@@ -490,7 +498,7 @@ export default function Market() {
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <SEO
         title="Pokémon TCG Market Prices & Trends — Collectiblez"
-        description="Live market prices, 24h/7d trends, gainers, losers, and sealed product values for every Pokémon TCG expansion."
+        description="Live market prices, 24h/7d trends, top movers, and sealed product values for every Pokémon TCG expansion."
         path="/"
         jsonLd={{
           "@context": "https://schema.org",

@@ -247,6 +247,27 @@ export async function getLatestSnapshotAll({
   return getLatestSnapshotPage({ setIds, limit, offset: 0, sortDir: "desc" });
 }
 
+/** Top movers across the WHOLE catalog (price >= minPrice), ranked server-side
+ *  by absolute % move over the window — not a client sort over a price-capped
+ *  page, so a $3 card that mooned still surfaces. Powers the merged Movers tab. */
+export async function getTopMovers({
+  window = "24h",
+  minPrice = 2,
+  setIds,
+  limit = 250,
+}: { window?: "24h" | "7d" | "30d"; minPrice?: number; setIds?: Set<string>; limit?: number } = {}): Promise<LatestPrice[]> {
+  const { data, error } = await (supabase.rpc as any)("get_top_movers", {
+    p_window: window,
+    p_min_price: minPrice,
+    p_set_ids: setIds?.size ? [...setIds] : null,
+    p_limit: limit,
+  });
+  if (error || !data) return [];
+  return (data as LatestRow[])
+    .filter((r) => !r.card_id.startsWith("sealed-") && keepRow(r.card_id))
+    .map(rowToLatestPrice);
+}
+
 /** Fetch latest price + 1d/7d/30d for a specific set of card ids (chunked to
  *  stay under PostgREST URL limits). Used to hydrate small lists like
  *  Most-Visited without pulling the whole latest-prices set. */
