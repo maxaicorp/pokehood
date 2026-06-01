@@ -1251,6 +1251,23 @@ export type Database = {
           upvotes: number
         }[]
       }
+      get_top_movers: {
+        Args: {
+          p_limit?: number
+          p_min_price?: number
+          p_set_ids?: string[]
+          p_window?: string
+        }
+        Returns: {
+          card_id: string
+          card_name: string
+          price: number
+          price_1d: number
+          price_30d: number
+          price_7d: number
+          set_name: string
+        }[]
+      }
       get_unclaimed_wins: {
         Args: never
         Returns: {
