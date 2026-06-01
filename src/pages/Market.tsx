@@ -98,6 +98,17 @@ const DEFAULT_CAP = 1000;
 // new sets in either series get picked up automatically without a code change.
 const MODERN_ERA_SERIES = new Set(["Scarlet & Violet", "Mega Evolution"]);
 
+// Market tabs — shared by the desktop tab strip and the mobile dropdown.
+const MARKET_TABS = [
+  { key: "top", label: "Top", icon: Trophy },
+  { key: "sealed", label: "Sealed", icon: Package },
+  { key: "trending", label: "Movers", icon: Flame },
+  { key: "gainers", label: "Gainers", icon: TrendingUp },
+  { key: "losers", label: "Losers", icon: TrendingDown },
+  { key: "most-visited", label: "Most Visited", icon: Eye },
+] as const;
+type MarketTabKey = (typeof MARKET_TABS)[number]["key"];
+
 export default function Market() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -494,15 +505,31 @@ export default function Market() {
       <div className="container py-6 px-4 sm:px-8">
         {/* Tabs + Set selector */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
-          <div className="flex items-center gap-1 border-b border-border/50 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
-            {([
-              { key: "top", label: "Top", icon: Trophy },
-              { key: "sealed", label: "Sealed", icon: Package },
-              { key: "trending", label: "Movers", icon: Flame },
-              { key: "gainers", label: "Gainers", icon: TrendingUp },
-              { key: "losers", label: "Losers", icon: TrendingDown },
-              { key: "most-visited", label: "Most Visited", icon: Eye },
-            ] as const).map(({ key, label, icon: Icon }) => (
+          {/* Mobile: full-width dropdown (6 tabs overflow a phone width). */}
+          <div className="w-full sm:hidden">
+            <Select
+              value={activeTab}
+              onValueChange={(v) => { setActiveTab(v as MarketTabKey); setSortCol(null); }}
+            >
+              <SelectTrigger className="w-full bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MARKET_TABS.map(({ key, label, icon: Icon }) => (
+                  <SelectItem key={key} value={key}>
+                    <span className="flex items-center gap-2">
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop: horizontal tab strip. */}
+          <div className="hidden sm:flex items-center gap-1 border-b border-border/50 scrollbar-none">
+            {MARKET_TABS.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => { setActiveTab(key); setSortCol(null); }}

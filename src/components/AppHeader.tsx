@@ -84,7 +84,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/" className="flex items-center gap-2 h-8">
               <img src="/logo.png" alt="Collectiblez" className="w-8 h-8 object-contain" />
-              <span className="hidden sm:inline font-display font-bold text-base tracking-wide text-foreground uppercase">Collectiblez</span>
+              <span className="font-display font-bold text-base tracking-wide text-foreground uppercase">Collectiblez</span>
             </Link>
             <div className="hidden sm:flex items-center gap-0">
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Dashboard</Link>
