@@ -26,6 +26,13 @@ export interface RawAmount {
 export interface PriceInfo {
   solPrice?: RawAmount;
   splPrice?: RawAmount;
+  // Collector Crypt native trades (ingest-cc-native) use a FLAT shape instead
+  // of Magic Eden's nested rawAmount/decimals: a already-human `amount`, the
+  // `currency` ("USDC"), and the SPL mint `splAddress`. Must be handled
+  // explicitly or it falls through to the SOL path and renders amount*solUsd.
+  amount?: number;
+  currency?: string;
+  splAddress?: string;
 }
 
 /** Convert a raw on-chain amount string into a human-readable number. */
@@ -57,6 +64,19 @@ export function formatTradePrice(
       ? rawToNumber(priceInfo.splPrice)
       : null;
 
+  // Collector Crypt native shape: { amount, currency:"USDC", splAddress }.
+  // `amount` is already a human USD figure (e.g. 580 = $580), so use it
+  // directly. Before this, CC USDC sales fell through to the SOL branch and
+  // rendered amount * solUsd (a $580 sale showed as ~$90,000).
+  const ccUsdc =
+    typeof priceInfo?.amount === "number" &&
+    priceInfo.amount > 0 &&
+    (priceInfo.currency === "USDC" || priceInfo.splAddress === USDC_MINT)
+      ? priceInfo.amount
+      : null;
+
+  const usdc = splUsdc ?? ccUsdc;
+
   // DO NOT use rawToNumber on priceInfo.solPrice. Magic Eden reports it with
   // decimals=9 but the rawAmount is actually at 10^18 scale (attoSOL or
   // similar), so applying the documented decimals yields nine-figure SOL
@@ -70,9 +90,9 @@ export function formatTradePrice(
   // dollar amounts that match what they'd pay. The green tint on isUsdc
   // distinguishes real USDC settlement from a SOL trade we converted, which
   // is the one piece of cross-currency signal worth keeping.
-  if (splUsdc != null) {
+  if (usdc != null) {
     return {
-      primary: `$${splUsdc.toFixed(2)}`,
+      primary: `$${usdc.toFixed(2)}`,
       secondary: "",
       isUsdc: true,
     };

@@ -147,7 +147,11 @@ export default function OnchainPage() {
   if (tab !== "activity" && tab !== "marketplace" && tab !== "top-sales") {
     return <Navigate to="/onchain/activity" replace />;
   }
-  return <Onchain activeTab={tab} />;
+  // key={tab} forces a FULL remount when the tab changes (the route param
+  // alone doesn't remount the component). This guarantees each tab starts with
+  // fresh queries instead of leaning on react-query's enabled/refetch dance —
+  // which is what left tabs showing stale data "most of the time" on switch.
+  return <Onchain key={tab} activeTab={tab} />;
 }
 
 function Onchain({ activeTab }: { activeTab: OnchainTab }) {
