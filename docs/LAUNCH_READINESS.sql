@@ -15,6 +15,19 @@ WITH r AS (
   UNION ALL SELECT 2,'MARKET','card rows >= 20k',
          CASE WHEN count(*)>=20000 THEN 'PASS' ELSE 'WARN' END, count(*)||' cards'
   FROM latest_card_prices WHERE card_id NOT LIKE 'sealed-%'
+  -- TRIPWIRE: the chunked snapshot must fully cover the catalog each day. If a
+  -- day's distinct-card count drops below 20k, the write pipeline regressed
+  -- (this is the 409->20k partial-coverage bug that the chunked crons fixed).
+  -- Uses the 2-day peak so a mid-run read (chunks still firing) doesn't false-WARN.
+  UNION ALL SELECT 2,'PIPELINE','snapshot daily coverage >= 20k (2d peak)',
+         CASE WHEN (SELECT COALESCE(max(c),0) FROM (
+                SELECT count(DISTINCT card_id) c FROM price_snapshots
+                WHERE recorded_at > CURRENT_DATE - 2 AND card_id NOT LIKE 'sealed-%'
+                GROUP BY recorded_at) x) >= 20000 THEN 'PASS' ELSE 'WARN' END,
+         (SELECT COALESCE(max(c),0) FROM (
+                SELECT count(DISTINCT card_id) c FROM price_snapshots
+                WHERE recorded_at > CURRENT_DATE - 2 AND card_id NOT LIKE 'sealed-%'
+                GROUP BY recorded_at) x)::text || ' peak cards/day'
   UNION ALL SELECT 3,'MARKET','24h delta coverage >= 90%',
          CASE WHEN count(*) FILTER (WHERE price_1d IS NOT NULL)::numeric/NULLIF(count(*),0) >= 0.9 THEN 'PASS' ELSE 'WARN' END,
          round(100.0*count(*) FILTER (WHERE price_1d IS NOT NULL)/NULLIF(count(*),0),1)||'% have 1d'
@@ -64,9 +77,11 @@ WITH r AS (
   SELECT 20, 'CRON', e.jobname,
          CASE WHEN j.jobname IS NULL THEN 'FAIL' ELSE 'PASS' END,
          COALESCE(j.schedule, 'MISSING')
-  -- NOTE: weekly-snapshot-prices-full intentionally removed — daily-snapshot-prices
-  -- now runs mode:"full" every day (full coverage, no daily/weekly overlap).
-  FROM (VALUES ('daily-snapshot-prices'),('daily-snapshot-sealed'),
+  -- NOTE: the single daily-snapshot-prices {mode:full} run was replaced by 6
+  -- chunk crons (snapshot-chunk-1..6) + a weekly prune. See project_chunked_snapshot.
+  FROM (VALUES ('snapshot-chunk-1'),('snapshot-chunk-2'),('snapshot-chunk-3'),
+        ('snapshot-chunk-4'),('snapshot-chunk-5'),('snapshot-chunk-6'),
+        ('prune-snapshots-weekly'),('daily-snapshot-sealed'),
         ('refresh-latest-prices-daily'),('ingest-cc-marketplace-10m'),('ingest-cc-native-5m'),
         ('ingest-onchain-activity-60s'),('ingest-onchain-listings-2m'),('daily-health-check')) e(jobname)
   LEFT JOIN cron.job j ON j.jobname = e.jobname

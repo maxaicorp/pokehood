@@ -1,21 +1,27 @@
-// GradedPriceTiles — 6 stat tiles showing PSA/BGS/CGC 10 + 9 market prices
-// for a card. Lives under the main hero row on CardDetail.
+// GradedPriceTiles — one card per major grading company (PSA / BGS / CGC),
+// each with a grade dropdown so the user picks which grade's market price to
+// view. Replaces the old fixed 6-tile (PSA/BGS/CGC × 10,9) layout, which hid
+// every grade that wasn't a 10 or 9 — so cards with only, say, PSA 8 or BGS
+// 9.5 looked empty even though we had data.
 //
 // Data flow:
 //   snapshot-prices (daily) → graded_price_snapshots → latest_graded_prices
 //   → get_graded_tiles_for_card RPC → this component
 //
-// No Scrydex call on read. Sub-50ms render. Zero extra Scrydex credits
-// because graded entries come in the same /cards?include=prices response
-// raw prices already use; snapshot-prices just stopped throwing them away.
-//
-// Empty state: when the RPC returns < 6 rows, the missing combos render as
-// greyed-out em-dash tiles so the row is always visible and the user knows
-// "we checked, no PSA 8 data" rather than "section is broken/missing."
+// The RPC returns ALL grades for the 3 companies; each dropdown lists whatever
+// grades that company actually has for the card, defaulting to the highest.
 
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Props {
   // Card id from our index. Strips ::variant suffix before querying — graded
@@ -23,18 +29,9 @@ interface Props {
   cardId: string;
 }
 
-// Tile order — mirrors GRADED_TILE_KEYS in lib/scrydex-api.ts. Kept here as a
-// constant so the row layout is stable even when the RPC returns nothing.
-const TILE_KEYS: Array<{ company: string; grade: number }> = [
-  { company: "PSA", grade: 10 },
-  { company: "PSA", grade: 9  },
-  { company: "BGS", grade: 10 },
-  { company: "BGS", grade: 9  },
-  { company: "CGC", grade: 10 },
-  { company: "CGC", grade: 9  },
-];
+const COMPANIES = ["PSA", "BGS", "CGC"] as const;
 
-interface TileRow {
+interface GradedRow {
   company: string;
   grade: number;
   market: number | null;
@@ -53,13 +50,22 @@ function formatUsd(n: number | null): string {
   });
 }
 
-function Tile({ row }: { row: TileRow }) {
-  const hasData = row.market != null && row.market > 0;
-  // Show low–high range only when we have both AND they're not identical to
-  // market (Scrydex sometimes returns market=low=high for thin-data cards).
+function CompanyCard({ company, rows }: { company: string; rows: GradedRow[] }) {
+  // Only grades with a real market price, highest first.
+  const grades = useMemo(
+    () =>
+      rows
+        .filter((r) => r.market != null && r.market > 0)
+        .sort((a, b) => b.grade - a.grade),
+    [rows],
+  );
+
+  const [picked, setPicked] = useState<number | null>(null);
+  // Default to the highest available grade until the user picks one.
+  const current = grades.find((r) => r.grade === picked) ?? grades[0];
+  const hasData = !!current;
   const showRange =
-    hasData &&
-    row.low != null && row.high != null && row.low !== row.high;
+    hasData && current.low != null && current.high != null && current.low !== current.high;
 
   return (
     <div
@@ -67,51 +73,61 @@ function Tile({ row }: { row: TileRow }) {
         hasData ? "border-border" : "border-border/40 opacity-60"
       }`}
     >
-      <div className="text-xs font-semibold text-muted-foreground tracking-wide">
-        {row.company} {row.grade}
+      <div className="flex items-center justify-between gap-2 min-h-[28px]">
+        <span className="text-xs font-semibold text-muted-foreground tracking-wide">
+          {company}
+        </span>
+        {hasData && grades.length > 0 && (
+          <Select value={String(current.grade)} onValueChange={(v) => setPicked(Number(v))}>
+            <SelectTrigger className="h-7 w-[64px] text-xs px-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {grades.map((r) => (
+                <SelectItem key={r.grade} value={String(r.grade)} className="text-xs">
+                  {r.grade}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
       <div
-        className={`mt-1.5 text-base sm:text-lg font-bold tabular-nums ${
+        className={`mt-2 text-base sm:text-lg font-bold tabular-nums ${
           hasData ? "text-foreground" : "text-muted-foreground"
         }`}
       >
-        {formatUsd(row.market)}
+        {hasData ? formatUsd(current.market) : "—"}
       </div>
       {showRange ? (
         <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
-          {formatUsd(row.low)} – {formatUsd(row.high)}
+          {formatUsd(current.low)} – {formatUsd(current.high)}
         </div>
       ) : (
-        // Reserve a line of vertical space so all tiles align even when the
-        // range row isn't rendered. Avoids a janky uneven grid.
-        <div className="mt-0.5 h-[14px]" aria-hidden />
+        <div className="mt-0.5 h-[14px] text-[10px] text-muted-foreground">
+          {hasData ? "" : "No graded sales yet"}
+        </div>
       )}
     </div>
   );
 }
 
 export default function GradedPriceTiles({ cardId }: Props) {
-  // Strip our ::variant suffix — graded data is tied to the physical card,
-  // not the foil variant.
   const baseCardId = cardId.split("::")[0];
 
   const { data, isLoading } = useQuery({
     queryKey: ["graded-tiles", baseCardId],
-    queryFn: async (): Promise<Map<string, TileRow>> => {
+    queryFn: async (): Promise<GradedRow[]> => {
       const { data, error } = await supabase.rpc("get_graded_tiles_for_card", {
         p_card_id: baseCardId,
       });
       if (error) {
         console.warn("[GradedPriceTiles] RPC error:", error.message);
-        return new Map();
+        return [];
       }
-      const map = new Map<string, TileRow>();
-      for (const r of (data ?? []) as TileRow[]) {
-        map.set(`${r.company}-${r.grade}`, r);
-      }
-      return map;
+      return (data ?? []) as GradedRow[];
     },
-    staleTime: 60 * 60_000,           // 1 hour — graded prices update daily at most
+    staleTime: 60 * 60_000, // 1 hour — graded prices update daily at most
     refetchOnWindowFocus: false,
     enabled: !!baseCardId,
   });
@@ -119,53 +135,36 @@ export default function GradedPriceTiles({ cardId }: Props) {
   if (isLoading) {
     return (
       <section className="mt-8">
-        <h3 className="font-display font-semibold text-foreground mb-3">
-          Graded Prices
-        </h3>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[88px] rounded-xl" />
+        <h3 className="font-display font-semibold text-foreground mb-3">Graded Prices</h3>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-[104px] rounded-xl" />
           ))}
         </div>
       </section>
     );
   }
 
-  // Always render all 6 tiles, even if the cache has no data for some. The
-  // Tile component handles the "no data" state internally (em-dash + dimmed
-  // border). This is intentional — see comments above on why we don't hide
-  // the section. Previous "anyData ? render : null" guard was confusing
-  // because chase cards would silently lose the section if Scrydex's graded
-  // data hadn't been ingested yet.
-  const rows: TileRow[] = TILE_KEYS.map((k) => {
-    const found = data?.get(`${k.company}-${k.grade}`);
-    return found ?? {
-      company: k.company,
-      grade: k.grade,
-      market: null, low: null, mid: null, high: null, currency: "USD",
-    };
-  });
+  // Group the flat RPC rows by company so each card gets its own grade list.
+  const byCompany = new Map<string, GradedRow[]>();
+  for (const r of data ?? []) {
+    if (!byCompany.has(r.company)) byCompany.set(r.company, []);
+    byCompany.get(r.company)!.push(r);
+  }
 
-  // Caption swaps based on whether we have any populated tiles. The "coming
-  // soon" message is the truthful state until the Scrydex plan is upgraded
-  // to a tier that includes graded prices in /cards?include=prices —
-  // until then the snapshot pipeline finds nothing to write.
-  const anyData = rows.some((r) => r.market != null && r.market > 0);
-  const caption = anyData
-    ? "Market · daily snapshot"
-    : "Graded data coming soon";
+  const anyData = (data ?? []).some((r) => r.market != null && r.market > 0);
 
   return (
     <section className="mt-8">
       <div className="flex items-baseline justify-between mb-3">
-        <h3 className="font-display font-semibold text-foreground">
-          Graded Prices
-        </h3>
-        <span className="text-[10px] text-muted-foreground">{caption}</span>
+        <h3 className="font-display font-semibold text-foreground">Graded Prices</h3>
+        <span className="text-[10px] text-muted-foreground">
+          {anyData ? "Market · daily snapshot" : "Graded data coming soon"}
+        </span>
       </div>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3">
-        {rows.map((r) => (
-          <Tile key={`${r.company}-${r.grade}`} row={r} />
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {COMPANIES.map((c) => (
+          <CompanyCard key={c} company={c} rows={byCompany.get(c) ?? []} />
         ))}
       </div>
     </section>
