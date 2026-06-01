@@ -576,8 +576,10 @@ export default function Market() {
           ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
               {/* Hidden until the server-computed total arrives, so the
-                  number never ratchets as the user scrolls. */}
-              {summary && totalValue > 0 && (
+                  number never ratchets as the user scrolls. Not shown on
+                  Movers — a "Top N value" sum is meaningless on a movers list
+                  (it's ranked by % move, not value). */}
+              {activeTab !== "trending" && summary && totalValue > 0 && (
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground whitespace-nowrap">
                     {isSingleSet ? "Set Total" : `Top ${totalCount}`}
