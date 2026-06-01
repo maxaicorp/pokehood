@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useRef, type MouseEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   fetchSealedProducts,
   getSealedMarketPrice,
@@ -8,8 +8,12 @@ import {
 } from "@/lib/sealed-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import { formatPct } from "@/lib/price-snapshots";
+import { addSealedToCollection } from "@/lib/collection-store";
+import { toastAddedToInventory } from "@/lib/inventory-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Package, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Package, ArrowUpDown, ArrowUp, ArrowDown, Plus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { motion } from "framer-motion";
 import SealedGridView from "@/components/SealedGridView";
 import type { ViewMode } from "@/components/ViewToggle";
@@ -24,6 +28,9 @@ interface SealedTabProps {
 }
 
 export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabProps) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [addingId, setAddingId] = useState<string | null>(null);
   const [products, setProducts] = useState<SealedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -100,6 +107,21 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
     }
   };
 
+  // Quick-add a sealed product to the user's inventory straight from the list,
+  // without leaving the tab. preventDefault on the click stops the row Link from
+  // navigating to the detail page.
+  const handleAdd = async (e: MouseEvent, product: SealedProduct) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) { toast.info("Sign in to add to your inventory"); navigate("/auth"); return; }
+    if (addingId) return;
+    setAddingId(product.id);
+    const result = await addSealedToCollection(product, user.id, 1);
+    if (result) toastAddedToInventory(product.name, navigate);
+    else toast.error("Failed to add to inventory");
+    setAddingId(null);
+  };
+
   const SortIcon = ({ col }: { col: SortCol }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
     return sortDir === "asc"
@@ -142,7 +164,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
   return (
     <div>
       {/* Table header */}
-      <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
+      <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
         <span>#</span>
         <span>Product</span>
         <button onClick={() => handleSort("set")} className="flex items-center hover:text-foreground transition-colors">
@@ -157,6 +179,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
         <button onClick={() => handleSort("7d")} className="flex items-center justify-end hover:text-foreground transition-colors">
           7d % <SortIcon col="7d" />
         </button>
+        <span className="sr-only">Add</span>
       </div>
 
       {products.length === 0 && !isLoading ? (
@@ -186,7 +209,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
               >
               <Link
                 to={`/sealed/${product.id}`}
-                className="grid grid-cols-[24px_1fr_auto] sm:grid-cols-[40px_1fr_160px_100px_72px_72px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 transition-colors"
+                className="grid grid-cols-[24px_1fr_auto_36px] sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 transition-colors"
               >
                 <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -223,6 +246,14 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                   <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
                   <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
                 </div>
+                <button
+                  onClick={(e) => handleAdd(e, product)}
+                  disabled={addingId === product.id}
+                  aria-label={`Add ${product.name} to inventory`}
+                  className="justify-self-center flex items-center justify-center w-8 h-8 rounded-md border border-border text-muted-foreground hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+                >
+                  {addingId === product.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                </button>
               </Link>
               </motion.div>
             );

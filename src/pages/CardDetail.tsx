@@ -41,6 +41,7 @@ import CardImage from "@/components/CardImage";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ShareCardButton from "@/components/ShareCardButton";
 import CollectorCryptPromoItem from "@/components/CollectorCryptPromoItem";
+import { toastAddedToInventory } from "@/lib/inventory-toast";
 
 // ─── Type styling ─────────────────────────────────────────────────────────────
 
@@ -198,7 +199,7 @@ export default function CardDetail() {
     setAddingToCollection(true);
     const result = await addToCollection(enrichedCard, user.id, "NM");
     if (result) {
-      toast.success(`${enrichedCard.name} added to collection!`);
+      toastAddedToInventory(enrichedCard.name, navigate);
       recordCollectionAdd({ id: enrichedCard.id, name: enrichedCard.name, setName: enrichedCard.set.name, imageSmall: enrichedCard.images.small });
     } else {
       toast.error("Failed to add to collection.");

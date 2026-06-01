@@ -30,6 +30,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import SEO from "@/components/SEO";
 import CollectorCryptPromoItem from "@/components/CollectorCryptPromoItem";
+import { toastAddedToInventory } from "@/lib/inventory-toast";
 
 export default function SealedDetail() {
   const { id } = useParams<{ id: string }>();
@@ -95,7 +96,7 @@ export default function SealedDetail() {
     setAddingToCollection(true);
     const result = await addSealedToCollection(product, user.id, 1);
     if (result) {
-      toast.success(`${product.name} added to your collection`);
+      toastAddedToInventory(product.name, navigate);
     } else {
       toast.error("Failed to add to collection");
     }

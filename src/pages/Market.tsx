@@ -544,8 +544,8 @@ export default function Market() {
                   number never ratchets as the user scrolls. */}
               {summary && totalValue > 0 && (
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground">
-                    {isSingleSet ? "Set Total" : `Top ${totalCount} Value`}
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    {isSingleSet ? "Set Total" : `Top ${totalCount}`}
                   </p>
                   <p className="text-lg font-bold text-foreground tabular-nums">
                     ${totalValue.toLocaleString("en-US")}

@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, RefreshCw, AlertTriangle, Activity as ActivityIcon, Store, TrendingUp } from "lucide-react";
 import SEO from "@/components/SEO";
+import { CC_REFERRAL_URL } from "@/components/CollectorCryptPromoItem";
 import { formatTradePrice, useSolPrice, type PriceInfo } from "@/lib/onchain-price";
 
 interface Activity {
@@ -414,9 +415,9 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
             <p className="text-sm text-muted-foreground mt-1">
               Live trading activity for tokenized Pokémon cards on Solana via{" "}
               <a
-                href="https://collectorcrypt.com"
+                href={CC_REFERRAL_URL}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="noopener noreferrer sponsored"
                 className="text-primary hover:underline inline-flex items-center gap-1"
               >
                 Collector Crypt <ExternalLink className="w-3 h-3" />
