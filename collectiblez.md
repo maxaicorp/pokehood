@@ -4,7 +4,7 @@
 Collectiblez is a Pokémon TCG collection tracker and market analytics platform. Users can search cards, build collections, track market prices, manage wishlists, and share public profile pages. The site is built with React 18, Vite, Tailwind CSS, and Lovable Cloud (Supabase) for backend services.
 
 **Live URL:** https://collectiblez.lovable.app  
-**Default theme:** Dark mode  
+**Default theme:** Light mode (new visitors; users keep any stored choice) — changed from dark 2026-06-01  
 
 ---
 
@@ -31,7 +31,7 @@ Collectiblez is a Pokémon TCG collection tracker and market analytics platform.
 | **Landing page card slider** | Scrydex CDN images | TCGdex CDN (onError fallback) |
 | **Price snapshots** | Scrydex via `snapshot-prices` edge function | — |
 
-> **Note:** The migration from TCGdex → Scrydex was completed in April 2026. TCGdex is only used as a fallback where noted. All new data (card IDs, images, prices) uses Scrydex format.
+> **Note:** The migration from TCGdex → Scrydex was completed in April 2026. **TCGdex has since been fully removed — Scrydex is the only API.** Card images load from Scrydex's Cloudflare CDN (`images.scrydex.com`); they are **not** stored in our database. The TCGdex "fallback" entries above are historical — see the current pipeline section at the bottom.
 
 ---
 
@@ -57,8 +57,10 @@ Collectiblez is a Pokémon TCG collection tracker and market analytics platform.
 ## Key Features
 
 ### Market Page (`/`, `/market`)
-- **Tabs:** Top, Sealed, Trending, Gainers, Losers, Most Visited
-- **Card tabs:** Set selector (all, recent 5, recent 10, individual sets), sortable columns (price, 24h%, 7d%, 30d%)
+- **Tabs:** Top, Sealed, Movers, Most Visited (Gainers/Losers removed 2026-06-01 — Movers already covers both directions by magnitude)
+- **Tabs become a full-width dropdown on mobile**; horizontal strip on desktop
+- **Movers** ranks the *whole* catalog (price ≥ $2) server-side by abs(% move) via the `get_top_movers` RPC — not a client sort over a price-capped subset; respects the set filter ("All Sets" = global)
+- **Card tabs:** Set selector (all, recent 5, recent 10, modern era, individual sets), sortable columns (price, 24h%, 7d%, 30d%)
 - **Sealed tab:** Product type filter (Booster Box, ETB, etc.), own header row, infinite scroll
 - **Products without pricing are hidden** (Japanese sealed products filtered out)
 - **"Case" wholesale products filtered out**
@@ -115,8 +117,13 @@ Collectiblez is a Pokémon TCG collection tracker and market analytics platform.
 | `user_links` | Social/contact links for profile pages |
 | `link_clicks` | Analytics — tracks link click events |
 | `profile_views` | Analytics — tracks profile page views |
-| `price_snapshots` | Historical price data for cards and sealed products |
+| `price_snapshots` | Daily raw price history (card_id, price, recorded_at DATE), 90-day retention |
+| `graded_price_snapshots` | Daily graded price history per (card, company, grade) |
+| `latest_card_prices` | **Read cache** — latest price + 1d/7d/30d deltas per card (what the frontend reads) |
+| `latest_graded_prices` | **Read cache** — latest graded prices per (card, company, grade) |
 | `card_stats` | Aggregate card popularity (views, searches, collection adds, wishlist adds) |
+| `onchain_activities` / `onchain_listings` / `nft_names` | Collector Crypt / Solana onchain feed + marketplace listings |
+| `cc_discovery_results` | CC slabs matched to graded comps (undervalued finder) |
 | `user_roles` | Role-based access (admin, moderator, user) |
 
 ### Storage
@@ -129,13 +136,16 @@ Collectiblez is a Pokémon TCG collection tracker and market analytics platform.
 
 | Function | Purpose |
 |---|---|
-| `scrydex-proxy` | Proxies all Scrydex API requests (cards, expansions, sealed, search) with auth headers |
-| `snapshot-prices` | Scheduled — snapshots card prices from Scrydex to `price_snapshots` |
-| `snapshot-sealed` | Scheduled — snapshots sealed product prices from Scrydex |
-| `check-subscription` | Verifies Stripe subscription status |
-| `create-checkout` | Creates Stripe checkout sessions for Pro upgrade |
-| `customer-portal` | Redirects to Stripe customer portal |
-| `onchain-activity` | Proxies Magic Eden collection activities API for Collector Crypt (Solana) |
+| `scrydex-proxy` | Proxies Scrydex API requests (cards, expansions, sealed, search) with auth headers |
+| `snapshot-prices` | Card price snapshots → `price_snapshots` + `graded_price_snapshots`. Run via 6 **chunk** crons (see pipeline section); also has `full`/`daily` modes |
+| `snapshot-sealed` | Scheduled — sealed product prices |
+| `backfill-price-history` | Pulls Scrydex per-card history (1 credit/card, incl. graded) → upserts `price_snapshots`, then refreshes. Retroactive gap-fix tool |
+| `check-subscription` / `create-checkout` / `customer-portal` | Stripe (Pro upgrade) |
+| `ingest-cc-marketplace` / `ingest-cc-native` / `ingest-onchain-activity` / `ingest-onchain-listings` | Collector Crypt / onchain ingestion → `onchain_*` tables (cron, browser never calls ME/Helius) |
+| `cc-discovery-run` | Matches CC listings to Scrydex graded comps → `cc_discovery_results` (undervalued finder) |
+| `health-check` / `scrydex-new-sets-check` | Pipeline health + new-set detection |
+
+> **Refresh + prune are dedicated pure-SQL pg_cron jobs** (`refresh-latest-prices-daily`, `prune-snapshots-weekly`), not part of any edge function — see the pipeline section.
 
 ---
 
@@ -211,3 +221,60 @@ Collectiblez is a Pokémon TCG collection tracker and market analytics platform.
 - Sealed tab: removed search bar, moved type filter to header row
 - Sealed tab: fixed duplicate header rows (shared "Card" header hidden when Sealed active)
 - Sealed products without price data hidden from display
+
+---
+
+## Data Pipeline & Market Architecture (CURRENT — June 2026)
+
+This supersedes the older "API Data Strategy" table for anything price-related.
+
+### Read path (locked contract)
+The frontend reads **precomputed flat tables**, never live API calls and **never a browser cache** (localStorage/SWR/etc. — that was a 2-month recurring bug):
+- `latest_card_prices` — one row/card: `price`, `price_1d`, `price_7d`, `price_30d`, `updated_at`.
+- `latest_graded_prices` — one row per `(card_id, company, grade)`: market/low/mid/high.
+- Read RPCs: `get_latest_price_page` (paged, set-filtered, price-sorted), `get_all_latest_prices`, `get_top_movers` (whole-catalog % movers, price floor), `get_filter_summary`, `get_graded_tiles_for_card` (all grades for PSA/BGS/CGC), `search_catalog`.
+
+### Write path — CHUNKED snapshots (the permanent fix for recurring data loss)
+The old single `snapshot-prices {mode:"full"}` daily run kept dying partway (per-day coverage swung 409→20,306 cards) because one background worker couldn't finish ~240 pages inside the edge-function time limit. Mid-catalog sets (e.g. Prismatic Evolutions) went stale for days. **Replaced 2026-06-01 with 6 independent chunk crons:**
+
+| Cron | Schedule (UTC) | Job |
+|---|---|---|
+| `snapshot-chunk-1..6` | 6:00, 6:08, 6:16, 6:24, 6:32, 6:40 | `snapshot-prices {mode:"chunk", startPage:N, pageLimit:50}` — newest-first, ~50 pages each, finishes well inside the timeout |
+| `refresh-latest-prices-daily` | 7:00 | runs **both** `refresh_latest_card_prices()` + `refresh_latest_graded_prices()` — rebuilds the read caches from whatever landed (decoupled from the snapshot, so a partial chunk can't freeze the site) |
+| `prune-snapshots-weekly` | Sun 8:00 | deletes `price_snapshots` + `graded_price_snapshots` older than 90 days |
+| `daily-snapshot-sealed` | — | sealed product prices |
+| `ingest-cc-marketplace-10m`, `ingest-cc-native-5m`, `ingest-onchain-activity-60s`, `ingest-onchain-listings-2m` | various | Collector Crypt / onchain ingestion → `onchain_*` tables |
+
+Flow: chunks → `price_snapshots` + `graded_price_snapshots` (recorded_at is a DATE; same-day runs collapse) → 7:00 refresh → read tables → RPCs → frontend.
+
+### Delta windows (bounded)
+`price_1d/7d/30d` are computed against the snapshot **nearest the target age within a tolerance band** (1d: 1–3d, 7d: 4–11d, 30d: 20–45d). If no snapshot is in-band the delta is NULL (an honest blank, not a wrong number computed against a far-older snapshot). Accuracy improves as the chunked daily history accumulates.
+
+### Backfill tool
+`backfill-price-history` edge fn pulls Scrydex's per-card history (`/pokemon/v1/cards/{id}/price_history?days=N`, **1 credit/card**, includes the full graded ladder) and upserts daily points into `price_snapshots`, then refreshes — to retroactively fix gappy history instead of waiting for the chunks. Modes: `{test:id}`, `{mode:"backfill", scope:"set:<id>"|"top:N"|card_ids:[]}`. Loops synchronously, so backfill in per-set / few-hundred-card batches (large scopes hit the same time limit).
+
+### Health / launch gate
+`docs/LAUNCH_READINESS.sql` — one read-only query → PASS/WARN/FAIL for every RPC, data freshness, a **snapshot daily-coverage tripwire** (WARN if a day < 20k cards), all expected crons, and RLS. Run it morning-of-launch.
+
+---
+
+## Recent Changes (May–June 2026)
+
+### Data pipeline overhaul (the big one)
+- **Chunked snapshot crons** replaced the failure-prone single full run (see above) — root-cause fix for the recurring "prices partially missing / rare prices vanish" bug.
+- **Graded-price read cache fixed** — `refresh_latest_graded_prices()` was orphaned on the partial-prone snapshot fn; moved onto the dedicated daily refresh cron. Repopulated (~72k rows).
+- **Bounded delta windows** so 7d/30d stop showing inflated changes computed against far-older snapshots.
+- **`backfill-price-history`** edge fn added for retroactive history fixes.
+
+### Market & UI
+- **Movers** merged (Gainers/Losers removed), server-ranked across all cards ≥ $2 (`get_top_movers`); value block hidden on the Movers tab.
+- **Graded Prices** on card pages → one card per **PSA / BGS / CGC** with a grade dropdown (shows every grade we have, not just 10/9). RPC `get_graded_tiles_for_card` returns all grades.
+- **Light mode** is the default theme; **tabs collapse to a dropdown on mobile**; the **COLLECTIBLEZ wordmark** now shows on mobile.
+- **Share button** on card pages — COLLECTR-style generated graphic (`html-to-image`) + native share / download / copy-link; copied links unfurl with the card art via per-card OG tags.
+- **Add-to-inventory success toasts** now include a **"View inventory"** link to `/dashboard`; the **Sealed tab** got a **"+" quick-add** on every row (same toast).
+- **"Join Collector Crypt" referral promo** (owner's referral link) in every Buy Now dropdown + the Onchain page link.
+- **New hex favicon**; **PriceChart** 7d/30d toggle freeze fixed (disabled per-toggle re-animation of the glow filter); removed the user-facing "Source: Scrydex" caption.
+
+### Deferred (post-launch, planned)
+- **"Unusual" tab** — anomaly detection (z-score vs. a card's own volatility); needs per-card σ + clean accumulated history.
+- **Graded market data table** — graded analogue of Movers (`docs/GRADED_MARKET_TAB_PLAN.md`); needs graded deltas computed first. `backfill-price-history` already retrieves graded history (free) to seed it.
