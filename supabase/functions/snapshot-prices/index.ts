@@ -30,7 +30,7 @@ const corsHeaders = {
 
 // Bump on every deploy so the health check / logs can confirm which code is
 // actually live (we've been bitten by old deployed functions still running).
-const FUNCTION_VERSION = "2026-05-28-phase2-coverage-guard";
+const FUNCTION_VERSION = "2026-06-01-chunk-background";
 
 const PAGE_SIZE = 100;
 const DAILY_PAGE_LIMIT = 60; // 60 pages newest + 60 pages oldest = 120 credits/day
@@ -732,14 +732,72 @@ serve(async (req: Request) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
       );
     } else if (mode === "chunk") {
-      // Chunk mode: fetch a specific page range (caller orchestrates pagination)
-      pagesProcessed += await runPass({
-        label: `chunk@${startPage}+${chunkPageLimit}`,
-        orderBy,
-        pageLimit: chunkPageLimit,
-        startPage,
-        apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters, runState,
-      });
+      // Chunk mode: fetch a specific page range (caller orchestrates pagination).
+      //
+      // CRITICAL FIX (2026-06-01): this MUST run in the background like daily/
+      // full/sets. The six `snapshot-chunk-*` crons invoke this via pg_net,
+      // whose connection timeout closes after a few seconds and — for a
+      // SYNCHRONOUS handler — kills the worker mid-pass (~5s ≈ 10 of the 50
+      // pages). That is the root cause of the wildly varying daily coverage
+      // (5.7k–20k of ~22.6k). waitUntil lets all `chunkPageLimit` pages finish
+      // regardless of how fast the caller hangs up. Rows already flush every
+      // 500 inside runPass, so even a genuine crash keeps what it wrote.
+      const work = (async () => {
+        try {
+          pagesProcessed += await runPass({
+            label: `chunk@${startPage}+${chunkPageLimit}`,
+            orderBy,
+            pageLimit: chunkPageLimit,
+            startPage,
+            apiKey, teamId, supabase, today, seenIds, buffer, gradedBuffer, counters, gradedCounters, runState,
+          });
+          const { inserted, skipped } = await flushRows(supabase, buffer);
+          counters.inserted += inserted;
+          counters.skipped += skipped;
+          const gradedResult = await flushGradedRows(supabase, gradedBuffer);
+          gradedCounters.inserted += gradedResult.inserted;
+          gradedCounters.skipped += gradedResult.skipped;
+          // A chunk only covers a slice of pages, so it NEVER prunes. The
+          // dedicated 07:00 refresh-latest-prices cron is the canonical cache
+          // rebuild; refreshing here too just keeps it progressively current,
+          // and only on a clean run so a hard page failure can't cache a gap.
+          if (!runState.failed) {
+            await refreshLatestCardPrices(supabase);
+            await refreshLatestGradedPrices(supabase);
+            console.log(`[chunk@${startPage}] BACKGROUND DONE (complete) — pages=${pagesProcessed} inserted=${counters.inserted} graded=${gradedCounters.inserted}. ${FUNCTION_VERSION}`);
+          } else {
+            console.warn(`[chunk@${startPage}] BACKGROUND DONE (PARTIAL) — a page hard-failed; skipped cache refresh to protect last-good data. ${FUNCTION_VERSION}`);
+          }
+          // Stamp the chunk-completion log so verify-and-heal can re-run ONLY
+          // the chunks that came up short. complete=false on a hard page
+          // failure; if this code is never reached (timeout/crash) no row is
+          // written at all — the heal treats "no complete row today" as short.
+          try {
+            await supabase.from("snapshot_chunk_log").insert({
+              start_page: startPage,
+              page_limit: chunkPageLimit,
+              pages_processed: pagesProcessed,
+              complete: !runState.failed,
+              version: FUNCTION_VERSION,
+            });
+          } catch (e) {
+            console.error(`[chunk@${startPage}] chunk_log insert failed`, e);
+          }
+        } catch (e) {
+          console.error(`[chunk@${startPage}] background error:`, e);
+        }
+      })();
+      // @ts-ignore — EdgeRuntime is available in the Supabase Edge runtime
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(work);
+      } else {
+        work.catch((e) => console.error(`[chunk@${startPage}] background error`, e));
+      }
+      return new Response(
+        JSON.stringify({ success: true, mode: "chunk", startPage, pageLimit: chunkPageLimit, note: "Running in background — see logs for completion." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
+      );
     } else if (mode === "full") {
       // Full mode: single pass newest-first through all pages (~235 credits).
       // Run in background so the proxy/client timeout (~150s) doesn't kill the worker
@@ -852,42 +910,6 @@ serve(async (req: Request) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
       );
     }
-
-    // ─ Reached only by chunk mode (a partial page range) ─
-    const { inserted, skipped } = await flushRows(supabase, buffer);
-    counters.inserted += inserted;
-    counters.skipped += skipped;
-    const gradedResult = await flushGradedRows(supabase, gradedBuffer);
-    gradedCounters.inserted += gradedResult.inserted;
-    gradedCounters.skipped += gradedResult.skipped;
-
-    // Chunk mode never prunes (it only covers a slice of pages). Refresh the
-    // read cache only if the chunk completed without a hard page failure.
-    if (!runState.failed) {
-      await refreshLatestCardPrices(supabase);
-      await refreshLatestGradedPrices(supabase);
-    } else {
-      console.warn(`[chunk] PARTIAL — a page hard-failed; skipped cache refresh. ${FUNCTION_VERSION}`);
-    }
-
-    const summary: Record<string, unknown> = {
-      success: !runState.failed,
-      partial: runState.failed,
-      mode,
-      date: today,
-      version: FUNCTION_VERSION,
-      pages_processed: pagesProcessed,
-      prices_saved: counters.inserted,
-      prices_skipped: counters.skipped,
-      graded_saved: gradedCounters.inserted,
-      graded_skipped: gradedCounters.skipped,
-    };
-    console.log("Done:", summary);
-
-    return new Response(JSON.stringify(summary), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: runState.failed ? 207 : 200,
-    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Snapshot error:", msg);

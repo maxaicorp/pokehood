@@ -114,19 +114,29 @@ const FUNCTIONS: ProbeSpec[] = [
     name: "scrydex-proxy",
     description: "Proxy for Scrydex card-data API.",
     query: "?path=/health",
-    okStatuses: [200, 400, 404, 502],
+    // 401 = the proxy is up and correctly requiring auth for the probe.
+    okStatuses: [200, 400, 401, 404, 502],
   },
   {
     name: "snapshot-prices",
     description: "Daily price snapshot pipeline. POST {force:true,probeOnly:true} to test.",
     body: { probeOnly: true },
-    okStatuses: [200, 202, 400, 405, 500],
+    // 401/403 = deployed and correctly refusing an unauthed/cron-secretless
+    // probe. That's the function WORKING, not failing — it must not show red.
+    okStatuses: [200, 202, 400, 401, 403, 405, 500],
   },
   {
     name: "snapshot-sealed",
     description: "Daily sealed-product snapshot pipeline.",
     body: { probeOnly: true },
-    okStatuses: [200, 202, 400, 405, 500],
+    // Same as snapshot-prices: an unauthed probe is expected to get 401/403.
+    okStatuses: [200, 202, 400, 401, 403, 405, 500],
+  },
+  {
+    name: "verify-and-heal",
+    description: "Self-heal cron: reads the completeness contract, refreshes the cache, and re-runs the snapshot only if coverage is genuinely short (capped + credit-gated). Runs 08:00 UTC. An unauthed probe correctly returns 401.",
+    body: {},
+    okStatuses: [200, 202, 401, 403],
   },
   {
     name: "check-subscription",
@@ -193,6 +203,25 @@ interface ProbeResult {
   shapeError: string | null;
   preview: string;
   ok: boolean;
+  // Wall-clock time this probe completed (epoch ms). Shown per-row so it's
+  // obvious whether a result is fresh or left over from a probe minutes ago —
+  // a green row from an hour-old run is not the same as one from 5s ago.
+  checkedAt: number;
+}
+
+// "2:04:31 PM" — absolute local time, for the exact-moment label.
+function fmtClock(ts: number): string {
+  return new Date(ts).toLocaleTimeString();
+}
+
+// "just now" / "12s ago" / "4m ago" — relative age, for at-a-glance freshness.
+function fmtAge(ts: number, now: number): string {
+  const s = Math.max(0, Math.round((now - ts) / 1000));
+  if (s < 5) return "just now";
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.floor(m / 60)}h ago`;
 }
 
 async function probeOne(spec: ProbeSpec): Promise<ProbeResult> {
@@ -226,6 +255,7 @@ async function probeOne(spec: ProbeSpec): Promise<ProbeResult> {
       shapeError,
       preview: text.slice(0, 200),
       ok: statusOk && (!shapeError || shapeError.startsWith("WARNING")),
+      checkedAt: Date.now(),
     };
   } catch (e: unknown) {
     const durationMs = Math.round(performance.now() - t0);
@@ -238,6 +268,7 @@ async function probeOne(spec: ProbeSpec): Promise<ProbeResult> {
       shapeError: String(e),
       preview: "",
       ok: false,
+      checkedAt: Date.now(),
     };
   }
 }
@@ -246,6 +277,13 @@ export default function AdminFunctions() {
   const [results, setResults] = useState<Map<string, ProbeResult>>(new Map());
   const [loading, setLoading] = useState<Set<string>>(new Set());
   const [running, setRunning] = useState(false);
+  // Ticks every 10s purely so the relative "12s ago" labels stay current
+  // without re-probing. Re-probing is always manual / on-mount.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 10_000);
+    return () => clearInterval(id);
+  }, []);
 
   const runOne = useCallback(async (spec: ProbeSpec) => {
     setLoading((prev) => new Set(prev).add(spec.name));
@@ -277,6 +315,11 @@ export default function AdminFunctions() {
 
   const failedCount = [...results.values()].filter((r) => !r.ok).length;
   const totalCount = results.size;
+  // Most recent probe completion across all rows — the "as of" time for the
+  // whole board. Null until the first probe lands.
+  const lastRun = totalCount > 0
+    ? Math.max(...[...results.values()].map((r) => r.checkedAt))
+    : null;
 
   return (
     <AdminLayout>
@@ -307,11 +350,18 @@ export default function AdminFunctions() {
           ) : (
             <AlertTriangle className="w-5 h-5 text-amber-500" />
           )}
-          <p className="text-sm">
-            {failedCount === 0
-              ? `All ${totalCount} functions probed OK`
-              : `${failedCount} of ${totalCount} functions failed or returned unexpected shape`}
-          </p>
+          <div className="flex-1">
+            <p className="text-sm">
+              {failedCount === 0
+                ? `All ${totalCount} functions probed OK`
+                : `${failedCount} of ${totalCount} functions failed or returned unexpected shape`}
+            </p>
+            {lastRun !== null && (
+              <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+                Last probed {fmtClock(lastRun)} · {fmtAge(lastRun, now)}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -325,6 +375,7 @@ export default function AdminFunctions() {
               spec={spec}
               result={result}
               isLoading={isLoading}
+              now={now}
               onProbe={() => runOne(spec)}
             />
           );
@@ -338,11 +389,13 @@ function FunctionRow({
   spec,
   result,
   isLoading,
+  now,
   onProbe,
 }: {
   spec: ProbeSpec;
   result?: ProbeResult;
   isLoading: boolean;
+  now: number;
   onProbe: () => void;
 }) {
   const borderClass = !result
@@ -387,6 +440,12 @@ function FunctionRow({
                     {result.status}
                   </span>
                   <span className="text-xs text-muted-foreground tabular-nums">{result.durationMs}ms</span>
+                  <span
+                    className="text-xs text-muted-foreground tabular-nums"
+                    title={`Probed at ${fmtClock(result.checkedAt)}`}
+                  >
+                    {fmtAge(result.checkedAt, now)}
+                  </span>
                 </>
               );
             })()}

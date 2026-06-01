@@ -509,6 +509,51 @@ async function checkEndToEndReadProbe(
   };
 }
 
+// THE headline check: is the price pipeline actually COMPLETE today, by the
+// single shared contract (get_pipeline_completeness SQL fn)? Every other check
+// looks at one stage; this one asks the question the whole system exists to
+// answer — "does the market show fresh, complete data right now?" — using the
+// exact thresholds the admin page and the heal cron also read. A partial
+// snapshot (the recurring outage) goes red here even when pg_cron said
+// "succeeded".
+async function checkPipelineCompleteness(
+  supabase: any,
+): Promise<CheckResult> {
+  const { data, error } = await supabase.rpc("get_pipeline_completeness");
+  if (error) {
+    return { ok: false, message: "get_pipeline_completeness RPC failed — run migration 20260601060000", detail: error.message };
+  }
+  const r = data as {
+    pass: boolean; coverage_pct: number; delta_pct: number;
+    today_coverage: number; catalog: number; cache_age_hours: number | null;
+    cache_is_today: boolean; failures: string[];
+    thresholds: { coverage_pct_min: number; delta_pct_min: number; cache_age_hours_max: number };
+  };
+  const t = r.thresholds;
+  if (r.pass) {
+    return {
+      ok: true,
+      message: `Pipeline COMPLETE — ${r.coverage_pct}% catalog covered today (${r.today_coverage.toLocaleString()}/${r.catalog.toLocaleString()}), ${r.delta_pct}% have 24h deltas, cache fresh.`,
+      detail: r,
+    };
+  }
+  // Translate the machine failure codes into a human "what's broken + the bar it missed".
+  const reasons: string[] = [];
+  if (r.failures?.includes("low_coverage"))
+    reasons.push(`only ${r.coverage_pct}% of cards snapshotted today (need ${t.coverage_pct_min}%) — snapshot run is PARTIAL`);
+  if (r.failures?.includes("low_delta_coverage"))
+    reasons.push(`only ${r.delta_pct}% of cards have a 24h delta (need ${t.delta_pct_min}%) — prior-day snapshots are missing`);
+  if (r.failures?.includes("stale_cache"))
+    reasons.push(r.cache_is_today
+      ? `cache is ${r.cache_age_hours}h old (max ${t.cache_age_hours_max}h)`
+      : `cache was not refreshed today — run refresh_latest_card_prices()`);
+  return {
+    ok: false,
+    message: `Pipeline INCOMPLETE: ${reasons.join("; ")}.`,
+    detail: r,
+  };
+}
+
 async function checkScrydexProxy(apiKey: string, teamId: string): Promise<CheckResult> {
   if (!apiKey || !teamId) return { ok: false, message: "Missing SCRYDEX_API_KEY or SCRYDEX_TEAM_ID" };
   try {
@@ -716,7 +761,8 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [freshness, coverage, liveCache, deltasComputed, sealedDeltas, endToEnd, newSets, sealedFreshness, sealedCatalog, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings, gradedFreshness] = await Promise.all([
+  const [completeness, freshness, coverage, liveCache, deltasComputed, sealedDeltas, endToEnd, newSets, sealedFreshness, sealedCatalog, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings, gradedFreshness] = await Promise.all([
+    checkPipelineCompleteness(supabase),
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
     checkLiveCacheFreshness(supabase),
@@ -744,6 +790,7 @@ serve(async (req) => {
   // new_sets third ("is the frontend missing any sets we have data for?"),
   // then the upstream pipeline detail.
   const checks = {
+    pipeline_completeness: completeness,
     end_to_end_read: endToEnd,
     live_cache_freshness: liveCache,
     deltas_computed: deltasComputed,
