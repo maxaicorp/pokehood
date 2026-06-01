@@ -58,17 +58,36 @@ async function fetchHistory(cardId: string, days: number, h: Record<string, stri
   return { ok: false, url: candidates[0], status: attempts.at(-1)?.status ?? 0, data: null, attempts };
 }
 
-// Defensive parse — collapse the response to one market price per day. Field
-// names are confirmed via the test before any bulk run.
+// Defensive parse — collapse the response to one market price per day.
+// Scrydex shape: data: [{ date, prices: [{ type, variant, condition, market, ... }] }]
+// We mirror the daily snapshot pipeline: pick the raw NM market price (prefer
+// holofoil), fall back to the max raw market across variants. Skip graded.
 function parsePoints(data: any): Array<{ date: string; price: number }> {
   const arr: any[] = data?.data ?? data?.prices ?? data?.history ?? [];
   const byDay = new Map<string, number>();
   for (const e of Array.isArray(arr) ? arr : []) {
     const rawDate = e?.date ?? e?.recorded_at ?? e?.day ?? e?.timestamp ?? null;
-    const price = typeof e?.market === "number" ? e.market : (typeof e?.price === "number" ? e.price : null);
-    if (!rawDate || price == null || price <= 0) continue;
-    const date = String(rawDate).slice(0, 10);
-    byDay.set(date, Math.max(byDay.get(date) ?? 0, price)); // chase variant = highest market
+    if (!rawDate) continue;
+    // Normalize "2026/05/31" or "2026-05-31T..." → "2026-05-31"
+    const date = String(rawDate).slice(0, 10).replace(/\//g, "-");
+
+    // Nested shape: pick best raw market for the day.
+    const prices: any[] = Array.isArray(e?.prices) ? e.prices : [];
+    let best: number | null = null;
+    if (prices.length) {
+      const raws = prices.filter((p) => p?.type === "raw" && typeof p?.market === "number" && p.market > 0);
+      const nm = raws.filter((p) => p?.condition === "NM");
+      const pool = nm.length ? nm : raws;
+      const holo = pool.filter((p) => typeof p?.variant === "string" && p.variant.toLowerCase().includes("holo"));
+      const chosen = holo.length ? holo : pool;
+      for (const p of chosen) best = Math.max(best ?? 0, p.market as number);
+    } else {
+      // Flat fallback (older/alt response shapes).
+      const flat = typeof e?.market === "number" ? e.market : (typeof e?.price === "number" ? e.price : null);
+      if (flat != null && flat > 0) best = flat;
+    }
+    if (best == null || best <= 0) continue;
+    byDay.set(date, Math.max(byDay.get(date) ?? 0, best));
   }
   return [...byDay.entries()].map(([date, price]) => ({ date, price })).sort((a, b) => a.date.localeCompare(b.date));
 }
