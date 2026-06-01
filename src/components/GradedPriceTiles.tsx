@@ -152,7 +152,7 @@ export default function GradedPriceTiles({ cardId }: Props) {
   // until then the snapshot pipeline finds nothing to write.
   const anyData = rows.some((r) => r.market != null && r.market > 0);
   const caption = anyData
-    ? "Market · Source: Scrydex (daily snapshot)"
+    ? "Market · daily snapshot"
     : "Graded data coming soon";
 
   return (
