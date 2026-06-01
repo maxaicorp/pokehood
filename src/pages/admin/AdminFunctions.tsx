@@ -139,6 +139,12 @@ const FUNCTIONS: ProbeSpec[] = [
     okStatuses: [200, 202, 401, 403],
   },
   {
+    name: "heal-onchain",
+    description: "Onchain self-heal cron: reads get_onchain_health, re-triggers a stalled ingest, and FLAGS price/shape logic bugs for a human (never auto-acts on those). An unauthed probe correctly returns 401.",
+    body: {},
+    okStatuses: [200, 202, 401, 403],
+  },
+  {
     name: "check-subscription",
     description: "Stripe subscription status check (requires auth).",
     body: {},

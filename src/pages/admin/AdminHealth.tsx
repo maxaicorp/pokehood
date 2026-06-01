@@ -30,6 +30,7 @@ interface HealthReport {
 
 const CHECK_LABELS: Record<string, string> = {
   pipeline_completeness: "Pipeline complete (the contract)",
+  onchain_health: "Onchain healthy (the contract)",
   end_to_end_read: "End-to-end read (what users see)",
   live_cache_freshness: "Live site cache freshness",
   deltas_computed: "24h / 7d / 30d % change deltas",
@@ -49,6 +50,8 @@ const CHECK_LABELS: Record<string, string> = {
 const CHECK_HELP: Record<string, string> = {
   pipeline_completeness:
     "THE contract — the one signal that means the same thing here, in the health-check function, and in the heal cron (get_pipeline_completeness SQL fn). A run is COMPLETE only if today's snapshot covers ≥90% of the catalog, ≥75% of cards have a 24h delta, and the read cache was refreshed today. This is the check that goes red on a partial snapshot even when pg_cron reported 'succeeded' — the gap that hid every recent outage.",
+  onchain_health:
+    "Onchain subsystem contract (get_onchain_health SQL fn), shared with the heal-onchain cron. Goes red two ways: (1) a stalled ingest — activity or listings older than 6h; the heal cron re-triggers the ingest. (2) a SANITY-GUARD trip — a sale priced like a parse bug (>$100k) or a price_info shape the renderer doesn't recognize; these are logic bugs the heal cron FLAGS for a human rather than re-running (re-ingest can't fix wrong math). The shape guard is what would have caught the CC $90k display bug on day one.",
   end_to_end_read:
     "The single truest signal. Exercises the exact read paths the frontend uses (get_latest_price_page for cards, latest_card_prices for sealed) and confirms real priced rows come back. Unlike the stage checks, this goes red whenever a filter or empty cache would blank the actual page — it would have caught both recent sealed bugs immediately.",
   sealed_deltas_computed:

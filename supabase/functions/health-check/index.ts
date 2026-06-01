@@ -554,6 +554,35 @@ async function checkPipelineCompleteness(
   };
 }
 
+// Onchain subsystem contract — mirror of pipeline_completeness, for the
+// /onchain feeds. Goes red on a stalled ingest (stale activity/listings) OR a
+// sanity-guard trip (a sale priced like a parse bug, or a price_info shape the
+// renderer doesn't handle — the $90k-bug class). See get_onchain_health SQL fn.
+async function checkOnchainHealth(supabase: any): Promise<CheckResult> {
+  const { data, error } = await supabase.rpc("get_onchain_health");
+  if (error) return { ok: false, message: "get_onchain_health RPC failed — run migration 20260601100000", detail: error.message };
+  const r = data as {
+    pass: boolean; failures: string[];
+    activity_age_hours: number | null; listing_age_hours: number | null;
+    listings_me: number; listings_cc: number;
+    insane_price_count: number; unknown_shape_count: number;
+  };
+  if (r.pass) {
+    return {
+      ok: true,
+      message: `Onchain healthy — activity ${r.activity_age_hours ?? "?"}h old, ${(r.listings_me + r.listings_cc).toLocaleString()} listings, prices sane.`,
+      detail: r,
+    };
+  }
+  const reasons: string[] = [];
+  if (r.failures?.includes("activity_stale")) reasons.push(`activity ${r.activity_age_hours}h stale — activity ingest may be down`);
+  if (r.failures?.includes("listings_stale")) reasons.push(`listings ${r.listing_age_hours}h stale — listing ingest may be down`);
+  if (r.failures?.includes("listings_empty")) reasons.push(`no active listings`);
+  if (r.failures?.includes("insane_price")) reasons.push(`${r.insane_price_count} sale(s) priced like a parse bug (>$100k) — LOGIC BUG, needs a human`);
+  if (r.failures?.includes("unknown_price_shape")) reasons.push(`${r.unknown_shape_count} row(s) with an unrecognized price_info shape — renderer will mis-price them, needs a human`);
+  return { ok: false, message: `Onchain UNHEALTHY: ${reasons.join("; ")}.`, detail: r };
+}
+
 async function checkScrydexProxy(apiKey: string, teamId: string): Promise<CheckResult> {
   if (!apiKey || !teamId) return { ok: false, message: "Missing SCRYDEX_API_KEY or SCRYDEX_TEAM_ID" };
   try {
@@ -761,8 +790,9 @@ serve(async (req) => {
   const teamId = Deno.env.get("SCRYDEX_TEAM_ID") ?? "";
   const checkedAt = new Date().toISOString();
 
-  const [completeness, freshness, coverage, liveCache, deltasComputed, sealedDeltas, endToEnd, newSets, sealedFreshness, sealedCatalog, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings, gradedFreshness] = await Promise.all([
+  const [completeness, onchainHealth, freshness, coverage, liveCache, deltasComputed, sealedDeltas, endToEnd, newSets, sealedFreshness, sealedCatalog, scrydex, statsRpc, images, snapshotHistory, onchainActivity, onchainListings, gradedFreshness] = await Promise.all([
     checkPipelineCompleteness(supabase),
+    checkOnchainHealth(supabase),
     checkPriceSnapshotFreshness(supabase),
     checkCardCoverage(supabase),
     checkLiveCacheFreshness(supabase),
@@ -791,6 +821,7 @@ serve(async (req) => {
   // then the upstream pipeline detail.
   const checks = {
     pipeline_completeness: completeness,
+    onchain_health: onchainHealth,
     end_to_end_read: endToEnd,
     live_cache_freshness: liveCache,
     deltas_computed: deltasComputed,
