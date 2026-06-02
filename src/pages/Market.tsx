@@ -34,6 +34,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUrlState } from "@/lib/use-url-state";
+import { toastAddedToInventory } from "@/lib/inventory-toast";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -371,7 +372,10 @@ export default function Market() {
       return next;
     });
     if (result) {
-      toast.success(`${card.name} added to collection!`);
+      // Use the shared toast with a "View inventory" → /dashboard action so the
+      // "+" gives users a one-tap path to where the card landed (was a plain
+      // toast with no link).
+      toastAddedToInventory(card.name, navigate);
       recordCollectionAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
       queryClient.invalidateQueries({ queryKey: ["collection"] });
     } else {

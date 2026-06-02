@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import BackgroundLayer from "@/components/BackgroundLayer";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import SentimentIntroDialog from "@/components/SentimentIntroDialog";
 
 // Lazy-loaded pages for code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -99,6 +100,8 @@ const App = () => (
               </Suspense>
               </ErrorBoundary>
             </main>
+            {/* Global one-time explainer, opens on a user's first sentiment vote */}
+            <SentimentIntroDialog />
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

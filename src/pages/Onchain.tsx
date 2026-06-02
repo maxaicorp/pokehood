@@ -16,6 +16,7 @@ import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, Refresh
 import SEO from "@/components/SEO";
 import { CC_REFERRAL_URL } from "@/components/CollectorCryptPromoItem";
 import { formatTradePrice, useSolPrice, type PriceInfo } from "@/lib/onchain-price";
+import { useUrlState } from "@/lib/use-url-state";
 
 interface Activity {
   signature: string;
@@ -155,12 +156,14 @@ export default function OnchainPage() {
 }
 
 function Onchain({ activeTab }: { activeTab: OnchainTab }) {
-  const [typeFilter, setTypeFilter] = useState("");
-  const [marketplaceSort, setMarketplaceSort] = useState<MarketplaceSort>("price-asc");
+  // Sub-filters are URL-driven (useUrlState) too — same reason as the tabs: a
+  // click is a deterministic navigation, and the filtered view is shareable.
+  const [typeFilter, setTypeFilter] = useUrlState("type", "");
+  const [marketplaceSort, setMarketplaceSort] = useUrlState<MarketplaceSort>("sort", "price-asc");
   // Two distinct listing sources, each owns its own `collection` value so the
   // ingests never delete each other's rows: CC API (collector_crypt_cc) vs
   // Magic Eden (collector_crypt). Default to CC — it's the fuller inventory.
-  const [marketplaceSource, setMarketplaceSource] = useState<MarketplaceSource>("cc");
+  const [marketplaceSource, setMarketplaceSource] = useUrlState<MarketplaceSource>("source", "cc");
   const marketplaceCollection = MARKETPLACE_COLLECTION[marketplaceSource];
 
   // Active listing count for the selected source — shown in the header.
@@ -176,7 +179,11 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
     enabled: activeTab === "marketplace",
     refetchInterval: activeTab === "marketplace" ? 30_000 : false,
   });
-  const [topSalesWindow, setTopSalesWindow] = useState<TopSalesWindow>(7);
+  // Window is a number (1|7|30) but URL params are strings — store the string,
+  // expose a numeric value + a number-taking setter so the pills stay unchanged.
+  const [windowStr, setWindowStr] = useUrlState<"1" | "7" | "30">("window", "7");
+  const topSalesWindow = Number(windowStr) as TopSalesWindow;
+  const setTopSalesWindow = (w: TopSalesWindow) => setWindowStr(String(w) as "1" | "7" | "30");
   const queryClient = useQueryClient();
 
   // Hard refresh — invalidates the cache for BOTH activity and listings

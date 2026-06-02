@@ -40,6 +40,7 @@ import {
   ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2, Heart,
 } from "lucide-react";
 import { toast } from "sonner";
+import { toastAddedToInventory } from "@/lib/inventory-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import SEO from "@/components/SEO";
 import CardImage from "@/components/CardImage";
@@ -49,6 +50,7 @@ type ViewMode = "grid" | "list";
 export default function Explore() {
   const { user, loading, isPro, limits } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlQuery = searchParams.get("q") || "";
   const urlSet = searchParams.get("set") || "";
@@ -197,7 +199,7 @@ export default function Explore() {
     });
     if (result) {
       recordCollectionAdd(card);
-      toast.success(`${card.name} added to collection!`);
+      toastAddedToInventory(card.name, navigate);
     } else {
       toast.error("Failed to add card.");
     }

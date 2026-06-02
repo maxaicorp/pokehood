@@ -2,6 +2,7 @@
 // Aggregates are fetched via a SECURITY DEFINER RPC that hides individual voters.
 
 import { supabase } from "@/integrations/supabase/client";
+import { maybeShowSentimentIntro } from "@/lib/sentiment-intro";
 
 export type VoteType = "up" | "down";
 
@@ -73,6 +74,10 @@ export async function castVote(
   currentVote: VoteType | null,
   newVote: VoteType
 ): Promise<VoteType | null> {
+  // First-ever vote → show the one-time explainer (no-op afterwards). Placed
+  // here so every vote surface gets it for free.
+  maybeShowSentimentIntro();
+
   // If clicking the same vote type, remove the vote (toggle off)
   if (currentVote === newVote) {
     await supabase

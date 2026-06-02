@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VoteType } from "@/lib/sentiment-store";
@@ -20,6 +20,14 @@ const SetSentimentBadge = forwardRef<HTMLDivElement, SetSentimentBadgeProps>(fun
   onVote,
   compact = false,
 }, ref) {
+  // Brief scale-pop on the clicked arrow for tactile feedback.
+  const [pop, setPop] = useState<VoteType | null>(null);
+  const handleVote = (vt: VoteType, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPop(vt);
+    setTimeout(() => setPop(null), 300);
+    onVote(vt);
+  };
   return (
     <div
       ref={ref}
@@ -31,10 +39,7 @@ const SetSentimentBadge = forwardRef<HTMLDivElement, SetSentimentBadgeProps>(fun
       data-score={score}
     >
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onVote("up");
-        }}
+        onClick={(e) => handleVote("up", e)}
         className={cn(
           "flex items-center gap-1 px-2 py-1 transition-colors hover:bg-emerald-500/10",
           currentUserVote === "up"
@@ -43,17 +48,14 @@ const SetSentimentBadge = forwardRef<HTMLDivElement, SetSentimentBadgeProps>(fun
         )}
         aria-label="Upvote"
       >
-        <ArrowUp className={cn(compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
+        <ArrowUp className={cn(compact ? "w-3 h-3" : "w-3.5 h-3.5", "transition-transform duration-200", pop === "up" && "scale-[1.6] -translate-y-0.5")} />
         <span className="tabular-nums font-medium min-w-[14px] text-center">{upvotes}</span>
       </button>
 
       <div className="w-px h-4 bg-border/50" />
 
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onVote("down");
-        }}
+        onClick={(e) => handleVote("down", e)}
         className={cn(
           "flex items-center gap-1 px-2 py-1 transition-colors hover:bg-red-500/10",
           currentUserVote === "down"
@@ -62,7 +64,7 @@ const SetSentimentBadge = forwardRef<HTMLDivElement, SetSentimentBadgeProps>(fun
         )}
         aria-label="Downvote"
       >
-        <ArrowDown className={cn(compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
+        <ArrowDown className={cn(compact ? "w-3 h-3" : "w-3.5 h-3.5", "transition-transform duration-200", pop === "down" && "scale-[1.6] translate-y-0.5")} />
         <span className="tabular-nums font-medium min-w-[14px] text-center">{downvotes}</span>
       </button>
     </div>
