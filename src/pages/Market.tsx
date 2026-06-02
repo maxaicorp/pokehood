@@ -19,7 +19,7 @@
 //      b. document.visibilitychange  — user returns to the tab
 //      c. window 'storage' event with key "collectiblez:force-refresh"
 //         (admin Master Refresh broadcasts this)
-//      d. Supabase Realtime INSERT on price_snapshots (debounced ~3s)
+//      d. Supabase Realtime INSERT/UPDATE on price_snapshots (debounced ~3s)
 //
 // 4. Errors are LOUD. If the RPC fails, we toast the user. We do NOT silently
 //    .catch() and leave stale rows on screen — that hides outages for weeks.
@@ -285,7 +285,10 @@ export default function Market() {
       .channel("price-snapshots-live")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "price_snapshots" },
+        // "*" not just INSERT: historical repairs (backfill-price-history) and
+        // the reprice cron UPDATE existing rows rather than insert new ones, so
+        // an INSERT-only listener would miss corrections to past dates.
+        { event: "*", schema: "public", table: "price_snapshots" },
         () => {
           if (pendingBump) clearTimeout(pendingBump);
           // Wait 3s of quiet (no more inserts) before refetching — keeps us from
