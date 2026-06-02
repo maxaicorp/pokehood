@@ -209,7 +209,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
               >
               <Link
                 to={`/sealed/${product.id}`}
-                className="grid grid-cols-[24px_1fr_auto_36px] sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 transition-colors"
+                className="grid grid-cols-[24px_1fr_auto_auto] sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 transition-colors"
               >
                 <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -239,10 +239,13 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                   </div>
                 </div>
                 <p className="hidden sm:block text-sm text-muted-foreground truncate">{product.expansionName}</p>
-                <div className="flex items-center justify-end sm:contents">
+                <div className="flex flex-col items-end justify-center sm:contents">
                   <p className="text-right text-sm font-semibold text-foreground tabular-nums">
                     {price !== null ? formatPrice(price) : "—"}
                   </p>
+                  {/* Mobile-only 24h % under the price (sm+ shows it as its own
+                      column). Fills the gap the hidden delta used to leave. */}
+                  <p className={`sm:hidden text-right text-[11px] font-medium tabular-nums ${f1d.className}`}>24h {f1d.text}</p>
                   <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
                   <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
                 </div>
@@ -250,9 +253,13 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                   onClick={(e) => handleAdd(e, product)}
                   disabled={addingId === product.id}
                   aria-label={`Add ${product.name} to inventory`}
-                  className="justify-self-center flex items-center justify-center w-8 h-8 rounded-md border border-border text-muted-foreground hover:text-primary hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+                  /* Mobile: "+ Add" pill matching the Top tab. Desktop (sm+):
+                     icon-only to fit the narrow 44px table column. */
+                  className="justify-self-end sm:justify-self-center shrink-0 inline-flex items-center justify-center gap-1 h-8 px-3 sm:px-0 sm:w-8 rounded-full sm:rounded-md border border-border/50 text-muted-foreground hover:text-primary hover:border-primary transition-colors disabled:opacity-50"
                 >
-                  {addingId === product.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  {addingId === product.id
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <><Plus className="w-3.5 h-3.5" /><span className="text-xs font-medium sm:hidden">Add</span></>}
                 </button>
               </Link>
               </motion.div>
