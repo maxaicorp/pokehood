@@ -163,20 +163,61 @@ serve(async (req) => {
       await new Promise((r) => setTimeout(r, 120)); // gentle pacing
     }
 
-    let upserted = 0;
-    for (let i = 0; i < rows.length; i += 500) {
-      const { error } = await supabase.from("price_snapshots").upsert(rows.slice(i, i + 500), { onConflict: "card_id,recorded_at" });
-      if (!error) upserted += rows.slice(i, i + 500).length;
+    // ── Compare-and-correct: with { onlyIfDiff: true }, read our existing
+    // snapshot for each (card, day) and ONLY rewrite the ones that actually
+    // differ from the authoritative price_history value (beyond diffPct).
+    // Avoids blanket-rewriting rows that are already correct — minimal churn,
+    // fully auditable (sample_corrections), and the cache is rebuilt only if
+    // something genuinely changed.
+    const onlyIfDiff = body.onlyIfDiff === true;
+    const diffPct = Number(body.diffPct) > 0 ? Number(body.diffPct) : 1; // default 1% tolerance
+    let toWrite = rows;
+    let corrected = 0;
+    const corrections: string[] = [];
+    if (onlyIfDiff && rows.length) {
+      const minDate = rows.reduce((m, r) => (r.recorded_at < m ? r.recorded_at : m), rows[0].recorded_at);
+      const existing = new Map<string, number>();
+      const ids = [...new Set(rows.map((r) => r.card_id))];
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data } = await supabase
+          .from("price_snapshots")
+          .select("card_id, recorded_at, price")
+          .in("card_id", ids.slice(i, i + 200))
+          .gte("recorded_at", minDate);
+        for (const r of (data ?? []) as any[]) existing.set(`${r.card_id}|${r.recorded_at}`, Number(r.price));
+      }
+      toWrite = rows.filter((r) => {
+        const prev = existing.get(`${r.card_id}|${r.recorded_at}`);
+        if (prev == null) return true; // no value for this day → write it
+        const pctDelta = (Math.abs(prev - r.price) / Math.max(r.price, 0.01)) * 100;
+        const changed = pctDelta > diffPct;
+        if (changed && corrections.length < 25) corrections.push(`${r.card_id}@${r.recorded_at}: ${prev}→${r.price}`);
+        return changed;
+      });
+      corrected = toWrite.length;
     }
 
+    let upserted = 0;
+    for (let i = 0; i < toWrite.length; i += 500) {
+      const { error } = await supabase.from("price_snapshots").upsert(toWrite.slice(i, i + 500), { onConflict: "card_id,recorded_at" });
+      if (!error) upserted += toWrite.slice(i, i + 500).length;
+    }
+
+    // Rebuild the read cache ONLY if we actually changed something.
     let refreshed: number | null = null;
-    try { const { data } = await supabase.rpc("refresh_latest_card_prices"); refreshed = (data as number) ?? null; } catch { /* ignore */ }
+    if (upserted > 0) {
+      try { const { data } = await supabase.rpc("refresh_latest_card_prices"); refreshed = (data as number) ?? null; } catch { /* ignore */ }
+    }
     const creditsAfter = await getCredits(sh);
 
     return json({
-      mode: "backfill", cards_requested: cardIds.length, cards_ok: okCards, cards_failed: failCards,
+      mode: "backfill", check_only_diff: onlyIfDiff,
+      cards_requested: cardIds.length, cards_ok: okCards, cards_failed: failCards,
+      points_fetched: points,
+      points_corrected: onlyIfDiff ? corrected : upserted,
       points_written: upserted, refreshed_rows: refreshed,
       credits_used: creditsBefore != null && creditsAfter != null ? creditsBefore - creditsAfter : "unknown",
+      sample_corrections: corrections,
       sample_failures: failures,
     });
   }
