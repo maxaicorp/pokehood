@@ -10,6 +10,8 @@ import { formatPrice } from "@/lib/pokemon-api";
 import { formatPct } from "@/lib/price-snapshots";
 import { addSealedToCollection } from "@/lib/collection-store";
 import { toastAddedToInventory } from "@/lib/inventory-toast";
+import { getSetSentiment, castVote, applyVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
+import SetSentimentBadge from "@/components/SetSentimentBadge";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, ArrowUpDown, ArrowUp, ArrowDown, Plus, Loader2 } from "lucide-react";
@@ -35,6 +37,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [totalValue, setTotalValue] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [hasMore, setHasMore] = useState(true);
   const loadingMore = useRef(false);
@@ -44,6 +47,8 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
   // Clicking the Set column header toggles to oldest-first.
   const [sortCol, setSortCol] = useState<SortCol>("set");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  // Per-product sentiment (up/down votes), same as the Market Top tab.
+  const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
 
   // Reset when filter or sort changes
   useEffect(() => {
@@ -68,6 +73,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
       if (cancelled) return;
       loadingMore.current = false;
       setTotalCount(result.totalCount);
+      setTotalValue(result.totalValue);
 
       if (page === 1) {
         setProducts(result.products);
@@ -122,6 +128,25 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
     setAddingId(null);
   };
 
+  // Load sentiment for the loaded products + optimistic vote toggle (mirrors
+  // the Market Top tab; sentiment is keyed on the product id).
+  useEffect(() => {
+    if (products.length === 0) return;
+    getSetSentiment(products.map((p) => p.id)).then(setSentimentMap);
+  }, [products]);
+
+  const handleVote = async (productId: string, voteType: VoteType) => {
+    if (!user) { navigate("/auth"); return; }
+    const currentVote = sentimentMap.get(productId)?.currentUserVote ?? null;
+    setSentimentMap((prev) => {
+      const next = new Map(prev);
+      const old = prev.get(productId) || { setId: productId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
+      next.set(productId, applyVote(old, voteType));
+      return next;
+    });
+    await castVote(productId, user.id, currentVote, voteType);
+  };
+
   const SortIcon = ({ col }: { col: SortCol }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
     return sortDir === "asc"
@@ -163,6 +188,18 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
 
   return (
     <div>
+      {/* Total value of every item in the current filter (summed across the
+          whole filtered set, not just the loaded page) — mirrors the Top tab. */}
+      {totalValue > 0 && (
+        <div className="px-3 sm:px-4 py-2.5 flex items-baseline gap-2 border-b border-border/50">
+          <span className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
+            ${Math.ceil(totalValue).toLocaleString("en-US")}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {typeFilter && typeFilter !== "all" ? typeFilter : "All sealed"} · {totalCount.toLocaleString()} items
+          </span>
+        </div>
+      )}
       {/* Table header */}
       <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
         <span>#</span>
@@ -192,6 +229,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
           {products.map((product, i) => {
             const price = getSealedMarketPrice(product);
             const { pct1d, pct7d } = getSealedTrends(product);
+            const sentiment = sentimentMap.get(product.id);
             const f1d = formatPct(pct1d);
             const f7d = formatPct(pct7d);
             const image = product.imageSmall;
@@ -269,7 +307,15 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                         <div className="flex items-center gap-1"><span className="text-muted-foreground">24h</span><span className={`font-medium tabular-nums ${f1d.className}`}>{f1d.text}</span></div>
                         <div className="flex items-center gap-1"><span className="text-muted-foreground">7d</span><span className={`font-medium tabular-nums ${f7d.className}`}>{f7d.text}</span></div>
                       </div>
-                      <div className="flex items-center justify-end mt-2.5 pt-2.5 border-t border-border/30">
+                      <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-border/30">
+                        <SetSentimentBadge
+                          upvotes={sentiment?.upvotes ?? 0}
+                          downvotes={sentiment?.downvotes ?? 0}
+                          score={sentiment?.score ?? 0}
+                          currentUserVote={sentiment?.currentUserVote ?? null}
+                          onVote={(vt) => handleVote(product.id, vt)}
+                          compact
+                        />
                         <button
                           onClick={(e) => handleAdd(e, product)}
                           disabled={addingId === product.id}

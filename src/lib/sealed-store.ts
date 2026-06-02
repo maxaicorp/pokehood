@@ -53,6 +53,9 @@ export interface SealedSearchResult {
   page: number;
   pageSize: number;
   totalCount: number;
+  // Summed market value of ALL items matching the filter (not just this page) —
+  // for the header "total value" badge.
+  totalValue: number;
 }
 
 // ─── In-memory cache ──────────────────────────────────────────────────────────
@@ -354,10 +357,13 @@ export async function fetchSealedProducts(opts: {
   }
 
   const totalCount = filtered.length;
+  // Sum the market value across the WHOLE filtered set (every matching item),
+  // independent of pagination, so the header total doesn't ratchet as you scroll.
+  const totalValue = filtered.reduce((sum, p) => sum + (getSealedMarketPrice(p) ?? 0), 0);
   const start = (page - 1) * pageSize;
   const products = filtered.slice(start, start + pageSize);
 
-  return { products, page, pageSize, totalCount };
+  return { products, page, pageSize, totalCount, totalValue };
 }
 
 // ─── Sealed product type filter options ──────────────────────────────────────
