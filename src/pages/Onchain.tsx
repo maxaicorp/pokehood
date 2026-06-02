@@ -158,7 +158,7 @@ export default function OnchainPage() {
 function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   // Sub-filters are URL-driven (useUrlState) too — same reason as the tabs: a
   // click is a deterministic navigation, and the filtered view is shareable.
-  const [typeFilter, setTypeFilter] = useUrlState("type", "");
+  const [typeFilter, setTypeFilter] = useUrlState<string>("type", "");
   const [marketplaceSort, setMarketplaceSort] = useUrlState<MarketplaceSort>("sort", "price-asc");
   // Two distinct listing sources, each owns its own `collection` value so the
   // ingests never delete each other's rows: CC API (collector_crypt_cc) vs
