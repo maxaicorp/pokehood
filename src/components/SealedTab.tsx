@@ -209,58 +209,79 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
               >
               <Link
                 to={`/sealed/${product.id}`}
-                className="grid grid-cols-[24px_1fr_auto_auto] sm:grid-cols-[40px_1fr_160px_100px_72px_72px_44px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 transition-colors"
+                className="block border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
               >
-                <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  {image ? (
-                    <img
-                      src={image}
-                      alt={product.name}
-                      className="w-12 h-12 sm:w-14 sm:h-14 object-cover shrink-0 shadow-sm bg-muted"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-muted flex items-center justify-center shrink-0">
-                      <Package className="w-5 h-5 text-muted-foreground" />
+                {/* Desktop: table row (unchanged layout) */}
+                <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_44px] gap-4 px-4 py-2.5 items-center">
+                  <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    {image ? (
+                      <img src={image} alt={product.name} className="w-14 h-14 object-cover shrink-0 shadow-sm bg-muted" loading="lazy" />
+                    ) : (
+                      <div className="w-14 h-14 bg-muted flex items-center justify-center shrink-0"><Package className="w-5 h-5 text-muted-foreground" /></div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="truncate">{product.type}</span>
+                        {variantLabel && variantLabel !== "normal" && (<><span>·</span><span className="truncate">{variantLabel}</span></>)}
+                      </div>
                     </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="truncate">{product.type}</span>
-                      {variantLabel && variantLabel !== "normal" && (
-                        <>
-                          <span>·</span>
-                          <span className="truncate">{variantLabel}</span>
-                        </>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{product.expansionName}</p>
+                  <p className="text-right text-sm font-semibold text-foreground tabular-nums">{price !== null ? formatPrice(price) : "—"}</p>
+                  <p className={`text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
+                  <p className={`text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
+                  <button
+                    onClick={(e) => handleAdd(e, product)}
+                    disabled={addingId === product.id}
+                    aria-label={`Add ${product.name} to inventory`}
+                    className="justify-self-center inline-flex items-center justify-center w-8 h-8 rounded-md border border-border/50 text-muted-foreground hover:text-primary hover:border-primary transition-colors disabled:opacity-50"
+                  >
+                    {addingId === product.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                {/* Mobile: roomy card (matches the Market Top tab) — image left,
+                    info stacked with breathing room, add on its own action row. */}
+                <div className="sm:hidden p-4">
+                  <div className="flex gap-3">
+                    <div className="relative shrink-0">
+                      <span className="absolute -top-1.5 -left-1.5 z-10 text-[10px] font-mono font-semibold text-foreground bg-background/95 backdrop-blur px-1.5 py-0.5 rounded-full border border-border/60 tabular-nums shadow-sm">{i + 1}</span>
+                      {image ? (
+                        <img src={image} alt={product.name} className="w-20 h-20 object-contain bg-muted shadow-md" loading="lazy" />
+                      ) : (
+                        <div className="w-20 h-20 bg-muted flex items-center justify-center"><Package className="w-6 h-6 text-muted-foreground" /></div>
                       )}
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-semibold text-foreground leading-tight truncate">{product.name}</p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {product.type}{variantLabel && variantLabel !== "normal" ? ` · ${variantLabel}` : ""}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">{product.expansionName}</p>
+                        </div>
+                        <p className="text-base font-bold text-foreground tabular-nums shrink-0">{price !== null ? formatPrice(price) : "—"}</p>
+                      </div>
+                      <div className="flex items-center gap-4 text-[11px] mt-2">
+                        <div className="flex items-center gap-1"><span className="text-muted-foreground">24h</span><span className={`font-medium tabular-nums ${f1d.className}`}>{f1d.text}</span></div>
+                        <div className="flex items-center gap-1"><span className="text-muted-foreground">7d</span><span className={`font-medium tabular-nums ${f7d.className}`}>{f7d.text}</span></div>
+                      </div>
+                      <div className="flex items-center justify-end mt-2.5 pt-2.5 border-t border-border/30">
+                        <button
+                          onClick={(e) => handleAdd(e, product)}
+                          disabled={addingId === product.id}
+                          aria-label={`Add ${product.name} to inventory`}
+                          className="inline-flex items-center gap-1 h-8 px-3 rounded-full border border-border/50 text-muted-foreground hover:text-primary hover:border-primary transition-colors disabled:opacity-50"
+                        >
+                          {addingId === product.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Plus className="w-3.5 h-3.5" /><span className="text-xs font-medium">Add</span></>}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <p className="hidden sm:block text-sm text-muted-foreground truncate">{product.expansionName}</p>
-                <div className="flex flex-col items-end justify-center sm:contents">
-                  <p className="text-right text-sm font-semibold text-foreground tabular-nums">
-                    {price !== null ? formatPrice(price) : "—"}
-                  </p>
-                  {/* Mobile-only 24h % under the price (sm+ shows it as its own
-                      column). Fills the gap the hidden delta used to leave. */}
-                  <p className={`sm:hidden text-right text-[11px] font-medium tabular-nums ${f1d.className}`}>24h {f1d.text}</p>
-                  <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
-                  <p className={`hidden sm:block text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
-                </div>
-                <button
-                  onClick={(e) => handleAdd(e, product)}
-                  disabled={addingId === product.id}
-                  aria-label={`Add ${product.name} to inventory`}
-                  /* Mobile: "+ Add" pill matching the Top tab. Desktop (sm+):
-                     icon-only to fit the narrow 44px table column. */
-                  className="justify-self-end sm:justify-self-center shrink-0 inline-flex items-center justify-center gap-1 h-8 px-3 sm:px-0 sm:w-8 rounded-full sm:rounded-md border border-border/50 text-muted-foreground hover:text-primary hover:border-primary transition-colors disabled:opacity-50"
-                >
-                  {addingId === product.id
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <><Plus className="w-3.5 h-3.5" /><span className="text-xs font-medium sm:hidden">Add</span></>}
-                </button>
               </Link>
               </motion.div>
             );
