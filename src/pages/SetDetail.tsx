@@ -11,7 +11,7 @@
 // sort dropdown, filter row at top, no sidebar). Same data-fetching
 // pattern: getSetCards paginated + enrichPageWithPricing for prices.
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -25,10 +25,14 @@ import {
   type PokemonSet,
 } from "@/lib/pokemon-api";
 import { findSetBySlug, cardPath, setSlug } from "@/lib/slug";
-import { getCollection } from "@/lib/collection-store";
+import { getCollection, addToCollection } from "@/lib/collection-store";
+import { recordCollectionAdd } from "@/lib/card-stats-store";
+import { toastAddedToInventory } from "@/lib/inventory-toast";
+import { getSetSentiment, castVote, applyVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import SetSentimentBadge from "@/components/SetSentimentBadge";
 import {
   Select,
   SelectContent,
@@ -36,7 +40,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Calendar, Layers, Grid3X3, LayoutList } from "lucide-react";
+import { ArrowLeft, Calendar, Layers, Grid3X3, LayoutList, Plus } from "lucide-react";
+import { toast } from "sonner";
 import AppHeader from "@/components/AppHeader";
 import SEO from "@/components/SEO";
 
@@ -56,6 +61,10 @@ export default function SetDetail() {
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortKey, setSortKey] = useState<SortKey>("number-asc");
+  // Match the Market "Top" tab: each card row gets the same "+" add button and
+  // up/down sentiment votes.
+  const [addingCards, setAddingCards] = useState<Set<string>>(new Set());
+  const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
 
   // Resolve slug → set object. Lightweight set list (84KB) instead of the
   // 10MB monolith — this is an SEO landing page, first paint matters.
@@ -121,6 +130,43 @@ export default function SetDetail() {
     });
     return arr;
   }, [enrichedCards, sortKey]);
+
+  // Load per-card sentiment once the set's cards are in (a set is ≤~300 cards,
+  // so fetching sentiment for all of them is cheap).
+  useEffect(() => {
+    if (cards.length === 0) return;
+    getSetSentiment(cards.map((c) => c.id)).then(setSentimentMap);
+  }, [cards]);
+
+  // Up/down vote — optimistic via the shared applyVote, same as Market.
+  const handleVote = async (cardId: string, voteType: VoteType) => {
+    if (!user) { navigate("/auth"); return; }
+    const currentVote = sentimentMap.get(cardId)?.currentUserVote ?? null;
+    setSentimentMap((prev) => {
+      const next = new Map(prev);
+      const old = prev.get(cardId) || { setId: cardId, upvotes: 0, downvotes: 0, score: 0, currentUserVote: null };
+      next.set(cardId, applyVote(old, voteType));
+      return next;
+    });
+    await castVote(cardId, user.id, currentVote, voteType);
+  };
+
+  // Add to collection — mirrors Market's handler (toast with "View inventory").
+  const handleAdd = async (e: React.MouseEvent, card: PokemonCard) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) { navigate("/auth"); return; }
+    if (addingCards.has(card.id)) return;
+    setAddingCards((prev) => new Set(prev).add(card.id));
+    const result = await addToCollection(card, user.id);
+    setAddingCards((prev) => { const next = new Set(prev); next.delete(card.id); return next; });
+    if (result) {
+      recordCollectionAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
+      toastAddedToInventory(card.name, navigate);
+    } else {
+      toast.error("Failed to add card.");
+    }
+  };
 
   // ─── Set-completion progress (logged-in users only) ──────────────────────
   // Fetch the user's collection and compute how many DISTINCT cards from
@@ -368,9 +414,11 @@ export default function SetDetail() {
             No cards available for this set yet.
           </div>
         ) : viewMode === "grid" ? (
-          <CardGrid cards={cards} set={set!} isPricingLoading={isPricingLoading} />
+          <CardGrid cards={cards} set={set!} isPricingLoading={isPricingLoading}
+            sentimentMap={sentimentMap} addingCards={addingCards} onAdd={handleAdd} onVote={handleVote} />
         ) : (
-          <CardList cards={cards} set={set!} isPricingLoading={isPricingLoading} />
+          <CardList cards={cards} set={set!} isPricingLoading={isPricingLoading}
+            sentimentMap={sentimentMap} addingCards={addingCards} onAdd={handleAdd} onVote={handleVote} />
         )}
 
         {/* Total-loaded indicator. No infinite scroll anymore — the entire
@@ -389,47 +437,71 @@ export default function SetDetail() {
 
 // ─── Grid view ───────────────────────────────────────────────────────────────
 
-function CardGrid({ cards, set, isPricingLoading }: { cards: PokemonCard[]; set: PokemonSet; isPricingLoading: boolean }) {
+interface CardGridListProps {
+  cards: PokemonCard[];
+  set: PokemonSet;
+  isPricingLoading: boolean;
+  sentimentMap: Map<string, SetSentiment>;
+  addingCards: Set<string>;
+  onAdd: (e: React.MouseEvent, card: PokemonCard) => void;
+  onVote: (cardId: string, voteType: VoteType) => void;
+}
+
+function CardGrid({ cards, set, isPricingLoading, sentimentMap, addingCards, onAdd, onVote }: CardGridListProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
       {cards.map((card, i) => {
         const price = getMarketPrice(card);
+        const sentiment = sentimentMap.get(card.id);
         return (
-          <Link
+          <motion.div
             key={card.id}
-            to={cardPath(set, card)}
-            className="block group"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: Math.min(i * 0.01, 0.3) }}
+            className="bg-card border border-border/50 hover:border-primary/40 transition-colors h-full flex flex-col group"
           >
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(i * 0.01, 0.3) }}
-              className="bg-card border border-border/50 hover:border-primary/40 transition-colors h-full flex flex-col"
-            >
+            {/* Clickable area → card detail. The action row below is OUTSIDE
+                this link so the vote/add buttons don't trigger navigation. */}
+            <Link to={cardPath(set, card)} className="block">
               <div className="bg-background/50 p-1.5 sm:p-2">
-                <img
-                  src={card.images.small}
-                  alt={card.name}
-                  className="w-full"
-                  loading="lazy"
-                />
+                <img src={card.images.small} alt={card.name} className="w-full" loading="lazy" />
               </div>
-              <div className="p-2 sm:p-3 space-y-0.5 sm:space-y-1 flex-1 flex flex-col justify-end">
+              <div className="px-2 sm:px-3 pt-2 sm:pt-3 space-y-0.5 sm:space-y-1">
                 <p className="text-xs sm:text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                   {card.name}
                 </p>
                 <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                   {card.rarity ?? ""}{card.rarity && card.number ? " · " : ""}#{card.number}/{set.printedTotal || set.total}
                 </p>
-                <div className="flex items-center justify-between pt-1 mt-auto">
-                  {isPricingLoading
-                    ? <Skeleton className="h-4 w-12" />
-                    : <span className="text-xs sm:text-sm font-bold text-foreground">{price != null ? formatPrice(price) : "—"}</span>
-                  }
-                </div>
+                {isPricingLoading
+                  ? <Skeleton className="h-4 w-12" />
+                  : <span className="text-xs sm:text-sm font-bold text-foreground">{price != null ? formatPrice(price) : "—"}</span>
+                }
               </div>
-            </motion.div>
-          </Link>
+            </Link>
+            {/* Action row — sentiment votes + add, matching the Market Top tab */}
+            <div className="px-2 sm:px-3 pb-2 sm:pb-3 pt-2 mt-auto flex items-center justify-between gap-1.5">
+              <SetSentimentBadge
+                upvotes={sentiment?.upvotes ?? 0}
+                downvotes={sentiment?.downvotes ?? 0}
+                score={sentiment?.score ?? 0}
+                currentUserVote={sentiment?.currentUserVote ?? null}
+                onVote={(vt) => onVote(card.id, vt)}
+                compact
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0 shrink-0 rounded-full border border-border/50 hover:border-primary hover:text-primary"
+                disabled={addingCards.has(card.id)}
+                onClick={(e) => onAdd(e, card)}
+                aria-label="Add to collection"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </motion.div>
         );
       })}
     </div>
@@ -438,23 +510,22 @@ function CardGrid({ cards, set, isPricingLoading }: { cards: PokemonCard[]; set:
 
 // ─── List view ───────────────────────────────────────────────────────────────
 
-function CardList({ cards, set, isPricingLoading }: { cards: PokemonCard[]; set: PokemonSet; isPricingLoading: boolean }) {
+function CardList({ cards, set, isPricingLoading, sentimentMap, addingCards, onAdd, onVote }: CardGridListProps) {
   return (
     <div className="space-y-2">
       {cards.map((card, i) => {
         const price = getMarketPrice(card);
+        const sentiment = sentimentMap.get(card.id);
         return (
-          <Link
+          <motion.div
             key={card.id}
-            to={cardPath(set, card)}
-            className="block group"
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: Math.min(i * 0.008, 0.3) }}
+            className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:bg-card/80 transition-colors group"
           >
-            <motion.div
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: Math.min(i * 0.008, 0.3) }}
-              className="flex items-center gap-3 sm:gap-4 p-2.5 sm:p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:bg-card/80 transition-colors"
-            >
+            {/* Clickable area → card detail; action controls live outside it. */}
+            <Link to={cardPath(set, card)} className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
               <img src={card.images.small} alt={card.name} className="w-10 sm:w-12 shrink-0" loading="lazy" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
@@ -468,8 +539,29 @@ function CardList({ cards, set, isPricingLoading }: { cards: PokemonCard[]; set:
                 ? <Skeleton className="h-4 w-14 shrink-0" />
                 : <span className="text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">{price != null ? formatPrice(price) : "—"}</span>
               }
-            </motion.div>
-          </Link>
+            </Link>
+            {/* Action row — sentiment votes + add, matching the Market Top tab */}
+            <div className="flex items-center gap-2 shrink-0">
+              <SetSentimentBadge
+                upvotes={sentiment?.upvotes ?? 0}
+                downvotes={sentiment?.downvotes ?? 0}
+                score={sentiment?.score ?? 0}
+                currentUserVote={sentiment?.currentUserVote ?? null}
+                onVote={(vt) => onVote(card.id, vt)}
+                compact
+              />
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-3 rounded-full border border-border/50 hover:border-primary hover:text-primary"
+                disabled={addingCards.has(card.id)}
+                onClick={(e) => onAdd(e, card)}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                <span className="text-xs font-medium">Add</span>
+              </Button>
+            </div>
+          </motion.div>
         );
       })}
     </div>
