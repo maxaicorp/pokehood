@@ -33,6 +33,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUrlState } from "@/lib/use-url-state";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -111,15 +112,21 @@ export default function Market() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [selectedSetId, setSelectedSetId] = useState("modern");
+  // High-traffic toggles are URL-driven (useUrlState) so a click is a
+  // deterministic navigation, not a bare setState that could get swallowed
+  // mid-render and leave the old view on screen ("button didn't register").
+  // Also makes filtered/tabbed views shareable + back-button friendly.
+  const [selectedSetId, setSelectedSetId] = useUrlState("set", "modern");
+  const [activeTab, setActiveTab] = useUrlState<MarketTab>("tab", "top");
+  const [sealedType, setSealedType] = useUrlState("sealedType", "Elite Trainer Box");
+  const [viewMode, setViewMode] = useUrlState<ViewMode>("view", "list");
   const [addingCards, setAddingCards] = useState(new Set<string>());
+  // Column sort stays local — it's a secondary header click, and the null
+  // "unsorted" state doesn't map cleanly to a URL param.
   const [sortCol, setSortCol] = useState<"price" | "24h" | "7d" | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [activeTab, setActiveTab] = useState<MarketTab>("top");
   const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
-  const [sealedType, setSealedType] = useState("Elite Trainer Box");
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   // Sentiment voting state
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
