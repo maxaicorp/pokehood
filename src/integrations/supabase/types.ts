@@ -692,6 +692,57 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_heal_log: {
+        Row: {
+          actions: string[]
+          coverage_pct_after: number | null
+          coverage_pct_before: number | null
+          credits_after: number | null
+          credits_before: number | null
+          credits_used: number | null
+          delta_pct_after: number | null
+          delta_pct_before: number | null
+          id: string
+          notes: string | null
+          ran_at: string
+          result: string
+          subsystem: string
+          trigger_failures: string[]
+        }
+        Insert: {
+          actions?: string[]
+          coverage_pct_after?: number | null
+          coverage_pct_before?: number | null
+          credits_after?: number | null
+          credits_before?: number | null
+          credits_used?: number | null
+          delta_pct_after?: number | null
+          delta_pct_before?: number | null
+          id?: string
+          notes?: string | null
+          ran_at?: string
+          result: string
+          subsystem?: string
+          trigger_failures?: string[]
+        }
+        Update: {
+          actions?: string[]
+          coverage_pct_after?: number | null
+          coverage_pct_before?: number | null
+          credits_after?: number | null
+          credits_before?: number | null
+          credits_used?: number | null
+          delta_pct_after?: number | null
+          delta_pct_before?: number | null
+          id?: string
+          notes?: string | null
+          ran_at?: string
+          result?: string
+          subsystem?: string
+          trigger_failures?: string[]
+        }
+        Relationships: []
+      }
       price_snapshots: {
         Row: {
           card_id: string
@@ -946,6 +997,39 @@ export type Database = {
         }
         Relationships: []
       }
+      snapshot_chunk_log: {
+        Row: {
+          complete: boolean
+          id: string
+          page_limit: number
+          pages_processed: number
+          ran_at: string
+          recorded_date: string
+          start_page: number
+          version: string | null
+        }
+        Insert: {
+          complete?: boolean
+          id?: string
+          page_limit: number
+          pages_processed?: number
+          ran_at?: string
+          recorded_date?: string
+          start_page: number
+          version?: string | null
+        }
+        Update: {
+          complete?: boolean
+          id?: string
+          page_limit?: number
+          pages_processed?: number
+          ran_at?: string
+          recorded_date?: string
+          start_page?: number
+          version?: string | null
+        }
+        Relationships: []
+      }
       user_links: {
         Row: {
           created_at: string
@@ -1197,6 +1281,7 @@ export type Database = {
           type: string
         }[]
       }
+      get_onchain_health: { Args: never; Returns: Json }
       get_onchain_listings: {
         Args: {
           p_collection?: string
@@ -1241,6 +1326,7 @@ export type Database = {
           type: string
         }[]
       }
+      get_pipeline_completeness: { Args: never; Returns: Json }
       get_set_sentiment: {
         Args: { p_set_ids: string[] }
         Returns: {
@@ -1287,6 +1373,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      heal_attempts_today: {
+        Args: { p_action: string; p_subsystem: string }
+        Returns: number
+      }
+      heal_repair_attempts_today: { Args: never; Returns: number }
       increment_card_stat: {
         Args: {
           p_image_small: string
