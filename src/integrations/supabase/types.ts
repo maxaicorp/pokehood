@@ -50,6 +50,54 @@ export type Database = {
         }
         Relationships: []
       }
+      cards: {
+        Row: {
+          hp: string | null
+          id: string
+          language: string
+          name: string
+          number: string
+          rarity: string | null
+          series: string | null
+          set_id: string
+          set_name: string
+          subtypes: Json | null
+          supertype: string | null
+          types: Json | null
+          updated_at: string
+        }
+        Insert: {
+          hp?: string | null
+          id: string
+          language?: string
+          name?: string
+          number?: string
+          rarity?: string | null
+          series?: string | null
+          set_id: string
+          set_name?: string
+          subtypes?: Json | null
+          supertype?: string | null
+          types?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          hp?: string | null
+          id?: string
+          language?: string
+          name?: string
+          number?: string
+          rarity?: string | null
+          series?: string | null
+          set_id?: string
+          set_name?: string
+          subtypes?: Json | null
+          supertype?: string | null
+          types?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cc_discovery_results: {
         Row: {
           computed_at: string
@@ -1174,6 +1222,20 @@ export type Database = {
           set_name: string
         }[]
       }
+      get_card_catalog: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          id: string
+          name: string
+          number: string
+          rarity: string
+          series: string
+          set_id: string
+          set_name: string
+          supertype: string
+        }[]
+      }
+      get_catalog_coverage: { Args: { p_min_gap?: number }; Returns: Json }
       get_cc_discovery: {
         Args: { p_limit?: number; p_offset?: number; p_status?: string }
         Returns: {
