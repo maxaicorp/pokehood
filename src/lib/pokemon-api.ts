@@ -123,7 +123,7 @@ let allCardsCache: PokemonCard[] | null = null;
 let allSetsCache: PokemonSet[] | null = null;
 const pricingCache = new Map<string, PokemonCard["tcgplayer"]>();
 const cardmarketAvgsSeeded = new Map<string, PokemonCard["cardmarketAvgs"]>();
-const CARD_INDEX_VERSION = "2026-04-13-ascended-heroes-fix";
+const CARD_INDEX_VERSION = "2026-06-02-me4-chase-cards";
 let pricingSeedPromise: Promise<void> | null = null;
 let pricingSeededAt = 0;
 
