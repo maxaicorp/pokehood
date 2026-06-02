@@ -272,9 +272,117 @@ registerCacheResetter(resetPricingCache);
 
 // ─── Loader ───────────────────────────────────────────────────────────────────
 
+// Live catalog from the `cards` DB table (populated weekly by the
+// sync-cards-catalog edge fn from Scrydex). This is the self-updating
+// replacement for the frozen static all-cards.json — once it's populated, new
+// cards in any set (e.g. me4's 101-122 chase cards) appear with no rebuild.
+// Returns null when the table is empty/unavailable so loadCardIndex falls back
+// to the static JSON — which makes shipping this a no-op until the table exists.
+async function loadCatalogFromDb(): Promise<{ cards: PokemonCard[]; sets: PokemonSet[] } | null> {
+  type Row = { id: string; name: string; set_id: string; set_name: string; number: string; rarity: string | null; supertype: string | null; series: string | null };
+  const PAGE = 2000;
+  const rows: Row[] = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await (supabase.rpc as any)("get_card_catalog", { p_limit: PAGE, p_offset: offset });
+    if (error) {
+      if (offset === 0) return null; // table/RPC not deployed yet → fall back
+      break;                          // partial read → use what we have
+    }
+    const batch = (data ?? []) as Row[];
+    rows.push(...batch);
+    if (batch.length < PAGE) break;
+    offset += PAGE;
+  }
+  // Sanity gate: never switch off the static index for a half-populated table
+  // (a partial sync shouldn't shrink the catalog the whole site renders from).
+  if (rows.length < 1000) return null;
+
+  const { data: marketSets } = await getMarketSets();
+  const setMetaById = new Map(marketSets.map((s) => [s.id, s]));
+
+  // Build the set list from the catalog, enriched with market-sets.json
+  // metadata (logo/symbol/dates). `total` takes the live catalog count so new
+  // secret rares bump the set size; logos for sets not yet in market-sets.json
+  // are derived from the Scrydex CDN pattern (same one market-sets.json uses).
+  const setCounts = new Map<string, number>();
+  const setNames = new Map<string, string>();
+  const setSeries = new Map<string, string>();
+  for (const r of rows) {
+    setCounts.set(r.set_id, (setCounts.get(r.set_id) ?? 0) + 1);
+    if (r.set_name) setNames.set(r.set_id, r.set_name);
+    if (r.series) setSeries.set(r.set_id, r.series);
+  }
+  const sets: PokemonSet[] = [...setCounts.keys()].map((id) => {
+    const meta = setMetaById.get(id);
+    const series = meta?.series ?? setSeries.get(id) ?? "Unknown";
+    return {
+      id,
+      name: meta?.name ?? setNames.get(id) ?? id,
+      series,
+      printedTotal: meta?.printedTotal ?? setCounts.get(id) ?? 0,
+      total: Math.max(meta?.total ?? 0, setCounts.get(id) ?? 0),
+      releaseDate: meta?.releaseDate ?? "2000-01-01",
+      updatedAt: meta?.releaseDate ?? "2000-01-01",
+      isOnlineOnly: meta?.isOnlineOnly ?? TCGP_SERIES_IDS.includes(series.toLowerCase()),
+      images: meta?.images ?? {
+        symbol: `https://images.scrydex.com/pokemon/${id}-symbol/symbol`,
+        logo: `https://images.scrydex.com/pokemon/${id}-logo/logo`,
+      },
+    };
+  });
+  sets.sort((a, b) => b.releaseDate.localeCompare(a.releaseDate));
+
+  const setById = new Map(sets.map((s) => [s.id, s]));
+  const seen = new Set<string>();
+  const cards: PokemonCard[] = [];
+  for (const r of rows) {
+    if (seen.has(r.id)) continue;
+    seen.add(r.id);
+    const s = setById.get(r.set_id);
+    cards.push({
+      id: r.id,
+      name: r.name,
+      supertype: r.supertype ?? "Pokémon",
+      rarity: r.rarity || undefined,
+      set: {
+        id: r.set_id,
+        name: s?.name ?? r.set_name ?? r.set_id,
+        series: s?.series ?? "Unknown",
+        printedTotal: s?.printedTotal ?? 0,
+        total: s?.total ?? 0,
+        releaseDate: s?.releaseDate ?? "2000-01-01",
+        images: s?.images ?? { symbol: "", logo: "" },
+      },
+      number: r.number,
+      // Scrydex CDN, derived from the card id — same as hydrateCardsFromLatestPrices.
+      images: {
+        small: `https://images.scrydex.com/pokemon/${r.id}/small`,
+        large: `https://images.scrydex.com/pokemon/${r.id}/large`,
+      },
+    });
+  }
+  cards.sort((a, b) => b.set.releaseDate.localeCompare(a.set.releaseDate));
+  return { cards, sets };
+}
+
 async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet[] }> {
   if (allCardsCache && allSetsCache) {
     return { cards: allCardsCache, sets: allSetsCache };
+  }
+
+  // Prefer the live, self-updating catalog table; fall back to the static
+  // all-cards.json whenever it's empty/unavailable (so this is a no-op until
+  // sync-cards-catalog has populated the table).
+  try {
+    const live = await loadCatalogFromDb();
+    if (live) {
+      allCardsCache = live.cards;
+      allSetsCache = live.sets;
+      return live;
+    }
+  } catch (e) {
+    console.warn("[catalog] live cards table unavailable; using static all-cards.json", e);
   }
 
   // The ?v=CARD_INDEX_VERSION query param is the cache-buster: when the catalog
