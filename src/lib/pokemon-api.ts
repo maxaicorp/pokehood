@@ -371,19 +371,10 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
     return { cards: allCardsCache, sets: allSetsCache };
   }
 
-  // Prefer the live, self-updating catalog table; fall back to the static
-  // all-cards.json whenever it's empty/unavailable (so this is a no-op until
-  // sync-cards-catalog has populated the table).
-  try {
-    const live = await loadCatalogFromDb();
-    if (live) {
-      allCardsCache = live.cards;
-      allSetsCache = live.sets;
-      return live;
-    }
-  } catch (e) {
-    console.warn("[catalog] live cards table unavailable; using static all-cards.json", e);
-  }
+  // The static all-cards.json is built FIRST and used as the completeness
+  // floor: we only switch to the live DB catalog if it's at least as complete
+  // (see the end of this fn). That way a PARTIAL sync-cards-catalog run can
+  // never drop older sets from the site.
 
   // The ?v=CARD_INDEX_VERSION query param is the cache-buster: when the catalog
   // is rebuilt the version changes → new URL → fresh fetch. So we WANT the
@@ -450,6 +441,21 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
 
   // Sort newest-first so getLatestCards() and default view show recent cards
   cards.sort((a, b) => b.set.releaseDate.localeCompare(a.set.releaseDate));
+
+  // Upgrade to the live DB catalog ONLY if it's at least as complete as the
+  // static index. A partial sync (fewer cards than we ship statically) is
+  // ignored so it can never drop sets; once the catalog is fully populated
+  // (>= static count) it takes over and new cards appear automatically.
+  try {
+    const live = await loadCatalogFromDb();
+    if (live && live.cards.length >= cards.length) {
+      allCardsCache = live.cards;
+      allSetsCache = live.sets;
+      return live;
+    }
+  } catch (e) {
+    console.warn("[catalog] live cards table unavailable/incomplete; using static all-cards.json", e);
+  }
 
   allCardsCache = cards;
   allSetsCache = sets;
