@@ -2,6 +2,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { tcgAffiliateLink } from "@/lib/affiliate";
 import {
   getCardById,
   getMarketSets,
@@ -283,7 +284,7 @@ export default function CardDetail() {
   const buyLinks = [
     {
       label: "TCGPlayer",
-      url: `https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(card?.name || "")}`,
+      url: tcgAffiliateLink(`https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(card?.name || "")}`),
     },
     {
       label: "eBay",

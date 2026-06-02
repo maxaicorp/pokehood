@@ -9,6 +9,7 @@ import {
   type SealedProduct,
 } from "@/lib/sealed-store";
 import { formatPrice } from "@/lib/pokemon-api";
+import { tcgAffiliateLink } from "@/lib/affiliate";
 import { addSealedToCollection } from "@/lib/collection-store";
 import { formatPct } from "@/lib/price-snapshots";
 import { getSetSentiment, castVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
@@ -110,7 +111,7 @@ export default function SealedDetail() {
 
   const buyQuery = product ? encodeURIComponent(`${product.name} ${product.expansionName} pokemon`) : "";
   const buyLinks = [
-    { label: "TCGPlayer", url: `https://www.tcgplayer.com/search/pokemon/product?q=${buyQuery}` },
+    { label: "TCGPlayer", url: tcgAffiliateLink(`https://www.tcgplayer.com/search/pokemon/product?q=${buyQuery}`) },
     { label: "eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${buyQuery}&_sacat=0` },
     { label: "Amazon", url: `https://www.amazon.com/s?k=${buyQuery}` },
   ];
