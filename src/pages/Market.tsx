@@ -116,9 +116,9 @@ export default function Market() {
   // deterministic navigation, not a bare setState that could get swallowed
   // mid-render and leave the old view on screen ("button didn't register").
   // Also makes filtered/tabbed views shareable + back-button friendly.
-  const [selectedSetId, setSelectedSetId] = useUrlState("set", "modern");
+  const [selectedSetId, setSelectedSetId] = useUrlState<string>("set", "modern");
   const [activeTab, setActiveTab] = useUrlState<MarketTab>("tab", "top");
-  const [sealedType, setSealedType] = useUrlState("sealedType", "Elite Trainer Box");
+  const [sealedType, setSealedType] = useUrlState<string>("sealedType", "Elite Trainer Box");
   const [viewMode, setViewMode] = useUrlState<ViewMode>("view", "list");
   const [addingCards, setAddingCards] = useState(new Set<string>());
   // Column sort stays local — it's a secondary header click, and the null
