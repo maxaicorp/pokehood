@@ -192,7 +192,7 @@ export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: 
   return (
     <div>
       {/* Table header */}
-      <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_auto_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
+      <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_100px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
         <span>#</span>
         <span>Product</span>
         <button onClick={() => handleSort("set")} className="flex items-center hover:text-foreground transition-colors">
@@ -225,10 +225,6 @@ export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: 
             const f1d = formatPct(pct1d);
             const f7d = formatPct(pct7d);
             const image = product.imageSmall;
-            const variantLabel =
-              product.variants.length > 1
-                ? `${product.variants.length} variants`
-                : product.variants[0]?.name ?? "";
 
             return (
               <motion.div
@@ -242,7 +238,7 @@ export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: 
                 className="block border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
               >
                 {/* Desktop: table row (unchanged layout) */}
-                <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_auto_44px] gap-4 px-4 py-2.5 items-center">
+                <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_100px_44px] gap-4 px-4 py-2.5 items-center">
                   <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                   <div className="flex items-center gap-3 min-w-0">
                     {image ? (
@@ -252,17 +248,14 @@ export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: 
                     )}
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="truncate">{product.type}</span>
-                        {variantLabel && variantLabel !== "normal" && (<><span>·</span><span className="truncate">{variantLabel}</span></>)}
-                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{product.type}</p>
                     </div>
                   </div>
                   <p className="text-sm text-muted-foreground truncate">{product.expansionName}</p>
                   <p className="text-right text-sm font-semibold text-foreground tabular-nums">{price !== null ? formatPrice(price) : "—"}</p>
                   <p className={`text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
                   <p className={`text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
-                  <div className="flex justify-end">
+                  <div className="flex justify-center">
                     <SetSentimentBadge
                       upvotes={sentiment?.upvotes ?? 0}
                       downvotes={sentiment?.downvotes ?? 0}
@@ -300,11 +293,12 @@ export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: 
                     <div className="flex-1 min-w-0 flex flex-col">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-base font-semibold text-foreground leading-tight truncate">{product.name}</p>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">
-                            {product.type}{variantLabel && variantLabel !== "normal" ? ` · ${variantLabel}` : ""}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">{product.expansionName}</p>
+                          {/* SET as the title (distinctive, short — no cutoff),
+                              TYPE + variants as the subtitle. The full product
+                              name is just SET+TYPE concatenated, so showing it
+                              plus these two lines triple-repeated the same info. */}
+                          <p className="text-base font-semibold text-foreground leading-tight truncate">{product.expansionName || product.name}</p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{product.type}</p>
                         </div>
                         <p className="text-base font-bold text-foreground tabular-nums shrink-0">{price !== null ? formatPrice(price) : "—"}</p>
                       </div>
