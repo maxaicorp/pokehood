@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import SealedGridView from "@/components/SealedGridView";
 import type { ViewMode } from "@/components/ViewToggle";
+import { Button } from "@/components/ui/button";
 
 const PAGE_SIZE = 50;
 
@@ -201,7 +202,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
         </div>
       )}
       {/* Table header */}
-      <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
+      <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_auto_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
         <span>#</span>
         <span>Product</span>
         <button onClick={() => handleSort("set")} className="flex items-center hover:text-foreground transition-colors">
@@ -216,6 +217,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
         <button onClick={() => handleSort("7d")} className="flex items-center justify-end hover:text-foreground transition-colors">
           7d % <SortIcon col="7d" />
         </button>
+        <span className="text-center">Vote</span>
         <span className="sr-only">Add</span>
       </div>
 
@@ -250,7 +252,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                 className="block border-b border-border/50 last:border-0 hover:bg-muted/30 transition-colors"
               >
                 {/* Desktop: table row (unchanged layout) */}
-                <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_44px] gap-4 px-4 py-2.5 items-center">
+                <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_auto_44px] gap-4 px-4 py-2.5 items-center">
                   <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                   <div className="flex items-center gap-3 min-w-0">
                     {image ? (
@@ -270,14 +272,27 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                   <p className="text-right text-sm font-semibold text-foreground tabular-nums">{price !== null ? formatPrice(price) : "—"}</p>
                   <p className={`text-right text-xs font-medium tabular-nums ${f1d.className}`}>{f1d.text}</p>
                   <p className={`text-right text-xs font-medium tabular-nums ${f7d.className}`}>{f7d.text}</p>
-                  <button
+                  <div className="flex justify-end">
+                    <SetSentimentBadge
+                      upvotes={sentiment?.upvotes ?? 0}
+                      downvotes={sentiment?.downvotes ?? 0}
+                      score={sentiment?.score ?? 0}
+                      currentUserVote={sentiment?.currentUserVote ?? null}
+                      onVote={(vt) => handleVote(product.id, vt)}
+                      compact
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
                     onClick={(e) => handleAdd(e, product)}
                     disabled={addingId === product.id}
                     aria-label={`Add ${product.name} to inventory`}
-                    className="justify-self-center inline-flex items-center justify-center w-8 h-8 rounded-md border border-border/50 text-muted-foreground hover:text-primary hover:border-primary transition-colors disabled:opacity-50"
+                    className="justify-self-center h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0"
                   >
                     {addingId === product.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Mobile: roomy card (matches the Market Top tab) — image left,
@@ -316,14 +331,17 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
                           onVote={(vt) => handleVote(product.id, vt)}
                           compact
                         />
-                        <button
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
                           onClick={(e) => handleAdd(e, product)}
                           disabled={addingId === product.id}
                           aria-label={`Add ${product.name} to inventory`}
-                          className="inline-flex items-center gap-1 h-8 px-3 rounded-full border border-border/50 text-muted-foreground hover:text-primary hover:border-primary transition-colors disabled:opacity-50"
+                          className="h-8 px-3 rounded-full border border-border/50 hover:border-primary hover:text-primary"
                         >
                           {addingId === product.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Plus className="w-3.5 h-3.5" /><span className="text-xs font-medium">Add</span></>}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
