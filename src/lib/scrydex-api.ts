@@ -39,6 +39,9 @@ export interface ScrydexCardPrice {
   low: number;
   market: number;
   currency: string;
+  // Scrydex ships rolling price deltas per condition. We use these to derive
+  // the prior-day/7d/30d prices for the admin price audit (price - price_change).
+  trends?: Record<string, { price_change: number; percent_change: number }>;
   // ─── Fields present only when type === "graded" ───
   // Scrydex omits these on raw entries. We keep them optional so existing
   // raw-only code (snapshot-prices, market reads) is untouched.
@@ -148,10 +151,11 @@ export function getScrydexCardPrice(card: ScrydexCard): number | null {
     return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
   });
   for (const variant of sorted) {
+    // NM raw only — no condition fallback. A played/damaged-grade market is not
+    // this card's value (it fabricates lows that match nothing on Scrydex's own
+    // page). If no NM market exists, return null and show N/A.
     const nm = variant.prices.find((p) => p.condition === "NM" && p.type === "raw");
     if (nm && nm.market > 0) return nm.market;
-    const any = variant.prices.find((p) => p.type === "raw" && p.market > 0);
-    if (any) return any.market;
   }
   return null;
 }
@@ -193,6 +197,62 @@ export async function getScrydexCard(id: string): Promise<ScrydexCard | null> {
   } catch {
     return null;
   }
+}
+
+/** Live NM-raw-USD market + Scrydex-derived 1d/7d/30d prior prices for one card.
+ *  Powers the admin price audit. Accepts a bare id ("me2pt5-284") or a
+ *  variant id ("base1-4::unlimitedShadowlessHolofoil"). Returns null when the
+ *  card has no NM raw USD price (which is exactly when the site should show
+ *  N/A rather than a fabricated lower-grade number). */
+export interface ScrydexNmAudit {
+  market: number;
+  price1d: number | null;
+  price7d: number | null;
+  price30d: number | null;
+  variant: string | null;
+}
+
+const AUDIT_PRIORITY = ["normal", "holofoil", "reverseHolofoil"];
+
+function nmRawUsd(prices: ScrydexCardPrice[] | undefined): ScrydexCardPrice | undefined {
+  return prices?.find(
+    (p) => p.condition === "NM" && p.type === "raw" && p.currency === "USD" && p.market > 0,
+  );
+}
+
+export async function getScrydexNmAudit(cardId: string): Promise<ScrydexNmAudit | null> {
+  const [base, want] = cardId.split("::");
+  const card = await getScrydexCard(base);
+  const variants = card?.variants;
+  if (!variants?.length) return null;
+
+  let variant;
+  if (want) {
+    variant = variants.find((v) => v.name === want);
+  } else {
+    // Canonical: first variant (in priority order) that actually has an NM price.
+    variant = [...variants]
+      .sort((a, b) => {
+        const ia = AUDIT_PRIORITY.indexOf(a.name); const ib = AUDIT_PRIORITY.indexOf(b.name);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      })
+      .find((v) => nmRawUsd(v.prices));
+  }
+  const e = nmRawUsd(variant?.prices);
+  if (!variant || !e) return null;
+
+  const t = e.trends ?? {};
+  const back = (k: string) => {
+    const c = t[k]?.price_change;
+    return c != null ? Math.round((e.market - c) * 100) / 100 : null;
+  };
+  return {
+    market: e.market,
+    price1d: back("days_1"),
+    price7d: back("days_7"),
+    price30d: back("days_30"),
+    variant: variant.name,
+  };
 }
 
 /** Fetch all cards in an expansion with pricing (handles pagination) */

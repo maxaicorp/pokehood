@@ -30,7 +30,7 @@ const corsHeaders = {
 
 // Bump on every deploy so the health check / logs can confirm which code is
 // actually live (we've been bitten by old deployed functions still running).
-const FUNCTION_VERSION = "2026-06-01-chunk-background";
+const FUNCTION_VERSION = "2026-06-03-nm-only-canonical-dedup";
 
 const PAGE_SIZE = 100;
 const DAILY_PAGE_LIMIT = 60; // 60 pages newest + 60 pages oldest = 120 credits/day
@@ -64,6 +64,36 @@ function normalizeScrydexCardId(id: string): string {
   // me0X-... → meX-...
   next = next.replace(/^me0+(\d+)(-)/, (_m, n, sep) => `me${n}${sep}`);
   return next;
+}
+
+// De-dup + padded-twin handling for a single crawl/backfill run.
+//
+// Scrydex returns some sets under BOTH a padded expansion id (me02.5) and the
+// canonical unpadded one (me2pt5). Both normalize to the same card_id and both
+// upsert onto (card_id, recorded_at), so the LAST one written in a crawl wins —
+// nondeterministically clobbering the canonical price with the duplicate's.
+// That is the recurring Mega Gengar ex (me2pt5-284) bug: a set-scoped backfill
+// writes the correct $1,396, then the global cron overwrites it with the twin's
+// $1,187.99. (The old dedup keyed on the RAW id, so the twin always slipped
+// through.)
+//
+// Fix: dedup on the NORMALIZED id and let the canonical (unpadded) source win:
+//   - first sighting of a normalized id        → write it
+//   - canonical arriving after a padded twin    → write again (same-day upsert
+//                                                  overwrites → canonical wins)
+//   - anything arriving after a canonical       → skip (never clobber it)
+//   - a padded twin after another padded twin   → skip (dup)
+// Never drops a card: a card that only ever appears in padded form is still
+// written once. Returns true if the caller should write this card's rows.
+function claimCard(seen: Map<string, boolean>, rawId: string): boolean {
+  const normId = normalizeScrydexCardId(rawId);
+  const isCanonical = rawId === normId;
+  const prev = seen.get(normId);
+  if (prev === undefined) { seen.set(normId, isCanonical); return true; }
+  if (prev === true) return false;   // canonical already written — protect it
+  if (!isCanonical) return false;    // padded twin already written, this is another padded
+  seen.set(normId, true);            // upgrade: canonical overwrites the earlier padded row
+  return true;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -206,10 +236,17 @@ function extractAllVariantPrices(card: ScrydexCard): { variant: string; price: n
   const variants = card.variants ?? [];
 
   for (const v of variants) {
-    let price = v.prices?.find((x) => x.condition === "NM" && x.type === "raw" && x.currency === "USD" && x.market > 0)?.market;
-    if (!price) price = v.prices?.find((x) => x.condition === "NM" && x.type === "raw" && x.market > 0)?.market;
-    if (!price) price = v.prices?.find((x) => x.type === "raw" && x.currency === "USD" && x.market > 0)?.market;
-    if (!price) price = v.prices?.find((x) => x.type === "raw" && x.market > 0)?.market;
+    // NM raw USD market ONLY — no condition fallback.
+    //
+    // The old code fell through to ANY condition (LP/MP/HP/DMG) when no NM
+    // price existed. That fabricated low prices that don't appear anywhere on
+    // Scrydex's own card page — the Mega Gengar ex (me2pt5-284) bug, where a
+    // played-grade market got recorded as "the" price. A card's value is its
+    // NM market; if Scrydex has no NM market we record NOTHING (the card shows
+    // N/A) rather than inventing a damaged-condition number.
+    const price = v.prices?.find(
+      (x) => x.condition === "NM" && x.type === "raw" && x.currency === "USD" && x.market > 0,
+    )?.market;
 
     if (price && price > 0) {
       all.push({ variant: v.name, price });
@@ -366,7 +403,7 @@ async function runPass(opts: {
   teamId: string;
   supabase: any;
   today: string;
-  seenIds: Set<string>;
+  seenIds: Map<string, boolean>;
   buffer: SnapshotRow[];
   // Graded data is harvested from the same Scrydex response as raw data
   // (zero extra API credits). Passed through opts so caller controls the
@@ -411,9 +448,9 @@ async function runPass(opts: {
       const variantPrices = extractAllVariantPrices(card);
       if (variantPrices.length === 0) continue;
 
-      // We only deduplicate based on base card.id
-      if (seenIds.has(card.id)) continue;
-      seenIds.add(card.id);
+      // Dedup on the normalized id; canonical (unpadded) source wins a twin
+      // collision so a padded duplicate can't clobber the real price.
+      if (!claimCard(seenIds, card.id)) continue;
 
       for (const vp of variantPrices) {
         // We append the variant name to make it unique in the DB
@@ -473,7 +510,7 @@ async function runSetBackfill(opts: {
   teamId: string;
   supabase: any;
   today: string;
-  seenIds: Set<string>;
+  seenIds: Map<string, boolean>;
   buffer: SnapshotRow[];
   gradedBuffer: GradedSnapshotRow[];
   counters: { inserted: number; skipped: number };
@@ -509,8 +546,7 @@ async function runSetBackfill(opts: {
     for (const card of rows) {
       const variantPrices = extractAllVariantPrices(card);
       if (variantPrices.length === 0) continue;
-      if (seenIds.has(card.id)) continue;
-      seenIds.add(card.id);
+      if (!claimCard(seenIds, card.id)) continue;
       cardsWithPrice++;
 
       for (const vp of variantPrices) {
@@ -677,7 +713,7 @@ serve(async (req: Request) => {
     // Shared completeness flag. Any hard page failure flips this; the prune +
     // cache refresh are then skipped so a partial run never corrupts the cache.
     const runState = { failed: false };
-    const seenIds = new Set<string>();
+    const seenIds = new Map<string, boolean>();
     const buffer: SnapshotRow[] = [];
     const gradedBuffer: GradedSnapshotRow[] = [];
     const counters = { inserted: 0, skipped: 0 };
