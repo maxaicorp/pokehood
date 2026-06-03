@@ -131,6 +131,17 @@ export async function addCardToWishlist(
   return true;
 }
 
+/** Add a card to the user's primary wishlist, creating one if they have none.
+ *  Used by the quick-action menu where there's no list picker. */
+export async function addCardToDefaultWishlist(
+  userId: string,
+  card: Parameters<typeof addCardToWishlist>[2],
+): Promise<boolean> {
+  const lists = await getWishlists();
+  const target = lists[0] ?? (await createWishlist(userId));
+  return addCardToWishlist(target.id, userId, card);
+}
+
 export async function removeCardFromWishlist(cardId: string): Promise<void> {
   const { error } = await supabase.from("wishlist_cards").delete().eq("id", cardId);
   if (error) throw error;
