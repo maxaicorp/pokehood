@@ -28,9 +28,12 @@ type SortCol = "set" | "price" | "1d" | "7d";
 interface SealedTabProps {
   typeFilter: string;
   viewMode?: ViewMode;
+  // Reports the filter's total value + item count up to the Market header, so
+  // the value badge can sit in the header (next to the dropdown) like the Top tab.
+  onSummary?: (totalValue: number, totalCount: number) => void;
 }
 
-export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabProps) {
+export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: SealedTabProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [addingId, setAddingId] = useState<string | null>(null);
@@ -38,7 +41,6 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [totalValue, setTotalValue] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [hasMore, setHasMore] = useState(true);
   const loadingMore = useRef(false);
@@ -74,7 +76,7 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
       if (cancelled) return;
       loadingMore.current = false;
       setTotalCount(result.totalCount);
-      setTotalValue(result.totalValue);
+      onSummary?.(result.totalValue, result.totalCount);
 
       if (page === 1) {
         setProducts(result.products);
@@ -189,18 +191,6 @@ export default function SealedTab({ typeFilter, viewMode = "list" }: SealedTabPr
 
   return (
     <div>
-      {/* Total value of every item in the current filter (summed across the
-          whole filtered set, not just the loaded page) — mirrors the Top tab. */}
-      {totalValue > 0 && (
-        <div className="px-3 sm:px-4 py-2.5 flex items-baseline gap-2 border-b border-border/50">
-          <span className="text-lg sm:text-xl font-bold text-foreground tabular-nums">
-            ${Math.ceil(totalValue).toLocaleString("en-US")}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {typeFilter && typeFilter !== "all" ? typeFilter : "All sealed"} · {totalCount.toLocaleString()} items
-          </span>
-        </div>
-      )}
       {/* Table header */}
       <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_auto_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
         <span>#</span>

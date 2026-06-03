@@ -121,6 +121,9 @@ export default function Market() {
   const [activeTab, setActiveTab] = useUrlState<MarketTab>("tab", "top");
   const [sealedType, setSealedType] = useUrlState<string>("sealedType", "Elite Trainer Box");
   const [viewMode, setViewMode] = useUrlState<ViewMode>("view", "list");
+  // Total value + count of the current sealed filter, reported up from SealedTab
+  // so the value badge can live in the header next to the dropdown (like Top).
+  const [sealedSummary, setSealedSummary] = useState<{ value: number; count: number } | null>(null);
   const [addingCards, setAddingCards] = useState(new Set<string>());
   // Column sort stays local — it's a secondary header click, and the null
   // "unsorted" state doesn't map cleanly to a URL param.
@@ -569,6 +572,18 @@ export default function Market() {
 
           {activeTab === "sealed" ? (
             <div className="flex items-center gap-3 justify-between sm:justify-end flex-wrap">
+              {/* Total value of the current sealed filter — same spot/style as
+                  the Top tab badge (left of the dropdown). */}
+              {sealedSummary && sealedSummary.value > 0 && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">
+                    {sealedSummary.count.toLocaleString()} items
+                  </p>
+                  <p className="text-lg font-bold text-foreground tabular-nums">
+                    ${Math.ceil(sealedSummary.value).toLocaleString("en-US")}
+                  </p>
+                </div>
+              )}
               <Select value={sealedType} onValueChange={setSealedType}>
                 <SelectTrigger className="w-[180px] sm:w-[200px] bg-background">
                   <SelectValue />
@@ -652,7 +667,7 @@ export default function Market() {
           )}
 
           {activeTab === "sealed" ? (
-            <SealedTab typeFilter={sealedType} viewMode={viewMode} />
+            <SealedTab typeFilter={sealedType} viewMode={viewMode} onSummary={(value, count) => setSealedSummary({ value, count })} />
           ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
               <div>
