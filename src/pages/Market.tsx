@@ -511,6 +511,19 @@ export default function Market() {
       ? "sm:grid-cols-[32px_1fr_160px_100px_80px_80px_96px_36px]"
       : "sm:grid-cols-[32px_1fr_160px_100px_80px_80px_36px]";
 
+  const footerText = (() => {
+    if (activeTab === "sealed") return null;
+    if (activeTab === "most-visited") {
+      if (mostVisitedLoading || mostVisitedCards.length === 0) return null;
+      return `Showing top ${mostVisitedCards.length} most visited cards`;
+    }
+    if (isLoading) return null;
+    if (isSingleSet) return `${pricedCards.length} of ${(cards || []).length} cards have pricing`;
+    return pricedCards.length > visibleCards.length
+      ? `Showing top ${visibleCards.length} of ${pricedCards.length} cards`
+      : `Showing top ${visibleCards.length} cards`;
+  })();
+
   const SortIcon = ({ col }: { col: "price" | "24h" | "7d" }) => {
     if (sortCol !== col) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />;
     return sortDir === "asc"
@@ -1030,11 +1043,9 @@ export default function Market() {
           )}
         </div>
 
-        {!isLoading && activeTab !== "sealed" && (
+        {footerText && (
           <p className="text-xs text-muted-foreground text-center mt-4">
-            {isSingleSet
-              ? `${pricedCards.length} of ${(cards || []).length} cards have pricing`
-              : `Showing top ${pricedCards.length} cards`}
+            {footerText}
           </p>
         )}
       </div>
