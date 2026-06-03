@@ -112,6 +112,7 @@ export async function getMostViewed(limit = 20): Promise<CardStatRow[]> {
   const { data } = await (supabase.from as any)("card_stats")
     .select(STATS_SELECT)
     .neq("tcg_api_id", HEALTH_CHECK_SENTINEL)
+    .gt("view_count", 0)
     .order("view_count", { ascending: false })
     .limit(limit);
   return (data as CardStatRow[] | null) ?? [];

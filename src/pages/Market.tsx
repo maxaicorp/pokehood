@@ -108,6 +108,7 @@ const MARKET_TABS = [
   { key: "most-visited", label: "Most Visited", icon: Eye },
 ] as const;
 type MarketTabKey = (typeof MARKET_TABS)[number]["key"];
+const MOST_VISITED_LIMIT = 50;
 
 export default function Market() {
   const { user } = useAuth();
@@ -169,21 +170,33 @@ export default function Market() {
   // Load most visited when tab is active
   useEffect(() => {
     if (activeTab !== "most-visited") return;
+    let cancelled = false;
     setMostVisitedLoading(true);
-    getMostViewed(10).then(async (rows) => {
-      // Hydrate with live price + 1d/7d deltas (same data the other tabs show)
-      // so Most-Visited isn't a bare view-count list. Targeted by-id fetch.
-      try {
-        const priceMap = await getLatestPricesByIds(rows.map((r) => r.tcg_api_id));
-        rows = rows.map((r) => {
-          const p = priceMap.get(r.tcg_api_id);
-          return p ? { ...r, price: p.price, price1d: p.price1d, price7d: p.price7d } : r;
-        });
-      } catch { /* leave rows unpriced — the columns just render "—" */ }
-      setMostVisitedCards(rows);
-      setMostVisitedLoading(false);
-    });
-  }, [activeTab]);
+    getMostViewed(MOST_VISITED_LIMIT)
+      .then(async (rows) => {
+        // Hydrate with live price + 1d/7d deltas (same data the other tabs show)
+        // so Most-Visited isn't a bare view-count list. Targeted by-id fetch.
+        try {
+          const priceMap = await getLatestPricesByIds(rows.map((r) => r.tcg_api_id));
+          rows = rows.map((r) => {
+            const p = priceMap.get(r.tcg_api_id);
+            return p ? { ...r, price: p.price, price1d: p.price1d, price7d: p.price7d } : r;
+          });
+        } catch { /* leave rows unpriced — the columns just render "—" */ }
+        if (!cancelled) setMostVisitedCards(rows);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("Most Visited fetch failed:", err);
+          toast.error("Could not load Most Visited. Pull to refresh or try again.");
+          setMostVisitedCards([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setMostVisitedLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [activeTab, refreshToken]);
 
   // Step 1: Load lightweight set metadata; do not block first paint on the full card index.
   useEffect(() => {
@@ -748,11 +761,27 @@ export default function Market() {
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground truncate">{stat.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{stat.set_name}</p>
+                        {(() => {
+                          const d1 = stat.price != null && stat.price1d != null && stat.price1d !== 0
+                            ? ((stat.price - stat.price1d) / stat.price1d) * 100 : null;
+                          const d7 = stat.price != null && stat.price7d != null && stat.price7d !== 0
+                            ? ((stat.price - stat.price7d) / stat.price7d) * 100 : null;
+                          const p1 = formatPct(d1), p7 = formatPct(d7);
+                          return (
+                            <div className="sm:hidden flex items-center gap-3 text-[11px] mt-1">
+                              <span className="font-semibold text-foreground tabular-nums">
+                                {stat.price != null ? formatPrice(stat.price) : "—"}
+                              </span>
+                              <span className={`font-medium tabular-nums ${p1.className}`}>24h {p1.text}</span>
+                              <span className={`font-medium tabular-nums ${p7.className}`}>7d {p7.text}</span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                     <p className="hidden sm:block text-sm text-muted-foreground truncate">{stat.set_name}</p>
                     {/* Price + 24h/7d — hydrated from latest_card_prices. Hidden on
-                        mobile to keep the row readable (views still show there). */}
+                        mobile layout renders these below the card name. */}
                     <span className="hidden sm:block text-right text-sm font-medium text-foreground tabular-nums">
                       {stat.price != null ? formatPrice(stat.price) : "—"}
                     </span>
