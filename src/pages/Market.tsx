@@ -568,7 +568,7 @@ export default function Market() {
           </div>
 
           {activeTab === "sealed" ? (
-            <div className="flex items-center gap-3 justify-between sm:justify-end">
+            <div className="flex items-center gap-3 justify-between sm:justify-end flex-wrap">
               <Select value={sealedType} onValueChange={setSealedType}>
                 <SelectTrigger className="w-[180px] sm:w-[200px] bg-background">
                   <SelectValue />
@@ -607,7 +607,7 @@ export default function Market() {
                 value={selectedSetId || "all"}
                 onValueChange={(v) => setSelectedSetId(v === "all" ? "" : v)}
               >
-                <SelectTrigger className="w-[180px] sm:w-[200px] bg-background">
+                <SelectTrigger className="w-[160px] min-[380px]:w-[180px] sm:w-[200px] bg-background">
                   <SelectValue placeholder="All Sets" />
                 </SelectTrigger>
                 <SelectContent>
