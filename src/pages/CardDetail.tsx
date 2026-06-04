@@ -315,7 +315,7 @@ export default function CardDetail() {
           // the user landed on. /card/:id requests will have their
           // <link rel="canonical"> point to /sets/:slug/:cardSlug so Google
           // collapses duplicates onto the SEO-friendly URL.
-          title={`${card.name} #${card.number} — ${card.set.name} Price | Collectiblez`}
+          title={`${card.name} — ${card.set.name} | Price & Price History | Collectiblez`}
           description={`${card.name} ${card.number}/${card.set.printedTotal || card.set.total} from ${card.set.name}. Live market price, 24h/7d trends, and price history. Updated daily.`}
           path={cardPath(card.set, { name: card.name, number: card.number })}
           image={card.images?.large || card.images?.small}
