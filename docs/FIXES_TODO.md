@@ -55,9 +55,9 @@ Audit Explore (filters, the separate wishlist heart now that the panel has it, e
 ## 🌐 Multi-TCG expansion (planning — 6/4+)
 Goal: support TCGs beyond Pokémon-EN. Budget ≈ **7,500 credits/TCG/month** at a daily ping → **3–4 TCGs comfortably** on the current plan (with mistake headroom).
 
-- **Target games (user pick):** Pokémon EN (live), **Pokémon JA**, **One Piece**, **Gundam**.
-- ⚠️ **MTG is NOT on Scrydex** (404 on `/magic` and `/mtg`). Scrydex games as of 2026-06-04: `pokemon`, `lorcana`, `onepiece`, `gundam`, `riftbound` (+ `pokemon/ja` language). MTG would need a different data source.
-- **Banked catalogs** (catalog-only, gzipped, in `/data-bank/`, NOT served): `lorcana`, `onepiece`, `gundam`, `riftbound`, `pokemon-ja` (27,745 cards total). Re-pull/extend with `scripts/scrydex-tools/bank_catalogs.py`.
+- **Launch order (user):** Pokémon EN (live) → **Pokémon JA → Gundam** → One Piece (+ Lorcana / Riftbound) → **MTG last** (100,724 cards — biggest, most work).
+- ✅ **MTG IS on Scrydex** — slug is **`magicthegathering`** (not `magic`/`mtg`). Scrydex games (2026-06-04): `pokemon` (EN + `ja` lang), `magicthegathering`, `lorcana`, `onepiece`, `gundam`, `riftbound`.
+- **Banked catalogs** (catalog-only, gzipped, in **gitignored** `/data-bank/`, never deployed): `pokemon-ja`, `gundam`, `onepiece`, `lorcana`, `riftbound` (27,745 cards). **MTG not banked** (save for last) — pull on demand: `SCRYDEX_GAMES="magicthegathering:en" python scripts/scrydex-tools/bank_catalogs.py`.
 - **Work to actually ship a TCG:**
   - Generalize the pipeline — `sync-cards-catalog` + `snapshot-prices` are hardcoded `/pokemon/v1/en` + `language_code==='EN'`. Make **game + language** params.
   - Per-game **catalog** (`cards` needs a game/lang column, or per-game tables) + per-game **price** snapshot/latest tables.

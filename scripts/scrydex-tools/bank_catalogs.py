@@ -15,13 +15,20 @@ KEY = os.environ["SCRYDEX_KEY"]
 TEAM = os.environ.get("SCRYDEX_TEAM", "collectiblez")
 
 # (game, language). Confirmed live on Scrydex 2026-06-04.
+# (Magic IS on Scrydex under the slug "magicthegathering" — not "magic"/"mtg".)
 GAMES = [
     ("lorcana", "en"),
     ("onepiece", "en"),
     ("gundam", "en"),
     ("riftbound", "en"),
-    ("pokemon", "ja"),   # Japanese Pokémon
+    ("pokemon", "ja"),            # Japanese Pokémon
+    ("magicthegathering", "en"),  # ~100k cards — big
 ]
+
+# Override which games to pull: SCRYDEX_GAMES="magicthegathering:en,onepiece:en"
+_env = os.environ.get("SCRYDEX_GAMES")
+if _env:
+    GAMES = [tuple(g.split(":")) for g in _env.split(",") if ":" in g]
 
 OUT = pathlib.Path("data-bank")
 OUT.mkdir(parents=True, exist_ok=True)
