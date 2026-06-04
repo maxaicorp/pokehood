@@ -95,8 +95,36 @@ export type Database = {
         }
         Relationships: []
       }
+      card_view_events: {
+        Row: {
+          id: number
+          image_small: string
+          name: string
+          set_name: string
+          tcg_api_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: never
+          image_small?: string
+          name?: string
+          set_name?: string
+          tcg_api_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: never
+          image_small?: string
+          name?: string
+          set_name?: string
+          tcg_api_id?: string
+          viewed_at?: string
+        }
+        Relationships: []
+      }
       cards: {
         Row: {
+          artist: string | null
           hp: string | null
           id: string
           language: string
@@ -112,6 +140,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          artist?: string | null
           hp?: string | null
           id: string
           language?: string
@@ -127,6 +156,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          artist?: string | null
           hp?: string | null
           id?: string
           language?: string
@@ -1343,9 +1373,17 @@ export type Database = {
           set_name: string
         }[]
       }
+      get_card_artists: {
+        Args: never
+        Returns: {
+          artist: string
+          card_count: number
+        }[]
+      }
       get_card_catalog: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
+          artist: string
           id: string
           name: string
           number: string
@@ -1438,6 +1476,16 @@ export type Database = {
           price_7d: number
           recorded_at: string
           set_name: string
+        }[]
+      }
+      get_most_viewed_windowed: {
+        Args: { p_limit?: number; p_window?: string }
+        Returns: {
+          image_small: string
+          name: string
+          set_name: string
+          tcg_api_id: string
+          view_count: number
         }[]
       }
       get_my_game_stats: { Args: { p_game: string }; Returns: Json }
