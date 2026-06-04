@@ -52,6 +52,18 @@ Audit Explore (filters, the separate wishlist heart now that the panel has it, e
 ## 🔴 Decision / data-gated
 - [ ] **Most Visited 24h/7d/30d dropdown** — needs a `card_view_events` table (cumulative counter can't be windowed). User decision: build the event-log? (Windows fill from "now" forward; "All time" works immediately.)
 
+## 🌐 Multi-TCG expansion (planning — 6/4+)
+Goal: support TCGs beyond Pokémon-EN. Budget ≈ **7,500 credits/TCG/month** at a daily ping → **3–4 TCGs comfortably** on the current plan (with mistake headroom).
+
+- **Target games (user pick):** Pokémon EN (live), **Pokémon JA**, **One Piece**, **Gundam**.
+- ⚠️ **MTG is NOT on Scrydex** (404 on `/magic` and `/mtg`). Scrydex games as of 2026-06-04: `pokemon`, `lorcana`, `onepiece`, `gundam`, `riftbound` (+ `pokemon/ja` language). MTG would need a different data source.
+- **Banked catalogs** (catalog-only, gzipped, in `/data-bank/`, NOT served): `lorcana`, `onepiece`, `gundam`, `riftbound`, `pokemon-ja` (27,745 cards total). Re-pull/extend with `scripts/scrydex-tools/bank_catalogs.py`.
+- **Work to actually ship a TCG:**
+  - Generalize the pipeline — `sync-cards-catalog` + `snapshot-prices` are hardcoded `/pokemon/v1/en` + `language_code==='EN'`. Make **game + language** params.
+  - Per-game **catalog** (`cards` needs a game/lang column, or per-game tables) + per-game **price** snapshot/latest tables.
+  - **Frontend:** game/language switcher + per-game routes / sets / market.
+  - Seed metadata from the banked catalogs (gunzip → import).
+
 ## ⚫ Deferred (by user)
 - [ ] **SEO link previews** — Cloudflare Worker in front of Lovable (UA-prerender OG tags) + per-card OG image. Needs DNS move to Cloudflare. Google indexing/sitemaps already work.
 - [ ] **Tier 2/3 search** (vintage finishes, "cosmos holo") — needs variant finish names stored in the pipeline.
