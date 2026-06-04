@@ -108,7 +108,7 @@ const MARKET_TABS = [
   { key: "most-visited", label: "Most Visited", icon: Eye },
 ] as const;
 type MarketTabKey = (typeof MARKET_TABS)[number]["key"];
-const MOST_VISITED_LIMIT = 50;
+const MOST_VISITED_LIMIT = 500;
 
 export default function Market() {
   const { user } = useAuth();
