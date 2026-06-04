@@ -1,7 +1,7 @@
 -- Fill the `cards` catalog (the fix for the slow/freezing search).
 -- PREREQ: Lovable must redeploy the `sync-cards-catalog` edge function first
--- (it now dedups ids + runs in the background). Verify version is
--- "2026-06-04-dedup-ids".
+-- (it now dedups ids, runs in the background, and captures artist). Verify
+-- version is "2026-06-04-artist".
 
 -- 1) Kick off the sync. It runs in the background now, so this returns instantly.
 SELECT net.http_post(
@@ -17,3 +17,11 @@ FROM public.cards;
 -- Expect ~23,000 total once finished. Once total >= the static index count,
 -- the site auto-switches off the 9.9MB all-cards.json -> search freeze gone,
 -- Explore lists vintage, header rarity search + artist filter unblock.
+
+-- 3) Confirm artist populated (the Artist filter on Explore stays hidden until
+--    this is > 0). Run after a fresh sync on the "2026-06-04-artist" version:
+SELECT count(*) AS total, count(artist) AS with_artist,
+       count(DISTINCT artist) AS distinct_artists
+FROM public.cards;
+-- Expect distinct_artists in the hundreds (~600). Then the Artist dropdown
+-- appears on /explore automatically.
