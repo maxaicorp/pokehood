@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="320" viewBox="0 0 800 320" role="img" aria-label="eBay logo style wordmark">
+  <rect width="800" height="320" fill="transparent"/>
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="170" letter-spacing="-14">
+    <text x="95"  y="210" fill="#E53238">e</text>
+    <text x="205" y="210" fill="#0064D2">b</text>
+    <text x="326" y="210" fill="#F5AF02">a</text>
+    <text x="438" y="210" fill="#86B817">y</text>
+  </g>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Collector Crypt logo">
+  <defs>
+    <linearGradient id="ccGrad" x1="56" y1="456" x2="456" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0043a8"/>
+      <stop offset="0.32" stop-color="#1e9bff"/>
+      <stop offset="0.58" stop-color="#fff1b8"/>
+      <stop offset="0.78" stop-color="#ff8a21"/>
+      <stop offset="1" stop-color="#ff1e00"/>
+    </linearGradient>
+    <filter id="softGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="#000000"/>
+  <g fill="none" stroke="url(#ccGrad)" stroke-width="12" stroke-linejoin="miter" stroke-linecap="butt" filter="url(#softGlow)">
+    <!-- outer angular monogram -->
+    <path d="M166 74 L315 22 L448 100 L448 166 L346 226 L448 286 L448 376 L315 454 L166 402 L66 344 L66 114 Z"/>
+    <!-- upper interior cuts -->
+    <path d="M166 74 L166 344"/>
+    <path d="M66 344 L214 258 L315 198 L448 100"/>
+    <path d="M214 258 L346 226"/>
+    <!-- lower interior cuts -->
+    <path d="M66 344 L315 454"/>
+    <path d="M315 454 L315 366 L448 286"/>
+    <path d="M166 344 L315 366 L448 286"/>
+    <path d="M315 198 L346 226"/>
+  </g>
+</svg>

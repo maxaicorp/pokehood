@@ -70,9 +70,9 @@ export default function RowActions({
             <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Buy</span>
             <div className="flex-1 h-px bg-border/60" />
           </div>
-          <BuyRow href={tcg} label="TCGplayer" />
-          <BuyRow href={ebay} label="eBay" />
-          <BuyRow href={CC_REFERRAL_URL} label="Collector Crypt · graded, on-chain" sponsored />
+          <BuyRow href={tcg} label="TCGplayer" logo="/data/logos/tcgplayer_logo.svg" />
+          <BuyRow href={ebay} label="eBay" logo="/data/logos/ebay_logo.svg" />
+          <BuyRow href={CC_REFERRAL_URL} label="Collector Crypt" logo="/data/logos/collectorcrypt_logo.svg" sponsored tag="promoted" />
         </div>
       </SheetContent>
     </Sheet>
@@ -91,15 +91,22 @@ function Row({ icon, label, onClick }: { icon: ReactNode; label: string; onClick
   );
 }
 
-function BuyRow({ href, label, sponsored }: { href: string; label: string; sponsored?: boolean }) {
+function BuyRow({ href, label, logo, sponsored, tag }: { href: string; label: string; logo?: string; sponsored?: boolean; tag?: string }) {
   return (
     <a
       href={href}
       target="_blank"
       rel={`noopener noreferrer${sponsored ? " sponsored" : ""}`}
-      className="flex items-center justify-between gap-3 px-3 py-3 rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors"
+      className="flex items-center justify-between gap-3 px-3 py-3 rounded-lg hover:bg-muted transition-colors"
     >
-      <span className="truncate">{label}</span>
+      <span className="flex items-center gap-2 min-w-0">
+        {logo ? (
+          <img src={logo} alt={label} className="h-5 w-auto max-w-[130px] object-contain" loading="lazy" />
+        ) : (
+          <span className="truncate text-sm font-medium text-foreground">{label}</span>
+        )}
+        {tag && <span className="text-[10px] text-muted-foreground">· {tag}</span>}
+      </span>
       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
     </a>
   );
