@@ -63,7 +63,9 @@ export default function SetDetail() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [sortKey, setSortKey] = useState<SortKey>("number-asc");
+  // Default to highest card number first — the chase cards (SIRs / secret rares)
+  // live at the top of the numbering, which is what people open a set to see.
+  const [sortKey, setSortKey] = useState<SortKey>("number-desc");
   // Match the Market "Top" tab: each card row gets the same "+" add button and
   // up/down sentiment votes.
   const [addingCards, setAddingCards] = useState<Set<string>>(new Set());

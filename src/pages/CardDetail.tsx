@@ -509,6 +509,10 @@ export default function CardDetail() {
 
             <div className="hidden lg:block w-full h-px bg-border" />
 
+            {/* Graded tiles — directly under the raw price (was stranded at the
+                very bottom of the page, especially bad on mobile). */}
+            {id && <GradedPriceTiles cardId={id} />}
+
             {/* Buy Now dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -554,8 +558,6 @@ export default function CardDetail() {
           </div>
         </div>
 
-        {/* ── Graded price tiles (PSA / BGS / CGC × 10, 9) ── */}
-        {id && <GradedPriceTiles cardId={id} />}
 
         {/* ── More from this set ── */}
         {/* Was a horizontal scroll strip with tiny w-28 thumbs; user wanted

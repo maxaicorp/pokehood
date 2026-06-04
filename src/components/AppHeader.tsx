@@ -118,6 +118,11 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                     <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                   </div>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard">
+                      <LayoutGrid className="w-4 h-4 mr-2" /> Dashboard
+                    </Link>
+                  </DropdownMenuItem>
                   {!isPro && (
                     <DropdownMenuItem onClick={handleUpgrade} disabled={checkoutLoading} className="text-amber-600 dark:text-amber-400">
                       <Crown className="w-4 h-4 mr-2" /> Upgrade to Pro
