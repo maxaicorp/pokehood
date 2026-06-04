@@ -291,11 +291,18 @@ export default function CardDetail() {
     };
   })();
 
-  const buyQuery = card ? encodeURIComponent(`${card.name} ${card.set.name} pokemon card`) : "";
+  // Buy searches: strip the "(Unlimited Holo)" variant parenthetical from both
+  // name and set. Selling sites list cards as "<Pokémon> <Set>" and the variant
+  // is redundant (the set name already carries it), so e.g. we search
+  // "Articuno Fossil pokemon card" not "Articuno (Unlimited Holo) Fossil ...".
+  const stripVariant = (s: string) => s.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const buyName = card ? stripVariant(card.name) : "";
+  const buySet = card ? stripVariant(card.set.name) : "";
+  const buyQuery = card ? encodeURIComponent(`${buyName} ${buySet} pokemon card`) : "";
   const buyLinks = [
     {
       label: "TCGPlayer",
-      url: tcgAffiliateLink(`https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(card?.name || "")}`),
+      url: tcgAffiliateLink(`https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(`${buyName} ${buySet}`.trim())}`),
     },
     {
       label: "eBay",

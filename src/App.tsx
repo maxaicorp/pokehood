@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import BackgroundLayer from "@/components/BackgroundLayer";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import ScrollToTop from "@/components/ScrollToTop";
 import SentimentIntroDialog from "@/components/SentimentIntroDialog";
 
 // Lazy-loaded pages for code splitting
@@ -53,6 +54,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <AuthProvider>
             <BackgroundLayer />
             <main className="relative z-[1]">
