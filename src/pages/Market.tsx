@@ -775,75 +775,79 @@ export default function Market() {
               <div>
                 {/* Header row — matches the other data tables' top bar.
                     Same grid template as the rows below so columns line up. */}
-                <div className="hidden sm:grid grid-cols-[40px_1fr_140px_90px_70px_70px_80px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
+                <div className="hidden sm:grid grid-cols-[32px_1fr_160px_100px_80px_80px_60px] gap-2 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
                   <span>#</span>
                   <span>Card</span>
                   <span>Set</span>
                   <span className="text-right">Price</span>
-                  <span className="text-right">24h</span>
-                  <span className="text-right">7d</span>
+                  <span className="text-right">24h %</span>
+                  <span className="text-right">7d %</span>
                   <span className="text-right">Views</span>
                 </div>
-                {mostVisitedCards.map((stat, i) => (
-                  <motion.div
-                    key={stat.tcg_api_id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                    className="grid grid-cols-[24px_1fr_auto] sm:grid-cols-[40px_1fr_140px_90px_70px_70px_80px] gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 border-b border-border/50 last:border-0 items-center hover:bg-muted/30 cursor-pointer transition-colors"
-                    onClick={() => navigate(cardPathFromApiId(stat.tcg_api_id, stat.name, stat.set_name))}
-                  >
-                    <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                      {stat.image_small && (
-                        <CardImage src={stat.image_small} alt={stat.name} className="w-9 sm:w-10 shrink-0 shadow-sm" loading="lazy" />
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{stat.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{stat.set_name}</p>
-                        {(() => {
-                          const d1 = stat.price != null && stat.price1d != null && stat.price1d !== 0
-                            ? ((stat.price - stat.price1d) / stat.price1d) * 100 : null;
-                          const d7 = stat.price != null && stat.price7d != null && stat.price7d !== 0
-                            ? ((stat.price - stat.price7d) / stat.price7d) * 100 : null;
-                          const p1 = formatPct(d1), p7 = formatPct(d7);
-                          return (
-                            <div className="sm:hidden flex items-center gap-3 text-[11px] mt-1">
-                              <span className="font-semibold text-foreground tabular-nums">
-                                {stat.price != null ? formatPrice(stat.price) : "—"}
-                              </span>
-                              <span className={`font-medium tabular-nums ${p1.className}`}>24h {p1.text}</span>
-                              <span className={`font-medium tabular-nums ${p7.className}`}>7d {p7.text}</span>
-                            </div>
-                          );
-                        })()}
+                {mostVisitedCards.map((stat, i) => {
+                  const d1 = stat.price != null && stat.price1d != null && stat.price1d !== 0
+                    ? ((stat.price - stat.price1d) / stat.price1d) * 100 : null;
+                  const d7 = stat.price != null && stat.price7d != null && stat.price7d !== 0
+                    ? ((stat.price - stat.price7d) / stat.price7d) * 100 : null;
+                  const p1 = formatPct(d1), p7 = formatPct(d7);
+                  return (
+                    <motion.div
+                      key={stat.tcg_api_id}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: Math.min(i * 0.01, 0.3) }}
+                      className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                      onClick={() => navigate(cardPathFromApiId(stat.tcg_api_id, stat.name, stat.set_name))}
+                    >
+                      {/* Desktop grid — same column widths as the other Market tables */}
+                      <div className="hidden sm:grid grid-cols-[32px_1fr_160px_100px_80px_80px_60px] gap-2 px-4 py-2.5 items-center">
+                        <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
+                        <div className="flex items-center gap-3 min-w-0">
+                          {stat.image_small && (
+                            <CardImage src={stat.image_small} alt={stat.name} className="w-10 shrink-0 shadow-sm" loading="lazy" />
+                          )}
+                          <p className="text-sm font-semibold text-foreground truncate">{stat.name}</p>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">{stat.set_name}</p>
+                        <p className="text-sm font-bold text-foreground text-right tabular-nums">{stat.price != null ? formatPrice(stat.price) : "—"}</p>
+                        <p className={`text-xs font-medium text-right tabular-nums ${p1.className}`}>{p1.text}</p>
+                        <p className={`text-xs font-medium text-right tabular-nums ${p7.className}`}>{p7.text}</p>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-sm font-medium text-foreground tabular-nums">{stat.view_count}</span>
+                        </div>
                       </div>
-                    </div>
-                    <p className="hidden sm:block text-sm text-muted-foreground truncate">{stat.set_name}</p>
-                    {/* Price + 24h/7d — hydrated from latest_card_prices. Hidden on
-                        mobile layout renders these below the card name. */}
-                    <span className="hidden sm:block text-right text-sm font-medium text-foreground tabular-nums">
-                      {stat.price != null ? formatPrice(stat.price) : "—"}
-                    </span>
-                    {(() => {
-                      const d1 = stat.price != null && stat.price1d != null && stat.price1d !== 0
-                        ? ((stat.price - stat.price1d) / stat.price1d) * 100 : null;
-                      const d7 = stat.price != null && stat.price7d != null && stat.price7d !== 0
-                        ? ((stat.price - stat.price7d) / stat.price7d) * 100 : null;
-                      const p1 = formatPct(d1), p7 = formatPct(d7);
-                      return (
-                        <>
-                          <span className={`hidden sm:block text-right text-xs font-semibold tabular-nums ${p1.className}`}>{p1.text}</span>
-                          <span className={`hidden sm:block text-right text-xs font-semibold tabular-nums ${p7.className}`}>{p7.text}</span>
-                        </>
-                      );
-                    })()}
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-sm font-medium text-foreground tabular-nums">{stat.view_count}</span>
-                    </div>
-                  </motion.div>
-                ))}
+
+                      {/* Mobile card — matches the Top tab layout */}
+                      <div className="sm:hidden p-4">
+                        <div className="flex gap-3">
+                          <div className="relative shrink-0">
+                            <span className="absolute -top-1.5 -left-1.5 z-10 text-[10px] font-mono font-semibold text-foreground bg-background/95 backdrop-blur px-1.5 py-0.5 rounded-full border border-border/60 tabular-nums shadow-sm">{i + 1}</span>
+                            {stat.image_small ? (
+                              <CardImage src={stat.image_small} alt={stat.name} className="w-20 aspect-[5/7] shadow-md object-contain bg-muted" loading="lazy" />
+                            ) : (
+                              <div className="w-20 aspect-[5/7] rounded bg-muted flex items-center justify-center"><Eye className="w-6 h-6 text-muted-foreground/40" /></div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 flex flex-col">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-base font-semibold text-foreground leading-tight truncate">{stat.name}</p>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">{stat.set_name}</p>
+                              </div>
+                              <p className="text-base font-bold text-foreground tabular-nums shrink-0">{stat.price != null ? formatPrice(stat.price) : "—"}</p>
+                            </div>
+                            <div className="flex items-center gap-4 text-[11px] mt-2">
+                              <div className="flex items-center gap-1"><span className="text-muted-foreground">24h</span><span className={`font-medium tabular-nums ${p1.className}`}>{p1.text}</span></div>
+                              <div className="flex items-center gap-1"><span className="text-muted-foreground">7d</span><span className={`font-medium tabular-nums ${p7.className}`}>{p7.text}</span></div>
+                              <div className="flex items-center gap-1 ml-auto"><Eye className="w-3.5 h-3.5 text-muted-foreground" /><span className="font-medium tabular-nums text-foreground">{stat.view_count}</span></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             )
           ) : isLoading && cards.length === 0 ? (

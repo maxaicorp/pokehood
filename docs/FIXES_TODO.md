@@ -13,9 +13,12 @@ status so blocked/decision items don't stall the shippable ones.
 ## 🟢 Next up (shippable, no blockers)
 - [ ] **Graded tiles RPC cap** — `get_graded_tiles_for_card` hard-caps `grade IN (10,9)` but the tiles component shows all grades via dropdown. Remove the cap (SQL migration).
 
-## 🟠 Builds (migration + UI)
-- [ ] **Graded price override** — mirror the raw override: `graded_price_overrides` table + `admin_set_graded_price` RPC + override-aware `refresh_latest_graded_prices` + a graded tab in `/admin/prices`. (Also absent from verify-and-heal.)
-- [ ] **Most Visited restyle** — match the other Market list views (consistent rows/columns/spacing).
+## ✅ Done (also)
+- [x] **Graded price override** — `graded_price_overrides` table + `admin_set_graded_price`/`admin_clear_graded_override` RPCs + override-aware `refresh_latest_graded_prices` + graded editor in `/admin/prices`. Also un-capped `get_graded_tiles_for_card` (was `grade IN (10,9)`). *Migration run.*
+- [x] **Most Visited restyle** — now uses the same column widths + desktop-grid/mobile-card layout as the other Market tables (Views as the last column).
+- [x] **Buy-row brand logos** — TCGplayer / eBay / Collector Crypt SVGs wired into the panel.
+
+## 🟠 Builds / polish
 - [ ] **Bottom-nav icons** — refresh the look. *Needs direction: filled vs outline / vibe, or "you pick".*
 
 ## 🔴 Blocked — need data or a decision
