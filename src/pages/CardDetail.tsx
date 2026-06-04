@@ -93,12 +93,23 @@ export default function CardDetail() {
 
   const id = useMemo<string | undefined>(() => {
     if (params.id) return params.id;
-    if (!params.cardSlug || !setCardsForResolve?.data) return undefined;
-    const found = setCardsForResolve.data.find(
+    if (!params.cardSlug) return undefined;
+    // Exact match from the set's card list (the happy path).
+    const matched = setCardsForResolve?.data?.find(
       (c) => cardSlug({ name: c.name, number: c.number }) === params.cardSlug,
-    );
-    return found?.id;
-  }, [params.id, params.cardSlug, setCardsForResolve]);
+    )?.id;
+    if (matched) return matched;
+    // Fallback: vintage/older sets have no catalog card-list yet, so the lookup
+    // above comes back empty and the page used to 404 even though the card is
+    // priced in the DB. Reconstruct the Scrydex id from the set id + the
+    // trailing number of the slug (cardSlug = kebab(name)-localId). getCardById
+    // then builds it from latest_card_prices instead of showing "Card not found".
+    if (setFromSlug) {
+      const localId = params.cardSlug.slice(params.cardSlug.lastIndexOf("-") + 1);
+      if (localId) return `${setFromSlug.id}-${localId}`;
+    }
+    return undefined;
+  }, [params.id, params.cardSlug, setCardsForResolve, setFromSlug]);
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
   const [addingToCollection, setAddingToCollection] = useState(false);

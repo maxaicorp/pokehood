@@ -841,6 +841,36 @@ export async function searchCards(
   return paginate(filtered, page, pageSize);
 }
 
+// Shared search haystack — everything a query token can match against. Uses the
+// fields we actually store (name / set / number / rarity / supertype / subtypes
+// / types). NOTE: variant/finish terms (cosmos holo, reverse holo) are NOT here
+// — the pipeline doesn't store per-variant finish names, so those need a data
+// step before they're searchable.
+export function buildCardSearchText(c: PokemonCard): string {
+  return [
+    c.name,
+    c.set?.name,
+    c.set?.id,
+    c.number,
+    c.rarity,
+    c.supertype,
+    ...(c.subtypes ?? []),
+    ...(c.types ?? []),
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+// Query-token synonyms → words that actually appear in the haystack, so "sir"
+// finds a Special Illustration Rare, "fa" finds Full Art, etc.
+const SEARCH_ALIASES: Record<string, string[]> = {
+  sir: ["special illustration rare"],
+  ir: ["illustration rare"],
+  ur: ["ultra rare"],
+  sr: ["secret rare", "super rare"],
+  hr: ["hyper rare"],
+  fa: ["full art"],
+  alt: ["alternate art", "illustration rare"],
+};
+
 export async function searchCardsAdvanced(
   query: string,
   filters: {
@@ -878,10 +908,8 @@ export async function searchCardsAdvanced(
     const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
     if (tokens.length > 0) {
       filtered = filtered.filter((c) => {
-        const name = c.name.toLowerCase();
-        const setName = c.set.name.toLowerCase();
-        const setId = c.set.id.toLowerCase();
         const number = (c.number ?? "").toLowerCase();
+        const hay = buildCardSearchText(c); // name/set/number/rarity/supertype/subtypes/types
         return tokens.every((tok) => {
           if (/^\d+$/.test(tok)) {
             // Numeric: match the local card number. Lenient — accepts both
@@ -892,7 +920,12 @@ export async function searchCardsAdvanced(
               || number.replace(/^0+/, "") === tok.replace(/^0+/, "")
               || number.includes(tok);
           }
-          return name.includes(tok) || setName.includes(tok) || setId.includes(tok);
+          // Match the full haystack, then try alias expansions (sir → special
+          // illustration rare, etc.). All tokens must match (AND) so adding a
+          // word narrows: "fire charizard", "sir pikachu".
+          if (hay.includes(tok)) return true;
+          const alts = SEARCH_ALIASES[tok];
+          return alts ? alts.some((a) => hay.includes(a)) : false;
         });
       });
     }
