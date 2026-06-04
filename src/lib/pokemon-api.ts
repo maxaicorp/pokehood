@@ -27,6 +27,7 @@ export interface PokemonCard {
   };
   number: string;
   rarity?: string;
+  artist?: string;
   images: { small: string; large: string };
   tcgplayer?: {
     url: string;
@@ -110,6 +111,7 @@ interface CardIndexCard {
   subtypes?: string[];
   types?: string[];
   hp?: string | null;
+  artist?: string | null;
 }
 
 interface CardIndex {
@@ -279,7 +281,7 @@ registerCacheResetter(resetPricingCache);
 // Returns null when the table is empty/unavailable so loadCardIndex falls back
 // to the static JSON — which makes shipping this a no-op until the table exists.
 async function loadCatalogFromDb(): Promise<{ cards: PokemonCard[]; sets: PokemonSet[] } | null> {
-  type Row = { id: string; name: string; set_id: string; set_name: string; number: string; rarity: string | null; supertype: string | null; series: string | null };
+  type Row = { id: string; name: string; set_id: string; set_name: string; number: string; rarity: string | null; supertype: string | null; series: string | null; artist?: string | null };
   const PAGE = 2000;
   const rows: Row[] = [];
   let offset = 0;
@@ -345,6 +347,7 @@ async function loadCatalogFromDb(): Promise<{ cards: PokemonCard[]; sets: Pokemo
       name: r.name,
       supertype: r.supertype ?? "Pokémon",
       rarity: r.rarity || undefined,
+      artist: r.artist || undefined,
       set: {
         id: r.set_id,
         name: s?.name ?? r.set_name ?? r.set_id,
@@ -460,6 +463,24 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
   allCardsCache = cards;
   allSetsCache = sets;
   return { cards, sets };
+}
+
+/** Distinct card artists (with counts) for the Explore "Artist" filter.
+ *  Backed by the get_card_artists RPC over the live `cards` table — returns []
+ *  until the catalog is synced with artist data (graceful empty filter). */
+let artistListCache: { artist: string; count: number }[] | null = null;
+export async function getCardArtists(): Promise<{ artist: string; count: number }[]> {
+  if (artistListCache) return artistListCache;
+  try {
+    const { data, error } = await (supabase.rpc as any)("get_card_artists");
+    if (error || !Array.isArray(data)) return [];
+    artistListCache = (data as { artist: string; card_count: number }[])
+      .filter((r) => r.artist)
+      .map((r) => ({ artist: r.artist, count: Number(r.card_count) || 0 }));
+    return artistListCache;
+  } catch {
+    return [];
+  }
 }
 
 // Per-set card cache — set-scoped pages load one small file instead of the
@@ -854,6 +875,7 @@ export function buildCardSearchText(c: PokemonCard): string {
     c.number,
     c.rarity,
     c.supertype,
+    c.artist,
     ...(c.subtypes ?? []),
     ...(c.types ?? []),
   ].filter(Boolean).join(" ").toLowerCase();
@@ -885,6 +907,7 @@ export async function searchCardsAdvanced(
     rarity?: string;
     supertype?: string;
     types?: string[];
+    artist?: string;
     sortBy?: string;
     productType?: string;
   } = {},
@@ -953,6 +976,9 @@ export async function searchCardsAdvanced(
     filtered = filtered.filter((c) =>
       filters.types!.some((t) => c.types?.includes(t))
     );
+  }
+  if (filters.artist) {
+    filtered = filtered.filter((c) => c.artist === filters.artist);
   }
 
   // Expand variants

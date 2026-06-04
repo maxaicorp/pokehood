@@ -17,7 +17,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const SCRYDEX_BASE = "https://api.scrydex.com";
-const FUNCTION_VERSION = "2026-06-04-dedup-ids";
+const FUNCTION_VERSION = "2026-06-04-artist";
 const FETCH_RETRIES = 2;
 
 interface ScrydexCard {
@@ -29,6 +29,7 @@ interface ScrydexCard {
   subtypes?: string[];
   types?: string[];
   hp?: string;
+  artist?: string;
   expansion?: { id?: string; name?: string; series?: string; language_code?: string; is_online_only?: boolean };
 }
 
@@ -112,6 +113,7 @@ serve(async (req: Request) => {
           subtypes: c.subtypes ?? null,
           types: c.types ?? null,
           hp: c.hp ?? null,
+          artist: c.artist ?? null,
           series: c.expansion?.series ?? null,
           language: "EN",
           updated_at: new Date().toISOString(),

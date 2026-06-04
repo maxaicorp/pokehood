@@ -7,6 +7,7 @@ import {
 } from "@/lib/wishlist-store";
 import {
   searchCardsAdvanced,
+  getCardArtists,
   getLatestCards,
   getSets,
   getMarketPrice,
@@ -36,10 +37,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Plus, X, Grid3X3, LayoutList,
-  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2, Heart,
+  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2, Heart, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { toastAddedToInventory } from "@/lib/inventory-toast";
@@ -60,6 +63,7 @@ export default function Explore() {
   const [searchTerm, setSearchTerm] = useState(urlQuery);
   const [selectedSet, setSelectedSet] = useState(urlSet);
   const [selectedRarity, setSelectedRarity] = useState("");
+  const [selectedArtist, setSelectedArtist] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("number");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -77,6 +81,14 @@ export default function Explore() {
     queryKey: ["pokemon-sets"],
     queryFn: getSets,
     staleTime: 5 * 60_000,
+  });
+
+  // Artist list for the Artist filter (empty until the catalog is synced with
+  // artist data — the filter just hides itself in that case).
+  const { data: artistOptions = [] } = useQuery({
+    queryKey: ["card-artists"],
+    queryFn: getCardArtists,
+    staleTime: 30 * 60_000,
   });
 
   // Always pass productType — default to "tcg" so TCG Pocket never shows unless explicitly chosen
@@ -102,11 +114,11 @@ export default function Explore() {
 
   // Paginated query (used when NO set is selected)
   const { data: cardsData, isLoading: isPaginatedLoading } = useQuery({
-    queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, page, effectiveProductType, pricesReady],
+    queryKey: ["explore-cards", searchTerm, selectedSet, selectedRarity, selectedArtist, selectedTypes, sortBy, page, effectiveProductType, pricesReady],
     queryFn: () =>
       searchCardsAdvanced(
         searchTerm,
-        { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: effectiveProductType },
+        { setId: selectedSet || undefined, rarity: selectedRarity || undefined, artist: selectedArtist || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: effectiveProductType },
         page,
         PAGE_SIZE
       ),
@@ -122,11 +134,11 @@ export default function Explore() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["explore-infinite", searchTerm, selectedSet, selectedRarity, selectedTypes, sortBy, effectiveProductType, pricesReady],
+    queryKey: ["explore-infinite", searchTerm, selectedSet, selectedRarity, selectedArtist, selectedTypes, sortBy, effectiveProductType, pricesReady],
     queryFn: ({ pageParam = 1 }) =>
       searchCardsAdvanced(
         searchTerm,
-        { setId: selectedSet || undefined, rarity: selectedRarity || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: effectiveProductType },
+        { setId: selectedSet || undefined, rarity: selectedRarity || undefined, artist: selectedArtist || undefined, types: selectedTypes.length ? selectedTypes : undefined, sortBy, productType: effectiveProductType },
         pageParam,
         PAGE_SIZE
       ),
@@ -168,6 +180,7 @@ export default function Explore() {
     setSearchTerm("");
     setSelectedSet("");
     setSelectedRarity("");
+    setSelectedArtist("");
     setSelectedTypes([]);
     setSortBy("number");
     setPage(1);
@@ -295,7 +308,7 @@ export default function Explore() {
     return () => observer.disconnect();
   }, [isSetMode, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const activeFilterCount = [selectedSet, selectedRarity, ...(selectedTypes.length ? ["t"] : [])].filter(Boolean).length;
+  const activeFilterCount = [selectedSet, selectedRarity, selectedArtist, ...(selectedTypes.length ? ["t"] : [])].filter(Boolean).length;
 
   if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><span className="w-6 h-6 animate-spin border-2 border-primary border-t-transparent rounded-full" /></div>;
   if (!user) return <Navigate to="/auth" replace />;
@@ -359,7 +372,7 @@ export default function Explore() {
                 </Badge>
               )}
             </Button>
-            {(selectedSet || selectedRarity || selectedTypes.length > 0) && (
+            {(selectedSet || selectedRarity || selectedArtist || selectedTypes.length > 0) && (
               <div className="flex items-center gap-1 flex-wrap">
                 {selectedSet && setsData?.data && (
                   <Badge variant="secondary" className="gap-1 cursor-pointer text-xs" onClick={() => { setSelectedSet(""); setPage(1); }}>
@@ -370,6 +383,12 @@ export default function Explore() {
                 {selectedRarity && (
                   <Badge variant="secondary" className="gap-1 cursor-pointer text-xs" onClick={() => { setSelectedRarity(""); setPage(1); }}>
                     {selectedRarity}
+                    <X className="w-3 h-3" />
+                  </Badge>
+                )}
+                {selectedArtist && (
+                  <Badge variant="secondary" className="gap-1 cursor-pointer text-xs" onClick={() => { setSelectedArtist(""); setPage(1); }}>
+                    {selectedArtist}
                     <X className="w-3 h-3" />
                   </Badge>
                 )}
@@ -429,6 +448,9 @@ export default function Explore() {
                   setSelectedSet={setSelectedSet}
                   selectedRarity={selectedRarity}
                   setSelectedRarity={setSelectedRarity}
+                  selectedArtist={selectedArtist}
+                  setSelectedArtist={setSelectedArtist}
+                  artistOptions={artistOptions}
                   selectedTypes={selectedTypes}
                   toggleType={toggleType}
                   setsData={setsData}
@@ -447,6 +469,9 @@ export default function Explore() {
               setSelectedSet={setSelectedSet}
               selectedRarity={selectedRarity}
               setSelectedRarity={setSelectedRarity}
+              selectedArtist={selectedArtist}
+              setSelectedArtist={setSelectedArtist}
+              artistOptions={artistOptions}
               selectedTypes={selectedTypes}
               toggleType={toggleType}
               setsData={setsData}
@@ -519,12 +544,14 @@ export default function Explore() {
 // Extracted filter controls
 function FilterControls({
   productType, setProductType, selectedSet, setSelectedSet,
-  selectedRarity, setSelectedRarity, selectedTypes, toggleType,
-  setsData, setPage,
+  selectedRarity, setSelectedRarity, selectedArtist, setSelectedArtist, artistOptions,
+  selectedTypes, toggleType, setsData, setPage,
 }: {
   productType: string; setProductType: (v: string) => void;
   selectedSet: string; setSelectedSet: (v: string) => void;
   selectedRarity: string; setSelectedRarity: (v: string) => void;
+  selectedArtist: string; setSelectedArtist: (v: string) => void;
+  artistOptions: { artist: string; count: number }[];
   selectedTypes: string[]; toggleType: (t: string) => void;
   setsData: any; setPage: (p: number) => void;
 }) {
@@ -568,6 +595,17 @@ function FilterControls({
           </SelectContent>
         </Select>
       </div>
+      {artistOptions.length > 0 && (
+        <div>
+          <h3 className="font-display font-semibold text-foreground text-sm mb-2">Artist</h3>
+          <p className="text-xs text-muted-foreground mb-2">Filter by card illustrator.</p>
+          <ArtistFilter
+            options={artistOptions}
+            value={selectedArtist}
+            onChange={(v) => { setSelectedArtist(v); setPage(1); }}
+          />
+        </div>
+      )}
       <div>
         <h3 className="font-display font-semibold text-foreground text-sm mb-2">Type</h3>
         <p className="text-xs text-muted-foreground mb-3">Select energy types.</p>
@@ -581,6 +619,58 @@ function FilterControls({
         </div>
       </div>
     </>
+  );
+}
+
+// Searchable artist picker — a Select with ~600 items is unusable, so this is a
+// typeahead combobox (Popover + Command) over the distinct-artist list.
+function ArtistFilter({
+  options, value, onChange,
+}: {
+  options: { artist: string; count: number }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between bg-background font-normal"
+        >
+          <span className="truncate">{value || "All Artists"}</span>
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search artists…" />
+          <CommandList>
+            <CommandEmpty>No artist found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem value="__all__" onSelect={() => { onChange(""); setOpen(false); }}>
+                <Check className={`mr-2 h-4 w-4 ${value === "" ? "opacity-100" : "opacity-0"}`} />
+                All Artists
+              </CommandItem>
+              {options.map((o) => (
+                <CommandItem
+                  key={o.artist}
+                  value={o.artist}
+                  onSelect={() => { onChange(o.artist === value ? "" : o.artist); setOpen(false); }}
+                >
+                  <Check className={`mr-2 h-4 w-4 ${value === o.artist ? "opacity-100" : "opacity-0"}`} />
+                  <span className="truncate flex-1">{o.artist}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">{o.count}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
