@@ -40,9 +40,11 @@ export default function RowActions({
   const tcg = tcgAffiliateLink(`https://www.tcgplayer.com/search/pokemon/product?q=${q}`);
   const ebay = `https://www.ebay.com/sch/i.html?_nkw=${q}&_sacat=0`;
 
+  // Run the action but LEAVE the panel open — the user can add to inventory and
+  // wishlist (and hit a buy link) in one session, then close it manually via the
+  // sheet's X. (Was auto-closing after the first tap.)
   const run = async (fn?: () => void | Promise<void>) => {
     await fn?.();
-    onOpenChange(false);
   };
 
   return (
