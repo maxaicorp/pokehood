@@ -456,6 +456,24 @@ async function loadCardIndex(): Promise<{ cards: PokemonCard[]; sets: PokemonSet
       allSetsCache = live.sets;
       return live;
     }
+    // The live catalog is present but SMALLER than the static index — by design,
+    // because sync-cards-catalog excludes TCG Pocket / online-only cards that the
+    // static file includes (~3k of them). So we must NOT switch wholesale (that
+    // would drop every Pocket card). Instead overlay the live catalog's richer
+    // fields — artist — onto the static cards by id, so the Explore artist filter
+    // has something to match. Without this the filter dropdown lists artists
+    // (read straight from the DB) but matches zero cards (static cards have no
+    // artist), which looks like "the filter is broken".
+    if (live?.cards.length) {
+      const artistById = new Map<string, string>();
+      for (const lc of live.cards) if (lc.artist) artistById.set(lc.id, lc.artist);
+      if (artistById.size) {
+        for (const c of cards) {
+          const a = artistById.get(c.id);
+          if (a) c.artist = a;
+        }
+      }
+    }
   } catch (e) {
     console.warn("[catalog] live cards table unavailable/incomplete; using static all-cards.json", e);
   }

@@ -10,11 +10,8 @@ Living checklist. Grouped so blocked/decision items don't stall shippable ones.
 - **Dashboard** link added to the profile avatar dropdown (mobile reachability).
 - **Most Visited 24h/7d/30d dropdown** — built `card_view_events` log + `get_most_viewed_windowed` RPC + UI. ⚠️ **RUN migration `20260604140000_card_view_events.sql`** in the SQL editor (windows fill from then on; All-time works now).
 
-## 🎨 Artist filter (#3) — PLAN, data-gated
-Artist isn't stored anywhere (not in `all-cards.json`, the `cards` table, or `PokemonCard`). Scrydex returns it, we discard it. To ship:
-1. **Add the data** — cleanest is to fold `artist` into the `cards` catalog (add column + store it in `sync-cards-catalog`) — rides on the keystone `cards` fix. (Alt: one-time pull a `card_id→artist` map.)
-2. **Explore filter** — add an "Artist" dropdown to the filter panel; `searchCardsAdvanced` filters by `card.artist`. (Market "by artist" tab is a bigger follow-up.)
-Gated on the `cards` table being fixed/populated (same keystone as the search freeze).
+## ✅ Artist filter (#3) — SHIPPED + live
+Searchable **Artist** combobox on Explore only (Popover+Command typeahead, with per-artist counts). `artist` column added to `cards`, captured by `sync-cards-catalog` (v `2026-06-04-artist`), surfaced via `get_card_catalog` + new `get_card_artists()` RPC. **Live: 406 artists populated** after the migration + redeploy + resync (6/4). Filter auto-hides if the catalog has no artist data.
 
 ---
 
