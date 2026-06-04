@@ -24,3 +24,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Banked Scrydex catalogs — local data bank, re-pull via scripts/scrydex-tools/bank_catalogs.py
+data-bank/
