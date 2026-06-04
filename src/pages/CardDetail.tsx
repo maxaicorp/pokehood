@@ -509,9 +509,9 @@ export default function CardDetail() {
 
             <div className="hidden lg:block w-full h-px bg-border" />
 
-            {/* Graded tiles — directly under the raw price (was stranded at the
-                very bottom of the page, especially bad on mobile). */}
-            {id && <GradedPriceTiles cardId={id} />}
+            {/* Graded tiles — MOBILE ONLY here (right under the price). Desktop
+                keeps them at the bottom of the page (see below). */}
+            {id && <div className="lg:hidden"><GradedPriceTiles cardId={id} /></div>}
 
             {/* Buy Now dropdown */}
             <DropdownMenu>
@@ -558,6 +558,9 @@ export default function CardDetail() {
           </div>
         </div>
 
+        {/* Graded tiles — DESKTOP position (bottom of page). Mobile shows them
+            up under the price instead. */}
+        {id && <div className="hidden lg:block"><GradedPriceTiles cardId={id} /></div>}
 
         {/* ── More from this set ── */}
         {/* Was a horizontal scroll strip with tiny w-28 thumbs; user wanted
