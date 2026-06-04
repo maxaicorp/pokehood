@@ -17,7 +17,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const SCRYDEX_BASE = "https://api.scrydex.com";
-const FUNCTION_VERSION = "2026-05-29-cards-catalog-v1";
+const FUNCTION_VERSION = "2026-06-04-dedup-ids";
 const FETCH_RETRIES = 2;
 
 interface ScrydexCard {
@@ -73,6 +73,7 @@ serve(async (req: Request) => {
   try {
     let page = 1, totalUpserted = 0, creditsUsed = 0;
     let buffer: Record<string, unknown>[] = [];
+    const seen = new Set<string>();   // dedup card ids across the whole run
     const flush = async () => {
       if (!buffer.length) return;
       const { error } = await supabase.from("cards").upsert(buffer, { onConflict: "id" });
@@ -89,6 +90,12 @@ serve(async (req: Request) => {
         if (c.expansion?.language_code !== "EN") continue;
         if (c.expansion?.is_online_only) continue;
         if ((c.expansion?.series ?? "").toLowerCase() === "pokémon tcg pocket") continue;
+        // Dedup by id. Scrydex's release_date paging can return the same card on
+        // two pages; a duplicate id inside one upsert batch throws "ON CONFLICT
+        // ... cannot affect row a second time" and rejects the ENTIRE batch —
+        // which is why `cards` stayed empty. Skip ids we've already queued.
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
         const setId = c.expansion?.id ?? (c.id.includes("-") ? c.id.split("-").slice(0, -1).join("-") : c.id);
         buffer.push({
           id: c.id,
