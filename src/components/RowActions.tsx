@@ -72,7 +72,7 @@ export default function RowActions({
           </div>
           <BuyRow href={tcg} label="TCGplayer" logo="/data/logos/tcgplayer_logo.png" />
           <BuyRow href={ebay} label="eBay" logo="/data/logos/ebay_logo.png" />
-          <BuyRow href={CC_REFERRAL_URL} label="Collector Crypt" logo="/data/logos/collectorcrypt_logo.svg" sponsored tag="promoted" />
+          <BuyRow href={CC_REFERRAL_URL} label="Collector Crypt" logo="/data/logos/collectorcrypt_logo.svg" cta="Try" sponsored tag="promoted" />
         </div>
       </SheetContent>
     </Sheet>
@@ -91,7 +91,7 @@ function Row({ icon, label, onClick }: { icon: ReactNode; label: string; onClick
   );
 }
 
-function BuyRow({ href, label, logo, sponsored, tag }: { href: string; label: string; logo?: string; sponsored?: boolean; tag?: string }) {
+function BuyRow({ href, label, logo, sponsored, tag, cta }: { href: string; label: string; logo?: string; sponsored?: boolean; tag?: string; cta?: string }) {
   return (
     <a
       href={href}
@@ -103,7 +103,7 @@ function BuyRow({ href, label, logo, sponsored, tag }: { href: string; label: st
         {logo && (
           <img src={logo} alt="" aria-hidden className="h-4 w-auto max-w-[72px] object-contain shrink-0" loading="lazy" />
         )}
-        <span className="truncate">Buy {label}</span>
+        <span className="truncate">{cta ?? "Buy on"} {label}</span>
         {tag && <span className="text-[10px] text-muted-foreground shrink-0">· {tag}</span>}
       </span>
       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
