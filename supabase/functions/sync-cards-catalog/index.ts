@@ -70,7 +70,11 @@ serve(async (req: Request) => {
   const maxPages = Math.max(1, Math.min(300, Number(body.maxPages) || 300));
   const t0 = Date.now();
 
-  try {
+  // Run in the background so a pg_net/proxy disconnect can't kill the worker
+  // mid-crawl (~235 pages > the request timeout). Rows flush every 500, so even
+  // a crash keeps what it wrote; idempotent upsert makes re-runs safe.
+  const work = (async () => {
+   try {
     let page = 1, totalUpserted = 0, creditsUsed = 0;
     let buffer: Record<string, unknown>[] = [];
     const seen = new Set<string>();   // dedup card ids across the whole run
@@ -120,10 +124,16 @@ serve(async (req: Request) => {
     }
     await flush();
 
-    const summary = { success: true, version: FUNCTION_VERSION, pages: page, cards_upserted: totalUpserted, credits_used: creditsUsed, duration_ms: Date.now() - t0 };
-    console.log("sync-cards-catalog done:", summary);
-    return new Response(JSON.stringify(summary), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  }
+    console.log("sync-cards-catalog done:", { success: true, version: FUNCTION_VERSION, pages: page, cards_upserted: totalUpserted, credits_used: creditsUsed, duration_ms: Date.now() - t0 });
+   } catch (e) {
+    console.error("sync-cards-catalog error:", e instanceof Error ? e.message : String(e));
+   }
+  })();
+  // @ts-ignore — EdgeRuntime is available in the Supabase edge runtime
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) EdgeRuntime.waitUntil(work);
+  else work.catch((e) => console.error("sync-cards-catalog bg error", e));
+  return new Response(
+    JSON.stringify({ success: true, queued: true, version: FUNCTION_VERSION, note: "Running in background — see logs for completion." }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
+  );
 });
