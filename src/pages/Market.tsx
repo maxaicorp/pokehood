@@ -840,7 +840,11 @@ export default function Market() {
                             <div className="flex items-center gap-4 text-[11px] mt-2">
                               <div className="flex items-center gap-1"><span className="text-muted-foreground">24h</span><span className={`font-medium tabular-nums ${p1.className}`}>{p1.text}</span></div>
                               <div className="flex items-center gap-1"><span className="text-muted-foreground">7d</span><span className={`font-medium tabular-nums ${p7.className}`}>{p7.text}</span></div>
-                              <div className="flex items-center gap-1 ml-auto"><Eye className="w-3.5 h-3.5 text-muted-foreground" /><span className="font-medium tabular-nums text-foreground">{stat.view_count}</span></div>
+                            </div>
+                            <div className="flex items-center gap-1 text-[11px] mt-1.5">
+                              <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="font-medium tabular-nums text-foreground">{stat.view_count}</span>
+                              <span className="text-muted-foreground">views</span>
                             </div>
                           </div>
                         </div>
