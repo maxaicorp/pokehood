@@ -68,7 +68,7 @@ import {
 import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package } from "lucide-react";
 import SealedTab from "@/components/SealedTab";
 import { SEALED_TYPES } from "@/lib/sealed-store";
-import { getMostViewed, CardStatRow } from "@/lib/card-stats-store";
+import { getMostViewed, getMostViewedWindowed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import ViewToggle, { type ViewMode } from "@/components/ViewToggle";
@@ -150,6 +150,7 @@ export default function Market() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
+  const [mvWindow, setMvWindow] = useState<"all" | "24h" | "7d" | "30d">("all");
 
   // Sentiment voting state
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
@@ -190,7 +191,9 @@ export default function Market() {
     if (activeTab !== "most-visited") return;
     let cancelled = false;
     setMostVisitedLoading(true);
-    getMostViewed(MOST_VISITED_LIMIT)
+    (mvWindow === "all"
+      ? getMostViewed(MOST_VISITED_LIMIT)
+      : getMostViewedWindowed(mvWindow, MOST_VISITED_LIMIT))
       .then(async (rows) => {
         // Hydrate with live price + 1d/7d deltas (same data the other tabs show)
         // so Most-Visited isn't a bare view-count list. Targeted by-id fetch.
@@ -214,7 +217,7 @@ export default function Market() {
         if (!cancelled) setMostVisitedLoading(false);
       });
     return () => { cancelled = true; };
-  }, [activeTab, refreshToken]);
+  }, [activeTab, refreshToken, mvWindow]);
 
   // Step 1: Load lightweight set metadata; do not block first paint on the full card index.
   useEffect(() => {
@@ -670,6 +673,17 @@ export default function Market() {
             </div>
           ) : activeTab === "most-visited" ? (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
+              <Select value={mvWindow} onValueChange={(v) => setMvWindow(v as typeof mvWindow)}>
+                <SelectTrigger className="w-[140px] bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All time</SelectItem>
+                  <SelectItem value="24h">Last 24h</SelectItem>
+                  <SelectItem value="7d">Last 7 days</SelectItem>
+                  <SelectItem value="30d">Last 30 days</SelectItem>
+                </SelectContent>
+              </Select>
               <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
           ) : (

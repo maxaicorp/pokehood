@@ -118,6 +118,20 @@ export async function getMostViewed(limit = 20): Promise<CardStatRow[]> {
   return (data as CardStatRow[] | null) ?? [];
 }
 
+/** Most-viewed within a rolling window (24h/7d/30d), counted from card_view_events.
+ *  Returns the same CardStatRow shape (view_count = the windowed count). Fills in
+ *  over time as events accumulate; use getMostViewed() for all-time. */
+export async function getMostViewedWindowed(
+  window: "24h" | "7d" | "30d",
+  limit = 500,
+): Promise<CardStatRow[]> {
+  const { data } = await (supabase.rpc as any)("get_most_viewed_windowed", {
+    p_window: window,
+    p_limit: limit,
+  });
+  return (data as CardStatRow[] | null) ?? [];
+}
+
 export async function getMostSearched(limit = 20): Promise<CardStatRow[]> {
   const { data } = await (supabase.from as any)("card_stats")
     .select(STATS_SELECT)
