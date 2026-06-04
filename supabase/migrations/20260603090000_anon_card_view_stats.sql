@@ -7,6 +7,17 @@
 -- actions such as collection_add and wishlist_add remain ignored for anon
 -- callers, so the vanity counters cannot be inflated through those channels.
 
+-- The function below writes last_viewed_at / last_searched_at / updated_at, but
+-- the original card_stats table predates those columns. Without this guard the
+-- redefined function compiles fine yet throws "column does not exist" at RUNTIME
+-- on every call — and because recordStat() is fire-and-forget with a swallowed
+-- error, view counting silently stops (the Most Visited "nothing increments"
+-- bug). Add them idempotently before (re)defining the function.
+ALTER TABLE public.card_stats
+  ADD COLUMN IF NOT EXISTS last_viewed_at   TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS last_searched_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS updated_at       TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE OR REPLACE FUNCTION public.increment_card_stat(
   p_tcg_api_id TEXT,
   p_name TEXT,
