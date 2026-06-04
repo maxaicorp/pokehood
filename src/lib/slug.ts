@@ -30,8 +30,17 @@ export function kebab(input: string): string {
 
 // ─── Slug builders ────────────────────────────────────────────────────────────
 
+// Vintage variant cards live in synthetic "virtual sets" whose display name is
+// "<Base> (Unlimited|Shadowless|1st Edition)" (see getVirtualSetName). Those are
+// NOT real sets, so for URL purposes the slug must collapse to the BASE set's
+// slug — otherwise card links point at /sets/base-unlimited/... which
+// findSetBySlug can't resolve and the page shows "Card not found". The card's
+// own slug already carries the variant (e.g. chansey-unlimited-holo-3), so no
+// information is lost. Stripping is safe: no real set name ends this way.
+const VIRTUAL_SET_SUFFIX = /\s*\((?:Unlimited|Shadowless|1st Edition)\)\s*$/i;
+
 export function setSlug(set: { name: string }): string {
-  return kebab(set.name);
+  return kebab(set.name.replace(VIRTUAL_SET_SUFFIX, ""));
 }
 
 /** Card slug = kebab(name) + "-" + localId.  e.g. "mega-gengar-ex-284" */
