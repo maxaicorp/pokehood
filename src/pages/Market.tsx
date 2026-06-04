@@ -1000,12 +1000,11 @@ export default function Market() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-8 px-3 rounded-full border border-border/50 hover:border-primary hover:text-primary"
-                              disabled={addingCards.has(card.id)}
+                              aria-label="Card actions"
+                              className="h-8 w-8 p-0 rounded-full border border-border/50 hover:border-primary hover:text-primary"
                               onClick={(e) => handleAdd(e, card)}
                             >
-                              <Plus className="w-3.5 h-3.5 mr-1" />
-                              <span className="text-xs font-medium">Add</span>
+                              <Plus className="w-3.5 h-3.5" />
                             </Button>
                           </div>
                         </div>

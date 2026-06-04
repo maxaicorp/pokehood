@@ -1,4 +1,3 @@
-import { ExternalLink } from "lucide-react";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 
 /** Owner's Collector Crypt referral link — earns a referral credit on signups. */
@@ -6,9 +5,9 @@ export const CC_REFERRAL_URL =
   "https://gacha.collectorcrypt.com/referral/5GCtFEBZAKnUiRmRPQBeGFQ35c59RrNoLCK6Fzvp8yCy";
 
 /**
- * Promo row appended to every "Buy Now" dropdown — pitches Collector Crypt
- * (buy/sell graded cards on-chain) via the owner's referral link. Renders a
- * separator + a highlighted item, so it reads as an ad, not just another store.
+ * Promo row appended to every "Buy Now" dropdown — pitches Collector Crypt via
+ * the owner's referral link. A thin rainbow-gradient button (so it reads as a
+ * promoted placement, not just another store) with a "* promoted" disclaimer.
  * Must be used inside a <DropdownMenuContent>.
  */
 export default function CollectorCryptPromoItem() {
@@ -20,17 +19,11 @@ export default function CollectorCryptPromoItem() {
           href={CC_REFERRAL_URL}
           target="_blank"
           rel="noopener noreferrer sponsored"
-          className="flex items-center gap-2 rounded-sm bg-gradient-to-r from-primary/15 to-purple-500/15 px-2 py-2 hover:from-primary/25 hover:to-purple-500/25 transition-colors"
+          className="flex items-center justify-between gap-2 rounded-md px-3 py-1.5 text-sm font-semibold text-white shadow-sm bg-[linear-gradient(90deg,#f43f5e,#f59e0b,#22c55e,#3b82f6,#a855f7)] bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500"
+          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
         >
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-semibold text-foreground">
-              Join Collector Crypt
-            </span>
-            <span className="text-[11px] text-muted-foreground leading-tight">
-              Buy &amp; sell graded cards on-chain
-            </span>
-          </div>
-          <ExternalLink className="w-3.5 h-3.5 opacity-50 ml-auto shrink-0" />
+          <span>Try Collector Crypt</span>
+          <span className="text-[10px] font-medium opacity-90 whitespace-nowrap">* promoted</span>
         </a>
       </DropdownMenuItem>
     </>
