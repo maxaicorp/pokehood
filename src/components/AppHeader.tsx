@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, Search, TrendingUp, Layers, Link2, Gamepad2, BarChart3, Shield, Heart } from "lucide-react";
+import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, TrendingUp, Layers, Compass, Blocks, Gamepad2, BarChart3, Shield, Heart } from "lucide-react";
 import GlobalSearch from "@/components/GlobalSearch";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -56,26 +56,27 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
     <>
       {/* Mobile bottom nav */}
       <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50 flex pb-[env(safe-area-inset-bottom)]">
-        <Link to="/" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "market" ? "text-foreground" : "text-muted-foreground"}`}>
-          <TrendingUp className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Market</span>
-        </Link>
-        <Link to="/onchain/activity" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "onchain" ? "text-foreground" : "text-muted-foreground"}`}>
-          <Link2 className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Onchain</span>
-        </Link>
-        <Link to="/explore" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "explore" ? "text-foreground" : "text-muted-foreground"}`}>
-          <Search className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Explore</span>
-        </Link>
-        <Link to="/sets" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "sets" ? "text-foreground" : "text-muted-foreground"}`}>
-          <Layers className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Sets</span>
-        </Link>
-        <Link to="/games" className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 ${activePage === "games" ? "text-foreground" : "text-muted-foreground"}`}>
-          <Gamepad2 className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Games</span>
-        </Link>
+        {([
+          { to: "/", page: "market", Icon: TrendingUp, label: "Market" },
+          { to: "/onchain/activity", page: "onchain", Icon: Blocks, label: "Onchain" },
+          { to: "/explore", page: "explore", Icon: Compass, label: "Explore" },
+          { to: "/sets", page: "sets", Icon: Layers, label: "Sets" },
+          { to: "/games", page: "games", Icon: Gamepad2, label: "Games" },
+        ] as const).map(({ to, page, Icon, label }) => {
+          const active = activePage === page;
+          return (
+            <Link
+              key={page}
+              to={to}
+              className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
+            >
+              <span className={`flex items-center justify-center rounded-full px-4 py-1 transition-colors ${active ? "bg-primary/10" : ""}`}>
+                <Icon className="w-[22px] h-[22px]" strokeWidth={active ? 2.5 : 2} />
+              </span>
+              <span className={`text-[10px] ${active ? "font-semibold" : "font-medium"}`}>{label}</span>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Header */}
