@@ -20,6 +20,7 @@ import { motion } from "framer-motion";
 import SealedGridView from "@/components/SealedGridView";
 import type { ViewMode } from "@/components/ViewToggle";
 import { Button } from "@/components/ui/button";
+import RowActions from "@/components/RowActions";
 
 const PAGE_SIZE = 50;
 
@@ -37,6 +38,7 @@ export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: 
   const navigate = useNavigate();
   const { user } = useAuth();
   const [addingId, setAddingId] = useState<string | null>(null);
+  const [actionProduct, setActionProduct] = useState<SealedProduct | null>(null);
   const [products, setProducts] = useState<SealedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -119,9 +121,15 @@ export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: 
   // Quick-add a sealed product to the user's inventory straight from the list,
   // without leaving the tab. preventDefault on the click stops the row Link from
   // navigating to the detail page.
-  const handleAdd = async (e: MouseEvent, product: SealedProduct) => {
+  // "+" opens the quick-action panel (inventory + buy links), bound to the
+  // product. Sealed has no wishlist, so that row is omitted in the panel.
+  const handleAdd = (e: MouseEvent, product: SealedProduct) => {
     e.preventDefault();
     e.stopPropagation();
+    setActionProduct(product);
+  };
+
+  const addInventoryProduct = async (product: SealedProduct) => {
     if (!user) { toast.info("Sign in to add to your inventory"); navigate("/auth"); return; }
     if (addingId) return;
     setAddingId(product.id);
@@ -191,6 +199,13 @@ export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: 
 
   return (
     <div>
+      <RowActions
+        open={!!actionProduct}
+        onOpenChange={(o) => { if (!o) setActionProduct(null); }}
+        name={actionProduct?.name ?? ""}
+        buyQuery={actionProduct ? `${actionProduct.name} ${actionProduct.expansionName ?? ""}`.trim() : ""}
+        onAddInventory={() => actionProduct && addInventoryProduct(actionProduct)}
+      />
       {/* Table header */}
       <div className="hidden sm:grid grid-cols-[40px_1fr_160px_100px_72px_72px_100px_44px] gap-4 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground">
         <span>#</span>
@@ -317,14 +332,13 @@ export default function SealedTab({ typeFilter, viewMode = "list", onSummary }: 
                         />
                         <Button
                           type="button"
-                          size="sm"
+                          size="icon"
                           variant="ghost"
                           onClick={(e) => handleAdd(e, product)}
-                          disabled={addingId === product.id}
-                          aria-label={`Add ${product.name} to inventory`}
-                          className="h-8 px-3 rounded-full border border-border/50 hover:border-primary hover:text-primary"
+                          aria-label={`Actions for ${product.name}`}
+                          className="h-8 w-8 p-0 rounded-full border border-border/50 hover:border-primary hover:text-primary"
                         >
-                          {addingId === product.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Plus className="w-3.5 h-3.5" /><span className="text-xs font-medium">Add</span></>}
+                          <Plus className="w-3.5 h-3.5" />
                         </Button>
                       </div>
                     </div>

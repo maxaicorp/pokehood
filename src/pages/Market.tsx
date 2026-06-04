@@ -113,6 +113,21 @@ const MARKET_TABS = [
 type MarketTabKey = (typeof MARKET_TABS)[number]["key"];
 const MOST_VISITED_LIMIT = 500;
 
+/** Minimal PokemonCard from a Most-Visited stat row, so the quick-action panel
+ *  (add / wishlist / buy) can operate on it like any other card. */
+function cardFromStat(s: CardStatRow): PokemonCard {
+  const base = s.tcg_api_id.split("::")[0];
+  const setId = base.split("-").slice(0, -1).join("-") || base;
+  return {
+    id: s.tcg_api_id,
+    name: s.name,
+    supertype: "",
+    set: { id: setId, name: s.set_name, series: "", printedTotal: 0, total: 0, releaseDate: "", images: { symbol: "", logo: "" } },
+    number: base.split("-").at(-1) ?? "",
+    images: { small: s.image_small, large: s.image_small },
+  };
+}
+
 export default function Market() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -777,7 +792,7 @@ export default function Market() {
               <div>
                 {/* Header row — matches the other data tables' top bar.
                     Same grid template as the rows below so columns line up. */}
-                <div className="hidden sm:grid grid-cols-[32px_1fr_160px_100px_80px_80px_60px] gap-2 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
+                <div className="hidden sm:grid grid-cols-[32px_1fr_160px_100px_80px_80px_56px_36px] gap-2 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
                   <span>#</span>
                   <span>Card</span>
                   <span>Set</span>
@@ -785,6 +800,7 @@ export default function Market() {
                   <span className="text-right">24h %</span>
                   <span className="text-right">7d %</span>
                   <span className="text-right">Views</span>
+                  <span />
                 </div>
                 {mostVisitedCards.map((stat, i) => {
                   const d1 = stat.price != null && stat.price1d != null && stat.price1d !== 0
@@ -802,7 +818,7 @@ export default function Market() {
                       onClick={() => navigate(cardPathFromApiId(stat.tcg_api_id, stat.name, stat.set_name))}
                     >
                       {/* Desktop grid — same column widths as the other Market tables */}
-                      <div className="hidden sm:grid grid-cols-[32px_1fr_160px_100px_80px_80px_60px] gap-2 px-4 py-2.5 items-center">
+                      <div className="hidden sm:grid grid-cols-[32px_1fr_160px_100px_80px_80px_56px_36px] gap-2 px-4 py-2.5 items-center">
                         <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                         <div className="flex items-center gap-3 min-w-0">
                           {stat.image_small && (
@@ -814,10 +830,17 @@ export default function Market() {
                         <p className="text-sm font-bold text-foreground text-right tabular-nums">{stat.price != null ? formatPrice(stat.price) : "—"}</p>
                         <p className={`text-xs font-medium text-right tabular-nums ${p1.className}`}>{p1.text}</p>
                         <p className={`text-xs font-medium text-right tabular-nums ${p7.className}`}>{p7.text}</p>
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="text-sm font-medium text-foreground tabular-nums">{stat.view_count}</span>
+                        <div className="flex items-center justify-end gap-1">
+                          <Eye className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-sm font-semibold text-foreground tabular-nums">{stat.view_count}</span>
                         </div>
+                        <Button
+                          size="icon" variant="ghost" aria-label="Card actions"
+                          className="h-7 w-7 rounded-full border border-border/50 hover:border-primary hover:text-primary shrink-0 justify-self-center"
+                          onClick={(e) => { e.stopPropagation(); setActionCard(cardFromStat(stat)); }}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
                       </div>
 
                       {/* Mobile card — matches the Top tab layout */}
@@ -843,10 +866,19 @@ export default function Market() {
                               <div className="flex items-center gap-1"><span className="text-muted-foreground">24h</span><span className={`font-medium tabular-nums ${p1.className}`}>{p1.text}</span></div>
                               <div className="flex items-center gap-1"><span className="text-muted-foreground">7d</span><span className={`font-medium tabular-nums ${p7.className}`}>{p7.text}</span></div>
                             </div>
-                            <div className="flex items-center gap-1 text-[11px] mt-1.5">
-                              <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-                              <span className="font-medium tabular-nums text-foreground">{stat.view_count}</span>
-                              <span className="text-muted-foreground">views</span>
+                            <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-border/30">
+                              <div className="flex items-center gap-1.5 text-xs">
+                                <Eye className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-semibold tabular-nums text-foreground">{stat.view_count}</span>
+                                <span className="text-muted-foreground">views</span>
+                              </div>
+                              <Button
+                                size="icon" variant="ghost" aria-label="Card actions"
+                                className="h-8 w-8 p-0 rounded-full border border-border/50 hover:border-primary hover:text-primary"
+                                onClick={(e) => { e.stopPropagation(); setActionCard(cardFromStat(stat)); }}
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </Button>
                             </div>
                           </div>
                         </div>
