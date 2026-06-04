@@ -495,6 +495,48 @@ export type Database = {
           },
         ]
       }
+      graded_price_overrides: {
+        Row: {
+          card_id: string
+          company: string
+          currency: string
+          grade: number
+          high: number | null
+          low: number | null
+          market: number
+          mid: number | null
+          note: string | null
+          set_at: string
+          set_by: string | null
+        }
+        Insert: {
+          card_id: string
+          company: string
+          currency?: string
+          grade: number
+          high?: number | null
+          low?: number | null
+          market: number
+          mid?: number | null
+          note?: string | null
+          set_at?: string
+          set_by?: string | null
+        }
+        Update: {
+          card_id?: string
+          company?: string
+          currency?: string
+          grade?: number
+          high?: number | null
+          low?: number | null
+          market?: number
+          mid?: number | null
+          note?: string | null
+          set_at?: string
+          set_by?: string | null
+        }
+        Relationships: []
+      }
       graded_price_snapshots: {
         Row: {
           card_id: string
@@ -1257,6 +1299,10 @@ export type Database = {
         Args: { p_card_id: string }
         Returns: undefined
       }
+      admin_clear_graded_override: {
+        Args: { p_card_id: string; p_company: string; p_grade: number }
+        Returns: undefined
+      }
       admin_set_card_price: {
         Args: {
           p_card_id: string
@@ -1267,6 +1313,19 @@ export type Database = {
           p_price_30d?: number
           p_price_7d?: number
           p_set_name?: string
+        }
+        Returns: undefined
+      }
+      admin_set_graded_price: {
+        Args: {
+          p_card_id: string
+          p_company: string
+          p_grade: number
+          p_high?: number
+          p_low?: number
+          p_market: number
+          p_mid?: number
+          p_note?: string
         }
         Returns: undefined
       }
