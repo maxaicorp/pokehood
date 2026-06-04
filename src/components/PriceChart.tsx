@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -73,12 +73,32 @@ function buildSyntheticHistory(
   return points;
 }
 
+/** Latest-point marker with an outward "sonar" ping. SVG SMIL so it animates
+ *  inside the recharts SVG with no CSS/layout cost. Renders nothing for the
+ *  earlier points (a plain line everywhere else). */
+function SonarDot({
+  cx, cy, isLast, color,
+}: { cx?: number; cy?: number; isLast: boolean; color: string }) {
+  if (cx == null || cy == null || !isLast) return null;
+  return (
+    <g style={{ pointerEvents: "none" }}>
+      <circle cx={cx} cy={cy} r={3.5} fill={color} />
+      <circle cx={cx} cy={cy} fill="none" stroke={color} strokeWidth={1.5}>
+        <animate attributeName="r" values="3.5;13" dur="1.8s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.6;0" dur="1.8s" repeatCount="indefinite" />
+      </circle>
+    </g>
+  );
+}
+
 export default function PriceChart({
   cardId,
   currentPrice,
   cardmarketAvgs,
 }: PriceChartProps) {
-  const [range, setRange] = useState<Range>("30d");
+  // Default to the long-term view — most people care about the 90-day trend,
+  // not a single day's wiggle. (Synthetic-only cards fall back to 30d below.)
+  const [range, setRange] = useState<Range>("90d");
 
   const { data: snapshotHistory, isLoading } = useQuery({
     queryKey: ["price-history", cardId],
@@ -109,16 +129,19 @@ export default function PriceChart({
     chartData = [{ date: todayStr, price: currentPrice }];
   }
 
+  const isSynthetic = !snapshotHistory || snapshotHistory.length < 2;
+  // Synthetic-only cards don't show a 90d button, so fall the default back to 30d.
+  const effRange: Range = isSynthetic && range === "90d" ? "30d" : range;
+
   // Filter by selected range
   if (chartData.length > 0) {
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - RANGE_DAYS[range]);
+    cutoff.setDate(cutoff.getDate() - RANGE_DAYS[effRange]);
     const cutoffStr = cutoff.toISOString().split("T")[0];
     chartData = chartData.filter((p) => p.date >= cutoffStr);
   }
 
   const hasData = chartData.length >= 2;
-  const isSynthetic = !snapshotHistory || snapshotHistory.length < 2;
 
   // Price domain with padding
   const prices = chartData.map((p) => p.price);
@@ -134,7 +157,6 @@ export default function PriceChart({
   const rangePct = firstP > 0 ? ((lastP - firstP) / firstP) * 100 : 0;
   const up = lastP >= firstP;
   const lineColor = up ? "hsl(142 71% 45%)" : "hsl(0 72% 51%)"; // emerald-500 / red-500
-  const gradId = `priceGrad-${up ? "up" : "down"}`;
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
@@ -160,7 +182,7 @@ export default function PriceChart({
                 key={r}
                 onClick={() => setRange(r)}
                 className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
-                  range === r
+                  effRange === r
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:text-foreground"
                 }`}
@@ -179,30 +201,11 @@ export default function PriceChart({
         </div>
       ) : (
         <>
-         <div className="relative">
-          {/* Holographic sheen — an iridescent highlight sweeps across the
-              chart like a holo card. Purely decorative, sits above the SVG. */}
-          <div className="holo-sheen pointer-events-none absolute inset-0 z-10 rounded-lg" aria-hidden />
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart
+            <LineChart
               data={chartData}
-              margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+              margin={{ top: 8, right: 10, bottom: 0, left: 0 }}
             >
-              <defs>
-                <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={lineColor} stopOpacity={0.5} />
-                  <stop offset="55%" stopColor={lineColor} stopOpacity={0.14} />
-                  <stop offset="100%" stopColor={lineColor} stopOpacity={0} />
-                </linearGradient>
-                {/* Luminous glow on the trend line */}
-                <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="2.5" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
                 stroke="hsl(var(--border))"
@@ -234,24 +237,26 @@ export default function PriceChart({
                 labelFormatter={formatDateShort}
                 formatter={(value: number) => [formatPrice(value), "Price"]}
               />
-              <Area
+              <Line
                 type="monotone"
                 dataKey="price"
                 stroke={lineColor}
-                strokeWidth={2.5}
-                fill={`url(#${gradId})`}
-                dot={false}
+                strokeWidth={2}
+                // Sonar ping on the most recent point; plain (no dot) elsewhere.
+                dot={(props: { cx?: number; cy?: number; index?: number }) => (
+                  <SonarDot
+                    key={`dot-${props.index}`}
+                    cx={props.cx}
+                    cy={props.cy}
+                    isLast={props.index === chartData.length - 1}
+                    color={lineColor}
+                  />
+                )}
                 activeDot={{ r: 4, strokeWidth: 2, stroke: "hsl(var(--card))", fill: lineColor }}
-                style={{ filter: "url(#lineGlow)" }}
-                // Re-running the draw animation on every range toggle re-rasterizes
-                // the gaussian-blur glow each frame → multi-hundred-ms freeze. The
-                // chart only changes on a deliberate toggle, so animation adds jank
-                // without value. Disable it.
                 isAnimationActive={false}
               />
-            </AreaChart>
+            </LineChart>
           </ResponsiveContainer>
-         </div>
           {isSynthetic && (
             <p className="text-[10px] text-muted-foreground mt-2 text-center">
               Based on Cardmarket rolling averages · Daily snapshots will fill in over time
