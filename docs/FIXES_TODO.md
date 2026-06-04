@@ -1,38 +1,58 @@
 # Collectiblez — active fix list
 
-Living checklist of outstanding work. Check items off as they ship. Grouped by
-status so blocked/decision items don't stall the shippable ones.
-
-## ✅ Done (this push)
-- [x] **Buy-link search query** — strip the `(Unlimited Holo)` variant parenthetical from name + set so outbound searches read `Articuno Fossil pokemon card` (CardDetail). Selling sites list as `<Pokémon> <Set>`.
-- [x] **Load-from-top** — added `ScrollToTop` on route change (was landing mid-page on every navigation).
-
-## ✅ Done (also)
-- [x] **Panel system (RowActions)** — wired the `+` on Market / Explore / SetDetail to open `<RowActions>` (add to inventory / wishlist / buy). Plus-icon only, "Add" text removed. Buy query uses the clean `buyQueryForCard` helper (shared with #1).
-
-## 🟢 Next up (shippable, no blockers)
-- [ ] **Graded tiles RPC cap** — `get_graded_tiles_for_card` hard-caps `grade IN (10,9)` but the tiles component shows all grades via dropdown. Remove the cap (SQL migration).
-
-## ✅ Done (also)
-- [x] **Graded price override** — `graded_price_overrides` table + `admin_set_graded_price`/`admin_clear_graded_override` RPCs + override-aware `refresh_latest_graded_prices` + graded editor in `/admin/prices`. Also un-capped `get_graded_tiles_for_card` (was `grade IN (10,9)`). *Migration run.*
-- [x] **Most Visited restyle** — now uses the same column widths + desktop-grid/mobile-card layout as the other Market tables (Views as the last column).
-- [x] **Buy-row brand logos** — TCGplayer / eBay / Collector Crypt SVGs wired into the panel.
-
-## 🟠 Builds / polish
-- [ ] **Bottom-nav icons** — refresh the look. *Needs direction: filled vs outline / vibe, or "you pick".*
-
-## 🔴 Blocked — need data or a decision
-- [ ] **24h / 7d / 30d view dropdown (Most Visited)** — `card_stats` is **cumulative only**; no per-day history to window by. Needs a `card_view_events` table (or daily count snapshots) first, then a windowed query. Build the data layer to unblock.
-- [ ] **`cards` catalog sync writes 0** — schema mismatch. Need the `cards` **column list** + the manual-upsert result. Blocks Explore listing vintage from the live index + DB rarity search.
-
-## ⚫ Deploy / credit blocked & deferred
-- [ ] **snapshot-prices NM-only + canonical dedup** — committed; needs a Lovable edge-fn deploy (credits). Until then the cron can still write bad fills; overrides protect only pinned cards.
-- [ ] **DB `search_catalog` rarity enrichment + Tier 2/3 search** ("cosmos holo", vintage finishes) — gated on the `cards` sync.
-- [ ] **SEO link previews** — Cloudflare Worker in front of Lovable (UA-based prerender of OG tags) + per-card OG image. Deferred by user; needs DNS move to Cloudflare.
-- [ ] **verify-and-heal + write-time sanity gate** — robustness; a `verify-and-heal` fn file exists, state TBD.
-
-## Handled elsewhere
-- Eeveelution graded gap (Prismatic Evolutions) — **Lovable is fixing this**; removed from our list.
+Living checklist. Grouped so blocked/decision items don't stall shippable ones.
 
 ---
-_Recent shipped (context): admin price override system, vintage 404 fix, variant-URL fix, Tier-1 rarity/type search, Most Visited 500 cap + card_stats column fix, line chart + sonar ping, SEO titles._
+
+## ▶ RESUME HERE (6/4) — start at the top
+
+### 1. 🔴 Search-bar freeze (TOP PRIORITY)
+Clicking the search → ~1 minute unresponsive.
+- **Diagnosis:** the client search index (`searchCardsAdvanced` → `loadCardIndex`) loads the **9.9 MB `all-cards.json`** + seeds **~22k price rows on the main thread** the first time it runs. Hits the **Explore page** and the **header bar's fallback** (when `search_catalog` RPC returns null). The header dropdown itself uses the fast DB RPC.
+- **Ties to #2:** `loadCardIndex` *should* read the lightweight DB `cards` table, but it's empty → always falls back to the 9.9 MB file. **Populating `cards` removes the 9.9 MB load = fixes the freeze.**
+- **Need from user:** (a) does it freeze on the **header bar** or the **Explore page**? (b) does the dropdown eventually show results?
+- **Quick safe fix available now:** make the header search **never** fall back to the 9.9 MB client path.
+
+### 2. 🔴 `cards` table sync writes 0 (KEYSTONE — unblocks a lot)
+`sync-cards-catalog` runs but writes 0 rows (schema mismatch; PK exists). **Need user to paste the `cards` column list:**
+```sql
+SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name='cards' ORDER BY ordinal_position;
+```
+Likely a `number`/`hp` column typed `integer` instead of `text`. **Unblocks:** Explore listing vintage, header-dropdown rarity search (#3), AND removes the 9.9 MB search-index load (#1).
+
+### 3. 🟡 Header-dropdown rarity search — gated on #2
+The top-bar `search_catalog` RPC matches card **name only**. Add a JOIN to `cards` for rarity/alias matching once #2 is populated. (Explore-page search already does rarity/type/aliases — Tier 1, shipped.)
+
+### 4. 🟡 Verify `snapshot-prices` redeploy
+User told Lovable to redeploy it. Confirm version reads `2026-06-03-nm-only-canonical-dedup` (e.g. /admin/functions). Until then the daily cron can still write bad fills (overrides protect pinned cards).
+
+### 5. Continue the broader pass: **Explore → search → user features**
+Audit Explore (filters, the separate wishlist heart now that the panel has it, empty/loading states), then dashboard/profile/collection/wishlist/auth.
+
+---
+
+## ✅ Done this session
+- Admin price override (`/admin/prices`) + audit; NM-only extractor + canonical dedup (committed; **edge fn needs Lovable redeploy = #4**)
+- Graded: un-capped tiles RPC + graded override (table/RPCs/refresh + editor) — migration run
+- Vintage 404 fix + variant-URL fix (`setSlug` strips virtual-variant suffix)
+- Tier 1 Explore search (rarity/type/aliases) + `buyQueryForCard`
+- Most Visited: 500 cap, restyle to match tables, views on own row + enlarged, `+` panel
+- Panels (`RowActions`) wired into Market / Explore / SetDetail / **Sealed (list)** — `+` opens bottom-sheet/side-panel, plus-icon only, stays open after action
+- Buy rows: brand logos + "Buy {brand}" CTA
+- CC promo rainbow "· promoted" button
+- Bottom-nav: modern icons (Blocks/Compass) + active-state polish
+- Scroll-to-top on route change
+- Sealed mobile header layout fix
+- `card_stats` timestamp-column fix (Most Visited counting was silently dead)
+
+## 🟠 Smaller / consistency
+- [ ] **Sealed GRID view** (`SealedGridView`) — panel wired in list mode only; grid `+` not wired yet.
+- [ ] **Bottom-nav / buy logos** — swap to nicer versions if desired (current ones fine).
+
+## 🔴 Decision / data-gated
+- [ ] **Most Visited 24h/7d/30d dropdown** — needs a `card_view_events` table (cumulative counter can't be windowed). User decision: build the event-log? (Windows fill from "now" forward; "All time" works immediately.)
+
+## ⚫ Deferred (by user)
+- [ ] **SEO link previews** — Cloudflare Worker in front of Lovable (UA-prerender OG tags) + per-card OG image. Needs DNS move to Cloudflare. Google indexing/sitemaps already work.
+- [ ] **Tier 2/3 search** (vintage finishes, "cosmos holo") — needs variant finish names stored in the pipeline.
+- [ ] **verify-and-heal + write-time sanity gate** — robustness; a `verify-and-heal` fn file exists, state TBD.
