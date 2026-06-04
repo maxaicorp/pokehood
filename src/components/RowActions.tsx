@@ -70,8 +70,8 @@ export default function RowActions({
             <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Buy</span>
             <div className="flex-1 h-px bg-border/60" />
           </div>
-          <BuyRow href={tcg} label="TCGplayer" logo="/data/logos/tcgplayer_logo.svg" />
-          <BuyRow href={ebay} label="eBay" logo="/data/logos/ebay_logo.svg" />
+          <BuyRow href={tcg} label="TCGplayer" logo="/data/logos/tcgplayer_logo.png" />
+          <BuyRow href={ebay} label="eBay" logo="/data/logos/ebay_logo.png" />
           <BuyRow href={CC_REFERRAL_URL} label="Collector Crypt" logo="/data/logos/collectorcrypt_logo.svg" sponsored tag="promoted" />
         </div>
       </SheetContent>
@@ -99,13 +99,14 @@ function BuyRow({ href, label, logo, sponsored, tag }: { href: string; label: st
       rel={`noopener noreferrer${sponsored ? " sponsored" : ""}`}
       className="flex items-center justify-between gap-3 px-3 py-3 rounded-lg hover:bg-muted transition-colors"
     >
-      <span className="flex items-center gap-2 min-w-0">
+      <span className="flex items-center gap-1.5 min-w-0 text-sm font-medium text-foreground">
+        <span className="text-muted-foreground shrink-0">Buy on</span>
         {logo ? (
-          <img src={logo} alt={label} className="h-5 w-auto max-w-[130px] object-contain" loading="lazy" />
+          <img src={logo} alt={label} className="h-4 w-auto max-w-[110px] object-contain" loading="lazy" />
         ) : (
-          <span className="truncate text-sm font-medium text-foreground">{label}</span>
+          <span className="truncate">{label}</span>
         )}
-        {tag && <span className="text-[10px] text-muted-foreground">· {tag}</span>}
+        {tag && <span className="text-[10px] text-muted-foreground shrink-0">· {tag}</span>}
       </span>
       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
     </a>
