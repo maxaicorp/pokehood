@@ -4,6 +4,20 @@ Living checklist. Grouped so blocked/decision items don't stall shippable ones.
 
 ---
 
+## ✅ Shipped 6/4 (this session)
+- Graded tiles moved directly under the raw price (was buried at page bottom on mobile).
+- Set pages default to **Card Number High→Low**.
+- **Dashboard** link added to the profile avatar dropdown (mobile reachability).
+- **Most Visited 24h/7d/30d dropdown** — built `card_view_events` log + `get_most_viewed_windowed` RPC + UI. ⚠️ **RUN migration `20260604140000_card_view_events.sql`** in the SQL editor (windows fill from then on; All-time works now).
+
+## 🎨 Artist filter (#3) — PLAN, data-gated
+Artist isn't stored anywhere (not in `all-cards.json`, the `cards` table, or `PokemonCard`). Scrydex returns it, we discard it. To ship:
+1. **Add the data** — cleanest is to fold `artist` into the `cards` catalog (add column + store it in `sync-cards-catalog`) — rides on the keystone `cards` fix. (Alt: one-time pull a `card_id→artist` map.)
+2. **Explore filter** — add an "Artist" dropdown to the filter panel; `searchCardsAdvanced` filters by `card.artist`. (Market "by artist" tab is a bigger follow-up.)
+Gated on the `cards` table being fixed/populated (same keystone as the search freeze).
+
+---
+
 ## ▶ RESUME HERE (6/4) — start at the top
 
 ### 1. 🔴 Search-bar freeze (TOP PRIORITY)
