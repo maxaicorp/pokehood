@@ -106,6 +106,13 @@ export default function AdminPrices() {
   const [mP1d, setMP1d] = useState("");
   const [mP7d, setMP7d] = useState("");
   const [mP30d, setMP30d] = useState("");
+  // graded override inputs
+  const [gCompany, setGCompany] = useState("PSA");
+  const [gGrade, setGGrade] = useState("10");
+  const [gMarket, setGMarket] = useState("");
+  const [gLow, setGLow] = useState("");
+  const [gHigh, setGHigh] = useState("");
+  const [gSaving, setGSaving] = useState(false);
 
   // ── bulk audit ──
   const runAudit = async () => {
@@ -235,6 +242,26 @@ export default function AdminPrices() {
     finally { setMSaving(false); }
   };
 
+  const saveGraded = async () => {
+    if (!mRow) return;
+    const mk = num(gMarket);
+    const gr = num(gGrade);
+    if (mk == null || mk <= 0) { toast.error("Enter a positive graded market price."); return; }
+    if (gr == null) { toast.error("Enter a grade (e.g. 10, 9.5)."); return; }
+    setGSaving(true);
+    try {
+      const { error } = await (supabase.rpc as any)("admin_set_graded_price", {
+        p_card_id: mRow.card_id, p_company: gCompany, p_grade: gr,
+        p_market: mk, p_low: num(gLow), p_high: num(gHigh), p_note: null,
+      });
+      if (error) throw error;
+      resetLatestPricesCache();
+      toast.success(`Pinned ${gCompany} ${gr} at ${usd(mk)}.`);
+      setGMarket(""); setGLow(""); setGHigh("");
+    } catch (e) { toast.error(`Graded pin failed: ${e instanceof Error ? e.message : String(e)}`); }
+    finally { setGSaving(false); }
+  };
+
   const flaggedCount = rows.filter((r) => (r.status === "off" || r.status === "new") && !r.fixed).length;
 
   return (
@@ -353,6 +380,31 @@ export default function AdminPrices() {
                   <span className="ml-2">{mOverridden ? "Update pin" : "Pin price"}</span>
                 </Button>
                 {mOverridden && <Button onClick={clear} disabled={mSaving} variant="outline"><Trash2 className="w-4 h-4" /><span className="ml-2">Clear</span></Button>}
+              </div>
+
+              {/* Graded override — pins one (company, grade) market price */}
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground">Graded override (PSA / BGS / CGC)</p>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Company</label>
+                    <select
+                      value={gCompany}
+                      onChange={(e) => setGCompany(e.target.value)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-2 text-sm"
+                    >
+                      <option>PSA</option><option>BGS</option><option>CGC</option>
+                    </select>
+                  </div>
+                  <Field label="Grade" value={gGrade} onChange={setGGrade} />
+                  <Field label="Market" value={gMarket} onChange={setGMarket} />
+                  <Field label="Low" value={gLow} onChange={setGLow} />
+                  <Field label="High" value={gHigh} onChange={setGHigh} />
+                </div>
+                <Button size="sm" variant="outline" onClick={saveGraded} disabled={gSaving}>
+                  {gSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <span className="ml-2">Pin graded price</span>
+                </Button>
               </div>
             </div>
           )}
