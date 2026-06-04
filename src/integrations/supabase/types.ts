@@ -14,10 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      card_price_overrides: {
+        Row: {
+          card_id: string
+          card_name: string
+          note: string | null
+          price: number
+          price_1d: number | null
+          price_30d: number | null
+          price_7d: number | null
+          set_at: string
+          set_by: string | null
+          set_name: string
+        }
+        Insert: {
+          card_id: string
+          card_name?: string
+          note?: string | null
+          price: number
+          price_1d?: number | null
+          price_30d?: number | null
+          price_7d?: number | null
+          set_at?: string
+          set_by?: string | null
+          set_name?: string
+        }
+        Update: {
+          card_id?: string
+          card_name?: string
+          note?: string | null
+          price?: number
+          price_1d?: number | null
+          price_30d?: number | null
+          price_7d?: number | null
+          set_at?: string
+          set_by?: string | null
+          set_name?: string
+        }
+        Relationships: []
+      }
       card_stats: {
         Row: {
           collection_add_count: number
           image_small: string
+          last_searched_at: string | null
+          last_viewed_at: string | null
           name: string
           search_hit_count: number
           set_name: string
@@ -29,6 +70,8 @@ export type Database = {
         Insert: {
           collection_add_count?: number
           image_small?: string
+          last_searched_at?: string | null
+          last_viewed_at?: string | null
           name?: string
           search_hit_count?: number
           set_name?: string
@@ -40,6 +83,8 @@ export type Database = {
         Update: {
           collection_add_count?: number
           image_small?: string
+          last_searched_at?: string | null
+          last_viewed_at?: string | null
           name?: string
           search_hit_count?: number
           set_name?: string
@@ -1208,6 +1253,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_clear_card_price_override: {
+        Args: { p_card_id: string }
+        Returns: undefined
+      }
+      admin_set_card_price: {
+        Args: {
+          p_card_id: string
+          p_card_name?: string
+          p_note?: string
+          p_price: number
+          p_price_1d?: number
+          p_price_30d?: number
+          p_price_7d?: number
+          p_set_name?: string
+        }
+        Returns: undefined
+      }
       current_week_start: { Args: never; Returns: string }
       get_all_latest_prices: {
         Args: { p_limit?: number; p_offset?: number }
