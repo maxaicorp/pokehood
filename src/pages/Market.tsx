@@ -624,11 +624,11 @@ export default function Market() {
           </div>
 
           {activeTab === "sealed" ? (
-            <div className="flex items-center gap-3 justify-between sm:justify-end flex-wrap">
-              {/* Total value of the current sealed filter — same spot/style as
-                  the Top tab badge (left of the dropdown). */}
-              {sealedSummary && sealedSummary.value > 0 && (
-                <div className="text-right">
+            <div className="flex items-center justify-between gap-3">
+              {/* Total (left) · controls grouped (right) — no wrap so the row
+                  doesn't break apart on mobile. */}
+              {sealedSummary && sealedSummary.value > 0 ? (
+                <div className="min-w-0">
                   <p className="text-xs text-muted-foreground whitespace-nowrap">
                     {sealedSummary.count.toLocaleString()} items
                   </p>
@@ -636,20 +636,22 @@ export default function Market() {
                     ${Math.ceil(sealedSummary.value).toLocaleString("en-US")}
                   </p>
                 </div>
-              )}
-              <Select value={sealedType} onValueChange={setSealedType}>
-                <SelectTrigger className="w-[180px] sm:w-[200px] bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SEALED_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <ViewToggle value={viewMode} onChange={setViewMode} />
+              ) : <span />}
+              <div className="flex items-center gap-2 shrink-0">
+                <Select value={sealedType} onValueChange={setSealedType}>
+                  <SelectTrigger className="w-[140px] sm:w-[200px] bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEALED_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <ViewToggle value={viewMode} onChange={setViewMode} />
+              </div>
             </div>
           ) : activeTab === "most-visited" ? (
             <div className="flex items-center gap-3 justify-between sm:justify-end">

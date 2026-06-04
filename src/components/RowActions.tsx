@@ -99,13 +99,11 @@ function BuyRow({ href, label, logo, sponsored, tag }: { href: string; label: st
       rel={`noopener noreferrer${sponsored ? " sponsored" : ""}`}
       className="flex items-center justify-between gap-3 px-3 py-3 rounded-lg hover:bg-muted transition-colors"
     >
-      <span className="flex items-center gap-1.5 min-w-0 text-sm font-medium text-foreground">
-        <span className="text-muted-foreground shrink-0">Buy on</span>
-        {logo ? (
-          <img src={logo} alt={label} className="h-4 w-auto max-w-[110px] object-contain" loading="lazy" />
-        ) : (
-          <span className="truncate">{label}</span>
+      <span className="flex items-center gap-2 min-w-0 text-sm font-medium text-foreground">
+        {logo && (
+          <img src={logo} alt="" aria-hidden className="h-4 w-auto max-w-[72px] object-contain shrink-0" loading="lazy" />
         )}
+        <span className="truncate">Buy {label}</span>
         {tag && <span className="text-[10px] text-muted-foreground shrink-0">· {tag}</span>}
       </span>
       <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
