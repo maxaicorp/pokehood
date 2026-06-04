@@ -871,6 +871,13 @@ const SEARCH_ALIASES: Record<string, string[]> = {
   alt: ["alternate art", "illustration rare"],
 };
 
+/** Clean buy-search string: strips the "(Unlimited Holo)" variant parenthetical
+ *  from name + set, since selling sites list cards as "<Pokémon> <Set>". */
+export function buyQueryForCard(card: { name: string; set: { name: string } }): string {
+  const strip = (s: string) => s.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  return `${strip(card.name)} ${strip(card.set.name)}`.trim();
+}
+
 export async function searchCardsAdvanced(
   query: string,
   filters: {

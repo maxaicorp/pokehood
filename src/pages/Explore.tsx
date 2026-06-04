@@ -25,6 +25,8 @@ import {
 import { getLatestSnapshotPrices } from "@/lib/price-snapshots";
 import { cardPath } from "@/lib/slug";
 import { addToCollection } from "@/lib/collection-store";
+import RowActions from "@/components/RowActions";
+import { buyQueryForCard } from "@/lib/pokemon-api";
 import { recordSearchHits, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
 import AppHeader from "@/components/AppHeader";
 import { MagicCard } from "@/components/ui/magic-card";
@@ -184,7 +186,11 @@ export default function Explore() {
     return pages;
   };
 
-  const handleAdd = async (card: PokemonCard) => {
+  // "+" opens the quick-action panel (add / wishlist / buy), bound to this card.
+  const [actionCard, setActionCard] = useState<PokemonCard | null>(null);
+  const handleAdd = (card: PokemonCard) => setActionCard(card);
+
+  const addInventory = async (card: PokemonCard) => {
     if (!user) {
       toast.error("Please sign in to add cards.");
       return;
@@ -296,6 +302,14 @@ export default function Explore() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <RowActions
+        open={!!actionCard}
+        onOpenChange={(o) => { if (!o) setActionCard(null); }}
+        name={actionCard?.name ?? ""}
+        buyQuery={actionCard ? buyQueryForCard(actionCard) : ""}
+        onAddInventory={() => actionCard && addInventory(actionCard)}
+        onAddWishlist={() => actionCard && handleWishlist(actionCard)}
+      />
       <SEO
         title="Explore Pokémon TCG Cards — Collectiblez"
         description="Search the entire Pokémon TCG database. Filter by set, rarity, and price. Add cards to your collection in one click."

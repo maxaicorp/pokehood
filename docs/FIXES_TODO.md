@@ -7,8 +7,10 @@ status so blocked/decision items don't stall the shippable ones.
 - [x] **Buy-link search query** — strip the `(Unlimited Holo)` variant parenthetical from name + set so outbound searches read `Articuno Fossil pokemon card` (CardDetail). Selling sites list as `<Pokémon> <Set>`.
 - [x] **Load-from-top** — added `ScrollToTop` on route change (was landing mid-page on every navigation).
 
+## ✅ Done (also)
+- [x] **Panel system (RowActions)** — wired the `+` on Market / Explore / SetDetail to open `<RowActions>` (add to inventory / wishlist / buy). Plus-icon only, "Add" text removed. Buy query uses the clean `buyQueryForCard` helper (shared with #1).
+
 ## 🟢 Next up (shippable, no blockers)
-- [ ] **Panel system (RowActions)** — component is built + committed but **never wired into rows**. Wire the `+` button on Market / Explore / Sets / SetDetail rows to open `<RowActions>` (add-to-inventory / wishlist / buy links). *User wants this immediately next.*
 - [ ] **Graded tiles RPC cap** — `get_graded_tiles_for_card` hard-caps `grade IN (10,9)` but the tiles component shows all grades via dropdown. Remove the cap (SQL migration).
 
 ## 🟠 Builds (migration + UI)

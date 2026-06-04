@@ -26,7 +26,10 @@ import {
 } from "@/lib/pokemon-api";
 import { findSetBySlug, cardPath, setSlug } from "@/lib/slug";
 import { getCollection, addToCollection } from "@/lib/collection-store";
-import { recordCollectionAdd } from "@/lib/card-stats-store";
+import { addCardToDefaultWishlist } from "@/lib/wishlist-store";
+import RowActions from "@/components/RowActions";
+import { buyQueryForCard } from "@/lib/pokemon-api";
+import { recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
 import { toastAddedToInventory } from "@/lib/inventory-toast";
 import { getSetSentiment, castVote, applyVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import { useAuth } from "@/contexts/AuthContext";
@@ -151,10 +154,15 @@ export default function SetDetail() {
     await castVote(cardId, user.id, currentVote, voteType);
   };
 
-  // Add to collection — mirrors Market's handler (toast with "View inventory").
-  const handleAdd = async (e: React.MouseEvent, card: PokemonCard) => {
+  // "+" opens the quick-action panel (add / wishlist / buy), bound to this card.
+  const [actionCard, setActionCard] = useState<PokemonCard | null>(null);
+  const handleAdd = (e: React.MouseEvent, card: PokemonCard) => {
     e.preventDefault();
     e.stopPropagation();
+    setActionCard(card);
+  };
+
+  const addInventory = async (card: PokemonCard) => {
     if (!user) { navigate("/auth"); return; }
     if (addingCards.has(card.id)) return;
     setAddingCards((prev) => new Set(prev).add(card.id));
@@ -165,6 +173,21 @@ export default function SetDetail() {
       toastAddedToInventory(card.name, navigate);
     } else {
       toast.error("Failed to add card.");
+    }
+  };
+
+  const addWishlist = async (card: PokemonCard) => {
+    if (!user) { navigate("/auth"); return; }
+    try {
+      const ok = await addCardToDefaultWishlist(user.id, card);
+      if (ok) {
+        toast.success(`Added ${card.name} to wishlist`);
+        recordWishlistAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
+      } else {
+        toast.error("Failed to add to wishlist.");
+      }
+    } catch {
+      toast.error("Failed to add to wishlist.");
     }
   };
 
@@ -282,6 +305,14 @@ export default function SetDetail() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <RowActions
+        open={!!actionCard}
+        onOpenChange={(o) => { if (!o) setActionCard(null); }}
+        name={actionCard?.name ?? ""}
+        buyQuery={actionCard ? buyQueryForCard(actionCard) : ""}
+        onAddInventory={() => actionCard && addInventory(actionCard)}
+        onAddWishlist={() => actionCard && addWishlist(actionCard)}
+      />
       {set && (
         <SEO
           title={seoTitle}
@@ -553,12 +584,11 @@ function CardList({ cards, set, isPricingLoading, sentimentMap, addingCards, onA
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-8 px-3 rounded-full border border-border/50 hover:border-primary hover:text-primary"
-                disabled={addingCards.has(card.id)}
+                aria-label="Card actions"
+                className="h-8 w-8 p-0 rounded-full border border-border/50 hover:border-primary hover:text-primary"
                 onClick={(e) => onAdd(e, card)}
               >
-                <Plus className="w-3.5 h-3.5 mr-1" />
-                <span className="text-xs font-medium">Add</span>
+                <Plus className="w-3.5 h-3.5" />
               </Button>
             </div>
           </motion.div>

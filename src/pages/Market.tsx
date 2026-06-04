@@ -45,11 +45,14 @@ import {
   PokemonCard,
   PokemonSet,
   hydrateCardsFromLatestPrices,
+  buyQueryForCard,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
+import { addCardToDefaultWishlist } from "@/lib/wishlist-store";
+import RowActions from "@/components/RowActions";
 import { cardPath, cardPathFromApiId } from "@/lib/slug";
 import { formatPct, getLatestSnapshotPage, getLatestSnapshotAll, getLatestPricesByIds, getTopMovers } from "@/lib/price-snapshots";
-import { recordCollectionAdd } from "@/lib/card-stats-store";
+import { recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
 import { getSetSentiment, castVote, applyVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import AppHeader from "@/components/AppHeader";
 import SetSentimentBadge from "@/components/SetSentimentBadge";
@@ -376,12 +379,16 @@ export default function Market() {
     }
   };
 
-  const handleAdd = async (e: React.MouseEvent, card: PokemonCard) => {
+  // The "+" now opens the quick-action panel (add to inventory / wishlist / buy)
+  // instead of adding straight to inventory. The panel binds to this card.
+  const [actionCard, setActionCard] = useState<PokemonCard | null>(null);
+  const handleAdd = (e: React.MouseEvent, card: PokemonCard) => {
     e.stopPropagation();
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
+    setActionCard(card);
+  };
+
+  const addInventory = async (card: PokemonCard) => {
+    if (!user) { navigate("/auth"); return; }
     if (addingCards.has(card.id)) return;
     setAddingCards((prev) => new Set(prev).add(card.id));
     const result = await addToCollection(card, user.id);
@@ -391,14 +398,26 @@ export default function Market() {
       return next;
     });
     if (result) {
-      // Use the shared toast with a "View inventory" → /dashboard action so the
-      // "+" gives users a one-tap path to where the card landed (was a plain
-      // toast with no link).
       toastAddedToInventory(card.name, navigate);
       recordCollectionAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
       queryClient.invalidateQueries({ queryKey: ["collection"] });
     } else {
       toast.error("Failed to add card.");
+    }
+  };
+
+  const addWishlist = async (card: PokemonCard) => {
+    if (!user) { navigate("/auth"); return; }
+    try {
+      const ok = await addCardToDefaultWishlist(user.id, card);
+      if (ok) {
+        toast.success(`Added ${card.name} to wishlist`);
+        recordWishlistAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
+      } else {
+        toast.error("Failed to add to wishlist.");
+      }
+    } catch {
+      toast.error("Failed to add to wishlist.");
     }
   };
 
@@ -539,6 +558,14 @@ export default function Market() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      <RowActions
+        open={!!actionCard}
+        onOpenChange={(o) => { if (!o) setActionCard(null); }}
+        name={actionCard?.name ?? ""}
+        buyQuery={actionCard ? buyQueryForCard(actionCard) : ""}
+        onAddInventory={() => actionCard && addInventory(actionCard)}
+        onAddWishlist={() => actionCard && addWishlist(actionCard)}
+      />
       <SEO
         title="Pokémon TCG Market Prices & Trends — Collectiblez"
         description="Live market prices, 24h/7d trends, top movers, and sealed product values for every Pokémon TCG expansion."
