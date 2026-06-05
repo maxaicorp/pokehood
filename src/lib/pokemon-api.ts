@@ -282,7 +282,14 @@ registerCacheResetter(resetPricingCache);
 // to the static JSON — which makes shipping this a no-op until the table exists.
 async function loadCatalogFromDb(): Promise<{ cards: PokemonCard[]; sets: PokemonSet[] } | null> {
   type Row = { id: string; name: string; set_id: string; set_name: string; number: string; rarity: string | null; supertype: string | null; series: string | null; artist?: string | null };
-  const PAGE = 2000;
+  // PostgREST caps response rows at its `max-rows` setting (default 1000) even
+  // when the RPC's own `p_limit` asks for more. Asking for 2000 here only ever
+  // returned 1000 rows, then `batch.length < PAGE` made the loop exit after a
+  // single page — leaving the live catalog with only the alphabetically-first
+  // ~1000 cards. Artist overlay then missed most cards and the Explore artist
+  // filter returned 0 results for any artist outside that slice. Page in 1000s
+  // and keep going while we hit a full page.
+  const PAGE = 1000;
   const rows: Row[] = [];
   let offset = 0;
   while (true) {
