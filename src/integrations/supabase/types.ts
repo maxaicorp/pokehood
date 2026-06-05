@@ -124,13 +124,18 @@ export type Database = {
       }
       cards: {
         Row: {
+          abilities: Json | null
           artist: string | null
+          attacks: Json | null
+          flavor_text: string | null
           hp: string | null
           id: string
           language: string
           name: string
           number: string
           rarity: string | null
+          resistances: Json | null
+          retreat_cost: Json | null
           series: string | null
           set_id: string
           set_name: string
@@ -138,15 +143,21 @@ export type Database = {
           supertype: string | null
           types: Json | null
           updated_at: string
+          weaknesses: Json | null
         }
         Insert: {
+          abilities?: Json | null
           artist?: string | null
+          attacks?: Json | null
+          flavor_text?: string | null
           hp?: string | null
           id: string
           language?: string
           name?: string
           number?: string
           rarity?: string | null
+          resistances?: Json | null
+          retreat_cost?: Json | null
           series?: string | null
           set_id: string
           set_name?: string
@@ -154,15 +165,21 @@ export type Database = {
           supertype?: string | null
           types?: Json | null
           updated_at?: string
+          weaknesses?: Json | null
         }
         Update: {
+          abilities?: Json | null
           artist?: string | null
+          attacks?: Json | null
+          flavor_text?: string | null
           hp?: string | null
           id?: string
           language?: string
           name?: string
           number?: string
           rarity?: string | null
+          resistances?: Json | null
+          retreat_cost?: Json | null
           series?: string | null
           set_id?: string
           set_name?: string
@@ -170,6 +187,7 @@ export type Database = {
           supertype?: string | null
           types?: Json | null
           updated_at?: string
+          weaknesses?: Json | null
         }
         Relationships: []
       }
