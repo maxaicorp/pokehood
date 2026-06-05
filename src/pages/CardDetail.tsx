@@ -61,6 +61,22 @@ const TYPE_COLORS: Record<string, string> = {
   Colorless: "bg-gray-400/15 text-gray-400 border border-gray-400/30",
 };
 
+// Solid energy-type colours for the attack-cost pips (the translucent
+// TYPE_COLORS above are too faint at dot size). Title attr = the type name.
+const ENERGY_DOT: Record<string, string> = {
+  Fire: "bg-orange-500",
+  Water: "bg-blue-500",
+  Grass: "bg-green-500",
+  Lightning: "bg-yellow-400",
+  Psychic: "bg-purple-500",
+  Fighting: "bg-amber-700",
+  Darkness: "bg-slate-700",
+  Metal: "bg-slate-400",
+  Dragon: "bg-indigo-500",
+  Fairy: "bg-pink-400",
+  Colorless: "bg-gray-300",
+};
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CardDetail() {
@@ -426,9 +442,10 @@ export default function CardDetail() {
               </div>
             ) : card ? (
               <div>
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   {/* Title + ⓘ inline (mobile) so the icon clearly belongs to the
-                      card name instead of floating next to Share. */}
+                      card name instead of floating next to Share. Vertically
+                      centered against Share so the heights read as matched. */}
                   <div className="flex items-center gap-2 min-w-0 flex-wrap">
                     <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
                       {card.name}
@@ -443,7 +460,7 @@ export default function CardDetail() {
                       <Info className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 mt-1.5">
+                  <div className="flex items-center gap-2 shrink-0">
                     {/* Rarity badge: desktop inline; on mobile it moves into the box. */}
                     {card.rarity && (
                       <Badge variant="secondary" className="text-xs hidden lg:inline-flex">
@@ -491,6 +508,7 @@ export default function CardDetail() {
                       {card.hp && (<><dt className="text-muted-foreground">HP</dt><dd className="text-foreground text-right">{card.hp}</dd></>)}
                       {card.set.releaseDate && (<><dt className="text-muted-foreground">Released</dt><dd className="text-foreground text-right">{card.set.releaseDate}</dd></>)}
                       <dt className="text-muted-foreground">Set</dt><dd className="text-foreground text-right">{card.set.name}</dd>
+                      {cardExtras?.artist && (<><dt className="text-muted-foreground">Artist</dt><dd className="text-foreground text-right">{cardExtras.artist}</dd></>)}
                     </dl>
 
                     {/* Abilities */}
@@ -516,11 +534,9 @@ export default function CardDetail() {
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 min-w-0">
                                 {Array.isArray(at.cost) && at.cost.length ? (
-                                  <span className="flex gap-0.5 shrink-0">
+                                  <span className="flex items-center gap-0.5 shrink-0">
                                     {at.cost.filter((c) => typeof c === "string").map((c, j) => (
-                                      <span key={j} className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center font-bold ${TYPE_COLORS[c] || "bg-muted text-muted-foreground border border-border"}`}>
-                                        {c.charAt(0)}
-                                      </span>
+                                      <span key={j} title={c} className={`w-2.5 h-2.5 rounded-full ring-1 ring-border ${ENERGY_DOT[c] || "bg-gray-400"}`} />
                                     ))}
                                   </span>
                                 ) : null}

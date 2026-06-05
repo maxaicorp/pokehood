@@ -516,6 +516,7 @@ export interface CardAttack { name?: string; cost?: string[]; damage?: string; t
 export interface CardAbility { name?: string; text?: string; type?: string }
 export interface CardTypeValue { type?: string; value?: string }
 export interface CardExtras {
+  artist?: string;
   attacks?: CardAttack[];
   abilities?: CardAbility[];
   weaknesses?: CardTypeValue[];
@@ -527,12 +528,13 @@ export async function getCardExtras(id: string): Promise<CardExtras | null> {
   const baseId = id.split("::")[0];
   try {
     const { data } = await (supabase.from as any)("cards")
-      .select("attacks, abilities, weaknesses, resistances, retreat_cost, flavor_text")
+      .select("artist, attacks, abilities, weaknesses, resistances, retreat_cost, flavor_text")
       .eq("id", baseId)
       .maybeSingle();
     if (!data) return null;
     const arr = (v: unknown) => (Array.isArray(v) ? v : undefined);
     return {
+      artist: (data.artist as string) || undefined,
       attacks: arr(data.attacks) as CardAttack[] | undefined,
       abilities: arr(data.abilities) as CardAbility[] | undefined,
       weaknesses: arr(data.weaknesses) as CardTypeValue[] | undefined,
