@@ -56,14 +56,15 @@ export default function Explore() {
   const { user, loading, isPro, limits } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlQuery = searchParams.get("q") || "";
   const urlSet = searchParams.get("set") || "";
+  const urlArtist = searchParams.get("artist") || "";
   const [query, setQuery] = useState(urlQuery);
   const [searchTerm, setSearchTerm] = useState(urlQuery);
   const [selectedSet, setSelectedSet] = useState(urlSet);
   const [selectedRarity, setSelectedRarity] = useState("");
-  const [selectedArtist, setSelectedArtist] = useState("");
+  const [selectedArtist, setSelectedArtist] = useState(urlArtist);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("number");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -72,6 +73,16 @@ export default function Explore() {
   const [productType, setProductType] = useState("");
   const [addingCards, setAddingCards] = useState(new Set<string>());
   const [pricesReady, setPricesReady] = useState(false);
+
+  // Artist filter is URL-synced so an artist view is shareable (/explore?artist=…)
+  // and can be linked from card pages. Full /artist/:slug pages come later.
+  const setArtistFilter = (v: string) => {
+    setSelectedArtist(v);
+    setPage(1);
+    const next = new URLSearchParams(searchParams);
+    if (v) next.set("artist", v); else next.delete("artist");
+    setSearchParams(next, { replace: true });
+  };
 
   // Infinite scroll mode when a set is selected
   const isSetMode = !!selectedSet;
@@ -162,6 +173,12 @@ export default function Explore() {
     }
   }, [urlQuery]);
 
+  // Reflect external artist-URL changes (deep link / card-page artist link).
+  useEffect(() => {
+    setSelectedArtist(urlArtist);
+    setPage(1);
+  }, [urlArtist]);
+
   // Track search hits when results arrive for a search term
   useEffect(() => {
     if (searchTerm && cardsData?.data?.length) {
@@ -180,7 +197,7 @@ export default function Explore() {
     setSearchTerm("");
     setSelectedSet("");
     setSelectedRarity("");
-    setSelectedArtist("");
+    setArtistFilter("");
     setSelectedTypes([]);
     setSortBy("number");
     setPage(1);
@@ -387,7 +404,7 @@ export default function Explore() {
                   </Badge>
                 )}
                 {selectedArtist && (
-                  <Badge variant="secondary" className="gap-1 cursor-pointer text-xs" onClick={() => { setSelectedArtist(""); setPage(1); }}>
+                  <Badge variant="secondary" className="gap-1 cursor-pointer text-xs" onClick={() => setArtistFilter("")}>
                     {selectedArtist}
                     <X className="w-3 h-3" />
                   </Badge>
@@ -449,7 +466,7 @@ export default function Explore() {
                   selectedRarity={selectedRarity}
                   setSelectedRarity={setSelectedRarity}
                   selectedArtist={selectedArtist}
-                  setSelectedArtist={setSelectedArtist}
+                  setSelectedArtist={setArtistFilter}
                   artistOptions={artistOptions}
                   selectedTypes={selectedTypes}
                   toggleType={toggleType}
@@ -470,7 +487,7 @@ export default function Explore() {
               selectedRarity={selectedRarity}
               setSelectedRarity={setSelectedRarity}
               selectedArtist={selectedArtist}
-              setSelectedArtist={setSelectedArtist}
+              setSelectedArtist={setArtistFilter}
               artistOptions={artistOptions}
               selectedTypes={selectedTypes}
               toggleType={toggleType}

@@ -514,7 +514,7 @@ export default function CardDetail() {
                       {card.hp && (<><dt className="text-muted-foreground">HP</dt><dd className="text-foreground text-right">{card.hp}</dd></>)}
                       {card.set.releaseDate && (<><dt className="text-muted-foreground">Released</dt><dd className="text-foreground text-right">{card.set.releaseDate}</dd></>)}
                       <dt className="text-muted-foreground">Set</dt><dd className="text-foreground text-right">{card.set.name}</dd>
-                      {cardExtras?.artist && (<><dt className="text-muted-foreground">Artist</dt><dd className="text-foreground text-right">{cardExtras.artist}</dd></>)}
+                      {cardExtras?.artist && (<><dt className="text-muted-foreground">Artist</dt><dd className="text-right"><Link to={`/explore?artist=${encodeURIComponent(cardExtras.artist)}`} className="text-primary hover:underline" onClick={(e) => e.stopPropagation()}>{cardExtras.artist}</Link></dd></>)}
                     </dl>
 
                     {/* Abilities */}

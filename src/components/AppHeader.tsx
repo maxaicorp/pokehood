@@ -7,7 +7,6 @@ import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Crown, LogOut, ExternalLink, QrCode, LayoutGrid, TrendingUp, Layers, Compass, Blocks, Gamepad2, BarChart3, Shield, Heart } from "lucide-react";
 import GlobalSearch from "@/components/GlobalSearch";
-import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -99,7 +98,6 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <GlobalSearch />
-            <ThemeSwitcher />
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
