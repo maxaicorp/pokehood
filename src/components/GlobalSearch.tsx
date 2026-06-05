@@ -153,7 +153,7 @@ export default function GlobalSearch() {
       <button
         onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
         className={cn(
-          "sm:hidden flex items-center justify-center w-9 h-9 rounded-full bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+          "sm:hidden flex items-center justify-center w-9 h-9 rounded-full bg-white/10 text-white/80 hover:text-white transition-colors"
         )}
       >
         <Search className="w-4 h-4" />
@@ -162,11 +162,11 @@ export default function GlobalSearch() {
       <div
         onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
         className={cn(
-          "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border/50 bg-muted/30 hover:bg-muted/50 cursor-text transition-colors min-w-[220px] lg:min-w-[280px]",
-          open && "ring-2 ring-primary/30 border-primary/50 bg-background"
+          "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border cursor-text transition-colors min-w-[220px] lg:min-w-[280px]",
+          open ? "ring-2 ring-primary/30 border-primary/50 bg-background" : "border-white/15 bg-white/10 hover:bg-white/15"
         )}
       >
-        <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+        <Search className={cn("w-4 h-4 shrink-0", open ? "text-muted-foreground" : "text-white/60")} />
         {open ? (
           <input
             ref={inputRef}
@@ -177,7 +177,7 @@ export default function GlobalSearch() {
             className="bg-transparent outline-none text-sm w-full text-foreground placeholder:text-muted-foreground"
           />
         ) : (
-          <span className="text-sm text-muted-foreground select-none">Search cards...</span>
+          <span className="text-sm text-white/70 select-none">Search cards...</span>
         )}
         {open && query && (
           <button onClick={(e) => { e.stopPropagation(); setQuery(""); setResults([]); }} className="text-muted-foreground hover:text-foreground">

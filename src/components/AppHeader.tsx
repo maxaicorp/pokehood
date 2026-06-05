@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
-import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, ExternalLink, QrCode, Sun, Moon, LayoutGrid, TrendingUp, Layers, Compass, Blocks, Gamepad2, BarChart3, Shield, Heart } from "lucide-react";
+import { Crown, LogOut, ExternalLink, QrCode, LayoutGrid, TrendingUp, Layers, Compass, Blocks, Gamepad2, BarChart3, Shield, Heart } from "lucide-react";
 import GlobalSearch from "@/components/GlobalSearch";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -18,7 +18,6 @@ interface AppHeaderProps {
 
 export default function AppHeader({ activePage, children }: AppHeaderProps) {
   const { user, isPro, isAdmin, signOut } = useAuth();
-  const { theme, setTheme } = useTheme();
   const [qrOpen, setQrOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
@@ -80,25 +79,27 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
       </div>
 
       {/* Header */}
-      <header className="border-b border-border/50 bg-background/80 backdrop-blur-xl sticky top-0 z-50">
+      <header className="sticky top-0 z-50">
+        <div className="bg-[hsl(var(--header))] text-[hsl(var(--header-foreground))] backdrop-blur-xl border-b border-white/10">
         <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
           <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/" className="flex items-center gap-2 h-8">
               <img src="/logo.png" alt="Collectiblez" className="w-8 h-8 object-contain" />
-              <span className="font-display font-bold text-base tracking-wide text-foreground uppercase">Collectiblez</span>
+              <span className="font-display font-bold text-base tracking-wide uppercase">Collectiblez</span>
             </Link>
             <div className="hidden sm:flex items-center gap-0">
-              <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Dashboard</Link>
-              <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Explore</Link>
-              <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Sets</Link>
-              <Link to="/onchain/activity" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Onchain</Link>
-              <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Games</Link>
+              <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-white" : "text-white/55 hover:text-white"}`}>Dashboard</Link>
+              <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "text-white" : "text-white/55 hover:text-white"}`}>Explore</Link>
+              <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-white" : "text-white/55 hover:text-white"}`}>Sets</Link>
+              <Link to="/onchain/activity" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "text-white" : "text-white/55 hover:text-white"}`}>Onchain</Link>
+              <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "text-white" : "text-white/55 hover:text-white"}`}>Games</Link>
               {/* Giveaway hidden from public nav for now — system needs more
                   review before exposure. Admins still manage it at /admin/giveaways. */}
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <GlobalSearch />
+            <ThemeSwitcher />
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -155,10 +156,6 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-                    {theme === "dark" ? <Sun className="w-4 h-4 mr-2" /> : <Moon className="w-4 h-4 mr-2" />}
-                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut} className="text-destructive">
                     <LogOut className="w-4 h-4 mr-2" /> Sign Out
@@ -166,20 +163,12 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <>
-                <button
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Toggle theme"
-                >
-                  {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </button>
-                <Link to="/auth" className="px-4 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                  Sign In
-                </Link>
-              </>
+              <Link to="/auth" className="px-4 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                Sign In
+              </Link>
             )}
           </div>
+        </div>
         </div>
         {children}
       </header>
