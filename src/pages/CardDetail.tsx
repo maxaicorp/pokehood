@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { tcgAffiliateLink } from "@/lib/affiliate";
 import {
   getCardById,
+  getCardExtras,
   getMarketSets,
   getSetCards,
   getMarketPrice,
@@ -120,6 +121,16 @@ export default function CardDetail() {
     queryKey: ["card-base", id],
     queryFn: () => getCardById(id!),
     enabled: !!id,
+    staleTime: Infinity,
+  });
+
+  // Card "extras" (attacks/abilities/weakness/etc.) for the mobile info box.
+  // Lazy: only fetched once the user opens the box (cheap single-row DB read,
+  // no Scrydex credit). Null until the catalog is synced with extras data.
+  const { data: cardExtras } = useQuery({
+    queryKey: ["card-extras", id],
+    queryFn: () => getCardExtras(id!),
+    enabled: !!id && infoOpen,
     staleTime: Infinity,
   });
 
@@ -481,6 +492,67 @@ export default function CardDetail() {
                       {card.set.releaseDate && (<><dt className="text-muted-foreground">Released</dt><dd className="text-foreground text-right">{card.set.releaseDate}</dd></>)}
                       <dt className="text-muted-foreground">Set</dt><dd className="text-foreground text-right">{card.set.name}</dd>
                     </dl>
+
+                    {/* Abilities */}
+                    {cardExtras?.abilities?.length ? (
+                      <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
+                        {cardExtras.abilities.map((ab, i) => (
+                          <div key={i}>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-[10px] uppercase tracking-wide font-semibold text-amber-500">Ability</span>
+                              <span className="font-semibold text-foreground">{ab.name}</span>
+                            </div>
+                            {ab.text && <p className="text-muted-foreground text-xs mt-0.5 leading-snug">{ab.text}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {/* Attacks */}
+                    {cardExtras?.attacks?.length ? (
+                      <div className="mt-3 pt-3 border-t border-border/60 space-y-2.5">
+                        {cardExtras.attacks.map((at, i) => (
+                          <div key={i}>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                {Array.isArray(at.cost) && at.cost.length ? (
+                                  <span className="flex gap-0.5 shrink-0">
+                                    {at.cost.filter((c) => typeof c === "string").map((c, j) => (
+                                      <span key={j} className={`w-4 h-4 rounded-full text-[8px] flex items-center justify-center font-bold ${TYPE_COLORS[c] || "bg-muted text-muted-foreground border border-border"}`}>
+                                        {c.charAt(0)}
+                                      </span>
+                                    ))}
+                                  </span>
+                                ) : null}
+                                <span className="font-semibold text-foreground truncate">{at.name}</span>
+                              </div>
+                              {at.damage && <span className="font-bold text-foreground shrink-0 tabular-nums">{at.damage}</span>}
+                            </div>
+                            {at.text && <p className="text-muted-foreground text-xs mt-0.5 leading-snug">{at.text}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {/* Weakness / Resistance / Retreat */}
+                    {(cardExtras?.weaknesses?.length || cardExtras?.resistances?.length || cardExtras?.retreatCost?.length) ? (
+                      <div className="mt-3 pt-3 border-t border-border/60 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                        {cardExtras?.weaknesses?.length ? (
+                          <span><span className="text-muted-foreground">Weakness </span>{cardExtras.weaknesses.map((w) => `${w.type ?? ""} ${w.value ?? ""}`.trim()).join(", ")}</span>
+                        ) : null}
+                        {cardExtras?.resistances?.length ? (
+                          <span><span className="text-muted-foreground">Resistance </span>{cardExtras.resistances.map((w) => `${w.type ?? ""} ${w.value ?? ""}`.trim()).join(", ")}</span>
+                        ) : null}
+                        {cardExtras?.retreatCost?.length ? (
+                          <span><span className="text-muted-foreground">Retreat </span>{cardExtras.retreatCost.length}</span>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {/* Flavor text */}
+                    {cardExtras?.flavorText ? (
+                      <p className="mt-3 pt-3 border-t border-border/60 text-xs italic text-muted-foreground leading-snug">{cardExtras.flavorText}</p>
+                    ) : null}
                   </div>
                 )}
               </div>

@@ -17,7 +17,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 const SCRYDEX_BASE = "https://api.scrydex.com";
-const FUNCTION_VERSION = "2026-06-04-artist";
+const FUNCTION_VERSION = "2026-06-04-card-extras";
 const FETCH_RETRIES = 2;
 
 interface ScrydexCard {
@@ -30,6 +30,14 @@ interface ScrydexCard {
   types?: string[];
   hp?: string;
   artist?: string;
+  attacks?: unknown;
+  abilities?: unknown;
+  weaknesses?: unknown;
+  resistances?: unknown;
+  retreat_cost?: unknown;
+  retreatCost?: unknown;
+  flavor_text?: string;
+  flavorText?: string;
   expansion?: { id?: string; name?: string; series?: string; language_code?: string; is_online_only?: boolean };
 }
 
@@ -114,6 +122,12 @@ serve(async (req: Request) => {
           types: c.types ?? null,
           hp: c.hp ?? null,
           artist: c.artist ?? null,
+          attacks: c.attacks ?? null,
+          abilities: c.abilities ?? null,
+          weaknesses: c.weaknesses ?? null,
+          resistances: c.resistances ?? null,
+          retreat_cost: c.retreat_cost ?? c.retreatCost ?? null,
+          flavor_text: c.flavor_text ?? c.flavorText ?? null,
           series: c.expansion?.series ?? null,
           language: "EN",
           updated_at: new Date().toISOString(),

@@ -508,6 +508,43 @@ export async function getCardArtists(): Promise<{ artist: string; count: number 
   }
 }
 
+// ─── Card "extras" (attacks/abilities/etc.) for the card-detail info box ───────
+// Read straight from the `cards` table (stored by sync-cards-catalog), so no
+// per-view Scrydex credit. All fields optional + rendered defensively since the
+// Scrydex shape varies by card type (Pokémon vs Trainer vs Energy).
+export interface CardAttack { name?: string; cost?: string[]; damage?: string; text?: string; convertedEnergyCost?: number }
+export interface CardAbility { name?: string; text?: string; type?: string }
+export interface CardTypeValue { type?: string; value?: string }
+export interface CardExtras {
+  attacks?: CardAttack[];
+  abilities?: CardAbility[];
+  weaknesses?: CardTypeValue[];
+  resistances?: CardTypeValue[];
+  retreatCost?: string[];
+  flavorText?: string;
+}
+export async function getCardExtras(id: string): Promise<CardExtras | null> {
+  const baseId = id.split("::")[0];
+  try {
+    const { data } = await (supabase.from as any)("cards")
+      .select("attacks, abilities, weaknesses, resistances, retreat_cost, flavor_text")
+      .eq("id", baseId)
+      .maybeSingle();
+    if (!data) return null;
+    const arr = (v: unknown) => (Array.isArray(v) ? v : undefined);
+    return {
+      attacks: arr(data.attacks) as CardAttack[] | undefined,
+      abilities: arr(data.abilities) as CardAbility[] | undefined,
+      weaknesses: arr(data.weaknesses) as CardTypeValue[] | undefined,
+      resistances: arr(data.resistances) as CardTypeValue[] | undefined,
+      retreatCost: arr(data.retreat_cost) as string[] | undefined,
+      flavorText: (data.flavor_text as string) || undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Per-set card cache — set-scoped pages load one small file instead of the
 // 10MB monolith.
 const setCardCache = new Map<string, PokemonCard[]>();
