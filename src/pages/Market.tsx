@@ -546,8 +546,8 @@ export default function Market() {
   const gridClasses = isSingleSet
     ? "sm:grid-cols-[36px_1fr_108px_88px_88px_40px]"
     : isRecentFilter
-      ? "sm:grid-cols-[36px_1fr_190px_108px_88px_88px_104px_40px]"
-      : "sm:grid-cols-[36px_1fr_190px_108px_88px_88px_40px]";
+      ? "sm:grid-cols-[36px_1fr_248px_108px_88px_88px_104px_40px]"
+      : "sm:grid-cols-[36px_1fr_248px_108px_88px_88px_40px]";
 
   const footerText = (() => {
     if (activeTab === "sealed") return null;
@@ -807,7 +807,7 @@ export default function Market() {
               <div>
                 {/* Header row — matches the other data tables' top bar.
                     Same grid template as the rows below so columns line up. */}
-                <div className="hidden sm:grid grid-cols-[36px_1fr_190px_108px_88px_88px_64px_40px] gap-3 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
+                <div className="hidden sm:grid grid-cols-[36px_1fr_248px_108px_88px_88px_64px_40px] gap-3 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
                   <span>#</span>
                   <span>Card</span>
                   <span>Set</span>
@@ -833,7 +833,7 @@ export default function Market() {
                       onClick={() => navigate(cardPathFromApiId(stat.tcg_api_id, stat.name, stat.set_name))}
                     >
                       {/* Desktop grid — same column widths as the other Market tables */}
-                      <div className="hidden sm:grid grid-cols-[36px_1fr_190px_108px_88px_88px_64px_40px] gap-3 px-4 py-2.5 items-center">
+                      <div className="hidden sm:grid grid-cols-[36px_1fr_248px_108px_88px_88px_64px_40px] gap-3 px-4 py-2.5 items-center">
                         <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                         <div className="flex items-center gap-3 min-w-0">
                           {stat.image_small && (
