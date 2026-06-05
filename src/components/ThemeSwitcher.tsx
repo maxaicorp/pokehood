@@ -5,11 +5,14 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Brand themes (swatch = the accent each one leads with).
+// Top-bar colour presets (preview pass — these recolour only the header).
 const THEMES = [
-  { id: "light", label: "Light", swatch: "#2667FF" },
-  { id: "dark", label: "Dark", swatch: "#1E87EB" },
-  { id: "midnight", label: "Midnight", swatch: "#4307F2" },
+  { id: "topbar-navy", label: "Navy", swatch: "#1B264F" },
+  { id: "topbar-blue", label: "Blue", swatch: "#2667FF" },
+  { id: "topbar-purple", label: "Purple", swatch: "#7C3AED" },
+  { id: "topbar-red", label: "Red", swatch: "#E23636" },
+  { id: "topbar-green", label: "Green", swatch: "#1FA85C" },
+  { id: "topbar-yellow", label: "Yellow", swatch: "#FACC15" },
 ] as const;
 
 /** Header theme picker. Lives on the navy top bar, so the trigger is light. */

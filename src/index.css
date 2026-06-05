@@ -7,25 +7,25 @@
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --foreground: 0 0% 7%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 0 0% 7%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 0 0% 7%;
 
     --primary: 222 100% 58%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 214 32% 95%;
-    --secondary-foreground: 222 47% 20%;
+    --secondary-foreground: 0 0% 12%;
 
     --muted: 214 32% 95%;
-    --muted-foreground: 222 16% 42%;
+    --muted-foreground: 0 0% 28%;
 
     --accent: 214 100% 96%;
-    --accent-foreground: 222 60% 25%;
+    --accent-foreground: 0 0% 12%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -160,6 +160,15 @@
     --header: 230 50% 6%;
     --header-foreground: 0 0% 98%;
   }
+
+  /* Top-bar colour presets — recolour ONLY the header; body stays light with
+     black text. White header text on all (yellow will be low-contrast — flag). */
+  .topbar-navy   { --header: 227 49% 21%; --header-foreground: 0 0% 98%; }
+  .topbar-blue   { --header: 224 90% 52%; --header-foreground: 0 0% 100%; }
+  .topbar-purple { --header: 270 80% 55%; --header-foreground: 0 0% 100%; }
+  .topbar-red    { --header: 0 78% 52%;   --header-foreground: 0 0% 100%; }
+  .topbar-green  { --header: 150 72% 36%; --header-foreground: 0 0% 100%; }
+  .topbar-yellow { --header: 45 96% 53%;  --header-foreground: 0 0% 100%; }
 }
 
 @layer base {
