@@ -5,14 +5,14 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Top-bar colour presets (preview pass — these recolour only the header).
+// Green-family top-bar presets (preview pass — these recolour only the header).
 const THEMES = [
-  { id: "topbar-navy", label: "Navy", swatch: "#1B264F" },
-  { id: "topbar-blue", label: "Blue", swatch: "#2667FF" },
-  { id: "topbar-purple", label: "Purple", swatch: "#7C3AED" },
-  { id: "topbar-red", label: "Red", swatch: "#E23636" },
   { id: "topbar-green", label: "Green", swatch: "#1FA85C" },
-  { id: "topbar-yellow", label: "Yellow", swatch: "#FACC15" },
+  { id: "topbar-green-holo", label: "Green Holo", swatch: "linear-gradient(110deg,#0f7a43,#2ee6a6,#16c0b0,#6ad587)" },
+  { id: "topbar-green-gradient", label: "Green Gradient", swatch: "linear-gradient(135deg,#0f7a43,#38c97f)" },
+  { id: "topbar-lime", label: "Lime", swatch: "#84CC16" },
+  { id: "topbar-mint", label: "Mint", swatch: "#6AD587" },
+  { id: "topbar-rainbow", label: "Rainbow Edge", swatch: "linear-gradient(90deg,#ff5d5d,#ffae34,#ffe753,#4ade80,#38bdf8,#a78bfa)" },
 ] as const;
 
 /** Header theme picker. Lives on the navy top bar, so the trigger is light. */
@@ -27,7 +27,7 @@ export default function ThemeSwitcher() {
       <DropdownMenuTrigger asChild>
         <button
           aria-label="Change theme"
-          className="w-9 h-9 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+          className="w-9 h-9 rounded-full flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity"
         >
           <Palette className="w-5 h-5" />
         </button>

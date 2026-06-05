@@ -49,7 +49,7 @@ const PageLoader = () => (
 );
 
 const App = () => (
-  <ThemeProvider attribute="class" defaultTheme="topbar-navy" disableTransitionOnChange themes={["topbar-navy", "topbar-blue", "topbar-purple", "topbar-red", "topbar-green", "topbar-yellow"]}>
+  <ThemeProvider attribute="class" defaultTheme="topbar-green" disableTransitionOnChange themes={["topbar-green", "topbar-green-holo", "topbar-green-gradient", "topbar-lime", "topbar-mint", "topbar-rainbow"]}>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />

@@ -161,14 +161,52 @@
     --header-foreground: 0 0% 98%;
   }
 
-  /* Top-bar colour presets — recolour ONLY the header; body stays light with
-     black text. White header text on all (yellow will be low-contrast — flag). */
-  .topbar-navy   { --header: 227 49% 21%; --header-foreground: 0 0% 98%; }
-  .topbar-blue   { --header: 224 90% 52%; --header-foreground: 0 0% 100%; }
-  .topbar-purple { --header: 270 80% 55%; --header-foreground: 0 0% 100%; }
-  .topbar-red    { --header: 0 78% 52%;   --header-foreground: 0 0% 100%; }
-  .topbar-green  { --header: 150 72% 36%; --header-foreground: 0 0% 100%; }
-  .topbar-yellow { --header: 45 96% 53%;  --header-foreground: 0 0% 100%; }
+  /* Header bar surface — presets below recolour ONLY this; body stays light.
+     Text colour is driven by --header-foreground so light bars stay readable. */
+  .app-header-bar {
+    background: hsl(var(--header));
+    color: hsl(var(--header-foreground));
+    border-bottom: 1px solid hsl(var(--header-foreground) / 0.12);
+  }
+
+  /* Green family + a white bar with an animated rainbow holographic edge. */
+  .topbar-green { --header: 150 70% 38%; --header-foreground: 0 0% 100%; }
+
+  .topbar-green-holo { --header-foreground: 0 0% 100%; }
+  .topbar-green-holo .app-header-bar {
+    background: linear-gradient(110deg, #0f7a43, #1fa85c, #2ee6a6, #16c0b0, #6ad587, #1fa85c, #0f7a43);
+    background-size: 200% 100%;
+    animation: headerSheen 8s linear infinite;
+  }
+
+  .topbar-green-gradient { --header-foreground: 0 0% 100%; }
+  .topbar-green-gradient .app-header-bar {
+    background: linear-gradient(135deg, #0f7a43 0%, #1fa85c 45%, #38c97f 100%);
+  }
+
+  .topbar-lime { --header: 82 78% 45%; --header-foreground: 0 0% 9%; }
+
+  .topbar-mint { --header-foreground: 0 0% 9%; }
+  .topbar-mint .app-header-bar { background: #6ad587; }
+
+  .topbar-rainbow { --header-foreground: 0 0% 9%; }
+  .topbar-rainbow .app-header-bar {
+    background: #ffffff;
+    position: relative;
+    border-bottom-color: transparent;
+  }
+  .topbar-rainbow .app-header-bar::after {
+    content: "";
+    position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+    background: linear-gradient(90deg, #ff5d5d, #ffae34, #ffe753, #4ade80, #38bdf8, #a78bfa, #f472b6, #ff5d5d);
+    background-size: 200% 100%;
+    animation: headerSheen 6s linear infinite;
+  }
+
+  @keyframes headerSheen {
+    from { background-position: 0% 50%; }
+    to   { background-position: 200% 50%; }
+  }
 }
 
 @layer base {
@@ -178,6 +216,9 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
+    /* Subtle modern dot-grid texture (very faint; cards sit on top of it). */
+    background-image: radial-gradient(hsl(0 0% 0% / 0.04) 1px, transparent 1px);
+    background-size: 22px 22px;
   }
 
   h1,

@@ -80,7 +80,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
 
       {/* Header */}
       <header className="sticky top-0 z-50">
-        <div className="bg-[hsl(var(--header))] text-[hsl(var(--header-foreground))] backdrop-blur-xl border-b border-white/10">
+        <div className="app-header-bar backdrop-blur-xl">
         <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
           <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/" className="flex items-center gap-2 h-8">
@@ -88,11 +88,11 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <span className="font-display font-bold text-base tracking-wide uppercase">Collectiblez</span>
             </Link>
             <div className="hidden sm:flex items-center gap-0">
-              <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "text-white" : "text-white/55 hover:text-white"}`}>Dashboard</Link>
-              <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "text-white" : "text-white/55 hover:text-white"}`}>Explore</Link>
-              <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "text-white" : "text-white/55 hover:text-white"}`}>Sets</Link>
-              <Link to="/onchain/activity" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "text-white" : "text-white/55 hover:text-white"}`}>Onchain</Link>
-              <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "text-white" : "text-white/55 hover:text-white"}`}>Games</Link>
+              <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Dashboard</Link>
+              <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Explore</Link>
+              <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Sets</Link>
+              <Link to="/onchain/activity" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Onchain</Link>
+              <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Games</Link>
               {/* Giveaway hidden from public nav for now — system needs more
                   review before exposure. Admins still manage it at /admin/giveaways. */}
             </div>
