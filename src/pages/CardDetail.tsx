@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronRight, ArrowLeft, ExternalLink, ChevronDown, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronRight, ArrowLeft, ExternalLink, ChevronDown, TrendingUp, TrendingDown, Info } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import PriceChart from "@/components/PriceChart";
@@ -113,6 +113,7 @@ export default function CardDetail() {
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
   const [addingToCollection, setAddingToCollection] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false); // mobile card-info box toggle
   const [sentiment, setSentiment] = useState<SetSentiment | null>(null);
 
   const { data: card, isLoading: cardLoading } = useQuery({
@@ -419,11 +420,25 @@ export default function CardDetail() {
                     {card.name}
                   </h1>
                   <div className="flex items-center gap-2 shrink-0 mt-1">
+                    {/* Rarity badge: desktop inline; on mobile it moves into the
+                        collapsible info box below. */}
                     {card.rarity && (
-                      <Badge variant="secondary" className="text-xs">
+                      <Badge variant="secondary" className="text-xs hidden lg:inline-flex">
                         {card.rarity}
                       </Badge>
                     )}
+                    {/* Info toggle — MOBILE ONLY. Collapses the card metadata
+                        (rarity / type / HP / release date) into a tidy box so the
+                        title + price lead the page. */}
+                    <button
+                      type="button"
+                      onClick={() => setInfoOpen((o) => !o)}
+                      aria-label="Card details"
+                      aria-expanded={infoOpen}
+                      className="lg:hidden inline-flex items-center justify-center w-7 h-7 rounded-full border border-border text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                      <Info className="w-4 h-4" />
+                    </button>
                     <ShareCardButton
                       card={card}
                       price={marketPrice}
@@ -432,15 +447,18 @@ export default function CardDetail() {
                     />
                   </div>
                 </div>
+                {/* Essentials line — always visible. Release date hides on mobile
+                    (it lives in the info box); set + number stay for at-a-glance ID. */}
                 <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground flex-wrap">
                   <span>{card.set.name}</span>
                   <span>·</span>
                   <span>#{card.number}/{card.set.printedTotal || card.set.total}</span>
-                  <span>·</span>
-                  <span>{card.set.releaseDate}</span>
+                  <span className="hidden lg:inline">·</span>
+                  <span className="hidden lg:inline">{card.set.releaseDate}</span>
                 </div>
+                {/* Type / HP pills — DESKTOP only (mobile shows them in the box). */}
                 {(card.types?.length || card.hp) && (
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <div className="hidden lg:flex items-center gap-2 mt-2 flex-wrap">
                     {card.types?.map((t) => (
                       <span key={t} className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[t] || "bg-muted text-muted-foreground border border-border"}`}>
                         {t}
@@ -451,6 +469,18 @@ export default function CardDetail() {
                         HP {card.hp}
                       </span>
                     )}
+                  </div>
+                )}
+                {/* Collapsible info box — MOBILE ONLY. */}
+                {infoOpen && (
+                  <div className="lg:hidden mt-3 rounded-xl border border-border bg-muted/30 p-3 text-sm">
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
+                      {card.rarity && (<><dt className="text-muted-foreground">Rarity</dt><dd className="text-foreground text-right">{card.rarity}</dd></>)}
+                      {card.types?.length ? (<><dt className="text-muted-foreground">Type</dt><dd className="text-foreground text-right">{card.types.join(", ")}</dd></>) : null}
+                      {card.hp && (<><dt className="text-muted-foreground">HP</dt><dd className="text-foreground text-right">{card.hp}</dd></>)}
+                      {card.set.releaseDate && (<><dt className="text-muted-foreground">Released</dt><dd className="text-foreground text-right">{card.set.releaseDate}</dd></>)}
+                      <dt className="text-muted-foreground">Set</dt><dd className="text-foreground text-right">{card.set.name}</dd>
+                    </dl>
                   </div>
                 )}
               </div>
