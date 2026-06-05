@@ -74,6 +74,7 @@ import { motion } from "framer-motion";
 import ViewToggle, { type ViewMode } from "@/components/ViewToggle";
 import CardGridView from "@/components/CardGridView";
 import CardImage from "@/components/CardImage";
+import SetLogo from "@/components/SetLogo";
 import SEO from "@/components/SEO";
 
 type MarketTab = "top" | "trending" | "most-visited" | "sealed";
@@ -543,10 +544,10 @@ export default function Market() {
   const totalCount = summary?.cardCount ?? 0;
 
   const gridClasses = isSingleSet
-    ? "sm:grid-cols-[32px_1fr_100px_80px_80px_36px]"
+    ? "sm:grid-cols-[36px_1fr_108px_88px_88px_40px]"
     : isRecentFilter
-      ? "sm:grid-cols-[32px_1fr_160px_100px_80px_80px_96px_36px]"
-      : "sm:grid-cols-[32px_1fr_160px_100px_80px_80px_36px]";
+      ? "sm:grid-cols-[36px_1fr_190px_108px_88px_88px_104px_40px]"
+      : "sm:grid-cols-[36px_1fr_190px_108px_88px_88px_40px]";
 
   const footerText = (() => {
     if (activeTab === "sealed") return null;
@@ -732,7 +733,7 @@ export default function Market() {
         <div className="rounded-xl border border-border overflow-hidden">
           {/* Table header — hidden when Sealed/Most Visited tab is active or grid mode */}
           {activeTab !== "sealed" && activeTab !== "most-visited" && viewMode === "list" && (
-            <div className={`hidden sm:grid ${gridClasses} gap-2 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
+            <div className={`hidden sm:grid ${gridClasses} gap-3 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
               <span>#</span>
               <span>Card</span>
               {!isSingleSet && <span>Set</span>}
@@ -806,7 +807,7 @@ export default function Market() {
               <div>
                 {/* Header row — matches the other data tables' top bar.
                     Same grid template as the rows below so columns line up. */}
-                <div className="hidden sm:grid grid-cols-[32px_1fr_160px_100px_80px_80px_56px_36px] gap-2 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
+                <div className="hidden sm:grid grid-cols-[36px_1fr_190px_108px_88px_88px_64px_40px] gap-3 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center">
                   <span>#</span>
                   <span>Card</span>
                   <span>Set</span>
@@ -832,7 +833,7 @@ export default function Market() {
                       onClick={() => navigate(cardPathFromApiId(stat.tcg_api_id, stat.name, stat.set_name))}
                     >
                       {/* Desktop grid — same column widths as the other Market tables */}
-                      <div className="hidden sm:grid grid-cols-[32px_1fr_160px_100px_80px_80px_56px_36px] gap-2 px-4 py-2.5 items-center">
+                      <div className="hidden sm:grid grid-cols-[36px_1fr_190px_108px_88px_88px_64px_40px] gap-3 px-4 py-2.5 items-center">
                         <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                         <div className="flex items-center gap-3 min-w-0">
                           {stat.image_small && (
@@ -840,7 +841,10 @@ export default function Market() {
                           )}
                           <p className="text-sm font-semibold text-foreground truncate">{stat.name}</p>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">{stat.set_name}</p>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <SetLogo cardId={stat.tcg_api_id} alt="" className="h-5 w-auto max-w-[64px] object-contain shrink-0" />
+                          <p className="text-sm text-muted-foreground truncate">{stat.set_name}</p>
+                        </div>
                         <p className="text-sm font-bold text-foreground text-right tabular-nums">{stat.price != null ? formatPrice(stat.price) : "—"}</p>
                         <p className={`text-xs font-medium text-right tabular-nums ${p1.className}`}>{p1.text}</p>
                         <p className={`text-xs font-medium text-right tabular-nums ${p7.className}`}>{p7.text}</p>
@@ -953,7 +957,7 @@ export default function Market() {
                     onClick={() => navigate(cardPath(card.set, card))}
                   >
                     {/* Desktop: grid row */}
-                    <div className={`hidden sm:grid ${gridClasses} gap-2 px-4 py-2.5 items-center`}>
+                    <div className={`hidden sm:grid ${gridClasses} gap-3 px-4 py-2.5 items-center`}>
                       <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
                       <div className="flex items-center gap-3 min-w-0">
                         <CardImage src={card.images.small} alt={card.name} className="w-10 shrink-0 shadow-sm" loading="lazy" />
@@ -962,7 +966,12 @@ export default function Market() {
                           <p className="text-[10px] text-muted-foreground/60 truncate">#{card.number}/{card.set.printedTotal || card.set.total}</p>
                         </div>
                       </div>
-                      {!isSingleSet && <p className="text-sm text-muted-foreground truncate">{card.set.name}</p>}
+                      {!isSingleSet && (
+                        <div className="flex items-center gap-2 min-w-0">
+                          <SetLogo setId={card.set.id} fallbackUrl={card.set.images?.logo} alt="" className="h-5 w-auto max-w-[64px] object-contain shrink-0" />
+                          <p className="text-sm text-muted-foreground truncate">{card.set.name}</p>
+                        </div>
+                      )}
                       <p className="text-sm font-bold text-foreground text-right tabular-nums">{formatPrice(price)}</p>
                       <p className={`text-xs font-medium text-right tabular-nums ${pct24h.className}`}>{pct24h.text}</p>
                       <p className={`text-xs font-medium text-right tabular-nums ${pct7d.className}`}>{pct7d.text}</p>
