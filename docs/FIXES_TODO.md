@@ -17,19 +17,15 @@ Searchable **Artist** combobox on Explore only (Popover+Command typeahead, with 
 
 ## ▶ RESUME HERE (6/4) — start at the top
 
-### 1. 🔴 Search-bar freeze (TOP PRIORITY)
-Clicking the search → ~1 minute unresponsive.
-- **Diagnosis:** the client search index (`searchCardsAdvanced` → `loadCardIndex`) loads the **9.9 MB `all-cards.json`** + seeds **~22k price rows on the main thread** the first time it runs. Hits the **Explore page** and the **header bar's fallback** (when `search_catalog` RPC returns null). The header dropdown itself uses the fast DB RPC.
-- **Ties to #2:** `loadCardIndex` *should* read the lightweight DB `cards` table, but it's empty → always falls back to the 9.9 MB file. **Populating `cards` removes the 9.9 MB load = fixes the freeze.**
-- **Need from user:** (a) does it freeze on the **header bar** or the **Explore page**? (b) does the dropdown eventually show results?
-- **Quick safe fix available now:** make the header search **never** fall back to the 9.9 MB client path.
+### 1. 🔴 Search-bar freeze (TOP PRIORITY) — DIAGNOSED, fix needs a decision (see #2)
+Explore first-load → main-thread block (9.9 MB `all-cards.json` parse + ~22k price-row seed).
+- **Header bar is fine:** GlobalSearch uses the fast `search_catalog` RPC (deployed); it only falls back to the 9.9 MB client path if that RPC returns null. Freeze is the **Explore page** path (`searchCardsAdvanced → loadCardIndex`), which the artist filter also rides.
+- **Why populating `cards` did NOT fix it:** `loadCardIndex` loads the static 9.9 MB file *first* (completeness floor), THEN checks the live table. The live catalog only takes over if `live.cards.length >= static count`. Static = **23,572** (incl. **3,003 TCG Pocket** cards the sync excludes); live = **17,805**. So the gate **never passes** → 9.9 MB always loads. The live-catalog path has, in effect, never engaged.
+- **The real fix (gated on a decision, see #2):** make `loadCardIndex` try the live DB **first** and skip the 9.9 MB entirely. Blocker = the live `cards` table is not a superset of static (no Pocket; ~2.7k physical cards short), so switching now would DROP those cards. Must first make `cards` complete.
 
-### 2. 🔴 `cards` table sync writes 0 (KEYSTONE — unblocks a lot)
-`sync-cards-catalog` runs but writes 0 rows (schema mismatch; PK exists). **Need user to paste the `cards` column list:**
-```sql
-SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name='cards' ORDER BY ordinal_position;
-```
-Likely a `number`/`hp` column typed `integer` instead of `text`. **Unblocks:** Explore listing vintage, header-dropdown rarity search (#3), AND removes the 9.9 MB search-index load (#1).
+### 2. ✅ `cards` table sync writes 0 — RESOLVED (was duplicate ids, not schema)
+Root cause was NOT a schema mismatch — it was **duplicate ids inside one upsert batch** ("ON CONFLICT cannot affect row a second time" rejected the whole batch). Fixed in `sync-cards-catalog` with an in-run `seen` Set + background `EdgeRuntime.waitUntil`. Table now holds **17,805 EN cards (99% with artist)**. Unblocked the artist filter.
+- **➜ OPEN follow-up (unblocks #1 + the search freeze):** the live table is still **smaller than static** because the sync excludes Pocket/online-only (and is ~2.7k physical short). To let the live path engage and **drop the 9.9 MB file**, the `cards` table must become a superset of static. Decision for the user: (a) **include Pocket in the sync** (remove the `pokémon tcg pocket` skip in `sync-cards-catalog`) + resync, then loadCardIndex can go live-first; or (b) ship a small `pocket-cards.json` (~3k) and load only that + live, never the 9.9 MB. Either is another redeploy/resync.
 
 ### 3. 🟡 Header-dropdown rarity search — gated on #2
 The top-bar `search_catalog` RPC matches card **name only**. Add a JOIN to `cards` for rarity/alias matching once #2 is populated. (Explore-page search already does rarity/type/aliases — Tier 1, shipped.)
