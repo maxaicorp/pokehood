@@ -25,6 +25,7 @@ const Games = lazy(() => import("./pages/Games"));
 const CardMatch = lazy(() => import("./pages/CardMatch"));
 const Stats = lazy(() => import("./pages/Stats"));
 const Market = lazy(() => import("./pages/Market"));
+const BrandLab = lazy(() => import("./pages/BrandLab"));
 const Sets = lazy(() => import("./pages/Sets"));
 const SetDetail = lazy(() => import("./pages/SetDetail"));
 const Onchain = lazy(() => import("./pages/Onchain"));
@@ -62,6 +63,7 @@ const App = () => (
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Market />} />
+                  <Route path="/brand-lab" element={<BrandLab />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/explore" element={<Explore />} />
                   <Route path="/dashboard" element={<Dashboard />} />

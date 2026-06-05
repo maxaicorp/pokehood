@@ -443,27 +443,33 @@ export default function CardDetail() {
             ) : card ? (
               <div>
                 <div className="flex items-center justify-between gap-3">
-                  {/* Title + ⓘ inline (mobile) so the icon clearly belongs to the
-                      card name instead of floating next to Share. Vertically
-                      centered against Share so the heights read as matched. */}
-                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                    <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
-                      {card.name}
-                    </h1>
+                  <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground min-w-0">
+                    {card.name}
+                  </h1>
+                  {/* MOBILE: matched icon pair — info + share, both bare circular
+                      icons so they read as one tidy action cluster. */}
+                  <div className="lg:hidden flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => setInfoOpen((o) => !o)}
                       aria-label="Card details"
                       aria-expanded={infoOpen}
-                      className="lg:hidden inline-flex items-center justify-center w-6 h-6 rounded-full border border-border text-muted-foreground hover:bg-muted transition-colors shrink-0"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-border text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      <Info className="w-3.5 h-3.5" />
+                      <Info className="w-4 h-4" />
                     </button>
+                    <ShareCardButton
+                      card={card}
+                      price={marketPrice}
+                      pct24h={pct24h}
+                      shareUrl={`https://collectiblez.app${cardPath(card.set, { name: card.name, number: card.number })}`}
+                      iconOnly
+                    />
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Rarity badge: desktop inline; on mobile it moves into the box. */}
+                  {/* DESKTOP: rarity badge + labeled share (room to spare). */}
+                  <div className="hidden lg:flex items-center gap-2 shrink-0">
                     {card.rarity && (
-                      <Badge variant="secondary" className="text-xs hidden lg:inline-flex">
+                      <Badge variant="secondary" className="text-xs">
                         {card.rarity}
                       </Badge>
                     )}

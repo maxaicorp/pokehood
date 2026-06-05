@@ -18,6 +18,9 @@ interface ShareCardButtonProps {
   pct24h: number | null;
   /** Absolute URL to the card page (for the native share sheet + copy-link). */
   shareUrl: string;
+  /** Render as a bare circular icon (no "Share" label) to pair with other
+   *  icon actions. Used in the mobile card-header action cluster. */
+  iconOnly?: boolean;
 }
 
 /**
@@ -28,7 +31,7 @@ interface ShareCardButtonProps {
  * Scrydex's CDN which sends `access-control-allow-origin: *`, so the canvas
  * is never tainted.
  */
-export default function ShareCardButton({ card, price, pct24h, shareUrl }: ShareCardButtonProps) {
+export default function ShareCardButton({ card, price, pct24h, shareUrl, iconOnly }: ShareCardButtonProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -123,10 +126,21 @@ export default function ShareCardButton({ card, price, pct24h, shareUrl }: Share
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5">
-          <Share2 className="w-4 h-4" />
-          Share
-        </Button>
+        {iconOnly ? (
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Share"
+            className="w-8 h-8 rounded-full border-border text-muted-foreground hover:text-foreground"
+          >
+            <Share2 className="w-4 h-4" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <Share2 className="w-4 h-4" />
+            Share
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-sm">
         <DialogHeader>
