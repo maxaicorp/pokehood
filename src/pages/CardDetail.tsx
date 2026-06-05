@@ -417,7 +417,7 @@ export default function CardDetail() {
           </div>
 
           {/* Col 2 — Info + chart */}
-          <div className="flex flex-col gap-4 min-w-0">
+          <div className="flex flex-col gap-3 lg:gap-4 min-w-0">
             {/* Name + meta */}
             {cardLoading ? (
               <div className="space-y-2">
@@ -426,30 +426,30 @@ export default function CardDetail() {
               </div>
             ) : card ? (
               <div>
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
-                    {card.name}
-                  </h1>
-                  <div className="flex items-center gap-2 shrink-0 mt-1">
-                    {/* Rarity badge: desktop inline; on mobile it moves into the
-                        collapsible info box below. */}
-                    {card.rarity && (
-                      <Badge variant="secondary" className="text-xs hidden lg:inline-flex">
-                        {card.rarity}
-                      </Badge>
-                    )}
-                    {/* Info toggle — MOBILE ONLY. Collapses the card metadata
-                        (rarity / type / HP / release date) into a tidy box so the
-                        title + price lead the page. */}
+                <div className="flex items-start justify-between gap-3">
+                  {/* Title + ⓘ inline (mobile) so the icon clearly belongs to the
+                      card name instead of floating next to Share. */}
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    <h1 className="font-display font-bold text-2xl sm:text-3xl text-foreground">
+                      {card.name}
+                    </h1>
                     <button
                       type="button"
                       onClick={() => setInfoOpen((o) => !o)}
                       aria-label="Card details"
                       aria-expanded={infoOpen}
-                      className="lg:hidden inline-flex items-center justify-center w-7 h-7 rounded-full border border-border text-muted-foreground hover:bg-muted transition-colors"
+                      className="lg:hidden inline-flex items-center justify-center w-6 h-6 rounded-full border border-border text-muted-foreground hover:bg-muted transition-colors shrink-0"
                     >
-                      <Info className="w-4 h-4" />
+                      <Info className="w-3.5 h-3.5" />
                     </button>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 mt-1.5">
+                    {/* Rarity badge: desktop inline; on mobile it moves into the box. */}
+                    {card.rarity && (
+                      <Badge variant="secondary" className="text-xs hidden lg:inline-flex">
+                        {card.rarity}
+                      </Badge>
+                    )}
                     <ShareCardButton
                       card={card}
                       price={marketPrice}
