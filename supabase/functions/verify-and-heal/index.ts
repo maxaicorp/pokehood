@@ -218,10 +218,14 @@ serve(async (req: Request) => {
         return;
       }
 
-      // ── Step 2: coverage is genuinely low → re-run ONLY the chunks that
-      // didn't finish today — the exact same {mode:"chunk"} the crons run.
-      // Bounded by the cap + the credit reserve.
-      if (coverageLow) {
+      // ── Step 2: current complete-source coverage is missing/stale/low →
+      // re-run ONLY the chunks that didn't finish today — the exact same
+      // {mode:"chunk"} the crons run. Bounded by the cap + the credit reserve.
+      const sourceNeedsResnapshot = coverageLow
+        || state.failures.includes("source_stale")
+        || state.failures.includes("no_complete_snapshot")
+        || state.failures.includes("low_live_catalog");
+      if (sourceNeedsResnapshot) {
         // Guardrail (2): retry cap.
         const { data: attempts } = await supabase.rpc("heal_repair_attempts_today");
         if ((attempts ?? 0) >= MAX_REPAIRS_PER_DAY) {
@@ -249,9 +253,10 @@ serve(async (req: Request) => {
         const shortChunks = CHUNK_PLAN.filter((c) => !donePages.has(c.startPage));
 
         if (shortChunks.length === 0) {
-          // Every planned chunk reports complete, yet coverage is still low —
-          // the plan likely no longer reaches far enough (catalog grew). Don't
-          // guess and spend; flag for a human to extend CHUNK_PLAN + the crons.
+          // Every planned chunk reports complete, yet source coverage is still
+          // failing — the plan likely no longer reaches far enough (catalog
+          // grew) or the source feed produced too few NM prices. Don't guess and
+          // spend; flag for a human to extend CHUNK_PLAN + the crons.
           await finish(supabase, lockRowId, {
             result: "still_failing", actions, trigger_failures: state.failures,
             coverage_pct_before: before.coverage_pct, coverage_pct_after: state.coverage_pct,
