@@ -168,7 +168,11 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           </div>
         </div>
         </div>
-        {children}
+        {/* Page-injected sub-nav (e.g. Dashboard tabs). Needs a solid bg +
+            border so scrolling content doesn't bleed through the sticky header. */}
+        {children && (
+          <div className="bg-background border-b border-border/50">{children}</div>
+        )}
       </header>
 
       <QRCodeModal open={qrOpen} onOpenChange={setQrOpen} url={profileUrl} title="Share Your Profile" />

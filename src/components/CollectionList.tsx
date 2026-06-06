@@ -2,18 +2,25 @@ import { useState } from "react";
 import { CollectionCard, removeFromCollection, updateCardCondition, toggleForSale, updateCardQuantity } from "@/lib/collection-store";
 import { formatPrice } from "@/lib/pokemon-api";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, DollarSign, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import CardImage from "@/components/CardImage";
 
-const CONDITIONS = [
+const RAW_CONDITIONS = [
   { value: "NM", label: "Near Mint" },
   { value: "LP", label: "Lightly Played" },
   { value: "MP", label: "Moderately Played" },
   { value: "HP", label: "Heavily Played" },
   { value: "DMG", label: "Damaged" },
+];
+// Graded slabs — stored as the condition string (e.g. "PSA 10"). NOTE: value
+// still shows the live raw market price until graded valuation is wired in.
+const GRADED_CONDITIONS = [
+  "PSA 10", "PSA 9", "PSA 8",
+  "BGS 10", "BGS 9.5", "BGS 9",
+  "CGC 10", "CGC 9.5", "CGC 9",
 ];
 
 interface Props {
@@ -137,11 +144,22 @@ export default function CollectionList({ cards, onUpdate }: Props) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CONDITIONS.map((c) => (
-                    <SelectItem key={c.value} value={c.value} className="text-xs">
-                      {c.value} — {c.label}
-                    </SelectItem>
-                  ))}
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase tracking-wide">Raw</SelectLabel>
+                    {RAW_CONDITIONS.map((c) => (
+                      <SelectItem key={c.value} value={c.value} className="text-xs">
+                        {c.value} — {c.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase tracking-wide">Graded</SelectLabel>
+                    {GRADED_CONDITIONS.map((g) => (
+                      <SelectItem key={g} value={g} className="text-xs">
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             )}
