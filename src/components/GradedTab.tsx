@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getGradedPage, type GradedRow } from "@/lib/price-snapshots";
-import { getCardById, formatPrice } from "@/lib/pokemon-api";
+import { getCardById, getSets, formatPrice } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
 import { useAuth } from "@/contexts/AuthContext";
 import { toastAddedToInventory } from "@/lib/inventory-toast";
@@ -37,6 +37,18 @@ export default function GradedTab({ company, grade, setIds }: Props) {
     queryFn: () => getGradedPage({ company, grade, setIds, limit: 250 }),
     staleTime: 60_000,
   });
+
+  // Fallback set name: some graded cards (secret rares) aren't in the catalog,
+  // so the RPC's set_name comes back blank. Derive it from the card-id prefix
+  // via the sets list (same prefix the logo already resolves from).
+  const { data: setsData } = useQuery({ queryKey: ["pokemon-sets"], queryFn: getSets, staleTime: 5 * 60_000 });
+  const setNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of (setsData?.data ?? [])) m.set(s.id, s.name);
+    return m;
+  }, [setsData]);
+  const setIdOf = (id: string) => id.split("::")[0].split("-").slice(0, -1).join("-");
+  const displaySet = (row: GradedRow) => row.setName || setNameById.get(setIdOf(row.cardId)) || "";
 
   const handleAdd = async (row: GradedRow) => {
     if (!user) { toast.error("Please sign in to add cards."); return; }
@@ -78,7 +90,7 @@ export default function GradedTab({ company, grade, setIds }: Props) {
             </div>
             <div className="flex items-center gap-2 min-w-0">
               <SetLogo cardId={row.cardId} alt="" className="h-5 w-auto max-w-[56px] object-contain shrink-0" />
-              <p className="text-sm text-muted-foreground truncate">{row.setName}</p>
+              <p className="text-sm text-muted-foreground truncate">{displaySet(row)}</p>
             </div>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary w-fit">{row.company} {row.grade}</span>
             <p className="text-sm font-bold text-foreground text-right tabular-nums">{formatPrice(row.market)}</p>
@@ -96,7 +108,7 @@ export default function GradedTab({ company, grade, setIds }: Props) {
             <CardImage src={`https://images.scrydex.com/pokemon/${row.cardId}/small`} alt={row.cardName} className="w-12 shrink-0 shadow-sm" loading="lazy" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-foreground truncate">{row.cardName}</p>
-              <p className="text-xs text-muted-foreground truncate">{row.setName}</p>
+              <p className="text-xs text-muted-foreground truncate">{displaySet(row)}</p>
               <span className="inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{row.company} {row.grade}</span>
             </div>
             <p className="text-sm font-bold text-foreground tabular-nums shrink-0">{formatPrice(row.market)}</p>
