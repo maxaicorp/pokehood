@@ -138,38 +138,35 @@ async function fetchCardPrices(cardId: string, h: Record<string, string>) {
 
 const TREND_WINDOWS: Array<[string, number]> = [["days_7", 7], ["days_14", 14], ["days_30", 30], ["days_90", 90], ["days_180", 180]];
 
-function trendAnchorsByVariant(cardId: string, data: any): Array<{ date: string; variant: string; price: number }> {
+// Prices live at card.variants[].prices[] (each print variant has raw + graded
+// condition rows). We want the raw-NM market + trends. To stay continuous with
+// our existing snapshots, pick the print variant whose current market matches
+// our stored price; else the highest raw-NM market. Anchors are written to the
+// bare card_id (variant "normal"), which is what the chart reads.
+function trendAnchorsByVariant(cardId: string, data: any, currentPrice?: number): Array<{ date: string; variant: string; price: number }> {
   const card = Array.isArray(data?.data) ? data.data[0] : (data?.data ?? data);
-  const prices: any[] = Array.isArray(card?.prices) ? card.prices : [];
-  const raws = prices.filter((p) => p?.type === "raw" && typeof p?.market === "number" && p.market > 0 && p?.trends);
-  const nm = raws.filter((p) => p?.condition === "NM");
-  const pool = nm.length ? nm : raws;
-  if (!pool.length) return [];
-  const early = isEarlyVariantSet(cardId);
+  const variants: any[] = Array.isArray(card?.variants) ? card.variants : [];
+  const cands: Array<{ market: number; trends: any }> = [];
+  for (const v of variants) {
+    const ps: any[] = Array.isArray(v?.prices) ? v.prices : [];
+    const rawNM =
+      ps.find((p) => p?.type === "raw" && p?.condition === "NM" && !p?.is_perfect && typeof p?.market === "number" && p.market > 0 && p?.trends) ||
+      ps.find((p) => p?.type === "raw" && typeof p?.market === "number" && p.market > 0 && p?.trends);
+    if (rawNM) cands.push({ market: rawNM.market as number, trends: rawNM.trends });
+  }
+  if (!cands.length) return [];
+  const chosen = (typeof currentPrice === "number" && currentPrice > 0)
+    ? cands.reduce((best, c) => (Math.abs(c.market - currentPrice) < Math.abs(best.market - currentPrice) ? c : best), cands[0])
+    : cands.reduce((best, c) => (c.market > best.market ? c : best), cands[0]);
   const today = new Date();
   const out: Array<{ date: string; variant: string; price: number }> = [];
-  const emit = (variant: string, p: any) => {
-    const market = p.market as number;
-    for (const [key, n] of TREND_WINDOWS) {
-      const pct = p?.trends?.[key]?.percent_change;
-      if (typeof pct !== "number") continue;
-      const anchor = market / (1 + pct / 100);
-      if (!(anchor > 0) || !isFinite(anchor)) continue;
-      const d = new Date(today); d.setDate(d.getDate() - n);
-      out.push({ date: d.toISOString().split("T")[0], variant, price: Math.round(anchor * 100) / 100 });
-    }
-  };
-  if (early) {
-    const byVar = new Map<string, any>();
-    for (const p of pool) {
-      const v = typeof p?.variant === "string" && p.variant ? p.variant : "normal";
-      if (!byVar.has(v) || (p.market as number) > (byVar.get(v).market as number)) byVar.set(v, p);
-    }
-    for (const [v, p] of byVar) emit(v, p);
-  } else {
-    const chosen = MODERN_PRIORITY.map((v) => pool.find((x) => (x.variant ?? "normal") === v)).find(Boolean)
-      ?? pool.reduce((a, b) => ((b.market as number) > (a.market as number) ? b : a));
-    emit("normal", chosen);
+  for (const [key, n] of TREND_WINDOWS) {
+    const pct = chosen.trends?.[key]?.percent_change;
+    if (typeof pct !== "number") continue;
+    const anchor = chosen.market / (1 + pct / 100);
+    if (!(anchor > 0) || !isFinite(anchor)) continue;
+    const d = new Date(today); d.setDate(d.getDate() - n);
+    out.push({ date: d.toISOString().split("T")[0], variant: "normal", price: Math.round(anchor * 100) / 100 });
   }
   return out;
 }
@@ -279,10 +276,10 @@ serve(async (req) => {
     const work = async () => {
       // name/set lookup for the SnapshotRow required columns. Map both bare
       // and ::variant ids → bare meta so we can label per-variant rows too.
-      const baseMeta = new Map<string, { name: string; set: string }>();
+      const baseMeta = new Map<string, { name: string; set: string; price: number }>();
       for (let i = 0; i < cardIds.length; i += 500) {
-        const { data } = await supabase.from("latest_card_prices").select("card_id, card_name, set_name").in("card_id", cardIds.slice(i, i + 500));
-        for (const r of (data ?? []) as any[]) baseMeta.set(r.card_id, { name: r.card_name, set: r.set_name });
+        const { data } = await supabase.from("latest_card_prices").select("card_id, card_name, set_name, price").in("card_id", cardIds.slice(i, i + 500));
+        for (const r of (data ?? []) as any[]) baseMeta.set(r.card_id, { name: r.card_name, set: r.set_name, price: Number(r.price) });
       }
 
       const creditsBefore = await getCredits(sh);
@@ -293,8 +290,8 @@ serve(async (req) => {
       for (const bareId of cardIds) {
         const res = useTrends ? await fetchCardPrices(bareId, sh) : await fetchHistory(bareId, days, sh);
         if (!res.ok) { failCards++; if (failures.length < 20) failures.push(`${bareId}:${res.status}`); continue; }
-        const m = baseMeta.get(bareId) ?? { name: bareId, set: "" };
-        const pts = useTrends ? trendAnchorsByVariant(bareId, res.data) : parsePointsByVariant(bareId, res.data);
+        const m = baseMeta.get(bareId) ?? { name: bareId, set: "", price: 0 };
+        const pts = useTrends ? trendAnchorsByVariant(bareId, res.data, m.price) : parsePointsByVariant(bareId, res.data);
         if (!pts.length) { failCards++; continue; }
         okCards++;
         for (const p of pts) {
