@@ -102,6 +102,7 @@ Deno.serve(async (req) => {
       if (error) throw new Error(`Supabase read failed: ${error.message}`);
       if (!data || data.length === 0) break;
       for (const row of data as { card_id: string }[]) {
+        if (row.card_id.startsWith("sealed-")) continue;
         const base = row.card_id.split("::")[0];
         const setId = base.split("-").slice(0, -1).join("-");
         if (setId) priced.add(setId.toLowerCase());
