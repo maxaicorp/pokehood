@@ -49,6 +49,13 @@ export default function GradedTab({ company, grade, setIds }: Props) {
   }, [setsData]);
   const setIdOf = (id: string) => id.split("::")[0].split("-").slice(0, -1).join("-");
   const displaySet = (row: GradedRow) => row.setName || setNameById.get(setIdOf(row.cardId)) || "";
+  // Some secret rares aren't in the catalog, so the RPC returns the id as the
+  // name. Show a clean "#<number>" instead of the raw id (the set + logo still
+  // resolve), so the row reads intentional until the targeted name-backfill.
+  const displayName = (row: GradedRow) =>
+    row.cardName && row.cardName !== row.cardId
+      ? row.cardName
+      : `#${row.cardId.split("::")[0].split("-").at(-1) ?? "?"}`;
 
   const handleAdd = async (row: GradedRow) => {
     if (!user) { toast.error("Please sign in to add cards."); return; }
@@ -86,7 +93,7 @@ export default function GradedTab({ company, grade, setIds }: Props) {
             <span className="text-sm font-mono text-muted-foreground tabular-nums">{i + 1}</span>
             <div className="flex items-center gap-3 min-w-0">
               <CardImage src={`https://images.scrydex.com/pokemon/${row.cardId}/small`} alt={row.cardName} className="w-10 shrink-0 shadow-sm" loading="lazy" />
-              <p className="text-sm font-semibold text-foreground truncate">{row.cardName}</p>
+              <p className="text-sm font-semibold text-foreground truncate">{displayName(row)}</p>
             </div>
             <div className="flex items-center gap-2 min-w-0">
               <SetLogo cardId={row.cardId} alt="" className="h-5 w-auto max-w-[56px] object-contain shrink-0" />
@@ -107,7 +114,7 @@ export default function GradedTab({ company, grade, setIds }: Props) {
           <div className="sm:hidden flex items-center gap-3 p-3">
             <CardImage src={`https://images.scrydex.com/pokemon/${row.cardId}/small`} alt={row.cardName} className="w-12 shrink-0 shadow-sm" loading="lazy" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{row.cardName}</p>
+              <p className="text-sm font-semibold text-foreground truncate">{displayName(row)}</p>
               <p className="text-xs text-muted-foreground truncate">{displaySet(row)}</p>
               <span className="inline-block mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">{row.company} {row.grade}</span>
             </div>
