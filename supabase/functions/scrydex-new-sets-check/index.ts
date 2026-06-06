@@ -25,6 +25,7 @@ const corsHeaders = {
 };
 
 const SCRYDEX_API = "https://api.scrydex.com";
+const KNOWN_NON_ROUTED_PRICE_PREFIXES = new Set(["miscp"]);
 
 interface ScrydexExpansion {
   id: string;
@@ -105,6 +106,7 @@ Deno.serve(async (req) => {
         if (row.card_id.startsWith("sealed-")) continue;
         const base = row.card_id.split("::")[0];
         const setId = base.split("-").slice(0, -1).join("-");
+        if (KNOWN_NON_ROUTED_PRICE_PREFIXES.has(setId.toLowerCase())) continue;
         if (setId) priced.add(setId.toLowerCase());
       }
       if (data.length < 1000) break;
