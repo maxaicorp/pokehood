@@ -268,6 +268,56 @@ export async function getTopMovers({
     .map(rowToLatestPrice);
 }
 
+// ─── Graded market data (the /market "Graded" tab) ────────────────────────────
+export interface GradedRow {
+  cardId: string;
+  cardName: string;
+  setName: string;
+  company: string;
+  grade: number;
+  market: number;
+  low: number | null;
+  high: number | null;
+}
+
+/** Value-sorted graded slabs for one company + grade, optionally set-scoped.
+ *  Backed by get_graded_page over latest_graded_prices. */
+export async function getGradedPage(opts: {
+  company: string;
+  grade: number;
+  setIds?: string[] | null;
+  minPrice?: number;
+  limit?: number;
+  offset?: number;
+}): Promise<GradedRow[]> {
+  const { data, error } = await (supabase.rpc as any)("get_graded_page", {
+    p_company: opts.company,
+    p_grade: opts.grade,
+    p_set_ids: opts.setIds && opts.setIds.length ? opts.setIds : null,
+    p_min_price: opts.minPrice ?? 0,
+    p_limit: opts.limit ?? 250,
+    p_offset: opts.offset ?? 0,
+  });
+  if (error || !Array.isArray(data)) return [];
+  return (data as any[]).map((r) => ({
+    cardId: r.card_id,
+    cardName: r.card_name,
+    setName: r.set_name,
+    company: r.company,
+    grade: Number(r.grade),
+    market: Number(r.market),
+    low: r.low != null ? Number(r.low) : null,
+    high: r.high != null ? Number(r.high) : null,
+  }));
+}
+
+/** Which (company, grade) combos exist + counts — powers the tab's dropdowns. */
+export async function getGradedFilterOptions(): Promise<{ company: string; grade: number; count: number }[]> {
+  const { data, error } = await (supabase.rpc as any)("get_graded_filter_options");
+  if (error || !Array.isArray(data)) return [];
+  return (data as any[]).map((r) => ({ company: r.company, grade: Number(r.grade), count: Number(r.card_count) }));
+}
+
 /** Fetch latest price + 1d/7d/30d for a specific set of card ids (chunked to
  *  stay under PostgREST URL limits). Used to hydrate small lists like
  *  Most-Visited without pulling the whole latest-prices set. */

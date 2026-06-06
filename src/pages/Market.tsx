@@ -65,8 +65,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, ArrowUp, ArrowDown, ArrowUpDown, Flame, Trophy, Eye, Package, Award } from "lucide-react";
 import SealedTab from "@/components/SealedTab";
+import GradedTab from "@/components/GradedTab";
 import { SEALED_TYPES } from "@/lib/sealed-store";
 import { getMostViewed, getMostViewedWindowed, CardStatRow } from "@/lib/card-stats-store";
 import { toast } from "sonner";
@@ -77,7 +78,7 @@ import CardImage from "@/components/CardImage";
 import SetLogo from "@/components/SetLogo";
 import SEO from "@/components/SEO";
 
-type MarketTab = "top" | "trending" | "most-visited" | "sealed";
+type MarketTab = "top" | "trending" | "most-visited" | "sealed" | "graded";
 
 const VISIBLE_PAGE_SIZE = 10;
 // Scroll-load pages are larger than the first paint. The first paint stays at 10
@@ -108,6 +109,7 @@ const MODERN_ERA_SERIES = new Set(["Scarlet & Violet", "Mega Evolution"]);
 const MARKET_TABS = [
   { key: "top", label: "Top", icon: Trophy },
   { key: "sealed", label: "Sealed", icon: Package },
+  { key: "graded", label: "Graded", icon: Award },
   { key: "trending", label: "Movers", icon: Flame },
   { key: "most-visited", label: "Most Visited", icon: Eye },
 ] as const;
@@ -378,7 +380,7 @@ export default function Market() {
     if (!sentinel) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && activeTab !== "sealed" && activeTab !== "most-visited") {
+        if (entry.isIntersecting && activeTab !== "sealed" && activeTab !== "most-visited" && activeTab !== "graded") {
           setVisibleCount((v) => Math.min(v + SCROLL_PAGE_SIZE, cards.length));
         }
       },
@@ -551,7 +553,7 @@ export default function Market() {
       : "sm:grid-cols-[36px_1fr_248px_108px_88px_88px_40px]";
 
   const footerText = (() => {
-    if (activeTab === "sealed") return null;
+    if (activeTab === "sealed" || activeTab === "graded") return null;
     if (activeTab === "most-visited") {
       if (mostVisitedLoading || mostVisitedCards.length === 0) return null;
       return `Showing top ${mostVisitedCards.length} most visited cards`;
@@ -688,6 +690,9 @@ export default function Market() {
               </Select>
               <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
+          ) : activeTab === "graded" ? (
+            // Graded tab owns its own company/grade/set filters inside GradedTab.
+            <span />
           ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
               {/* Movers timeframe — re-ranks by 24h / 7d / 30d % move. */}
@@ -750,8 +755,8 @@ export default function Market() {
 
         {/* Table */}
         <div className="rounded-xl border border-border overflow-hidden">
-          {/* Table header — hidden when Sealed/Most Visited tab is active or grid mode */}
-          {activeTab !== "sealed" && activeTab !== "most-visited" && viewMode === "list" && (
+          {/* Table header — hidden when Sealed/Graded/Most Visited tab is active or grid mode */}
+          {activeTab !== "sealed" && activeTab !== "most-visited" && activeTab !== "graded" && viewMode === "list" && (
             <div className={`hidden sm:grid ${gridClasses} gap-3 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
               <span>#</span>
               <span>Card</span>
@@ -772,6 +777,8 @@ export default function Market() {
 
           {activeTab === "sealed" ? (
             <SealedTab typeFilter={sealedType} viewMode={viewMode} onSummary={(value, count) => setSealedSummary({ value, count })} />
+          ) : activeTab === "graded" ? (
+            <GradedTab />
           ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
               <div>
