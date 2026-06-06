@@ -115,6 +115,65 @@ function parsePointsByVariant(cardId: string, data: any): Array<{ date: string; 
   return out;
 }
 
+// ── Trends-based anchors: derive PAST prices from the card's prices[].trends
+// (% change at 7/14/30/90/180 days) → a coarse 6-month history WITHOUT a daily
+// series (Scrydex's daily price_history only goes back ~20 days). One call per
+// card, ~1 credit. anchor = market / (1 + percent_change/100).
+async function fetchCardPrices(cardId: string, h: Record<string, string>) {
+  const candidates = [
+    `${SCRYDEX}/pokemon/v1/cards/${encodeURIComponent(cardId)}?include=prices`,
+    `${SCRYDEX}/pokemon/v1/en/cards/${encodeURIComponent(cardId)}?include=prices`,
+  ];
+  const attempts: Array<{ url: string; status: number }> = [];
+  for (const url of candidates) {
+    const r = await fetch(url, { headers: h });
+    attempts.push({ url, status: r.status });
+    if (r.ok) {
+      let data: unknown; try { data = JSON.parse(await r.text()); } catch { data = null; }
+      return { ok: true, url, status: r.status, data, attempts };
+    }
+  }
+  return { ok: false, url: candidates[0], status: attempts.at(-1)?.status ?? 0, data: null, attempts };
+}
+
+const TREND_WINDOWS: Array<[string, number]> = [["days_7", 7], ["days_14", 14], ["days_30", 30], ["days_90", 90], ["days_180", 180]];
+
+function trendAnchorsByVariant(cardId: string, data: any): Array<{ date: string; variant: string; price: number }> {
+  const card = Array.isArray(data?.data) ? data.data[0] : (data?.data ?? data);
+  const prices: any[] = Array.isArray(card?.prices) ? card.prices : [];
+  const raws = prices.filter((p) => p?.type === "raw" && typeof p?.market === "number" && p.market > 0 && p?.trends);
+  const nm = raws.filter((p) => p?.condition === "NM");
+  const pool = nm.length ? nm : raws;
+  if (!pool.length) return [];
+  const early = isEarlyVariantSet(cardId);
+  const today = new Date();
+  const out: Array<{ date: string; variant: string; price: number }> = [];
+  const emit = (variant: string, p: any) => {
+    const market = p.market as number;
+    for (const [key, n] of TREND_WINDOWS) {
+      const pct = p?.trends?.[key]?.percent_change;
+      if (typeof pct !== "number") continue;
+      const anchor = market / (1 + pct / 100);
+      if (!(anchor > 0) || !isFinite(anchor)) continue;
+      const d = new Date(today); d.setDate(d.getDate() - n);
+      out.push({ date: d.toISOString().split("T")[0], variant, price: Math.round(anchor * 100) / 100 });
+    }
+  };
+  if (early) {
+    const byVar = new Map<string, any>();
+    for (const p of pool) {
+      const v = typeof p?.variant === "string" && p.variant ? p.variant : "normal";
+      if (!byVar.has(v) || (p.market as number) > (byVar.get(v).market as number)) byVar.set(v, p);
+    }
+    for (const [v, p] of byVar) emit(v, p);
+  } else {
+    const chosen = MODERN_PRIORITY.map((v) => pool.find((x) => (x.variant ?? "normal") === v)).find(Boolean)
+      ?? pool.reduce((a, b) => ((b.market as number) > (a.market as number) ? b : a));
+    emit("normal", chosen);
+  }
+  return out;
+}
+
 // Legacy alias for the test-mode response shape.
 function parsePoints(data: any): Array<{ date: string; price: number }> {
   const byDay = new Map<string, number>();
@@ -173,8 +232,26 @@ serve(async (req) => {
     });
   }
 
-  // ── BACKFILL: scoped cards → upsert daily points → refresh ──
-  if (body.mode === "backfill") {
+  // ── TEST TRENDS: one card, derive 90/180d anchors from trends, no writes ──
+  if (body.test_trends) {
+    const before = await getCredits(sh);
+    const res = await fetchCardPrices(String(body.test_trends), sh);
+    const after = await getCredits(sh);
+    return json({
+      mode: "test_trends",
+      card_id: body.test_trends,
+      endpoint_used: res.url,
+      status: res.status,
+      credits_before: before,
+      credits_after: after,
+      credits_used: before != null && after != null ? before - after : "unknown",
+      anchors: res.ok ? trendAnchorsByVariant(String(body.test_trends), res.data) : [],
+    });
+  }
+
+  // ── BACKFILL (daily history) / TRENDS (90/180d anchors) → upsert → refresh ──
+  if (body.mode === "backfill" || body.mode === "trends") {
+    const useTrends = body.mode === "trends";
     let cardIds: string[] = Array.isArray(body.card_ids) ? body.card_ids.filter((x: unknown) => typeof x === "string") : [];
     const scope: string = typeof body.scope === "string" ? body.scope : "";
     if (!cardIds.length && scope.startsWith("set:")) {
@@ -214,10 +291,10 @@ serve(async (req) => {
       const failures: string[] = [];
 
       for (const bareId of cardIds) {
-        const res = await fetchHistory(bareId, days, sh);
+        const res = useTrends ? await fetchCardPrices(bareId, sh) : await fetchHistory(bareId, days, sh);
         if (!res.ok) { failCards++; if (failures.length < 20) failures.push(`${bareId}:${res.status}`); continue; }
         const m = baseMeta.get(bareId) ?? { name: bareId, set: "" };
-        const pts = parsePointsByVariant(bareId, res.data);
+        const pts = useTrends ? trendAnchorsByVariant(bareId, res.data) : parsePointsByVariant(bareId, res.data);
         if (!pts.length) { failCards++; continue; }
         okCards++;
         for (const p of pts) {
@@ -258,7 +335,9 @@ serve(async (req) => {
 
       let upserted = 0;
       for (let i = 0; i < toWrite.length; i += 500) {
-        const { error } = await supabase.from("price_snapshots").upsert(toWrite.slice(i, i + 500), { onConflict: "card_id,recorded_at" });
+        // Trends anchors ONLY fill gaps (ignoreDuplicates) — never clobber a real
+        // daily snapshot. Daily backfill upserts normally (corrects bad fills).
+        const { error } = await supabase.from("price_snapshots").upsert(toWrite.slice(i, i + 500), { onConflict: "card_id,recorded_at", ignoreDuplicates: useTrends });
         if (!error) upserted += toWrite.slice(i, i + 500).length;
       }
 
