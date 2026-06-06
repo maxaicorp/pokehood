@@ -49,7 +49,7 @@ const CHECK_LABELS: Record<string, string> = {
 
 const CHECK_HELP: Record<string, string> = {
   pipeline_completeness:
-    "THE contract — the one signal that means the same thing here, in the health-check function, and in the heal cron (get_pipeline_completeness SQL fn). A run is COMPLETE only if today's snapshot covers ≥90% of the catalog, ≥75% of cards have a 24h delta, and the read cache was refreshed today. This is the check that goes red on a partial snapshot even when pg_cron reported 'succeeded' — the gap that hid every recent outage.",
+    "THE contract — the one signal that means the same thing here, in the health-check function, and in the heal cron (get_pipeline_completeness SQL fn). COMPLETE means the live read cache was rebuilt from the latest complete priced snapshot window, nearly all live rows come from that same window, 24h deltas are populated, and the cache is fresh. This catches stale carry-forward prices even when pg_cron reported 'succeeded'.",
   onchain_health:
     "Onchain subsystem contract (get_onchain_health SQL fn), shared with the heal-onchain cron. Goes red two ways: (1) a stalled ingest — activity or listings older than 6h; the heal cron re-triggers the ingest. (2) a SANITY-GUARD trip — a sale priced like a parse bug (>$100k) or a price_info shape the renderer doesn't recognize; these are logic bugs the heal cron FLAGS for a human rather than re-running (re-ingest can't fix wrong math). The shape guard is what would have caught the CC $90k display bug on day one.",
   end_to_end_read:
