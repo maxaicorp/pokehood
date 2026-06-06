@@ -509,13 +509,10 @@ async function checkEndToEndReadProbe(
   };
 }
 
-// THE headline check: is the price pipeline actually COMPLETE today, by the
-// single shared contract (get_pipeline_completeness SQL fn)? Every other check
-// looks at one stage; this one asks the question the whole system exists to
-// answer — "does the market show fresh, complete data right now?" — using the
-// exact thresholds the admin page and the heal cron also read. A partial
-// snapshot (the recurring outage) goes red here even when pg_cron said
-// "succeeded".
+// THE headline check: is the price pipeline actually COMPLETE, by the single
+// shared contract (get_pipeline_completeness SQL fn)? It verifies the live read
+// cache is built from the latest complete priced snapshot window, has deltas,
+// and contains no stale carry-forward rows from older/fallback pricing runs.
 async function checkPipelineCompleteness(
   supabase: any,
 ): Promise<CheckResult> {
@@ -525,28 +522,34 @@ async function checkPipelineCompleteness(
   }
   const r = data as {
     pass: boolean; coverage_pct: number; delta_pct: number;
-    today_coverage: number; catalog: number; cache_age_hours: number | null;
-    cache_is_today: boolean; failures: string[];
-    thresholds: { coverage_pct_min: number; delta_pct_min: number; cache_age_hours_max: number };
+    today_coverage?: number; source_coverage?: number; catalog: number; cache_age_hours: number | null;
+    source_snapshot_date?: string | null; source_age_days?: number | null; cache_is_today?: boolean; failures: string[];
+    thresholds: { coverage_pct_min: number; delta_pct_min: number; cache_age_hours_max: number; source_age_days_max?: number; live_catalog_min?: number };
   };
   const t = r.thresholds;
+  const sourceCoverage = r.source_coverage ?? r.today_coverage ?? 0;
+  const sourceDate = r.source_snapshot_date ?? "unknown date";
   if (r.pass) {
     return {
       ok: true,
-      message: `Pipeline COMPLETE — ${r.coverage_pct}% catalog covered today (${r.today_coverage.toLocaleString()}/${r.catalog.toLocaleString()}), ${r.delta_pct}% have 24h deltas, cache fresh.`,
+      message: `Pipeline COMPLETE — live cache matches latest complete snapshot (${sourceDate}: ${sourceCoverage.toLocaleString()}/${r.catalog.toLocaleString()} rows fresh), ${r.delta_pct}% have 24h deltas.`,
       detail: r,
     };
   }
   // Translate the machine failure codes into a human "what's broken + the bar it missed".
   const reasons: string[] = [];
   if (r.failures?.includes("low_coverage"))
-    reasons.push(`only ${r.coverage_pct}% of cards snapshotted today (need ${t.coverage_pct_min}%) — snapshot run is PARTIAL`);
+    reasons.push(`only ${r.coverage_pct}% of live cache rows come from the latest complete snapshot window (need ${t.coverage_pct_min}%) — stale rows are being carried forward`);
+  if (r.failures?.includes("low_live_catalog"))
+    reasons.push(`only ${r.catalog.toLocaleString()} live priced cards (need ${t.live_catalog_min?.toLocaleString?.() ?? "the full-run floor"}) — read cache is too small`);
+  if (r.failures?.includes("no_complete_snapshot"))
+    reasons.push("no complete priced snapshot window exists yet");
+  if (r.failures?.includes("source_stale"))
+    reasons.push(`latest complete snapshot is ${r.source_age_days} days old (${sourceDate})`);
   if (r.failures?.includes("low_delta_coverage"))
     reasons.push(`only ${r.delta_pct}% of cards have a 24h delta (need ${t.delta_pct_min}%) — prior-day snapshots are missing`);
   if (r.failures?.includes("stale_cache"))
-    reasons.push(r.cache_is_today
-      ? `cache is ${r.cache_age_hours}h old (max ${t.cache_age_hours_max}h)`
-      : `cache was not refreshed today — run refresh_latest_card_prices()`);
+    reasons.push(`cache is ${r.cache_age_hours}h old or was refreshed before the latest complete snapshot — run refresh_latest_card_prices()`);
   return {
     ok: false,
     message: `Pipeline INCOMPLETE: ${reasons.join("; ")}.`,
