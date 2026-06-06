@@ -26,9 +26,9 @@ interface PriceChartProps {
   };
 }
 
-type Range = "7d" | "30d" | "90d";
+type Range = "24h" | "1m" | "3m" | "6m" | "1y";
 
-const RANGE_DAYS: Record<Range, number> = { "7d": 7, "30d": 30, "90d": 90 };
+const RANGE_DAYS: Record<Range, number> = { "24h": 1, "1m": 30, "3m": 90, "6m": 180, "1y": 365 };
 
 function formatDateShort(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -96,13 +96,14 @@ export default function PriceChart({
   currentPrice,
   cardmarketAvgs,
 }: PriceChartProps) {
-  // Default to the long-term view — most people care about the 90-day trend,
-  // not a single day's wiggle. (Synthetic-only cards fall back to 30d below.)
-  const [range, setRange] = useState<Range>("90d");
+  // Default to the 3-month view. We fetch a full year so 6M/1Y are instant;
+  // they show whatever history exists (and grow as snapshots accumulate /
+  // after a Scrydex backfill). Synthetic-only cards fall back to 3M below.
+  const [range, setRange] = useState<Range>("3m");
 
   const { data: snapshotHistory, isLoading } = useQuery({
-    queryKey: ["price-history", cardId],
-    queryFn: () => getCardPriceHistory(cardId, 90),
+    queryKey: ["price-history", cardId, 365],
+    queryFn: () => getCardPriceHistory(cardId, 365),
     staleTime: 10 * 60_000,
   });
 
@@ -131,7 +132,7 @@ export default function PriceChart({
 
   const isSynthetic = !snapshotHistory || snapshotHistory.length < 2;
   // Synthetic-only cards don't show a 90d button, so fall the default back to 30d.
-  const effRange: Range = isSynthetic && range === "90d" ? "30d" : range;
+  const effRange: Range = isSynthetic && (range === "6m" || range === "1y") ? "3m" : range;
 
   // Filter by selected range
   if (chartData.length > 0) {
@@ -175,19 +176,19 @@ export default function PriceChart({
           )}
         </div>
         <div className="flex gap-1 shrink-0">
-          {(["7d", "30d", "90d"] as Range[])
-            .filter((r) => !isSynthetic || r !== "90d")
+          {(["24h", "1m", "3m", "6m", "1y"] as Range[])
+            .filter((r) => !isSynthetic || (r !== "6m" && r !== "1y"))
             .map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
-                className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
+                className={`px-2 py-1 text-xs rounded-md font-medium transition-colors ${
                   effRange === r
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {r}
+                {r.toUpperCase()}
               </button>
             ))}
         </div>
