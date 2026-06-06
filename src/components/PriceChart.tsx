@@ -160,21 +160,21 @@ export default function PriceChart({
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-baseline gap-2">
-          <h3 className="font-display font-semibold text-foreground">
-            Price History
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <h3 className="font-display font-semibold text-foreground text-sm sm:text-base whitespace-nowrap">
+            History
           </h3>
           {hasData && (
             <span
-              className="text-xs font-semibold tabular-nums"
+              className="text-xs font-semibold tabular-nums whitespace-nowrap"
               style={{ color: lineColor }}
             >
               {rangePct >= 0 ? "+" : ""}{rangePct.toFixed(1)}%
             </span>
           )}
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 shrink-0">
           {(["7d", "30d", "90d"] as Range[])
             .filter((r) => !isSynthetic || r !== "90d")
             .map((r) => (
