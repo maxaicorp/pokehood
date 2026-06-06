@@ -114,6 +114,15 @@ const MARKET_TABS = [
   { key: "most-visited", label: "Most Visited", icon: Eye },
 ] as const;
 type MarketTabKey = (typeof MARKET_TABS)[number]["key"];
+
+// Graded tab — only the companies people actually use, with common grades each.
+const GRADED_COMPANIES = ["PSA", "BGS", "CGC", "TAG"] as const;
+const GRADED_GRADE_OPTIONS: Record<string, string[]> = {
+  PSA: ["10", "9", "8"],
+  BGS: ["10", "9.5", "9"],
+  CGC: ["10", "9.5", "9"],
+  TAG: ["10", "9.5", "9"],
+};
 const MOST_VISITED_LIMIT = 500;
 
 /** Minimal PokemonCard from a Most-Visited stat row, so the quick-action panel
@@ -155,6 +164,8 @@ export default function Market() {
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
   const [mvWindow, setMvWindow] = useState<"all" | "24h" | "7d" | "30d">("all");
   const [moversWindow, setMoversWindow] = useState<"24h" | "7d" | "30d">("24h");
+  const [gradedCompany, setGradedCompany] = useState("PSA");
+  const [gradedGrade, setGradedGrade] = useState("10");
 
   // Sentiment voting state
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
@@ -691,8 +702,32 @@ export default function Market() {
               <ViewToggle value={viewMode} onChange={setViewMode} />
             </div>
           ) : activeTab === "graded" ? (
-            // Graded tab owns its own company/grade/set filters inside GradedTab.
-            <span />
+            <div className="flex items-center gap-2 justify-between sm:justify-end">
+              <Select value={gradedCompany} onValueChange={(v) => { setGradedCompany(v); setGradedGrade((GRADED_GRADE_OPTIONS[v] ?? ["10"])[0]); }}>
+                <SelectTrigger className="w-[84px] bg-background"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GRADED_COMPANIES.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={gradedGrade} onValueChange={setGradedGrade}>
+                <SelectTrigger className="w-[92px] bg-background"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(GRADED_GRADE_OPTIONS[gradedCompany] ?? ["10"]).map((g) => (<SelectItem key={g} value={g}>{gradedCompany} {g}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedSetId || "all"} onValueChange={(v) => setSelectedSetId(v === "all" ? "" : v)}>
+                <SelectTrigger className="w-[150px] sm:w-[180px] bg-background"><SelectValue placeholder="All Sets" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sets</SelectItem>
+                  <SelectItem value="modern">Modern Era</SelectItem>
+                  <SelectItem value="recent5">Recent Sets (5)</SelectItem>
+                  <SelectItem value="recent10">Recent Sets (10)</SelectItem>
+                  {setsData?.data?.filter((s: PokemonSet) => !s.isOnlineOnly).map((s: PokemonSet) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
               {/* Movers timeframe — re-ranks by 24h / 7d / 30d % move. */}
@@ -778,7 +813,11 @@ export default function Market() {
           {activeTab === "sealed" ? (
             <SealedTab typeFilter={sealedType} viewMode={viewMode} onSummary={(value, count) => setSealedSummary({ value, count })} />
           ) : activeTab === "graded" ? (
-            <GradedTab />
+            <GradedTab
+              company={gradedCompany}
+              grade={Number(gradedGrade)}
+              setIds={selectedSetId ? [...resolveMarketSetIds()] : null}
+            />
           ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
               <div>

@@ -19,11 +19,12 @@ LANGUAGE sql STABLE
 SET search_path = public
 AS $$
   SELECT g.card_id,
-         COALESCE(lcp.card_name, g.card_id) AS card_name,
-         COALESCE(lcp.set_name, '')         AS set_name,
+         COALESCE(c.name, lcp.card_name, g.card_id)               AS card_name,
+         COALESCE(NULLIF(c.set_name, ''), lcp.set_name, '')        AS set_name,
          g.company, g.grade, g.market, g.low, g.high
   FROM public.latest_graded_prices g
-  LEFT JOIN public.latest_card_prices lcp ON lcp.card_id = g.card_id
+  LEFT JOIN public.cards c               ON c.id = g.card_id           -- catalog (incl. vintage) for names
+  LEFT JOIN public.latest_card_prices lcp ON lcp.card_id = g.card_id   -- raw cache fallback
   WHERE g.company = p_company
     AND g.grade   = p_grade
     AND g.market IS NOT NULL
