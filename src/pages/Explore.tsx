@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  getWishlists, createWishlist, addCardToWishlist, getAllWishlistCardIds,
+  getWishlists, createWishlist, addCardToWishlist, getAllWishlistCardIds, removeCardFromWishlist,
 } from "@/lib/wishlist-store";
 import {
   searchCardsAdvanced,
@@ -256,6 +256,15 @@ export default function Explore() {
 
   const handleWishlist = async (card: PokemonCard) => {
     if (!user) { toast.error("Please sign in."); return; }
+    // Toggle: if already wishlisted, remove it (the heart un-fills).
+    if (wishlistedIds.has(card.id)) {
+      try {
+        await removeCardFromWishlist(card.id);
+        toast.success(`${card.name} removed from wishlist`);
+        queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
+      } catch { toast.error("Failed to remove from wishlist."); }
+      return;
+    }
     let targetWishlist = wishlists[0];
     if (!targetWishlist) {
       try {

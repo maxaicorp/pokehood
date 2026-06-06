@@ -152,6 +152,7 @@ export default function Market() {
   const [mostVisitedCards, setMostVisitedCards] = useState<CardStatRow[]>([]);
   const [mostVisitedLoading, setMostVisitedLoading] = useState(false);
   const [mvWindow, setMvWindow] = useState<"all" | "24h" | "7d" | "30d">("all");
+  const [moversWindow, setMoversWindow] = useState<"24h" | "7d" | "30d">("24h");
 
   // Sentiment voting state
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
@@ -252,7 +253,7 @@ export default function Market() {
     // Movers tab: rank the WHOLE catalog (price >= $2) server-side by 24h move,
     // not a client sort over the price-capped top set. Single bounded fetch.
     if (activeTab === "trending") {
-      getTopMovers({ window: "24h", minPrice: 2, setIds, limit: 250 })
+      getTopMovers({ window: moversWindow, minPrice: 2, setIds, limit: 250 })
         .then(hydrateCardsFromLatestPrices)
         .then((movers) => { if (!cancelled) { setCards(movers); setIsLoading(false); } })
         .catch((err) => {
@@ -291,7 +292,7 @@ export default function Market() {
       .catch(() => { /* Phase A already painted something; leave it on screen */ });
 
     return () => { cancelled = true; };
-  }, [pricesReady, resolveMarketSetIds, selectedSetId, setsData, refreshToken, activeTab]);
+  }, [pricesReady, resolveMarketSetIds, selectedSetId, setsData, refreshToken, activeTab, moversWindow]);
 
   // Refresh on tab focus and on a custom "collectiblez:force-refresh" event
   // (broadcast by the admin Master Refresh button via localStorage). Without
@@ -689,6 +690,24 @@ export default function Market() {
             </div>
           ) : (
             <div className="flex items-center gap-3 justify-between sm:justify-end">
+              {/* Movers timeframe — re-ranks by 24h / 7d / 30d % move. */}
+              {activeTab === "trending" && (
+                <div className="flex gap-1 shrink-0">
+                  {(["24h", "7d", "30d"] as const).map((w) => (
+                    <button
+                      key={w}
+                      onClick={() => setMoversWindow(w)}
+                      className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
+                        moversWindow === w
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {w}
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* Hidden until the server-computed total arrives, so the
                   number never ratchets as the user scrolls. Not shown on
                   Movers — a "Top N value" sum is meaningless on a movers list
