@@ -1,1 +1,6 @@
 project_id = "cmthndfrvnlyfxgxqjkm"
+
+# scrydex-webhook is called by Scrydex (no Supabase JWT) — it must be public.
+# Security is handled inside the function via HMAC signature verification.
+[functions.scrydex-webhook]
+verify_jwt = false
