@@ -166,6 +166,9 @@ export default function Market() {
   const [moversWindow, setMoversWindow] = useState<"24h" | "7d" | "30d">("24h");
   const [gradedCompany, setGradedCompany] = useState("PSA");
   const [gradedGrade, setGradedGrade] = useState("10");
+  // Graded has its OWN set filter (NOT Top's), defaulting to All Sets — the
+  // top graded cards are vintage, so Modern Era would hide them.
+  const [gradedSet, setGradedSet] = useState("");
 
   // Sentiment voting state
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
@@ -186,20 +189,21 @@ export default function Market() {
   // refresh and by the admin Master Refresh broadcast.
   const [refreshToken, setRefreshToken] = useState(0);
 
-  const resolveMarketSetIds = useCallback(() => {
+  const resolveSetIds = useCallback((setId: string) => {
     const physicalSets = (setsData?.data ?? []).filter((s: PokemonSet) => !s.isOnlineOnly);
-    if (selectedSetId === "recent5") return new Set(physicalSets.slice(0, 5).map((s) => s.id));
-    if (selectedSetId === "recent10") return new Set(physicalSets.slice(0, 10).map((s) => s.id));
-    if (selectedSetId === "modern") {
+    if (setId === "recent5") return new Set(physicalSets.slice(0, 5).map((s) => s.id));
+    if (setId === "recent10") return new Set(physicalSets.slice(0, 10).map((s) => s.id));
+    if (setId === "modern") {
       // Every Scarlet & Violet + Mega Evolution set (promos included — the user
       // wants pull-rate promos in this view since they often have chase cards).
       return new Set(
         physicalSets.filter((s) => MODERN_ERA_SERIES.has(s.series)).map((s) => s.id),
       );
     }
-    if (selectedSetId) return new Set([selectedSetId]);
+    if (setId) return new Set([setId]);
     return new Set(physicalSets.map((s) => s.id));
-  }, [selectedSetId, setsData]);
+  }, [setsData]);
+  const resolveMarketSetIds = useCallback(() => resolveSetIds(selectedSetId), [resolveSetIds, selectedSetId]);
 
   // Load most visited when tab is active
   useEffect(() => {
@@ -715,7 +719,7 @@ export default function Market() {
                   {(GRADED_GRADE_OPTIONS[gradedCompany] ?? ["10"]).map((g) => (<SelectItem key={g} value={g}>{gradedCompany} {g}</SelectItem>))}
                 </SelectContent>
               </Select>
-              <Select value={selectedSetId || "all"} onValueChange={(v) => setSelectedSetId(v === "all" ? "" : v)}>
+              <Select value={gradedSet || "all"} onValueChange={(v) => setGradedSet(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-[150px] sm:w-[180px] bg-background"><SelectValue placeholder="All Sets" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sets</SelectItem>
@@ -816,7 +820,7 @@ export default function Market() {
             <GradedTab
               company={gradedCompany}
               grade={Number(gradedGrade)}
-              setIds={selectedSetId ? [...resolveMarketSetIds()] : null}
+              setIds={gradedSet ? [...resolveSetIds(gradedSet)] : null}
             />
           ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
