@@ -114,6 +114,15 @@ interface ScrydexPrice {
   is_perfect?: boolean;
   is_signed?: boolean;
   is_error?: boolean;
+  // Scrydex ships price movement per window directly — price_change is
+  // (current - prior). We use these as the SOURCE of the site's 1d/7d/30d
+  // deltas instead of diffing our own stored history (which needed many clean
+  // days before deltas populated). days_14/90/180 also exist; we keep 1/7/30.
+  trends?: {
+    days_1?: { price_change?: number; percent_change?: number };
+    days_7?: { price_change?: number; percent_change?: number };
+    days_30?: { price_change?: number; percent_change?: number };
+  };
 }
 
 interface ScrydexVariant {
@@ -141,6 +150,11 @@ interface SnapshotRow {
   card_name: string;
   set_name: string;
   price: number;
+  // Prior prices derived from Scrydex trends (market - price_change). Stored on
+  // each snapshot so the refresh copies the latest row's deltas — no history diff.
+  price_1d: number | null;
+  price_7d: number | null;
+  price_30d: number | null;
   recorded_at: string;
 }
 
@@ -232,41 +246,57 @@ function extractGradedPrices(card: ScrydexCard, today: string): GradedSnapshotRo
   return rows;
 }
 
-function extractAllVariantPrices(card: ScrydexCard): { variant: string; price: number }[] {
-  const all: { variant: string; price: number }[] = [];
+interface VariantPrice {
+  variant: string;
+  price: number;
+  price_1d: number | null;
+  price_7d: number | null;
+  price_30d: number | null;
+}
+
+// Derive the prior price from a Scrydex trend window. price_change is
+// (current - prior), so prior = market - price_change. We store PRIOR PRICES
+// (latest_card_prices' existing contract) and let the frontend compute the %,
+// so nothing downstream changes — the deltas just come from Scrydex now.
+function priorFromTrend(market: number, t?: { price_change?: number }): number | null {
+  if (!t || typeof t.price_change !== "number") return null;
+  const prior = market - t.price_change;
+  return prior > 0 ? Math.round(prior * 100) / 100 : null;
+}
+
+function extractAllVariantPrices(card: ScrydexCard): VariantPrice[] {
+  const all: VariantPrice[] = [];
   const variants = card.variants ?? [];
 
   for (const v of variants) {
-    // NM raw USD market ONLY — no condition fallback.
-    //
-    // The old code fell through to ANY condition (LP/MP/HP/DMG) when no NM
-    // price existed. That fabricated low prices that don't appear anywhere on
-    // Scrydex's own card page — the Mega Gengar ex (me2pt5-284) bug, where a
-    // played-grade market got recorded as "the" price. A card's value is its
-    // NM market; if Scrydex has no NM market we record NOTHING (the card shows
-    // N/A) rather than inventing a damaged-condition number.
-    const price = v.prices?.find(
+    // NM raw USD market ONLY — no condition fallback. (The old code fell through
+    // to LP/MP/HP/DMG when no NM existed, fabricating chase-card lows — the Mega
+    // Gengar ex me2pt5-284 bug. No NM market ⇒ record nothing.)
+    const entry = v.prices?.find(
       (x) => x.condition === "NM" && x.type === "raw" && x.currency === "USD" && x.market > 0,
-    )?.market;
-
-    if (price && price > 0) {
-      all.push({ variant: v.name, price });
+    );
+    if (entry && entry.market > 0) {
+      all.push({
+        variant: v.name,
+        price: entry.market,
+        price_1d: priorFromTrend(entry.market, entry.trends?.days_1),
+        price_7d: priorFromTrend(entry.market, entry.trends?.days_7),
+        price_30d: priorFromTrend(entry.market, entry.trends?.days_30),
+      });
     }
   }
 
   if (all.length === 0) return [];
 
-  // If any vintage marker is present on an allowed early set, keep every variant — the card has
-  // multiple real printings (1st Edition, Shadowless, Unlimited Holo, etc.).
+  // Vintage early set: keep every real printing (1st Edition, Shadowless, …).
   const isVintage = isEarlyVariantSet(card) && all.some((vp) => isVintageVariantName(vp.variant));
   if (isVintage) return all;
 
-  // Modern card: collapse to a single bare-id row using the best available
-  // price. Emitting as "normal" means the downstream code writes no ::suffix.
+  // Modern card: collapse to one bare-id row using the best variant (carry its trends too).
   const best =
     MODERN_PRIORITY.map((p) => all.find((vp) => vp.variant === p)).find(Boolean) ??
     all[0];
-  return [{ variant: "normal", price: best!.price }];
+  return [{ ...best!, variant: "normal" }];
 }
 
 // ─── Scrydex fetch helper ─────────────────────────────────────────────────────
@@ -462,6 +492,9 @@ async function runPass(opts: {
           card_name: card.name ?? "",
           set_name: card.expansion?.name ?? "",
           price: vp.price,
+          price_1d: vp.price_1d,
+          price_7d: vp.price_7d,
+          price_30d: vp.price_30d,
           recorded_at: today,
         });
       }
@@ -563,6 +596,9 @@ async function runSetBackfill(opts: {
           card_name: card.name ?? "",
           set_name: card.expansion?.name ?? "",
           price: vp.price,
+          price_1d: vp.price_1d,
+          price_7d: vp.price_7d,
+          price_30d: vp.price_30d,
           recorded_at: today,
         });
       }
@@ -662,6 +698,9 @@ async function crawlSetAtomic(opts: {
           card_name: card.name ?? "",
           set_name: card.expansion?.name ?? "",
           price: vp.price,
+          price_1d: vp.price_1d,
+          price_7d: vp.price_7d,
+          price_30d: vp.price_30d,
           recorded_at: today,
         });
       }

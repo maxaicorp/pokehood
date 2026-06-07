@@ -135,6 +135,9 @@ AS $$
 $$;
 
 -- ─── Watchdog view — sets that are behind or repeatedly failing today ────────
+-- DROP first: CREATE OR REPLACE VIEW can't insert columns mid-list (it reads
+-- that as renaming an existing column), so a re-run with new columns errors.
+DROP VIEW IF EXISTS public.v_snapshot_set_health;
 CREATE OR REPLACE VIEW public.v_snapshot_set_health AS
   SELECT
     count(*)                                                               AS total_sets,

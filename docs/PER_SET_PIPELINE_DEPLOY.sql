@@ -10,7 +10,8 @@
 -- PREREQS (do these FIRST):
 --   1. Run migration 20260607090000_latest_per_card_refresh.sql   (set-aware refresh)
 --   2. Run migration 20260607093000_set_snapshot_state.sql        (tracker + claim/stamp)
---   3. Deploy edge fn `snapshot-prices` (version 2026-06-07-crawl-batch-per-set-atomic)
+--   3. Run migration 20260607100000_trends_deltas.sql             (deltas from Scrydex trends)
+--   4. Deploy edge fn `snapshot-prices` (version 2026-06-07-crawl-batch-per-set-atomic)
 -- THEN run this file.
 -- ============================================================================
 
