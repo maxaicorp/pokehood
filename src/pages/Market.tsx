@@ -166,9 +166,6 @@ export default function Market() {
   const [moversWindow, setMoversWindow] = useState<"24h" | "7d" | "30d">("24h");
   const [gradedCompany, setGradedCompany] = useState("PSA");
   const [gradedGrade, setGradedGrade] = useState("10");
-  // Graded has its OWN set filter (NOT Top's), defaulting to All Sets — the
-  // top graded cards are vintage, so Modern Era would hide them.
-  const [gradedSet, setGradedSet] = useState("");
 
   // Sentiment voting state
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
@@ -719,7 +716,7 @@ export default function Market() {
                   {(GRADED_GRADE_OPTIONS[gradedCompany] ?? ["10"]).map((g) => (<SelectItem key={g} value={g}>{gradedCompany} {g}</SelectItem>))}
                 </SelectContent>
               </Select>
-              <Select value={gradedSet || "all"} onValueChange={(v) => setGradedSet(v === "all" ? "" : v)}>
+              <Select value={selectedSetId || "all"} onValueChange={(v) => setSelectedSetId(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-[150px] sm:w-[180px] bg-background"><SelectValue placeholder="All Sets" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sets</SelectItem>
@@ -820,7 +817,7 @@ export default function Market() {
             <GradedTab
               company={gradedCompany}
               grade={Number(gradedGrade)}
-              setIds={gradedSet ? [...resolveSetIds(gradedSet)] : null}
+              setIds={selectedSetId ? [...resolveMarketSetIds()] : null}
             />
           ) : activeTab === "most-visited" ? (
             mostVisitedLoading ? (
