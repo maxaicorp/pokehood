@@ -25,8 +25,10 @@ SELECT net.http_post(
 -- Wait ~15s, then confirm the registry filled (~180 sets expected):
 -- SELECT count(*) FROM public.scrydex_set_snapshot_state WHERE enabled;
 
--- ── 2. Retire the OLD global page-chunk crawl crons ──────────────────────────
--- These ran the drift-prone global paging. The per-set crawl replaces them.
+-- ── 2. Retire the OLD global page-chunk crawl + its chunk-based heal ─────────
+-- These ran the drift-prone global paging. The per-set crawl replaces them, and
+-- it SELF-HEALS (a failed set stays pending and the next 5-min tick retries it),
+-- so the old chunk-based verify-and-heal cron is now vestigial.
 -- (prune-snapshots-weekly and refresh-latest-prices-daily stay — untouched.)
 DO $$
 DECLARE j record;
@@ -34,6 +36,7 @@ BEGIN
   FOR j IN
     SELECT jobname FROM cron.job
     WHERE jobname LIKE 'snapshot-chunk-%'
+       OR jobname LIKE 'verify-and-heal%'
        OR jobname IN ('daily-snapshot-prices','weekly-snapshot-prices-full')
   LOOP
     PERFORM cron.unschedule(j.jobname);
