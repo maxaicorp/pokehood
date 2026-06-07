@@ -30,7 +30,7 @@ const corsHeaders = {
 
 // Bump on every deploy so the health check / logs can confirm which code is
 // actually live (we've been bitten by old deployed functions still running).
-const FUNCTION_VERSION = "2026-06-03-nm-only-canonical-dedup";
+const FUNCTION_VERSION = "2026-06-07-crawl-batch-per-set-atomic";
 
 const PAGE_SIZE = 100;
 const DAILY_PAGE_LIMIT = 60; // 60 pages newest + 60 pages oldest = 120 credits/day
@@ -596,6 +596,86 @@ async function runSetBackfill(opts: {
   return { pages: page, cardsWithPrice };
 }
 
+// ─── Per-set ATOMIC crawl (the drift-free primitive) ──────────────────────────
+//
+// Fetches ONE expansion completely (q=expansion.id:{id}, all pages) into LOCAL
+// buffers and returns them WITHOUT writing. The caller writes only if ok===true,
+// so price_snapshots never holds a partial set — that atomicity is what makes
+// the latest-per-card cache refresh safe (a row exists ⇒ its set fully succeeded).
+// Per-set q-scoped paging is stable (no global offset drift), so no card is
+// silently dropped the way the global page crawl drops chase cards.
+async function crawlSetAtomic(opts: {
+  setId: string;
+  apiKey: string;
+  teamId: string;
+  today: string;
+}): Promise<{
+  ok: boolean;
+  rows: SnapshotRow[];
+  gradedRows: GradedSnapshotRow[];
+  pages: number;
+  cardsSeen: number;
+  cardsPriced: number;
+  error?: string;
+}> {
+  const { setId, apiKey, teamId, today } = opts;
+  const pageSize = 100; // Scrydex caps the cards endpoint at 100/page
+  const MAX_PAGES = 12;  // no real set exceeds ~1,200 cards
+  let page = 1;
+  let totalPages = 1;
+  let cardsSeen = 0;
+  let cardsPriced = 0;
+  const rows: SnapshotRow[] = [];
+  const gradedRows: GradedSnapshotRow[] = [];
+  const seen = new Map<string, boolean>(); // per-set dedup (sets are disjoint)
+
+  do {
+    const endpoint =
+      `/pokemon/v1/cards?q=${encodeURIComponent(`expansion.id:${setId}`)}` +
+      `&page=${page}&page_size=${pageSize}&include=prices`;
+    const result = await scrydexFetch(endpoint, apiKey, teamId);
+    if (!result) {
+      // Hard failure on any page ⇒ abort the WHOLE set, write NOTHING. The set
+      // stays pending and the next 5-min tick retries it cleanly.
+      return { ok: false, rows: [], gradedRows: [], pages: page, cardsSeen, cardsPriced, error: `page ${page} fetch failed after retries` };
+    }
+    if (page === 1) {
+      const total = result.total_count ?? 0;
+      totalPages = Math.max(1, Math.min(MAX_PAGES, Math.ceil(total / pageSize)));
+    }
+    const data = result.data ?? [];
+    for (const card of data) {
+      cardsSeen++;
+      if (card.language_code && card.language_code !== "EN") continue;
+      if (card.expansion?.language_code !== "EN") continue;
+      if (card.expansion?.is_online_only) continue;
+      const series = (card.expansion?.series ?? "").toLowerCase();
+      if (series.includes("pocket")) continue;
+      const variantPrices = extractAllVariantPrices(card);
+      if (variantPrices.length === 0) continue;
+      if (!claimCard(seen, card.id)) continue;
+      cardsPriced++;
+      for (const vp of variantPrices) {
+        const suffix = vp.variant !== "normal" ? `::${vp.variant}` : "";
+        rows.push({
+          card_id: `${normalizeScrydexCardId(card.id)}${suffix}`,
+          card_name: card.name ?? "",
+          set_name: card.expansion?.name ?? "",
+          price: vp.price,
+          recorded_at: today,
+        });
+      }
+      const g = extractGradedPrices(card, today);
+      if (g.length > 0) gradedRows.push(...g);
+    }
+    if (data.length < pageSize) break; // true end of data
+    page++;
+    if (page <= totalPages) await new Promise((r) => setTimeout(r, DELAY_MS));
+  } while (page <= totalPages);
+
+  return { ok: true, rows, gradedRows, pages: page, cardsSeen, cardsPriced };
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
@@ -643,15 +723,19 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const mode: "daily" | "full" | "chunk" | "sets" =
+    const mode: "daily" | "full" | "chunk" | "sets" | "crawl-batch" | "seed-sets" =
       body.mode === "full" ? "full"
       : body.mode === "chunk" ? "chunk"
       : body.mode === "sets" ? "sets"
-      : "daily" as "daily" | "full" | "chunk" | "sets";
+      : body.mode === "crawl-batch" ? "crawl-batch"
+      : body.mode === "seed-sets" ? "seed-sets"
+      : "daily";
     const today = new Date().toISOString().split("T")[0];
     // Optional chunking: { mode:"chunk", startPage:1, pageLimit:50, orderBy:"-expansion.release_date" }
     const startPage: number = Math.max(1, Number(body.startPage) || 1);
     const chunkPageLimit: number = Math.max(1, Number(body.pageLimit) || 50);
+    // crawl-batch: how many due sets to claim+process this tick (5-min cron).
+    const batchLimit: number = Math.max(1, Math.min(40, Number(body.limit) || 15));
     const orderBy: string = typeof body.orderBy === "string" ? body.orderBy : "-expansion.release_date";
     const setIds: string[] = Array.isArray(body.setIds)
       ? body.setIds.filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
@@ -676,6 +760,8 @@ serve(async (req: Request) => {
         mode === "full" ? 20000 :
         mode === "chunk" ? 0 :              // chunk is always intentional, never skip
         mode === "sets"  ? 0 :              // set backfill is targeted, never skip
+        mode === "crawl-batch" ? 0 :        // self-limited by the due-queue, never skip
+        mode === "seed-sets"   ? 0 :        // registry refresh, never skip
         10000;                              // daily
       if (threshold > 0 && have >= threshold) {
         console.log(`[skip] ${have} card rows already exist for ${today} — skipping ${mode} run (override with force:true)`);
@@ -700,6 +786,8 @@ serve(async (req: Request) => {
       mode === "full"  ? 235 :
       mode === "chunk" ? chunkPageLimit :
       mode === "sets"  ? Math.max(2, setIds.length * 2) :
+      mode === "crawl-batch" ? batchLimit * 3 : // ~2-3 pages/set
+      mode === "seed-sets"   ? 10 :
       120; // daily
     const creditsRemaining = await getScrydexCredits(apiKey, teamId);
     if (creditsRemaining != null && creditsRemaining < estCost) {
@@ -729,7 +817,116 @@ serve(async (req: Request) => {
 
     const setSummaries: Array<{ setId: string; pages: number; priced: number }> = [];
 
-    if (mode === "sets") {
+    if (mode === "seed-sets") {
+      // Populate/refresh the set registry from Scrydex expansions. EN physical
+      // non-Pocket only. Upserts METADATA columns only (onConflict set_id), so
+      // tracking columns (last_success_on, enabled, attempts...) are preserved.
+      let pageE = 1, totalE = 1, kept = 0, dropped = 0;
+      const pageSize = 100;
+      const payload: Array<Record<string, unknown>> = [];
+      do {
+        const endpoint = `/pokemon/v1/expansions?page=${pageE}&page_size=${pageSize}`;
+        const result = (await scrydexFetch(endpoint, apiKey, teamId)) as any;
+        if (!result) { runState.failed = true; break; }
+        if (pageE === 1) {
+          const total = result.total_count ?? 0;
+          totalE = Math.max(1, Math.ceil(total / pageSize));
+        }
+        const data = result.data ?? [];
+        for (const e of data) {
+          const lang = e.language_code ?? e.language;
+          const series = String(e.series ?? "").toLowerCase();
+          if (lang && lang !== "EN") { dropped++; continue; }
+          if (e.is_online_only) { dropped++; continue; }
+          if (series.includes("pocket")) { dropped++; continue; }
+          payload.push({
+            set_id: e.id,
+            set_name: e.name ?? "",
+            series: e.series ?? "",
+            language_code: lang ?? "EN",
+            is_online_only: !!e.is_online_only,
+          });
+          kept++;
+        }
+        if (data.length < pageSize) break;
+        pageE++;
+        await new Promise((r) => setTimeout(r, DELAY_MS));
+      } while (pageE <= totalE);
+
+      if (payload.length > 0) {
+        const { error } = await supabase
+          .from("scrydex_set_snapshot_state")
+          .upsert(payload, { onConflict: "set_id" });
+        if (error) {
+          return new Response(
+            JSON.stringify({ success: false, mode: "seed-sets", error: error.message }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 },
+          );
+        }
+      }
+      console.log(`[seed-sets] registry upserted ${kept} EN physical sets (dropped ${dropped} JP/online/pocket). ${FUNCTION_VERSION}`);
+      return new Response(
+        JSON.stringify({ success: true, mode: "seed-sets", sets_registered: kept, dropped, partial: runState.failed }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    } else if (mode === "crawl-batch") {
+      // THE permanent daily pipeline. Claim N due sets (FOR UPDATE SKIP LOCKED),
+      // crawl each WHOLE set, write ATOMICALLY (only if the whole set succeeded),
+      // stamp success. A 5-min cron cycles the catalog in small drift-free units.
+      // Does NOT refresh the cache — the decoupled refresh cron surfaces landed
+      // sets, so a crawl hiccup never blocks the read path.
+      const runId = crypto.randomUUID();
+      const work = (async () => {
+        try {
+          const { data: claimed, error: claimErr } = await supabase.rpc("claim_due_snapshot_sets", {
+            p_limit: batchLimit, p_lock_minutes: 8, p_run_id: runId,
+          });
+          if (claimErr) { console.error("[crawl-batch] claim failed:", claimErr.message); return; }
+          const sets = (claimed ?? []) as Array<{ set_id: string }>;
+          if (sets.length === 0) { console.log(`[crawl-batch] no due sets — idle. ${FUNCTION_VERSION}`); return; }
+          console.log(`[crawl-batch] run ${runId} claimed ${sets.length}: ${sets.map((s) => s.set_id).join(",")}`);
+          for (const s of sets) {
+            const r = await crawlSetAtomic({ setId: s.set_id, apiKey, teamId, today });
+            if (!r.ok) {
+              await supabase.rpc("mark_set_snapshot_error", { p_set_id: s.set_id, p_error: r.error ?? "unknown" });
+              console.warn(`[crawl-batch] ${s.set_id} FAILED (${r.error}) — wrote nothing, left pending`);
+              continue;
+            }
+            // Whole set succeeded → write its rows atomically now.
+            const rawRes = await flushRows(supabase, r.rows);
+            const gRes = await flushGradedRows(supabase, r.gradedRows);
+            counters.inserted += rawRes.inserted; counters.skipped += rawRes.skipped;
+            gradedCounters.inserted += gRes.inserted; gradedCounters.skipped += gRes.skipped;
+            // flushRows returns inserted===0 / skipped===n on a DB error — treat
+            // that as a set failure so it isn't stamped done with no rows written.
+            if (r.rows.length > 0 && rawRes.inserted === 0) {
+              await supabase.rpc("mark_set_snapshot_error", { p_set_id: s.set_id, p_error: "raw upsert failed" });
+              console.warn(`[crawl-batch] ${s.set_id} upsert failed — left pending`);
+              continue;
+            }
+            await supabase.rpc("mark_set_snapshot_success", {
+              p_set_id: s.set_id, p_pages: r.pages, p_cards_seen: r.cardsSeen, p_cards_priced: r.cardsPriced,
+            });
+            setSummaries.push({ setId: s.set_id, pages: r.pages, priced: r.cardsPriced });
+            await new Promise((res) => setTimeout(res, DELAY_MS));
+          }
+          console.log(`[crawl-batch] DONE — sets=${sets.length} rawInserted=${counters.inserted} graded=${gradedCounters.inserted}. ${FUNCTION_VERSION}`, setSummaries);
+        } catch (e) {
+          console.error("[crawl-batch] background error:", e);
+        }
+      })();
+      // @ts-ignore — EdgeRuntime is available in the Supabase Edge runtime
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(work);
+      } else {
+        work.catch((e) => console.error("[crawl-batch] background error", e));
+      }
+      return new Response(
+        JSON.stringify({ success: true, mode: "crawl-batch", limit: batchLimit, note: "Running in background — see logs + scrydex_set_snapshot_state for results." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
+      );
+    } else if (mode === "sets") {
       if (setIds.length === 0) {
         return new Response(
           JSON.stringify({ success: false, error: "mode=sets requires setIds: string[]" }),
