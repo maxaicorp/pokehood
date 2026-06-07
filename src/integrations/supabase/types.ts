@@ -1258,6 +1258,42 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events_log: {
+        Row: {
+          event_name: string | null
+          expansion_count: number | null
+          expansion_ids: Json | null
+          id: number
+          raw: Json | null
+          received_at: string
+          sig_reason: string | null
+          sig_valid: boolean | null
+          source: string
+        }
+        Insert: {
+          event_name?: string | null
+          expansion_count?: number | null
+          expansion_ids?: Json | null
+          id?: never
+          raw?: Json | null
+          received_at?: string
+          sig_reason?: string | null
+          sig_valid?: boolean | null
+          source?: string
+        }
+        Update: {
+          event_name?: string | null
+          expansion_count?: number | null
+          expansion_ids?: Json | null
+          id?: never
+          raw?: Json | null
+          received_at?: string
+          sig_reason?: string | null
+          sig_valid?: boolean | null
+          source?: string
+        }
+        Relationships: []
+      }
       wishlist_cards: {
         Row: {
           added_at: string
@@ -1463,6 +1499,34 @@ export type Database = {
           score: number
           user_id: string
           username: string
+        }[]
+      }
+      get_graded_filter_options: {
+        Args: never
+        Returns: {
+          card_count: number
+          company: string
+          grade: number
+        }[]
+      }
+      get_graded_page: {
+        Args: {
+          p_company?: string
+          p_grade?: number
+          p_limit?: number
+          p_min_price?: number
+          p_offset?: number
+          p_set_ids?: string[]
+        }
+        Returns: {
+          card_id: string
+          card_name: string
+          company: string
+          grade: number
+          high: number
+          low: number
+          market: number
+          set_name: string
         }[]
       }
       get_graded_tiles_for_card: {
