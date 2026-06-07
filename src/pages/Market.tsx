@@ -496,11 +496,11 @@ export default function Market() {
       case "top":
         return sorted.sort((a, b) => (getMarketPrice(b) ?? 0) - (getMarketPrice(a) ?? 0));
       case "trending":
-        // Server already ranked these by |24h move| (get_top_movers, all cards
-        // >= $2). Keep a client tiebreak so the order is stable as rows hydrate.
+        // Signed % DESC (biggest gainers → losers), matching the server's signed
+        // get_top_movers ranking. Client sort keeps order stable as rows hydrate.
         return sorted
           .filter((c) => getPcts(c).raw24h !== null)
-          .sort((a, b) => Math.abs(getPcts(b).raw24h ?? 0) - Math.abs(getPcts(a).raw24h ?? 0));
+          .sort((a, b) => (getPcts(b).raw24h ?? 0) - (getPcts(a).raw24h ?? 0));
       default:
         return sorted;
     }
