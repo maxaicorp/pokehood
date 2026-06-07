@@ -124,6 +124,7 @@ interface ScrydexVariant {
 interface ScrydexCard {
   id: string;
   name: string;
+  language_code?: string;
   expansion?: {
     id: string;
     name: string;
@@ -423,7 +424,7 @@ async function runPass(opts: {
   const endPage = startPage + pageLimit - 1;
 
   do {
-    const endpoint = `/pokemon/v1/en/cards?page=${page}&page_size=${PAGE_SIZE}&include=prices&orderBy=${orderBy}`;
+    const endpoint = `/pokemon/v1/cards?page=${page}&page_size=${PAGE_SIZE}&include=prices&orderBy=${orderBy}`;
     const result = await scrydexFetch(endpoint, apiKey, teamId);
 
     if (!result) {
@@ -441,10 +442,11 @@ async function runPass(opts: {
 
     for (const card of result.data ?? []) {
       // English physical TCG only
+      if (card.language_code && card.language_code !== "EN") continue;
       if (card.expansion?.language_code !== "EN") continue;
       if (card.expansion?.is_online_only) continue; // skip TCG Pocket
       const series = (card.expansion?.series ?? "").toLowerCase();
-      if (series === "pokémon tcg pocket") continue;
+      if (series.includes("pocket")) continue;
       const variantPrices = extractAllVariantPrices(card);
       if (variantPrices.length === 0) continue;
 
@@ -528,7 +530,7 @@ async function runSetBackfill(opts: {
 
   do {
     const endpoint =
-      `/pokemon/v1/en/cards?q=${encodeURIComponent(`expansion.id:${setId}`)}` +
+      `/pokemon/v1/cards?q=${encodeURIComponent(`expansion.id:${setId}`)}` +
       `&page=${page}&page_size=${pageSize}&include=prices`;
     const result = await scrydexFetch(endpoint, apiKey, teamId);
     if (!result) {
@@ -544,6 +546,11 @@ async function runSetBackfill(opts: {
 
     const rows = result.data ?? [];
     for (const card of rows) {
+      if (card.language_code && card.language_code !== "EN") continue;
+      if (card.expansion?.language_code !== "EN") continue;
+      if (card.expansion?.is_online_only) continue;
+      const series = (card.expansion?.series ?? "").toLowerCase();
+      if (series.includes("pocket")) continue;
       const variantPrices = extractAllVariantPrices(card);
       if (variantPrices.length === 0) continue;
       if (!claimCard(seenIds, card.id)) continue;

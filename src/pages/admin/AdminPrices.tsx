@@ -15,7 +15,13 @@ import { useState } from "react";
 import AdminLayout from "./AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { resetLatestPricesCache } from "@/lib/price-snapshots";
-import { getScrydexNmAudit, type ScrydexNmAudit } from "@/lib/scrydex-api";
+import {
+  getScrydexCard,
+  getScrydexNmAudit,
+  getScrydexNmAuditFromCard,
+  type ScrydexCard,
+  type ScrydexNmAudit,
+} from "@/lib/scrydex-api";
 import { getMarketSets, type PokemonSet } from "@/lib/pokemon-api";
 import { findSetBySlug } from "@/lib/slug";
 import { Button } from "@/components/ui/button";
@@ -70,6 +76,32 @@ interface AuditRow {
 interface StoredRow {
   card_id: string; card_name: string; set_name: string;
   price: number | null; price_1d: number | null; price_7d: number | null; price_30d: number | null;
+  recorded_at?: string | null; updated_at?: string | null;
+}
+
+interface ScrydexRawRow {
+  variant: string;
+  condition: string;
+  market: number | null;
+  low: number | null;
+  currency: string;
+}
+
+function flattenRawRows(card: ScrydexCard | null): ScrydexRawRow[] {
+  const rows: ScrydexRawRow[] = [];
+  for (const variant of card?.variants ?? []) {
+    for (const price of variant.prices ?? []) {
+      if (price.type !== "raw") continue;
+      rows.push({
+        variant: variant.name,
+        condition: price.condition,
+        market: price.market ?? null,
+        low: price.low ?? null,
+        currency: price.currency ?? "",
+      });
+    }
+  }
+  return rows;
 }
 
 async function mapLimit<T, R>(items: T[], limit: number, fn: (x: T) => Promise<R>, onTick: () => void): Promise<R[]> {
@@ -113,6 +145,18 @@ export default function AdminPrices() {
   const [gLow, setGLow] = useState("");
   const [gHigh, setGHigh] = useState("");
   const [gSaving, setGSaving] = useState(false);
+
+  // Codex Scrydex admin update
+  const [cInput, setCInput] = useState("");
+  const [cLoading, setCLoading] = useState(false);
+  const [cSaving, setCSaving] = useState(false);
+  const [cResolvedId, setCResolvedId] = useState("");
+  const [cStored, setCStored] = useState<StoredRow | null>(null);
+  const [cHistoryFallback, setCHistoryFallback] = useState(false);
+  const [cCard, setCCard] = useState<ScrydexCard | null>(null);
+  const [cAudit, setCAudit] = useState<ScrydexNmAudit | null>(null);
+  const [cPrice, setCPrice] = useState("");
+  const [cStatus, setCStatus] = useState("");
 
   // ── bulk audit ──
   const runAudit = async () => {
@@ -192,12 +236,136 @@ export default function AdminPrices() {
     toast.success(`Fixed ${targets.length} card${targets.length === 1 ? "" : "s"}.`);
   };
 
+  // ── Codex Scrydex admin update ──
+  const resolveCodexInput = async (value: string): Promise<string | null> => {
+    const raw = value.trim();
+    if (!raw) return null;
+    if (!raw.includes("/sets/")) return /-/.test(raw) ? raw : null;
+    const sets = (await getMarketSets()).data as PokemonSet[];
+    return parseInput(raw, sets);
+  };
+
+  const loadCodexUpdate = async () => {
+    setCLoading(true);
+    setCStatus("");
+    setCStored(null);
+    setCHistoryFallback(false);
+    setCCard(null);
+    setCAudit(null);
+    setCResolvedId("");
+    try {
+      const resolved = await resolveCodexInput(cInput);
+      if (!resolved) {
+        setCStatus("Could not resolve that input to a card id.");
+        return;
+      }
+      const [base, want] = resolved.split("::");
+      setCResolvedId(resolved);
+
+      const [{ data: latest }, { data: history }, card] = await Promise.all([
+        (supabase.from as any)("latest_card_prices")
+          .select("card_id, card_name, set_name, price, price_1d, price_7d, price_30d, recorded_at, updated_at")
+          .eq("card_id", resolved)
+          .maybeSingle(),
+        (supabase.from as any)("price_snapshots")
+          .select("card_id, card_name, set_name, price, recorded_at")
+          .eq("card_id", resolved)
+          .order("recorded_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        getScrydexCard(base),
+      ]);
+
+      const stored = latest as StoredRow | null;
+      const hist = history as { card_id: string; card_name: string; set_name: string; price: number; recorded_at: string } | null;
+      if (stored) {
+        setCStored(stored);
+      } else if (hist) {
+        setCHistoryFallback(true);
+        setCStored({
+          card_id: hist.card_id,
+          card_name: hist.card_name,
+          set_name: hist.set_name,
+          price: hist.price,
+          price_1d: null,
+          price_7d: null,
+          price_30d: null,
+          recorded_at: hist.recorded_at,
+          updated_at: null,
+        });
+      }
+
+      setCCard(card);
+      const audit = getScrydexNmAuditFromCard(card, want);
+      setCAudit(audit);
+      setCPrice(audit?.market != null ? String(audit.market) : stored?.price != null ? String(stored.price) : hist?.price != null ? String(hist.price) : "");
+
+      if (!card) setCStatus("Scrydex card fetch failed through scrydex-proxy.");
+      else if (!audit) setCStatus("Scrydex responded, but this extractor found no raw NM USD row. Check the raw rows below.");
+      else setCStatus(`Scrydex raw NM found on ${audit.variant ?? "unknown"} at ${usd(audit.market)}.`);
+    } catch (e) {
+      setCStatus(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCLoading(false);
+    }
+  };
+
+  const pinCodexPrice = async (useLive: boolean) => {
+    if (!cResolvedId) return;
+    const p = useLive ? cAudit?.market ?? null : num(cPrice);
+    if (p == null || p <= 0) {
+      toast.error("Enter a positive price.");
+      return;
+    }
+    setCSaving(true);
+    try {
+      const { error } = await (supabase.rpc as any)("admin_set_card_price", {
+        p_card_id: cResolvedId,
+        p_price: p,
+        p_price_1d: useLive ? cAudit?.price1d ?? null : cStored?.price_1d ?? null,
+        p_price_7d: useLive ? cAudit?.price7d ?? null : cStored?.price_7d ?? null,
+        p_price_30d: useLive ? cAudit?.price30d ?? null : cStored?.price_30d ?? null,
+        p_note: "Codex Scrydex admin update",
+        p_card_name: cStored?.card_name || cCard?.name || null,
+        p_set_name: cStored?.set_name || cCard?.expansion?.name || null,
+      });
+      if (error) throw error;
+      resetLatestPricesCache();
+      toast.success(`Pinned ${cCard?.name || cStored?.card_name || cResolvedId} at ${usd(p)}.`);
+      await loadCodexUpdate();
+    } catch (e) {
+      toast.error(`Codex pin failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setCSaving(false);
+    }
+  };
+
+  const backfillCodexHistory = async () => {
+    if (!cResolvedId) return;
+    setCSaving(true);
+    try {
+      const { error } = await supabase.functions.invoke("backfill-price-history", {
+        body: { mode: "backfill", card_ids: [cResolvedId.split("::")[0]], days: 35, onlyIfDiff: true },
+      });
+      if (error) throw error;
+      toast.success("Scrydex history backfill queued. Check function logs/cache after it finishes.");
+    } catch (e) {
+      toast.error(`Backfill failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setCSaving(false);
+    }
+  };
+
   // ── single-card manual override ──
   const lookup = async () => {
-    const id = cardId.trim();
+    let id = cardId.trim();
     if (!id) return;
     setMLoading(true); setMRow(null); setMNotFound(false);
     try {
+      if (id.includes("/sets/")) {
+        const sets = (await getMarketSets()).data as PokemonSet[];
+        id = parseInput(id, sets) ?? id;
+      }
       const [{ data: pd }, { data: ovr }] = await Promise.all([
         (supabase.from as any)("latest_card_prices").select("card_id, card_name, set_name, price, price_1d, price_7d, price_30d").eq("card_id", id).maybeSingle(),
         (supabase.from as any)("card_price_overrides").select("card_id").eq("card_id", id).maybeSingle(),
@@ -263,6 +431,7 @@ export default function AdminPrices() {
   };
 
   const flaggedCount = rows.filter((r) => (r.status === "off" || r.status === "new") && !r.fixed).length;
+  const codexRawRows = flattenRawRows(cCard);
 
   return (
     <AdminLayout>
@@ -342,6 +511,102 @@ export default function AdminPrices() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+
+        {/* ── Codex Scrydex admin update ── */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <ScanLine className="w-4 h-4" /> Codex Scrydex admin update
+          </h2>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Collectiblez URL or card ID, e.g. me4-116"
+              value={cInput}
+              onChange={(e) => setCInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && loadCodexUpdate()}
+              className="font-mono"
+            />
+            <Button onClick={loadCodexUpdate} disabled={cLoading || !cInput.trim()} variant="outline">
+              {cLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              <span className="ml-2">Load</span>
+            </Button>
+          </div>
+
+          {cStatus && <p className="text-sm text-muted-foreground">{cStatus}</p>}
+
+          {cResolvedId && (
+            <div className="rounded-xl border border-border p-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-foreground truncate">{cCard?.name || cStored?.card_name || cResolvedId}</p>
+                  <p className="text-xs font-mono text-muted-foreground">{cResolvedId}</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  {cHistoryFallback && <Badge variant="outline">history</Badge>}
+                  {cAudit ? <Badge variant="secondary">NM live</Badge> : <Badge variant="outline" className="text-amber-500">no live NM</Badge>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground">Stored</p>
+                  <p className="font-semibold tabular-nums">{usd(cStored?.price)}</p>
+                  <p className="text-[11px] text-muted-foreground">{cStored?.recorded_at ?? "no row"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Scrydex NM</p>
+                  <p className="font-semibold tabular-nums">{usd(cAudit?.market)}</p>
+                  <p className="text-[11px] text-muted-foreground">{cAudit?.variant ?? "none"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Raw rows</p>
+                  <p className="font-semibold tabular-nums">{codexRawRows.length}</p>
+                  <p className="text-[11px] text-muted-foreground">{cCard ? "Scrydex response" : "not loaded"}</p>
+                </div>
+                <Field label="Pin price" value={cPrice} onChange={setCPrice} />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => pinCodexPrice(true)} disabled={cSaving || !cAudit}>
+                  {cSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <span className="ml-2">Pin live NM</span>
+                </Button>
+                <Button onClick={() => pinCodexPrice(false)} disabled={cSaving || !cPrice.trim()} variant="outline">
+                  <Save className="w-4 h-4" /><span className="ml-2">Pin typed</span>
+                </Button>
+                <Button onClick={backfillCodexHistory} disabled={cSaving} variant="outline">
+                  <ScanLine className="w-4 h-4" /><span className="ml-2">Queue history backfill</span>
+                </Button>
+              </div>
+
+              {codexRawRows.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-muted-foreground border-b border-border">
+                        <th className="text-left font-medium py-2">Variant</th>
+                        <th className="text-left font-medium py-2">Cond.</th>
+                        <th className="text-right font-medium py-2">Market</th>
+                        <th className="text-right font-medium py-2">Low</th>
+                        <th className="text-right font-medium py-2">Currency</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {codexRawRows.map((r, i) => (
+                        <tr key={`${r.variant}-${r.condition}-${i}`} className="border-b border-border/50">
+                          <td className="py-2 pr-2 font-mono">{r.variant}</td>
+                          <td className="py-2 pr-2">{r.condition}</td>
+                          <td className="py-2 text-right tabular-nums">{usd(r.market)}</td>
+                          <td className="py-2 text-right tabular-nums">{usd(r.low)}</td>
+                          <td className="py-2 text-right">{r.currency || "N/A"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
         </div>

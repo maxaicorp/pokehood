@@ -14,6 +14,18 @@ async function proxyFetch(endpoint: string) {
   return data.data;
 }
 
+async function proxyFetchFirst(endpoints: string[]) {
+  let lastError: unknown;
+  for (const endpoint of endpoints) {
+    try {
+      return await proxyFetch(endpoint);
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Scrydex API error");
+}
+
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 export interface ScrydexExpansion {
@@ -192,7 +204,10 @@ export async function getExpansions(): Promise<ScrydexExpansion[]> {
 /** Fetch a single card by Scrydex ID with pricing */
 export async function getScrydexCard(id: string): Promise<ScrydexCard | null> {
   try {
-    const data = await proxyFetch(`/pokemon/v1/en/cards/${id}?include=prices`);
+    const data = await proxyFetchFirst([
+      `/pokemon/v1/cards/${id}?include=prices`,
+      `/pokemon/v1/en/cards/${id}?include=prices`,
+    ]);
     return data as ScrydexCard;
   } catch {
     return null;
@@ -223,6 +238,10 @@ function nmRawUsd(prices: ScrydexCardPrice[] | undefined): ScrydexCardPrice | un
 export async function getScrydexNmAudit(cardId: string): Promise<ScrydexNmAudit | null> {
   const [base, want] = cardId.split("::");
   const card = await getScrydexCard(base);
+  return getScrydexNmAuditFromCard(card, want);
+}
+
+export function getScrydexNmAuditFromCard(card: ScrydexCard | null, want?: string): ScrydexNmAudit | null {
   const variants = card?.variants;
   if (!variants?.length) return null;
 
@@ -261,9 +280,15 @@ export async function getExpansionCards(
   onPage?: (cards: ScrydexCard[]) => void
 ): Promise<ScrydexCard[]> {
   const PAGE_SIZE = 100;
-  const first = await proxyFetch(
-    `/pokemon/v1/en/expansions/${expansionId}/cards?page=1&page_size=${PAGE_SIZE}&include=prices`
-  );
+  let basePath = `/pokemon/v1/expansions/${expansionId}/cards`;
+  const endpoint = (page: number) => `${basePath}?page=${page}&page_size=${PAGE_SIZE}&include=prices`;
+  let first;
+  try {
+    first = await proxyFetch(endpoint(1));
+  } catch {
+    basePath = `/pokemon/v1/en/expansions/${expansionId}/cards`;
+    first = await proxyFetch(endpoint(1));
+  }
   const totalCount: number = first.total_count ?? 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -271,9 +296,7 @@ export async function getExpansionCards(
   onPage?.(all);
 
   for (let p = 2; p <= totalPages; p++) {
-    const r = await proxyFetch(
-      `/pokemon/v1/en/expansions/${expansionId}/cards?page=${p}&page_size=${PAGE_SIZE}&include=prices`
-    );
+    const r = await proxyFetch(endpoint(p));
     const batch = (r.data ?? []) as ScrydexCard[];
     all.push(...batch);
     onPage?.(all);
@@ -310,7 +333,10 @@ export async function getCards(opts: {
   if (expansionId) qParts.push(`expansion.id:${expansionId}`);
   if (qParts.length) params.set("q", qParts.join(" "));
 
-  const data = await proxyFetch(`/pokemon/v1/en/cards?${params.toString()}`);
+  const data = await proxyFetchFirst([
+    `/pokemon/v1/cards?${params.toString()}`,
+    `/pokemon/v1/en/cards?${params.toString()}`,
+  ]);
   return {
     cards: (data.data ?? []) as ScrydexCard[],
     totalCount: data.total_count ?? 0,

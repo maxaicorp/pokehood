@@ -7,8 +7,23 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Only allow Pokemon card/expansion endpoints — block admin, billing, etc.
-const ALLOWED_PREFIXES = ["/pokemon/v1/en/"];
+// Only allow Pokemon catalog endpoints — block admin, billing, account, etc.
+// Scrydex's price docs use the non-locale paths (`/pokemon/v1/cards/...`);
+// keep `/en/` allowed for older callers while moving price reads to canonical.
+const ALLOWED_ENDPOINT_BASES = [
+  "/pokemon/v1/cards",
+  "/pokemon/v1/expansions",
+  "/pokemon/v1/sealed",
+  "/pokemon/v1/en/cards",
+  "/pokemon/v1/en/expansions",
+  "/pokemon/v1/en/sealed",
+];
+
+function endpointAllowed(endpoint: string): boolean {
+  return ALLOWED_ENDPOINT_BASES.some(
+    (base) => endpoint === base || endpoint.startsWith(`${base}/`) || endpoint.startsWith(`${base}?`)
+  );
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -54,7 +69,7 @@ serve(async (req) => {
     const endpoint: string = body.endpoint ?? "/pokemon/v1/en/sealed?pageSize=20&include=prices&orderBy=-expansion.release_date";
 
     // ── Endpoint whitelist: only allow known-safe prefixes ──
-    if (!ALLOWED_PREFIXES.some((prefix) => endpoint.startsWith(prefix))) {
+    if (!endpointAllowed(endpoint)) {
       return new Response(
         JSON.stringify({ error: "Endpoint not allowed" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }

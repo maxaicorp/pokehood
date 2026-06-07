@@ -12,6 +12,7 @@ you spot exactly which cards are off and pin the correct price.
 | `dump_modern_top.sql` | Top 150 Modern-Era cards (SV + Mega Evolution) by price — the Market "TOP / Modern Era" list. |
 | `dump_all_top.sql` | Top 200 across all sets (incl. vintage). |
 | `validate_prices.py` | Pulls live Scrydex NM price + 1d/7d/30d trends for each card, diffs vs the stored values, prints which are off, and emits override SQL for them. |
+| `export_snapshot_sql.mjs` | Pulls live Scrydex pages and emits normal `price_snapshots` backfill SQL. Use this when you can run SQL but cannot deploy edge functions or write with a service-role key. |
 | `set_override.sql` | Manually pin one (or more) card's price + deltas. |
 
 ## How a price audit works
@@ -43,6 +44,24 @@ you spot exactly which cards are off and pin the correct price.
 The API key is read from the `SCRYDEX_KEY` environment variable only. **Never**
 hard-code it in these files or commit it. Rotate the key in the Scrydex
 dashboard after a manual session.
+
+## No-deploy snapshot backfill
+If Lovable/Supabase deployment is blocked but you can run SQL manually, export a
+normal snapshot backfill:
+
+```bash
+SCRYDEX_KEY=<your-key> node scripts/scrydex-tools/export_snapshot_sql.mjs --pages 25
+```
+
+Or target a single set:
+
+```bash
+SCRYDEX_KEY=<your-key> node scripts/scrydex-tools/export_snapshot_sql.mjs --set me4 --pages 3
+```
+
+The script writes a `.sql` file under `scripts/scrydex-tools/`. Review it, then
+run it in the SQL editor. It inserts into `price_snapshots`, calls
+`refresh_latest_card_prices()`, and does **not** create durable overrides.
 
 ## Requirements
 `python` 3 and `curl` on PATH. (We shell out to `curl` because Scrydex's edge
