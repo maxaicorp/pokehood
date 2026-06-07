@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.scrydex_set_snapshot_state (
   series            TEXT,
   language_code     TEXT,
   is_online_only    BOOLEAN NOT NULL DEFAULT false,
+  card_total        INT,                                -- expansion's total card count (from Scrydex /expansions)
   enabled           BOOLEAN NOT NULL DEFAULT true,
   status            TEXT NOT NULL DEFAULT 'pending',   -- pending | claimed | success | error
   last_success_on   DATE,                              -- the UTC date this set last fully succeeded
@@ -138,6 +139,8 @@ CREATE OR REPLACE VIEW public.v_snapshot_set_health AS
     count(*) FILTER (WHERE status = 'error')                              AS in_error,
     count(*) FILTER (WHERE attempts_on = CURRENT_DATE AND attempts_today >= 3
                        AND last_success_on IS DISTINCT FROM CURRENT_DATE) AS failing_repeatedly,
+    COALESCE(sum(card_total) FILTER (WHERE last_success_on = CURRENT_DATE), 0)        AS cards_total_fresh,
+    COALESCE(sum(last_cards_priced) FILTER (WHERE last_success_on = CURRENT_DATE), 0) AS cards_priced_fresh,
     min(last_success_at)                                                   AS oldest_success_at,
     max(last_success_at)                                                   AS newest_success_at
   FROM public.scrydex_set_snapshot_state

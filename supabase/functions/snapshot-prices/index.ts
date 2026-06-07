@@ -845,6 +845,7 @@ serve(async (req: Request) => {
             series: e.series ?? "",
             language_code: lang ?? "EN",
             is_online_only: !!e.is_online_only,
+            card_total: typeof e.total === "number" ? e.total : null,
           });
           kept++;
         }

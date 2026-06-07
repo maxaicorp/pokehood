@@ -28,6 +28,21 @@ interface HealthReport {
   snapshot_history: SnapshotDayStat[];
 }
 
+// Per-set snapshot ledger row (scrydex_set_snapshot_state). The real
+// "what's actually hitting" health signal — one row per expansion.
+interface SetHealthRow {
+  set_id: string;
+  set_name: string | null;
+  status: string;
+  last_success_on: string | null;
+  last_success_at: string | null;
+  card_total: number | null;
+  last_cards_priced: number | null;
+  attempts_today: number;
+  attempts_on: string | null;
+  last_error: string | null;
+}
+
 const CHECK_LABELS: Record<string, string> = {
   pipeline_completeness: "Pipeline complete (the contract)",
   onchain_health: "Onchain healthy (the contract)",
@@ -82,6 +97,15 @@ function StatusIcon({ ok }: { ok: boolean }) {
   );
 }
 
+function StatCard({ label, value, ok }: { label: string; value: string | number; ok: boolean }) {
+  return (
+    <div className={`rounded-lg border p-3 ${ok ? "border-border/50" : "border-amber-500/40 bg-amber-500/5"}`}>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={`text-lg font-bold tabular-nums ${ok ? "" : "text-amber-400"}`}>{value}</p>
+    </div>
+  );
+}
+
 function CheckRow({ name, result }: { name: string; result: CheckResult }) {
   const label = CHECK_LABELS[name] ?? name;
   const help = CHECK_HELP[name];
@@ -129,6 +153,23 @@ export default function AdminHealth() {
     staleTime: 60_000,
   });
 
+  // Per-set snapshot ledger — read straight from the tracker (admin RLS), so it
+  // works even when the global health-check function is down. THIS is the check
+  // that tells you which expansions are actually landing vs failing today.
+  const { data: setHealth, error: setHealthError } = useQuery<SetHealthRow[]>({
+    queryKey: ["admin-set-health"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("scrydex_set_snapshot_state")
+        .select("set_id,set_name,status,last_success_on,last_success_at,card_total,last_cards_priced,attempts_today,attempts_on,last_error")
+        .eq("enabled", true);
+      if (error) throw error;
+      return (data ?? []) as SetHealthRow[];
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+
   // Master refresh — re-runs the snapshot cron on demand and tells every open
   // tab to invalidate its in-memory data. This is the "if the site ever shows
   // stale prices again, click here" button.
@@ -160,6 +201,23 @@ export default function AdminHealth() {
       setRefreshMode(null);
     }
   };
+
+  // Derived per-set health (UTC date matches the cron's recorded_at).
+  const todayUTC = new Date().toISOString().slice(0, 10);
+  const sets = setHealth ?? [];
+  const setFresh = sets.filter((s) => s.last_success_on === todayUTC).length;
+  const setErrored = sets.filter((s) => s.status === "error").length;
+  const setFailing = sets.filter(
+    (s) => s.attempts_on === todayUTC && s.attempts_today >= 3 && s.last_success_on !== todayUTC,
+  ).length;
+  const cardsPricedToday = sets
+    .filter((s) => s.last_success_on === todayUTC)
+    .reduce((n, s) => n + (s.last_cards_priced ?? 0), 0);
+  const setRank = (s: SetHealthRow) =>
+    s.status === "error" ? 0 : s.last_success_on !== todayUTC ? 1 : 2; // problems first
+  const sortedSets = [...sets].sort(
+    (a, b) => setRank(a) - setRank(b) || (a.last_success_at ?? "").localeCompare(b.last_success_at ?? ""),
+  );
 
   return (
     <AdminLayout>
@@ -237,6 +295,82 @@ export default function AdminHealth() {
                 <CheckRow key={name} name={name} result={result} />
               ))}
             </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Per-set snapshot health
+            </h2>
+            {setHealthError ? (
+              <div className="rounded-lg border border-border/50 p-4 text-sm text-muted-foreground">
+                Per-set tracker not deployed yet. Run migrations <code>20260607090000</code> +{" "}
+                <code>20260607093000</code>, deploy <code>snapshot-prices</code>, then run{" "}
+                <code>docs/PER_SET_PIPELINE_DEPLOY.sql</code>.
+              </div>
+            ) : sets.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Registry empty — run the <code>seed-sets</code> step in the deploy SQL.
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                  <StatCard label="Sets fresh today" value={`${setFresh}/${sets.length}`} ok={setFresh === sets.length} />
+                  <StatCard label="In error" value={setErrored} ok={setErrored === 0} />
+                  <StatCard label="Failing repeatedly" value={setFailing} ok={setFailing === 0} />
+                  <StatCard label="Cards priced today" value={cardsPricedToday.toLocaleString()} ok={true} />
+                </div>
+                <div className="rounded-lg border border-border/50 overflow-hidden">
+                  <div className="max-h-[28rem] overflow-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/30 sticky top-0">
+                        <tr className="text-xs uppercase tracking-wider text-muted-foreground">
+                          <th className="text-left font-medium py-2 px-3">Set</th>
+                          <th className="text-left font-medium py-2 px-3">State</th>
+                          <th className="text-right font-medium py-2 px-3">Priced / total</th>
+                          <th className="text-right font-medium py-2 px-3">Last success</th>
+                          <th className="text-left font-medium py-2 px-3">Note</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedSets.map((r) => {
+                          const isFresh = r.last_success_on === todayUTC;
+                          const badge =
+                            r.status === "error"
+                              ? <span className="text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-400">error</span>
+                              : isFresh
+                              ? <span className="text-xs px-2 py-0.5 rounded bg-green-500/15 text-green-400">fresh</span>
+                              : <span className="text-xs px-2 py-0.5 rounded bg-amber-500/15 text-amber-400">stale</span>;
+                          return (
+                            <tr key={r.set_id} className="border-b border-border/30 last:border-b-0">
+                              <td className="py-2 px-3 text-sm">
+                                <span className="font-medium">{r.set_name || r.set_id}</span>
+                                <span className="text-muted-foreground ml-1.5 font-mono text-xs">{r.set_id}</span>
+                              </td>
+                              <td className="py-2 px-3">{badge}</td>
+                              <td className="py-2 px-3 text-sm text-right tabular-nums">
+                                {r.last_cards_priced ?? "—"}
+                                <span className="text-muted-foreground"> / {r.card_total ?? "?"}</span>
+                              </td>
+                              <td className="py-2 px-3 text-sm text-right tabular-nums text-muted-foreground">
+                                {r.last_success_at
+                                  ? formatDistanceToNow(new Date(r.last_success_at), { addSuffix: true })
+                                  : "never"}
+                              </td>
+                              <td className="py-2 px-3 text-xs text-red-400/90 max-w-[16rem] truncate">
+                                {r.last_error ||
+                                  (r.attempts_on === todayUTC && r.attempts_today >= 3 && !isFresh
+                                    ? `${r.attempts_today} attempts, no success`
+                                    : "")}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </section>
 
           <section>
