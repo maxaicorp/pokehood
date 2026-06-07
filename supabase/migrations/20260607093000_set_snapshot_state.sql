@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS public.scrydex_set_snapshot_state (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Idempotent: if the table already exists from an earlier run, CREATE TABLE
+-- IF NOT EXISTS is a no-op and won't add new columns — so add card_total here.
+ALTER TABLE public.scrydex_set_snapshot_state ADD COLUMN IF NOT EXISTS card_total INT;
+
 -- Claim query hits: enabled + due (not done today) + unlocked, oldest-first.
 CREATE INDEX IF NOT EXISTS idx_set_snapshot_due
   ON public.scrydex_set_snapshot_state (enabled, last_success_on NULLS FIRST, locked_until);
