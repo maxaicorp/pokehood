@@ -24,6 +24,18 @@ interface PriceChartProps {
     avg30: number | null;
     trend: number | null;
   };
+  /** Scrydex trend anchors (prior prices: 1/7/14/30/90/180d ago + current) from
+   *  the live card fetch. Drawn as the deep 6-month shape, merged UNDER real
+   *  snapshots (a recorded snapshot always wins on a shared date). */
+  trendAnchors?: {
+    market: number;
+    price1d: number | null;
+    price7d: number | null;
+    price14d: number | null;
+    price30d: number | null;
+    price90d: number | null;
+    price180d: number | null;
+  } | null;
 }
 
 type Range = "24h" | "1m" | "3m" | "6m" | "1y";
@@ -73,6 +85,31 @@ function buildSyntheticHistory(
   return points;
 }
 
+/**
+ * Build the deep 6-month shape from Scrydex trend anchors — prior prices at
+ * 1/7/14/30/90/180 days ago plus the current market. These are approximations
+ * (market - price_change per window) but give every card a real 6-month curve
+ * the instant the page loads, with no stored history required.
+ */
+function buildTrendAnchors(a: NonNullable<PriceChartProps["trendAnchors"]>): PriceHistoryPoint[] {
+  const today = new Date();
+  const pts: PriceHistoryPoint[] = [];
+  const at = (daysAgo: number, price: number | null) => {
+    if (price == null || price <= 0) return;
+    const d = new Date(today);
+    d.setDate(d.getDate() - daysAgo);
+    pts.push({ date: d.toISOString().split("T")[0], price });
+  };
+  at(180, a.price180d);
+  at(90, a.price90d);
+  at(30, a.price30d);
+  at(14, a.price14d);
+  at(7, a.price7d);
+  at(1, a.price1d);
+  at(0, a.market);
+  return pts;
+}
+
 /** Latest-point marker with an outward "sonar" ping. SVG SMIL so it animates
  *  inside the recharts SVG with no CSS/layout cost. Renders nothing for the
  *  earlier points (a plain line everywhere else). */
@@ -95,6 +132,7 @@ export default function PriceChart({
   cardId,
   currentPrice,
   cardmarketAvgs,
+  trendAnchors,
 }: PriceChartProps) {
   // Default to the 3-month view. We fetch a full year so 6M/1Y are instant;
   // they show whatever history exists (and grow as snapshots accumulate /
@@ -107,32 +145,28 @@ export default function PriceChart({
     staleTime: 10 * 60_000,
   });
 
-  // Decide what data to show
-  let chartData: PriceHistoryPoint[] = [];
-
-  if (snapshotHistory && snapshotHistory.length >= 2) {
-    // We have real snapshot history — use it
-    chartData = snapshotHistory;
-    // Append today's live price if the latest snapshot isn't today
-    if (currentPrice != null) {
-      const todayStr = new Date().toISOString().split("T")[0];
-      const latest = chartData[chartData.length - 1];
-      if (latest.date !== todayStr) {
-        chartData = [...chartData, { date: todayStr, price: currentPrice }];
-      }
-    }
+  // Build the chart by merging, lowest → highest priority:
+  //   1. deep shape — Scrydex trend anchors (≈6 months) OR cardmarket synthetic
+  //   2. real daily snapshots — win on any shared date (true recorded data)
+  //   3. today's live price — always wins for today
+  const todayStr = new Date().toISOString().split("T")[0];
+  const byDate = new Map<string, number>();
+  if (trendAnchors) {
+    for (const p of buildTrendAnchors(trendAnchors)) byDate.set(p.date, p.price);
   } else if (cardmarketAvgs && currentPrice) {
-    // No snapshots yet — build synthetic from Cardmarket averages
-    chartData = buildSyntheticHistory(currentPrice, cardmarketAvgs);
-  } else if (currentPrice != null) {
-    // Only have a single price point
-    const todayStr = new Date().toISOString().split("T")[0];
-    chartData = [{ date: todayStr, price: currentPrice }];
+    for (const p of buildSyntheticHistory(currentPrice, cardmarketAvgs)) byDate.set(p.date, p.price);
   }
+  if (snapshotHistory) for (const p of snapshotHistory) byDate.set(p.date, p.price);
+  if (currentPrice != null) byDate.set(todayStr, currentPrice);
 
-  const isSynthetic = !snapshotHistory || snapshotHistory.length < 2;
-  // Synthetic-only cards don't show a 90d button, so fall the default back to 30d.
-  const effRange: Range = isSynthetic && (range === "6m" || range === "1y") ? "3m" : range;
+  let chartData: PriceHistoryPoint[] = [...byDate.entries()]
+    .map(([date, price]) => ({ date, price }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Deep ranges (6m/1y) are meaningful when we have trend anchors (≈180d) or
+  // enough real snapshots; otherwise cap at 3m.
+  const deepOk = !!trendAnchors || (snapshotHistory?.length ?? 0) >= 2;
+  const effRange: Range = !deepOk && (range === "6m" || range === "1y") ? "3m" : range;
 
   // Filter by selected range
   if (chartData.length > 0) {
@@ -141,6 +175,9 @@ export default function PriceChart({
     const cutoffStr = cutoff.toISOString().split("T")[0];
     chartData = chartData.filter((p) => p.date >= cutoffStr);
   }
+
+  // Deep part is estimated from trends until real daily snapshots fill it in.
+  const usingAnchors = !!trendAnchors && (snapshotHistory?.length ?? 0) < 5;
 
   const hasData = chartData.length >= 2;
 
@@ -177,7 +214,7 @@ export default function PriceChart({
         </div>
         <div className="flex gap-1 shrink-0">
           {(["24h", "1m", "3m", "6m", "1y"] as Range[])
-            .filter((r) => !isSynthetic || (r !== "6m" && r !== "1y"))
+            .filter((r) => deepOk || (r !== "6m" && r !== "1y"))
             .map((r) => (
               <button
                 key={r}
@@ -258,9 +295,9 @@ export default function PriceChart({
               />
             </LineChart>
           </ResponsiveContainer>
-          {isSynthetic && (
+          {usingAnchors && (
             <p className="text-[10px] text-muted-foreground mt-2 text-center">
-              Based on Cardmarket rolling averages · Daily snapshots will fill in over time
+              Older points estimated from Scrydex trends · daily snapshots fill in the detail over time
             </p>
           )}
         </>

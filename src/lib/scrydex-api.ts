@@ -223,7 +223,10 @@ export interface ScrydexNmAudit {
   market: number;
   price1d: number | null;
   price7d: number | null;
+  price14d: number | null;
   price30d: number | null;
+  price90d: number | null;
+  price180d: number | null;
   variant: string | null;
 }
 
@@ -269,7 +272,10 @@ export function getScrydexNmAuditFromCard(card: ScrydexCard | null, want?: strin
     market: e.market,
     price1d: back("days_1"),
     price7d: back("days_7"),
+    price14d: back("days_14"),
     price30d: back("days_30"),
+    price90d: back("days_90"),
+    price180d: back("days_180"),
     variant: variant.name,
   };
 }
