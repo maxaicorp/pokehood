@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Select,
@@ -12,7 +12,7 @@ import AppHeader from "@/components/AppHeader";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, RefreshCw, AlertTriangle, Activity as ActivityIcon, Store, TrendingUp } from "lucide-react";
+import { ExternalLink, ArrowUpRight, ArrowDownLeft, Tag, Gavel, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import SEO from "@/components/SEO";
 import { CC_REFERRAL_URL } from "@/components/CollectorCryptPromoItem";
 import { formatTradePrice, useSolPrice, type PriceInfo } from "@/lib/onchain-price";
@@ -91,6 +91,11 @@ interface Listing {
 }
 
 type OnchainTab = "activity" | "marketplace" | "top-sales";
+const ONCHAIN_TABS: { value: OnchainTab; label: string; description: string }[] = [
+  { value: "activity", label: "Activity", description: "Live sales and listings" },
+  { value: "top-sales", label: "Top Sales", description: "Highest USD sales" },
+  { value: "marketplace", label: "Marketplace", description: "Active listings" },
+];
 
 // Top Sales time-window pills. The DB-backed endpoint computes price_usd at
 // ingest (USDC trades use splPrice; SOL trades use spot SOL/USD), so the
@@ -156,6 +161,7 @@ export default function OnchainPage() {
 }
 
 function Onchain({ activeTab }: { activeTab: OnchainTab }) {
+  const navigate = useNavigate();
   // Sub-filters are URL-driven (useUrlState) too — same reason as the tabs: a
   // click is a deterministic navigation, and the filtered view is shareable.
   const [typeFilter, setTypeFilter] = useUrlState<string>("type", "");
@@ -164,11 +170,18 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   // ingests never delete each other's rows: CC API (collector_crypt_cc) vs
   // Magic Eden (collector_crypt). Default to CC — it's the fuller inventory.
   const [marketplaceSource, setMarketplaceSource] = useUrlState<MarketplaceSource>("source", "cc");
-  const marketplaceCollection = MARKETPLACE_COLLECTION[marketplaceSource];
+  const activeTypeFilter = TYPE_FILTERS.some((filter) => filter.value === typeFilter) ? typeFilter : "";
+  const activeMarketplaceSource = MARKETPLACE_SOURCES.some((source) => source.value === marketplaceSource)
+    ? marketplaceSource
+    : "cc";
+  const activeMarketplaceSort = MARKETPLACE_SORTS.some((sort) => sort.value === marketplaceSort)
+    ? marketplaceSort
+    : "price-asc";
+  const marketplaceCollection = MARKETPLACE_COLLECTION[activeMarketplaceSource];
 
   // Active listing count for the selected source — shown in the header.
   const { data: listedCount } = useQuery({
-    queryKey: ["onchain-listed-count", marketplaceSource],
+    queryKey: ["onchain-listed-count", activeMarketplaceSource],
     queryFn: async () => {
       const r = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/onchain_listings?collection=eq.${marketplaceCollection}&delisted_at=is.null&select=token_mint`,
@@ -182,7 +195,8 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   // Window is a number (1|7|30) but URL params are strings — store the string,
   // expose a numeric value + a number-taking setter so the pills stay unchanged.
   const [windowStr, setWindowStr] = useUrlState<"1" | "7" | "30">("window", "7");
-  const topSalesWindow = Number(windowStr) as TopSalesWindow;
+  const activeWindowStr = TOP_SALES_WINDOWS.some((window) => String(window.value) === windowStr) ? windowStr : "7";
+  const topSalesWindow = Number(activeWindowStr) as TopSalesWindow;
   const setTopSalesWindow = (w: TopSalesWindow) => setWindowStr(String(w) as "1" | "7" | "30");
   const queryClient = useQueryClient();
 
@@ -191,8 +205,13 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   // users have an escape hatch when something feels stale. A plain
   // refetch() reuses the React Query cache; invalidateQueries clears it.
   const hardRefresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["onchain-activity"] });
-    await queryClient.invalidateQueries({ queryKey: ["onchain-listings"] });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["onchain-activity"] }),
+      queryClient.invalidateQueries({ queryKey: ["onchain-listings"] }),
+      queryClient.invalidateQueries({ queryKey: ["onchain-top-sales"] }),
+      queryClient.invalidateQueries({ queryKey: ["onchain-listed-count"] }),
+      queryClient.invalidateQueries({ queryKey: ["sol-price"] }),
+    ]);
   };
 
   // Spot SOL/USD price for converting SOL trades into a USD subtitle. Returns
@@ -212,7 +231,7 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
     hasNextPage: hasNextActivity,
     isFetchingNextPage: isFetchingMoreActivity,
   } = useInfiniteQuery({
-    queryKey: ["onchain-activity", typeFilter],
+    queryKey: ["onchain-activity", activeTypeFilter],
     queryFn: async ({ pageParam }) => {
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onchain-activity`;
       const params = new URLSearchParams({
@@ -220,7 +239,7 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
         offset: String(pageParam * BATCH),
         limit: String(BATCH),
       });
-      if (typeFilter) params.set("type", typeFilter);
+      if (activeTypeFilter) params.set("type", activeTypeFilter);
       const res = await fetch(`${baseUrl}?${params}`, {
         headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
       });
@@ -233,12 +252,12 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
       // The "Sales tab shows Bids" bug recurred so many times that bypassing
       // any of these is unacceptable. Hard guard: if a typeFilter is set, the
       // ONLY allowed type in the rendered list is exactly that string.
-      if (typeFilter) {
-        const leaked = raw.filter((a) => a.type !== typeFilter);
+      if (activeTypeFilter) {
+        const leaked = raw.filter((a) => a.type !== activeTypeFilter);
         if (leaked.length > 0) {
-          console.warn(`[onchain] ${leaked.length}/${raw.length} events leaked through ${typeFilter} filter (types: ${[...new Set(leaked.map(l => l.type))].join(",")})`);
+          console.warn(`[onchain] ${leaked.length}/${raw.length} events leaked through ${activeTypeFilter} filter (types: ${[...new Set(leaked.map(l => l.type))].join(",")})`);
         }
-        return raw.filter((a) => a.type === typeFilter);
+        return raw.filter((a) => a.type === activeTypeFilter);
       }
       // Bids are bot noise — never surface them in the unfiltered feed.
       return raw.filter((a) => a.type !== "bid");
@@ -272,6 +291,7 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   const {
     data: topSalesData,
     isLoading: isTopSalesLoading,
+    isFetching: isTopSalesFetching,
     isError: isTopSalesError,
     refetch: refetchTopSales,
   } = useQuery({
@@ -339,7 +359,7 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   } = useInfiniteQuery({
     // sort + source in the key so switching either resets the list and
     // refetches from page 0.
-    queryKey: ["onchain-listings", marketplaceSort, marketplaceSource],
+    queryKey: ["onchain-listings", activeMarketplaceSort, activeMarketplaceSource],
     queryFn: async ({ pageParam }) => {
       const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/onchain-listings`;
       // The edge fn / get_onchain_listings RPC accept these sort tokens
@@ -348,7 +368,7 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
         collection: marketplaceCollection,
         offset: String(pageParam * BATCH),
         limit: String(BATCH),
-        sort: marketplaceSort, // "price-asc" | "price-desc" | "recent"
+        sort: activeMarketplaceSort, // "price-asc" | "price-desc" | "recent"
       });
       const res = await fetch(`${baseUrl}?${params}`, {
         headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
@@ -404,6 +424,12 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   const refetchListings = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["onchain-listings"] });
   }, [queryClient]);
+  const activeFetching =
+    activeTab === "activity"
+      ? isFetching
+      : activeTab === "top-sales"
+      ? isTopSalesFetching
+      : listingsFetching;
 
   return (
     <div className="min-h-screen pb-20">
@@ -439,57 +465,74 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
             variant="outline"
             size="sm"
             onClick={hardRefresh}
-            disabled={activeTab === "activity" ? isFetching : listingsFetching}
+            disabled={activeFetching}
             className="gap-2"
           >
-            <RefreshCw className={`w-4 h-4 ${(activeTab === "activity" ? isFetching : listingsFetching) ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${activeFetching ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>
 
-        {/* Section tabs — each is its own URL (/onchain/activity,
-            /onchain/marketplace) so clicking forces a full route change
-            and a fresh component mount. Earlier tab-as-state design got
-            stuck on stale loading states the user couldn't recover from
-            without a hard refresh; URL routing sidesteps that. */}
-        <div className="flex gap-2 mb-4 border-b border-border/50">
-          {([
-            { v: "activity",    label: "Activity",    Icon: ActivityIcon },
-            { v: "top-sales",   label: "Top Sales",   Icon: TrendingUp },
-            { v: "marketplace", label: "Marketplace", Icon: Store },
-          ] as const).map(({ v, label, Icon }) => (
-            <Link
-              key={v}
-              to={`/onchain/${v}`}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                activeTab === v
-                  ? "text-foreground border-primary"
-                  : "text-muted-foreground border-transparent hover:text-foreground"
-              }`}
-            >
-              <Icon className="w-4 h-4" /> {label}
-            </Link>
-          ))}
-        </div>
+        <div className="grid gap-3 mb-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              View
+            </label>
+            <Select value={activeTab} onValueChange={(value) => navigate(`/onchain/${value as OnchainTab}`)}>
+              <SelectTrigger className="mt-1 bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ONCHAIN_TABS.map((tab) => (
+                  <SelectItem key={tab.value} value={tab.value}>
+                    <span className="font-medium">{tab.label}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{tab.description}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Activity-only filter pills */}
-        {activeTab === "activity" && (
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-          {TYPE_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setTypeFilter(f.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                typeFilter === f.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+          {activeTab === "activity" && (
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Activity Type
+              </label>
+              <Select value={activeTypeFilter || "all"} onValueChange={(value) => setTypeFilter(value === "all" ? "" : value)}>
+                <SelectTrigger className="mt-1 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TYPE_FILTERS.map((filter) => (
+                    <SelectItem key={filter.value || "all"} value={filter.value || "all"}>
+                      {filter.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {activeTab === "top-sales" && (
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Window
+              </label>
+              <Select value={String(topSalesWindow)} onValueChange={(value) => setTopSalesWindow(Number(value) as TopSalesWindow)}>
+                <SelectTrigger className="mt-1 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TOP_SALES_WINDOWS.map((window) => (
+                    <SelectItem key={window.value} value={String(window.value)}>
+                      {window.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
-        )}
 
         {/* Activity branch — original feed unchanged below; wrapped so it
             doesn't render when the Marketplace tab is active. */}
@@ -643,22 +686,6 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
             window. All filtering + USD math happens server-side in the
             get_onchain_top_sales RPC, so the client just renders. */}
         {activeTab === "top-sales" && (<>
-          {/* Window pills */}
-          <div className="flex gap-2 mb-4">
-            {TOP_SALES_WINDOWS.map((w) => (
-              <button
-                key={w.value}
-                onClick={() => setTopSalesWindow(w.value)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  topSalesWindow === w.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                {w.label}
-              </button>
-            ))}
-          </div>
           <div className="text-xs text-muted-foreground mb-4">
             Top {TOP_SALES_LIMIT} sales in the last{" "}
             {TOP_SALES_WINDOWS.find((w) => w.value === topSalesWindow)?.label} by USD value.
@@ -788,37 +815,44 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
           {/* Sort dropdown above the grid. Same three options Magic Eden's
               own UI shows. Changing the selection resets the infinite scroll
               (because marketplaceSort is in the query key). */}
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-sm text-muted-foreground tabular-nums">
+          <div className="grid gap-3 mb-4 sm:grid-cols-[1fr_220px_220px] sm:items-end">
+            <span className="text-sm text-muted-foreground tabular-nums sm:pb-2">
               {listedCount != null ? `${listedCount.toLocaleString()} listed` : " "}
             </span>
-            <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
-              {MARKETPLACE_SOURCES.map((s) => (
-                <button
-                  key={s.value}
-                  onClick={() => setMarketplaceSource(s.value)}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                    marketplaceSource === s.value
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Source
+              </label>
+              <Select value={activeMarketplaceSource} onValueChange={(v) => setMarketplaceSource(v as MarketplaceSource)}>
+                <SelectTrigger className="mt-1 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MARKETPLACE_SOURCES.map((source) => (
+                    <SelectItem key={source.value} value={source.value}>
+                      {source.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={marketplaceSort} onValueChange={(v) => setMarketplaceSort(v as MarketplaceSort)}>
-              <SelectTrigger className="w-[200px] bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MARKETPLACE_SORTS.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Sort
+              </label>
+              <Select value={activeMarketplaceSort} onValueChange={(v) => setMarketplaceSort(v as MarketplaceSort)}>
+                <SelectTrigger className="mt-1 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MARKETPLACE_SORTS.map((sort) => (
+                    <SelectItem key={sort.value} value={sort.value}>
+                      {sort.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {listingsError && (

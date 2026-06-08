@@ -34,8 +34,15 @@ const GRAPHIC_FORMATS = [
   { key: "horizontal", label: "Horizontal", ratio: "16:9", className: "h-[236px] w-[420px]" },
   { key: "vertical", label: "Vertical", ratio: "4:5", className: "h-[475px] w-[380px]" },
 ] as const;
+const GRAPHIC_STYLES = [
+  { key: "market-glass", label: "Market Glass" },
+  { key: "card-shadow", label: "Card Shadow" },
+  { key: "liquid-wave", label: "Liquid Wave" },
+  { key: "data-terminal", label: "Data Terminal" },
+] as const;
 
 type GraphicFormatKey = (typeof GRAPHIC_FORMATS)[number]["key"];
+type GraphicStyleKey = (typeof GRAPHIC_STYLES)[number]["key"];
 
 function formatPctValue(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return "--";
@@ -67,12 +74,12 @@ function imageFromSignal(signal: MarketingContentSignal): string {
   );
 }
 
-function fileNameFor(signal: MarketingContentSignal, format: GraphicFormatKey): string {
+function fileNameFor(signal: MarketingContentSignal, format: GraphicFormatKey, style: GraphicStyleKey): string {
   const base = `${signal.signalType}-${signal.cardName || signal.setName || signal.id}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return `collectiblez-${base || "signal"}-${format}.png`;
+  return `collectiblez-${base || "signal"}-${style}-${format}.png`;
 }
 
 function absoluteTargetUrl(signal: MarketingContentSignal): string {
@@ -90,7 +97,7 @@ async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
   return new File([blob], fileName, { type: blob.type || "image/png" });
 }
 
-function GraphicPreview({ signal, format }: { signal: MarketingContentSignal; format: GraphicFormatKey }) {
+function GraphicPreview({ signal, format, style }: { signal: MarketingContentSignal; format: GraphicFormatKey; style: GraphicStyleKey }) {
   const image = imageFromSignal(signal);
   const isSet = signal.signalType === "set_heat";
   const isSquare = format === "square";
@@ -98,6 +105,29 @@ function GraphicPreview({ signal, format }: { signal: MarketingContentSignal; fo
   const pctUp = (signal.pctChange ?? 0) >= 0;
   const accent = pctUp ? "#22c55e" : "#ef4444";
   const formatInfo = GRAPHIC_FORMATS.find((item) => item.key === format) ?? GRAPHIC_FORMATS[0];
+  const isCardShadow = style === "card-shadow";
+  const isLiquid = style === "liquid-wave";
+  const isTerminal = style === "data-terminal";
+  const bgClass = isLiquid
+    ? "bg-[radial-gradient(circle_at_20%_20%,rgba(45,212,191,0.42),transparent_30%),radial-gradient(circle_at_86%_18%,rgba(59,130,246,0.35),transparent_25%),radial-gradient(circle_at_58%_82%,rgba(236,72,153,0.28),transparent_32%),linear-gradient(145deg,#030303_0%,#08111c_48%,#020202_100%)]"
+    : isTerminal
+    ? "bg-[linear-gradient(rgba(34,197,94,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(145deg,#020402_0%,#061109_56%,#000_100%)] bg-[size:18px_18px,18px_18px,auto]"
+    : isCardShadow
+    ? "bg-[linear-gradient(145deg,#020202_0%,#080808_48%,#000_100%)]"
+    : "bg-[radial-gradient(circle_at_82%_7%,rgba(255,255,255,0.22),transparent_24%),linear-gradient(150deg,#050505_0%,#101010_52%,#000_100%)]";
+  const panelClass = isTerminal
+    ? "border-emerald-400/25 bg-black/55"
+    : isLiquid
+    ? "border-white/14 bg-white/[0.075]"
+    : "border-white/12 bg-white/[0.06]";
+  const frameClass = isTerminal
+    ? "border-emerald-400/20 bg-black/45"
+    : isLiquid
+    ? "border-white/14 bg-white/[0.09]"
+    : "border-white/12 bg-white/[0.06]";
+  const typeface = isTerminal
+    ? "'Courier New', ui-monospace, monospace"
+    : "Inter, system-ui, sans-serif";
   const headline = signal.signalType === "card_of_day"
     ? "CARD OF THE DAY"
     : signal.signalType === "set_heat"
@@ -116,22 +146,25 @@ function GraphicPreview({ signal, format }: { signal: MarketingContentSignal; fo
     return (
       <div
         className={`relative overflow-hidden rounded-xl border border-white/15 bg-black text-white shadow-2xl ${formatInfo.className}`}
-        style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+        style={{ fontFamily: typeface }}
       >
         {image && !isSet && (
           <img
             src={image}
             alt=""
             crossOrigin="anonymous"
-            className="absolute -right-6 top-0 h-[250px] w-[190px] rotate-6 object-contain opacity-18 blur-[1px]"
+            className={isCardShadow
+              ? "absolute inset-0 h-full w-full scale-125 object-cover opacity-[0.24] blur-md"
+              : "absolute -right-6 top-0 h-[250px] w-[190px] rotate-6 object-contain opacity-[0.18] blur-[1px]"}
           />
         )}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_12%,rgba(255,255,255,0.2),transparent_22%),linear-gradient(135deg,#050505_0%,#101010_56%,#000_100%)]" />
+        <div className={`absolute inset-0 ${bgClass}`} />
         <div className="absolute inset-y-0 left-0 w-[5px]" style={{ backgroundColor: accent }} />
+        {isLiquid && <div className="absolute inset-x-8 top-1/2 h-16 -translate-y-1/2 rounded-full bg-white/10 blur-2xl" />}
         <div className="absolute -bottom-14 -left-10 h-36 w-36 rounded-full opacity-25 blur-3xl" style={{ backgroundColor: accent }} />
 
         <div className="relative z-10 grid h-full grid-cols-[144px_1fr] gap-5 p-5">
-          <div className="flex items-center justify-center rounded-2xl border border-white/12 bg-white/[0.06]">
+          <div className={`flex items-center justify-center rounded-2xl border ${frameClass}`}>
             {image ? (
               <img
                 src={image}
@@ -150,7 +183,7 @@ function GraphicPreview({ signal, format }: { signal: MarketingContentSignal; fo
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-white/48">Collectiblez</p>
                 <p className="mt-1 text-[12px] font-black uppercase tracking-[0.12em] text-white">{headline}</p>
               </div>
-              <div className="rounded-full border border-white/12 px-3 py-1 text-xs font-black tabular-nums" style={{ color: accent, backgroundColor: "rgba(255,255,255,0.06)" }}>
+              <div className="rounded-full border border-white/12 px-3 py-1 text-xs font-black tabular-nums" style={{ color: accent, backgroundColor: isTerminal ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.06)" }}>
                 {moveLabel}
               </div>
             </div>
@@ -161,11 +194,11 @@ function GraphicPreview({ signal, format }: { signal: MarketingContentSignal; fo
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-white/10 bg-white/[0.055] px-3 py-2">
+              <div className={`rounded-xl border px-3 py-2 ${panelClass}`}>
                 <p className="text-[9px] font-black uppercase tracking-[0.15em] text-white/42">{isSet ? "Index" : "NM market"}</p>
                 <p className="mt-1 text-lg font-black tabular-nums">{valueLabel}</p>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.055] px-3 py-2 text-right">
+              <div className={`rounded-xl border px-3 py-2 text-right ${panelClass}`}>
                 <p className="text-[9px] font-black uppercase tracking-[0.15em] text-white/42">{signal.window || "Move"}</p>
                 <p className="mt-1 text-lg font-black tabular-nums" style={{ color: accent }}>{moveLabel}</p>
               </div>
@@ -177,20 +210,23 @@ function GraphicPreview({ signal, format }: { signal: MarketingContentSignal; fo
   }
 
   return (
-    <div
-      className={`relative overflow-hidden rounded-xl border border-white/15 bg-black text-white shadow-2xl ${formatInfo.className}`}
-      style={{ fontFamily: "Inter, system-ui, sans-serif" }}
-    >
+      <div
+        className={`relative overflow-hidden rounded-xl border border-white/15 bg-black text-white shadow-2xl ${formatInfo.className}`}
+        style={{ fontFamily: typeface }}
+      >
       {image && !isSet && (
         <img
           src={image}
           alt=""
           crossOrigin="anonymous"
-          className="absolute -right-10 top-8 h-[310px] w-[240px] rotate-6 object-contain opacity-25 blur-[2px]"
+          className={isCardShadow
+            ? "absolute inset-0 h-full w-full scale-125 object-cover opacity-[0.26] blur-md"
+            : "absolute -right-10 top-8 h-[310px] w-[240px] rotate-6 object-contain opacity-25 blur-[2px]"}
         />
       )}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_7%,rgba(255,255,255,0.22),transparent_24%),linear-gradient(150deg,#050505_0%,#101010_52%,#000_100%)]" />
+      <div className={`absolute inset-0 ${bgClass}`} />
       <div className="absolute inset-x-0 top-0 h-[5px]" style={{ backgroundColor: accent }} />
+      {isLiquid && <div className="absolute inset-x-8 top-[35%] h-20 rounded-full bg-white/10 blur-2xl" />}
       <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full opacity-25 blur-3xl" style={{ backgroundColor: accent }} />
 
       <div className="relative z-10 flex h-full flex-col p-6">
@@ -213,7 +249,7 @@ function GraphicPreview({ signal, format }: { signal: MarketingContentSignal; fo
 
         <div className={`relative flex flex-1 items-center justify-center ${isSquare ? "py-3" : "py-5"}`}>
           {image ? (
-            <div className={isSet ? `${isSquare ? "min-h-[128px]" : "min-h-[190px]"} flex w-full items-center justify-center rounded-2xl border border-white/12 bg-white/[0.07] px-8` : "relative"}>
+            <div className={isSet ? `${isSquare ? "min-h-[128px]" : "min-h-[190px]"} flex w-full items-center justify-center rounded-2xl border px-8 ${frameClass}` : "relative"}>
               <img
                 src={image}
                 alt=""
@@ -230,7 +266,7 @@ function GraphicPreview({ signal, format }: { signal: MarketingContentSignal; fo
           )}
         </div>
 
-        <div className={`rounded-2xl border border-white/12 bg-white/[0.06] ${isSquare ? "p-3" : "p-4"} backdrop-blur`}>
+        <div className={`rounded-2xl border ${panelClass} ${isSquare ? "p-3" : "p-4"} backdrop-blur`}>
           <div>
             <p className={`${isSquare ? "text-[22px]" : "text-[26px]"} line-clamp-2 font-black leading-[0.98] tracking-tight`}>
               {subject}
@@ -279,6 +315,7 @@ export default function AdminContentSignals() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [previewFormat, setPreviewFormat] = useState<GraphicFormatKey>("square");
+  const [previewStyle, setPreviewStyle] = useState<GraphicStyleKey>("market-glass");
 
   const signalsQuery = useQuery({
     queryKey: ["marketing-content-signals", statusFilter],
@@ -351,7 +388,7 @@ export default function AdminContentSignals() {
       const dataUrl = await renderGraphicDataUrl();
       const link = document.createElement("a");
       link.href = dataUrl;
-      link.download = fileNameFor(selected, previewFormat);
+      link.download = fileNameFor(selected, previewFormat, previewStyle);
       link.click();
       toast.success("Graphic exported");
     } catch {
@@ -364,7 +401,7 @@ export default function AdminContentSignals() {
     const targetUrl = absoluteTargetUrl(selected);
     try {
       const dataUrl = await renderGraphicDataUrl();
-      const file = await dataUrlToFile(dataUrl, fileNameFor(selected, previewFormat));
+      const file = await dataUrlToFile(dataUrl, fileNameFor(selected, previewFormat, previewStyle));
       const shareData = {
         title: selected.title,
         text: caption,
@@ -523,10 +560,24 @@ export default function AdminContentSignals() {
                     </Button>
                   ))}
                 </div>
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {GRAPHIC_STYLES.map((style) => (
+                    <Button
+                      key={style.key}
+                      type="button"
+                      size="sm"
+                      variant={previewStyle === style.key ? "default" : "outline"}
+                      className="h-8"
+                      onClick={() => setPreviewStyle(style.key)}
+                    >
+                      {style.label}
+                    </Button>
+                  ))}
+                </div>
 
                 <div className="flex justify-center overflow-auto rounded-lg bg-muted/40 p-3">
                   <div ref={previewRef}>
-                    <GraphicPreview signal={{ ...selected, caption }} format={previewFormat} />
+                    <GraphicPreview signal={{ ...selected, caption }} format={previewFormat} style={previewStyle} />
                   </div>
                 </div>
 
