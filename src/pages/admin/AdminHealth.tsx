@@ -154,6 +154,7 @@ function HistoryRow({ day }: { day: SnapshotDayStat }) {
 
 export default function AdminHealth() {
   const [crawling, setCrawling] = useState(false);
+  const [recrawling, setRecrawling] = useState<Set<string>>(new Set());
   const { data, isFetching, refetch, error } = useQuery<HealthReport>({
     queryKey: ["admin-health"],
     queryFn: async () => {
@@ -235,6 +236,25 @@ export default function AdminHealth() {
     } catch (e) {
       setCrawling(false);
       toast.error(`Re-crawl failed: ${String(e)}`);
+    }
+  };
+
+  // Recrawl ONE set — atomic crawl-sets (write + tracker stamp + cache refresh),
+  // then refetch so that row flips to fresh. Cheap (~1-2 credits) vs a full cycle.
+  const recrawlSet = async (setId: string) => {
+    setRecrawling((p) => new Set(p).add(setId));
+    const done = () => setRecrawling((p) => { const n = new Set(p); n.delete(setId); return n; });
+    try {
+      const { error } = await supabase.functions.invoke("snapshot-prices", {
+        body: { mode: "crawl-sets", setIds: [setId] },
+      });
+      if (error) throw error;
+      toast.info(`Recrawling ${setId}…`);
+      // One set crawls + refreshes in the background in a few seconds.
+      setTimeout(async () => { await refetchSetHealth(); done(); toast.success(`${setId} recrawled.`); }, 8000);
+    } catch (e) {
+      done();
+      toast.error(`Recrawl ${setId} failed: ${String(e)}`);
     }
   };
 
@@ -356,6 +376,7 @@ export default function AdminHealth() {
                           <th className="text-right font-medium py-2 px-3">Priced / total</th>
                           <th className="text-right font-medium py-2 px-3">Last success</th>
                           <th className="text-left font-medium py-2 px-3">Note</th>
+                          <th className="text-right font-medium py-2 px-3"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -388,6 +409,18 @@ export default function AdminHealth() {
                                   (r.attempts_on === todayUTC && r.attempts_today >= 3 && !isFresh
                                     ? `${r.attempts_today} attempts, no success`
                                     : "")}
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-7 px-2"
+                                  disabled={recrawling.has(r.set_id)}
+                                  onClick={() => recrawlSet(r.set_id)}
+                                  title={`Recrawl ${r.set_id} now`}
+                                >
+                                  <RefreshCw className={`w-3.5 h-3.5 ${recrawling.has(r.set_id) ? "animate-spin" : ""}`} />
+                                </Button>
                               </td>
                             </tr>
                           );

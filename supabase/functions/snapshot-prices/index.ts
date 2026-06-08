@@ -785,11 +785,12 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const mode: "daily" | "full" | "chunk" | "sets" | "crawl-batch" | "seed-sets" =
+    const mode: "daily" | "full" | "chunk" | "sets" | "crawl-batch" | "crawl-sets" | "seed-sets" =
       body.mode === "full" ? "full"
       : body.mode === "chunk" ? "chunk"
       : body.mode === "sets" ? "sets"
       : body.mode === "crawl-batch" ? "crawl-batch"
+      : body.mode === "crawl-sets" ? "crawl-sets"
       : body.mode === "seed-sets" ? "seed-sets"
       : "daily";
     const today = new Date().toISOString().split("T")[0];
@@ -823,6 +824,7 @@ serve(async (req: Request) => {
         mode === "chunk" ? 0 :              // chunk is always intentional, never skip
         mode === "sets"  ? 0 :              // set backfill is targeted, never skip
         mode === "crawl-batch" ? 0 :        // self-limited by the due-queue, never skip
+        mode === "crawl-sets"  ? 0 :        // targeted admin recrawl, never skip
         mode === "seed-sets"   ? 0 :        // registry refresh, never skip
         10000;                              // daily
       if (threshold > 0 && have >= threshold) {
@@ -849,6 +851,7 @@ serve(async (req: Request) => {
       mode === "chunk" ? chunkPageLimit :
       mode === "sets"  ? Math.max(2, setIds.length * 2) :
       mode === "crawl-batch" ? batchLimit * 3 : // ~2-3 pages/set
+      mode === "crawl-sets"  ? Math.max(2, setIds.length * 3) :
       mode === "seed-sets"   ? 10 :
       120; // daily
     const creditsRemaining = await getScrydexCredits(apiKey, teamId);
@@ -987,6 +990,55 @@ serve(async (req: Request) => {
       }
       return new Response(
         JSON.stringify({ success: true, mode: "crawl-batch", limit: batchLimit, note: "Running in background — see logs + scrydex_set_snapshot_state for results." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
+      );
+    } else if (mode === "crawl-sets") {
+      // Targeted atomic recrawl of explicit set ids (the admin per-set button).
+      // Same atomic-write + tracker-stamp as crawl-batch, but for the GIVEN sets
+      // (no due-queue claim), then refresh so the result surfaces immediately.
+      if (setIds.length === 0) {
+        return new Response(
+          JSON.stringify({ success: false, error: "mode=crawl-sets requires setIds: string[]" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 },
+        );
+      }
+      const work = (async () => {
+        try {
+          for (const setId of setIds) {
+            const r = await crawlSetAtomic({ setId, apiKey, teamId, today });
+            if (!r.ok) {
+              await supabase.rpc("mark_set_snapshot_error", { p_set_id: setId, p_error: r.error ?? "unknown" });
+              console.warn(`[crawl-sets] ${setId} FAILED (${r.error}) — wrote nothing`);
+              continue;
+            }
+            const rawRes = await flushRows(supabase, r.rows);
+            await flushGradedRows(supabase, r.gradedRows);
+            if (r.rows.length > 0 && rawRes.inserted === 0) {
+              await supabase.rpc("mark_set_snapshot_error", { p_set_id: setId, p_error: "raw upsert failed" });
+              continue;
+            }
+            await supabase.rpc("mark_set_snapshot_success", {
+              p_set_id: setId, p_pages: r.pages, p_cards_seen: r.cardsSeen, p_cards_priced: r.cardsPriced,
+            });
+            console.log(`[crawl-sets] ${setId} OK — priced ${r.cardsPriced}/${r.cardsSeen}`);
+          }
+          // Targeted + admin-triggered → refresh now so the result is visible immediately.
+          await refreshLatestCardPrices(supabase);
+          await refreshLatestGradedPrices(supabase);
+          console.log(`[crawl-sets] DONE — ${setIds.length} set(s) recrawled + refreshed. ${FUNCTION_VERSION}`);
+        } catch (e) {
+          console.error("[crawl-sets] background error:", e);
+        }
+      })();
+      // @ts-ignore — EdgeRuntime is available in the Supabase Edge runtime
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(work);
+      } else {
+        work.catch((e) => console.error("[crawl-sets] background error", e));
+      }
+      return new Response(
+        JSON.stringify({ success: true, mode: "crawl-sets", sets: setIds.length, setIds }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 },
       );
     } else if (mode === "sets") {
