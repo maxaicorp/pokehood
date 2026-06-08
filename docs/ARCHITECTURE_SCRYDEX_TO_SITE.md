@@ -136,15 +136,20 @@ consumption.
 
 ---
 
-## 5. Known flaws / open items / optimizations
+## 5. Open items (honest audit — most of these are NOT problems)
 
-1. **Card page may make 2+ live fetches of the same card** (graded tiles + `getScrydexNmAudit` + possibly `enrichCardWithPricing` cold). Each is ~1 credit. **Optimization:** consolidate to ONE `getScrydexCard` per page and derive price, deltas, anchors, and graded from it. Not broken — just wasteful under traffic.
-2. **Intraday refresh `TRUNCATE`s `latest_card_prices`** every 20 min → a brief `ACCESS EXCLUSIVE` lock (readers wait ~seconds), 72×/day. Fine now; could move to an upsert/merge refresh if it ever bites.
-3. **Legacy global-paging modes still exist** (`daily`/`full`/`chunk`) and the Master Refresh buttons still call them (drift-prone). Harmless manual fallback; could repoint to `crawl-batch`.
-4. **Trend anchors are approximations** (market − price_change). Shown under a "estimated from trends" note until daily snapshots densify. By design.
-5. **Graded has no deltas/movers yet** — `latest_graded_prices` carries price only. v2 = graded movers (needs deltas computed in the graded refresh).
-6. **Cards with no NM raw USD price** (energy commons, graded-only secret rares) are intentionally not priced → show N/A. `priced/total` on the health panel will always be < total because of this (expected, not a bug).
-7. **Deploy gating:** all 🟡 items are live only after the migrations + edge-fn deploy + `PER_SET_PIPELINE_DEPLOY.sql`. Commit ≠ deploy for edge functions — the #1 historical failure.
+**Real, but minor:**
+1. **Intraday refresh `TRUNCATE`s `latest_card_prices`** every 20 min, then rebuilds in the same transaction. `TRUNCATE` takes a brief `ACCESS EXCLUSIVE` lock, so readers wait ~the rebuild time (a couple seconds), ~72×/day. Low impact; if it ever bites under load, switch to a merge/upsert refresh (no truncate).
+2. **Legacy global-paging modes still exist** (`daily`/`full`/`chunk`) and the **Master Refresh buttons** on `/admin/health` still call them — the drift-prone path. Inert unless someone clicks them. Could repoint the buttons to `crawl-batch`.
+
+**Not flaws — expected behavior / by design:**
+3. **Card page = exactly ONE live Scrydex fetch** (`getScrydexNmAudit`, for the chart's deep anchors), ~1 credit/view. Everything else on the page (base card, extras, pricing, graded tiles) reads the **DB**, not Scrydex. So no duplicate fetching. (The live fetch is the deliberate trade for instant 6-month charts.)
+4. **Trend anchors are approximations** (market − price_change), shown under an "estimated from trends" note until daily snapshots densify. Intentional.
+5. **`priced/total` on the health panel is always < total** — energy commons and graded-only secret rares have no NM price, so they're correctly unpriced. Expected, not a gap.
+
+**Future:**
+6. **Graded has no deltas/movers yet** — `latest_graded_prices` carries price only. v2 = graded movers (needs deltas in the graded refresh).
+7. **Deploy gating:** all 🟡 items go live only after the migrations + edge-fn deploy + `PER_SET_PIPELINE_DEPLOY.sql`. Commit ≠ deploy for edge functions — the #1 historical failure.
 
 ---
 
