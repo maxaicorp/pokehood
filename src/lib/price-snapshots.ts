@@ -133,6 +133,37 @@ export async function getCardPriceChart(cardId: string, days = 365): Promise<Car
   };
 }
 
+// ── Set Index ─────────────────────────────────────────────────────────────────
+
+export interface SetIndexRow {
+  setId: string;
+  totalValue: number;
+  cardCount: number;
+  pct1d: number | null;
+  pct7d: number | null;
+  pct30d: number | null;
+  sparkline: { date: string; value: number }[];
+}
+
+/** Every set's aggregate index value + 1d/7d/30d movement + a 90-day sparkline.
+ *  Backed by get_set_index_overview (DB only, anon-readable). */
+export async function getSetIndexOverview(): Promise<SetIndexRow[]> {
+  const { data, error } = await (supabase.rpc as any)("get_set_index_overview");
+  if (error || !data) return [];
+  return (data as Array<Record<string, unknown>>).map((r) => ({
+    setId: String(r.set_id),
+    totalValue: Number(r.total_value ?? 0),
+    cardCount: Number(r.card_count ?? 0),
+    pct1d: r.pct_1d != null ? Number(r.pct_1d) : null,
+    pct7d: r.pct_7d != null ? Number(r.pct_7d) : null,
+    pct30d: r.pct_30d != null ? Number(r.pct_30d) : null,
+    sparkline: ((r.sparkline as Array<{ date: string; value: number }>) ?? []).map((p) => ({
+      date: p.date,
+      value: Number(p.value),
+    })),
+  }));
+}
+
 // ── Bulk latest prices for instant Market page loading ────────────────────────
 
 export interface LatestPrice {

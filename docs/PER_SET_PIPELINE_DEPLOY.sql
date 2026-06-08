@@ -12,7 +12,10 @@
 --   2. Run migration 20260607093000_set_snapshot_state.sql        (tracker + claim/stamp)
 --   3. Run migration 20260607100000_trends_deltas.sql             (deltas from Scrydex trends)
 --   4. Run migration 20260607110000_chart_anchors.sql             (6 chart anchors + get_card_price_chart RPC)
---   5. Deploy edge fn `snapshot-prices` (version 2026-06-07-crawl-batch-per-set-atomic)
+--   5. Run migration 20260608100000_set_index.sql                 (heatmap/index)
+--   6. Run migration 20260608110000_marketing_content_signals.sql (content queue)
+--   7. Deploy edge fn `snapshot-prices` (version 2026-06-08-trends-6window-anchors)
+--   8. Deploy edge fn `generate-content-signals`
 -- THEN run this file.
 -- ============================================================================
 
@@ -46,7 +49,9 @@ BEGIN
          'weekly-snapshot-prices-full',
          'snapshot-crawl-batch-5m',
          'seed-snapshot-sets-daily',
-         'refresh-latest-prices-intraday'
+         'refresh-latest-prices-intraday',
+         'refresh-set-index-intraday',
+         'generate-content-signals-daily'
        )
   LOOP
     PERFORM cron.unschedule(j.jobname);
@@ -83,6 +88,23 @@ SELECT cron.schedule(
   $$ SELECT public.refresh_latest_card_prices(); SELECT public.refresh_latest_graded_prices(); $$
 );
 
+-- ── 5B. Set heatmap + marketing signals (pure SQL, zero Scrydex credits) ────
+-- The heatmap/index page reads get_set_index_overview(); this snapshots the
+-- current set baskets after latest_card_prices refreshes. Content signals are
+-- draft rows for the admin graphic generator, not auto-posts.
+SELECT cron.schedule(
+  'refresh-set-index-intraday', '7,27,47 * * * *',
+  $$ SELECT public.refresh_set_index(); $$
+);
+
+SELECT cron.schedule(
+  'generate-content-signals-daily', '20 14 * * *',
+  $$ SELECT net.http_post(
+       url     := 'https://cmthndfrvnlyfxgxqjkm.supabase.co/functions/v1/generate-content-signals',
+       headers := jsonb_build_object('Content-Type','application/json','x-cron-secret','CharlieDemon333'),
+       body    := '{}'::jsonb); $$
+);
+
 -- ── 6. Verify ────────────────────────────────────────────────────────────────
 -- Active crons:
 -- SELECT jobname, schedule FROM cron.job ORDER BY jobname;
@@ -91,3 +113,10 @@ SELECT cron.schedule(
 -- Per-set detail:
 -- SELECT set_id, status, last_success_on, last_cards_priced, attempts_today, last_error
 --   FROM public.scrydex_set_snapshot_state WHERE enabled ORDER BY last_success_on NULLS FIRST LIMIT 30;
+-- Heatmap:
+-- SELECT public.refresh_set_index();
+-- SELECT * FROM public.get_set_index_overview() LIMIT 20;
+-- Content signals:
+-- SELECT public.generate_marketing_content_signals();
+-- SELECT signal_type, status, title, score FROM public.marketing_content_signals
+--   ORDER BY signal_date DESC, score DESC LIMIT 20;

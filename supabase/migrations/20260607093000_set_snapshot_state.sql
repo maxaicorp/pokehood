@@ -70,7 +70,14 @@ AS $$
     WHERE enabled
       AND (last_success_on IS NULL OR last_success_on < CURRENT_DATE)
       AND (locked_until IS NULL OR locked_until < now())
-    ORDER BY last_success_on NULLS FIRST, set_id
+      -- Do not let a broken set monopolize every 5-minute tick. It gets a few
+      -- retries today, then health views surface it for manual attention while
+      -- the rest of the catalog continues to refresh.
+      AND NOT (attempts_on = CURRENT_DATE AND attempts_today >= 3 AND status = 'error')
+    ORDER BY
+      CASE WHEN attempts_on = CURRENT_DATE THEN attempts_today ELSE 0 END,
+      last_success_on NULLS FIRST,
+      set_id
     LIMIT GREATEST(p_limit, 1)
     FOR UPDATE SKIP LOCKED
   )

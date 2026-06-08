@@ -37,7 +37,12 @@ describe("getScrydexNmAuditFromCard", () => {
             low: 329.33,
             market: 372.71,
             currency: "USD",
-            trends: { days_1: { price_change: -1, percent_change: -0.27 } },
+            trends: {
+              days_1: { price_change: -1, percent_change: -0.27 },
+              days_14: { price_change: 12.71, percent_change: 3.53 },
+              days_90: { price_change: 72.71, percent_change: 24.24 },
+              days_180: { price_change: -27.29, percent_change: -6.82 },
+            },
           },
         ] },
       ]),
@@ -47,7 +52,10 @@ describe("getScrydexNmAuditFromCard", () => {
       market: 372.71,
       price1d: 373.71,
       price7d: null,
+      price14d: 360,
       price30d: null,
+      price90d: 300,
+      price180d: 400,
       variant: "holofoil",
     });
   });

@@ -40,21 +40,25 @@ async function proxyFetch(endpoint) {
 async function main() {
   mkdirSync(LOGOS_DIR, { recursive: true });
 
-  // 1. Get all English expansions (1 credit)
+  // 1. Get all expansions from the canonical endpoint, then filter English physical sets.
   console.log("📋 Fetching expansion list from Scrydex (1 credit)...");
   const PAGE_SIZE = 100;
-  const first = await proxyFetch(`/pokemon/v1/en/expansions?page=1&page_size=${PAGE_SIZE}`);
+  const first = await proxyFetch(`/pokemon/v1/expansions?page=1&page_size=${PAGE_SIZE}`);
   const total = first.total_count ?? 0;
   const pages = Math.ceil(total / PAGE_SIZE);
 
   let expansions = first.data ?? [];
   for (let p = 2; p <= pages; p++) {
-    const r = await proxyFetch(`/pokemon/v1/en/expansions?page=${p}&page_size=${PAGE_SIZE}`);
+    const r = await proxyFetch(`/pokemon/v1/expansions?page=${p}&page_size=${PAGE_SIZE}`);
     expansions = [...expansions, ...(r.data ?? [])];
   }
 
-  // Filter to sets that have logos (exclude online-only)
-  const withLogos = expansions.filter((e) => e.logo && !e.is_online_only);
+  // Filter to English physical sets that have logos (exclude Pocket / online-only).
+  const withLogos = expansions.filter((e) => {
+    const lang = e.language_code ?? e.language;
+    const series = String(e.series ?? "").toLowerCase();
+    return e.logo && (!lang || lang === "EN") && !e.is_online_only && !series.includes("pocket");
+  });
   console.log(`   Found ${expansions.length} expansions, ${withLogos.length} with logos\n`);
 
   // 2. Download each logo (0 credits — direct CDN fetch)

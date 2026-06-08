@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import { listGiveaways } from "@/lib/giveaway-store";
 import { supabase } from "@/integrations/supabase/client";
-import { Gift, Mail, Trophy, Activity, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Gift, Mail, Trophy, Activity, CheckCircle2, AlertTriangle, Newspaper } from "lucide-react";
 
 function StatCard({ icon: Icon, label, value, to }: { icon: typeof Gift; label: string; value: number | string; to: string }) {
   return (
@@ -107,6 +107,9 @@ export default function AdminOverview() {
         </Link>
         <Link to="/admin/prizes" className="rounded-md border border-border/50 px-4 py-3 hover:border-primary/40 hover:bg-muted/30 transition-colors text-sm flex items-center gap-2">
           <Trophy className="w-4 h-4" /> Manage game prizes
+        </Link>
+        <Link to="/admin/content-signals" className="rounded-md border border-border/50 px-4 py-3 hover:border-primary/40 hover:bg-muted/30 transition-colors text-sm flex items-center gap-2">
+          <Newspaper className="w-4 h-4" /> Content signals
         </Link>
         <Link to="/admin/health" className="rounded-md border border-border/50 px-4 py-3 hover:border-primary/40 hover:bg-muted/30 transition-colors text-sm flex items-center gap-2">
           <Activity className="w-4 h-4" /> System health

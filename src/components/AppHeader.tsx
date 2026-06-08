@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 interface AppHeaderProps {
-  activePage: "dashboard" | "explore" | "market" | "sets" | "onchain" | "games";
+  activePage: "dashboard" | "explore" | "market" | "sets" | "heatmap" | "onchain" | "games";
   children?: React.ReactNode;
 }
 
@@ -90,6 +90,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Dashboard</Link>
               <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Explore</Link>
               <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Sets</Link>
+              <Link to="/heatmap" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "heatmap" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Heatmap</Link>
               <Link to="/onchain/activity" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Onchain</Link>
               <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Games</Link>
               {/* Giveaway hidden from public nav for now — system needs more
@@ -161,7 +162,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link to="/auth" className="px-4 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+              <Link to="/auth" className="px-4 py-1.5 text-sm font-medium rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 transition-colors">
                 Sign In
               </Link>
             )}

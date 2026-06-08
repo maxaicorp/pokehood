@@ -25,10 +25,12 @@ const Games = lazy(() => import("./pages/Games"));
 const CardMatch = lazy(() => import("./pages/CardMatch"));
 const Stats = lazy(() => import("./pages/Stats"));
 const Market = lazy(() => import("./pages/Market"));
+const Indexes = lazy(() => import("./pages/Indexes"));
 const BrandLab = lazy(() => import("./pages/BrandLab"));
 const Sets = lazy(() => import("./pages/Sets"));
 const SetDetail = lazy(() => import("./pages/SetDetail"));
 const Onchain = lazy(() => import("./pages/Onchain"));
+const GachaLab = lazy(() => import("./pages/GachaLab"));
 const GiveawayConfirm = lazy(() => import("./pages/GiveawayConfirm"));
 const AdminOverview = lazy(() => import("./pages/admin/AdminOverview"));
 const AdminGiveaways = lazy(() => import("./pages/admin/AdminGiveaways"));
@@ -38,6 +40,7 @@ const AdminHealth = lazy(() => import("./pages/admin/AdminHealth"));
 const AdminFunctions = lazy(() => import("./pages/admin/AdminFunctions"));
 const AdminCcDiscovery = lazy(() => import("./pages/admin/AdminCcDiscovery"));
 const AdminPrices = lazy(() => import("./pages/admin/AdminPrices"));
+const AdminContentSignals = lazy(() => import("./pages/admin/AdminContentSignals"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -81,8 +84,11 @@ const App = () => (
                   <Route path="/sets" element={<Sets />} />
                   <Route path="/sets/:slug" element={<SetDetail />} />
                   <Route path="/sets/:slug/:cardSlug" element={<CardDetail />} />
+                  <Route path="/heatmap" element={<Indexes />} />
+                  <Route path="/indexes" element={<Indexes />} />
                   <Route path="/onchain" element={<Onchain />} />
                   <Route path="/onchain/:tab" element={<Onchain />} />
+                  <Route path="/lab/gacha" element={<GachaLab />} />
                   <Route path="/games" element={<Games />} />
                   <Route path="/games/card-match" element={<CardMatch />} />
                   <Route path="/stats" element={<Stats />} />
@@ -101,6 +107,7 @@ const App = () => (
                   <Route path="/admin/functions" element={<AdminFunctions />} />
                   <Route path="/admin/cc-discovery" element={<AdminCcDiscovery />} />
                   <Route path="/admin/prices" element={<AdminPrices />} />
+                  <Route path="/admin/content-signals" element={<AdminContentSignals />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>

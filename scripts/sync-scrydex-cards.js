@@ -78,7 +78,7 @@ async function main() {
 
   do {
     const data = await proxyFetch(
-      `/pokemon/v1/en/cards?page=${page}&page_size=${PAGE_SIZE}&orderBy=-expansion.release_date`
+      `/pokemon/v1/cards?page=${page}&page_size=${PAGE_SIZE}&orderBy=-expansion.release_date`
     );
 
     if (page === 1) {
@@ -89,6 +89,11 @@ async function main() {
 
     for (const card of data.data ?? []) {
       const exp = card.expansion ?? {};
+      const lang = exp.language_code ?? exp.language;
+      const series = String(exp.series ?? "").toLowerCase();
+      if (lang && lang !== "EN") continue;
+      if (exp.is_online_only) continue;
+      if (series.includes("pocket")) continue;
 
       // Build sets map (keyed by Scrydex expansion ID)
       if (!sets[exp.id]) {
