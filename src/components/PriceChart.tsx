@@ -9,7 +9,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { getCardPriceHistory, PriceHistoryPoint } from "@/lib/price-snapshots";
+import { getCardPriceChart, type CardChartData, PriceHistoryPoint } from "@/lib/price-snapshots";
 import { formatPrice } from "@/lib/pokemon-api";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -17,25 +17,14 @@ interface PriceChartProps {
   cardId: string;
   /** Current live market price — appended as today's point if no snapshot yet */
   currentPrice?: number | null;
-  /** Cardmarket rolling averages for "synthetic" history before snapshots accumulate */
+  /** Cardmarket rolling averages — last-resort synthetic before the DB has trend
+   *  anchors. (The deep 6-month shape now comes from the cache via getCardPriceChart.) */
   cardmarketAvgs?: {
     avg1: number | null;
     avg7: number | null;
     avg30: number | null;
     trend: number | null;
   };
-  /** Scrydex trend anchors (prior prices: 1/7/14/30/90/180d ago + current) from
-   *  the live card fetch. Drawn as the deep 6-month shape, merged UNDER real
-   *  snapshots (a recorded snapshot always wins on a shared date). */
-  trendAnchors?: {
-    market: number;
-    price1d: number | null;
-    price7d: number | null;
-    price14d: number | null;
-    price30d: number | null;
-    price90d: number | null;
-    price180d: number | null;
-  } | null;
 }
 
 type Range = "24h" | "1m" | "3m" | "6m" | "1y";
@@ -86,12 +75,15 @@ function buildSyntheticHistory(
 }
 
 /**
- * Build the deep 6-month shape from Scrydex trend anchors — prior prices at
- * 1/7/14/30/90/180 days ago plus the current market. These are approximations
- * (market - price_change per window) but give every card a real 6-month curve
- * the instant the page loads, with no stored history required.
+ * Build the deep 6-month shape from the CACHED trend anchors (served by the
+ * get_card_price_chart RPC — prior prices 1/7/14/30/90/180d ago + current).
+ * Approximations (market - price_change per window) that give every card a real
+ * 6-month curve from the DB, with NO live Scrydex call.
  */
-function buildTrendAnchors(a: NonNullable<PriceChartProps["trendAnchors"]>): PriceHistoryPoint[] {
+function buildTrendAnchors(
+  current: number | null,
+  a: NonNullable<CardChartData["anchors"]>,
+): PriceHistoryPoint[] {
   const today = new Date();
   const pts: PriceHistoryPoint[] = [];
   const at = (daysAgo: number, price: number | null) => {
@@ -100,13 +92,13 @@ function buildTrendAnchors(a: NonNullable<PriceChartProps["trendAnchors"]>): Pri
     d.setDate(d.getDate() - daysAgo);
     pts.push({ date: d.toISOString().split("T")[0], price });
   };
-  at(180, a.price180d);
-  at(90, a.price90d);
-  at(30, a.price30d);
-  at(14, a.price14d);
-  at(7, a.price7d);
-  at(1, a.price1d);
-  at(0, a.market);
+  at(180, a.d180);
+  at(90, a.d90);
+  at(30, a.d30);
+  at(14, a.d14);
+  at(7, a.d7);
+  at(1, a.d1);
+  if (current != null && current > 0) at(0, current);
   return pts;
 }
 
@@ -132,40 +124,42 @@ export default function PriceChart({
   cardId,
   currentPrice,
   cardmarketAvgs,
-  trendAnchors,
 }: PriceChartProps) {
-  // Default to the 3-month view. We fetch a full year so 6M/1Y are instant;
-  // they show whatever history exists (and grow as snapshots accumulate /
-  // after a Scrydex backfill). Synthetic-only cards fall back to 3M below.
+  // Default to the 3-month view. We fetch a full year so 6M/1Y are instant.
   const [range, setRange] = useState<Range>("3m");
 
-  const { data: snapshotHistory, isLoading } = useQuery({
-    queryKey: ["price-history", cardId, 365],
-    queryFn: () => getCardPriceHistory(cardId, 365),
+  // ONE DB read (no Scrydex): dense daily series + cached trend anchors + current.
+  const { data: chart, isLoading } = useQuery({
+    queryKey: ["card-chart", cardId, 365],
+    queryFn: () => getCardPriceChart(cardId, 365),
     staleTime: 10 * 60_000,
   });
+  const snapshotHistory = chart?.points;
+  const cacheAnchors = chart?.anchors ?? null;
+  const hasAnchors = !!cacheAnchors && Object.values(cacheAnchors).some((v) => v != null);
+  const liveToday = currentPrice ?? chart?.current ?? null;
 
   // Build the chart by merging, lowest → highest priority:
-  //   1. deep shape — Scrydex trend anchors (≈6 months) OR cardmarket synthetic
+  //   1. deep shape — cached trend anchors (≈6 months) OR cardmarket synthetic
   //   2. real daily snapshots — win on any shared date (true recorded data)
-  //   3. today's live price — always wins for today
+  //   3. today's price — always wins for today
   const todayStr = new Date().toISOString().split("T")[0];
   const byDate = new Map<string, number>();
-  if (trendAnchors) {
-    for (const p of buildTrendAnchors(trendAnchors)) byDate.set(p.date, p.price);
+  if (hasAnchors && cacheAnchors) {
+    for (const p of buildTrendAnchors(liveToday, cacheAnchors)) byDate.set(p.date, p.price);
   } else if (cardmarketAvgs && currentPrice) {
     for (const p of buildSyntheticHistory(currentPrice, cardmarketAvgs)) byDate.set(p.date, p.price);
   }
   if (snapshotHistory) for (const p of snapshotHistory) byDate.set(p.date, p.price);
-  if (currentPrice != null) byDate.set(todayStr, currentPrice);
+  if (liveToday != null) byDate.set(todayStr, liveToday);
 
   let chartData: PriceHistoryPoint[] = [...byDate.entries()]
     .map(([date, price]) => ({ date, price }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // Deep ranges (6m/1y) are meaningful when we have trend anchors (≈180d) or
+  // Deep ranges (6m/1y) are meaningful when we have cached anchors (≈180d) or
   // enough real snapshots; otherwise cap at 3m.
-  const deepOk = !!trendAnchors || (snapshotHistory?.length ?? 0) >= 2;
+  const deepOk = hasAnchors || (snapshotHistory?.length ?? 0) >= 2;
   const effRange: Range = !deepOk && (range === "6m" || range === "1y") ? "3m" : range;
 
   // Filter by selected range
@@ -177,7 +171,7 @@ export default function PriceChart({
   }
 
   // Deep part is estimated from trends until real daily snapshots fill it in.
-  const usingAnchors = !!trendAnchors && (snapshotHistory?.length ?? 0) < 5;
+  const usingAnchors = hasAnchors && (snapshotHistory?.length ?? 0) < 5;
 
   const hasData = chartData.length >= 2;
 

@@ -96,6 +96,43 @@ export async function getCardPriceHistory(
   return (data as Array<{ recorded_at: string; price: number }>).map((row) => ({ date: row.recorded_at, price: Number(row.price) }));
 }
 
+export interface CardChartData {
+  /** Dense daily series from real snapshots (oldest→newest). */
+  points: PriceHistoryPoint[];
+  /** Latest recorded price. */
+  current: number | null;
+  /** Trend-derived prior prices for the deep 6-month shape (null when uncrawled). */
+  anchors: {
+    d1: number | null; d7: number | null; d14: number | null;
+    d30: number | null; d90: number | null; d180: number | null;
+  } | null;
+}
+
+/**
+ * Everything the card chart needs, from the DB ONLY (no Scrydex). Backed by the
+ * get_card_price_chart RPC (SECURITY DEFINER, granted to anon) so the chart works
+ * for logged-out visitors and costs zero credits. The deep 6-month shape comes
+ * from the latest snapshot row's trend anchors; dense recent detail from the
+ * daily series.
+ */
+export async function getCardPriceChart(cardId: string, days = 365): Promise<CardChartData> {
+  const { data, error } = await (supabase.rpc as any)("get_card_price_chart", {
+    p_card_id: cardId,
+    p_days: days,
+  });
+  if (error || !data) return { points: [], current: null, anchors: null };
+  const d = data as {
+    points?: Array<{ date: string; price: number }>;
+    current?: number | null;
+    anchors?: CardChartData["anchors"];
+  };
+  return {
+    points: (d.points ?? []).map((p) => ({ date: p.date, price: Number(p.price) })),
+    current: d.current ?? null,
+    anchors: d.anchors ?? null,
+  };
+}
+
 // ── Bulk latest prices for instant Market page loading ────────────────────────
 
 export interface LatestPrice {

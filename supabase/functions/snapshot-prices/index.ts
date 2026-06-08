@@ -121,7 +121,10 @@ interface ScrydexPrice {
   trends?: {
     days_1?: { price_change?: number; percent_change?: number };
     days_7?: { price_change?: number; percent_change?: number };
+    days_14?: { price_change?: number; percent_change?: number };
     days_30?: { price_change?: number; percent_change?: number };
+    days_90?: { price_change?: number; percent_change?: number };
+    days_180?: { price_change?: number; percent_change?: number };
   };
 }
 
@@ -152,9 +155,14 @@ interface SnapshotRow {
   price: number;
   // Prior prices derived from Scrydex trends (market - price_change). Stored on
   // each snapshot so the refresh copies the latest row's deltas — no history diff.
+  // 1/7/30 power the Market deltas; 14/90/180 give the card chart its 6-month
+  // shape (served from the DB, never a live per-view fetch).
   price_1d: number | null;
   price_7d: number | null;
+  price_14d: number | null;
   price_30d: number | null;
+  price_90d: number | null;
+  price_180d: number | null;
   recorded_at: string;
 }
 
@@ -251,7 +259,10 @@ interface VariantPrice {
   price: number;
   price_1d: number | null;
   price_7d: number | null;
+  price_14d: number | null;
   price_30d: number | null;
+  price_90d: number | null;
+  price_180d: number | null;
 }
 
 // Derive the prior price from a Scrydex trend window. price_change is
@@ -281,7 +292,10 @@ function extractAllVariantPrices(card: ScrydexCard): VariantPrice[] {
         price: entry.market,
         price_1d: priorFromTrend(entry.market, entry.trends?.days_1),
         price_7d: priorFromTrend(entry.market, entry.trends?.days_7),
+        price_14d: priorFromTrend(entry.market, entry.trends?.days_14),
         price_30d: priorFromTrend(entry.market, entry.trends?.days_30),
+        price_90d: priorFromTrend(entry.market, entry.trends?.days_90),
+        price_180d: priorFromTrend(entry.market, entry.trends?.days_180),
       });
     }
   }
@@ -494,7 +508,10 @@ async function runPass(opts: {
           price: vp.price,
           price_1d: vp.price_1d,
           price_7d: vp.price_7d,
+          price_14d: vp.price_14d,
           price_30d: vp.price_30d,
+          price_90d: vp.price_90d,
+          price_180d: vp.price_180d,
           recorded_at: today,
         });
       }
@@ -598,7 +615,10 @@ async function runSetBackfill(opts: {
           price: vp.price,
           price_1d: vp.price_1d,
           price_7d: vp.price_7d,
+          price_14d: vp.price_14d,
           price_30d: vp.price_30d,
+          price_90d: vp.price_90d,
+          price_180d: vp.price_180d,
           recorded_at: today,
         });
       }
@@ -700,7 +720,10 @@ async function crawlSetAtomic(opts: {
           price: vp.price,
           price_1d: vp.price_1d,
           price_7d: vp.price_7d,
+          price_14d: vp.price_14d,
           price_30d: vp.price_30d,
+          price_90d: vp.price_90d,
+          price_180d: vp.price_180d,
           recorded_at: today,
         });
       }

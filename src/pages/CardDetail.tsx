@@ -12,7 +12,6 @@ import {
   enrichCardWithPricing,
   formatPrice,
 } from "@/lib/pokemon-api";
-import { getScrydexNmAudit } from "@/lib/scrydex-api";
 import { findSetBySlug, cardSlug, cardPath, setPath } from "@/lib/slug";
 import { addToCollection } from "@/lib/collection-store";
 import { recordCardView, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
@@ -155,15 +154,6 @@ export default function CardDetail() {
     queryKey: ["card-enriched", id],
     queryFn: () => enrichCardWithPricing(card!),
     enabled: !!card,
-    staleTime: 5 * 60_000,
-  });
-
-  // Live Scrydex trends for the chart's deep 6-month shape (1/7/14/30/90/180d
-  // prior prices). One live fetch per card page; merged UNDER real snapshots.
-  const { data: nmAudit } = useQuery({
-    queryKey: ["nm-audit", id],
-    queryFn: () => getScrydexNmAudit(id!),
-    enabled: !!id,
     staleTime: 5 * 60_000,
   });
 
@@ -617,7 +607,6 @@ export default function CardDetail() {
                   cardId={id!}
                   currentPrice={enrichedCard ? getMarketPrice(enrichedCard) : null}
                   cardmarketAvgs={enrichedCard?.cardmarketAvgs}
-                  trendAnchors={nmAudit ?? null}
                 />
               </ErrorBoundary>
             </div>
