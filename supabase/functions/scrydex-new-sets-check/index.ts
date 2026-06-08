@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     // Scrydex's expansions endpoint returns all sets in one call (paginated
     // but small — ~200 sets total). Filter to English physical (excluding
     // TCG Pocket / digital-only) to match what our site shows.
-    const expansionsRes = await fetch(`${SCRYDEX_API}/pokemon/v1/en/expansions?page_size=500`, {
+    const expansionsRes = await fetch(`${SCRYDEX_API}/pokemon/v1/expansions?page_size=500`, {
       headers: { "X-Api-Key": apiKey, "X-Team-ID": teamId },
     });
     if (!expansionsRes.ok) {

@@ -42,7 +42,6 @@ async function getCredits(h: Record<string, string>): Promise<number | null> {
 async function fetchHistory(cardId: string, days: number, h: Record<string, string>) {
   const candidates = [
     `${SCRYDEX}/pokemon/v1/cards/${encodeURIComponent(cardId)}/price_history?days=${days}`,
-    `${SCRYDEX}/pokemon/v1/en/cards/${encodeURIComponent(cardId)}/price_history?days=${days}`,
   ];
   const attempts: Array<{ url: string; status: number }> = [];
   for (const url of candidates) {
@@ -122,7 +121,6 @@ function parsePointsByVariant(cardId: string, data: any): Array<{ date: string; 
 async function fetchCardPrices(cardId: string, h: Record<string, string>) {
   const candidates = [
     `${SCRYDEX}/pokemon/v1/cards/${encodeURIComponent(cardId)}?include=prices`,
-    `${SCRYDEX}/pokemon/v1/en/cards/${encodeURIComponent(cardId)}?include=prices`,
   ];
   const attempts: Array<{ url: string; status: number }> = [];
   for (const url of candidates) {

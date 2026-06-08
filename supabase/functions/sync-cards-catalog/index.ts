@@ -96,7 +96,7 @@ serve(async (req: Request) => {
     };
 
     while (page <= maxPages) {
-      const url = `${SCRYDEX_BASE}/pokemon/v1/en/cards?page=${page}&page_size=100&orderBy=-expansion.release_date`;
+      const url = `${SCRYDEX_BASE}/pokemon/v1/cards?page=${page}&page_size=100&orderBy=-expansion.release_date`;
       const res = await fetchPage(url, headers); creditsUsed++;
       if (!res?.data?.length) break;
       for (const c of res.data) {
