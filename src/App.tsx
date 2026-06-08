@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
+import AdminRouteGuard from "@/components/AdminRouteGuard";
 import BackgroundLayer from "@/components/BackgroundLayer";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -84,8 +85,9 @@ const App = () => (
                   <Route path="/sets" element={<Sets />} />
                   <Route path="/sets/:slug" element={<SetDetail />} />
                   <Route path="/sets/:slug/:cardSlug" element={<CardDetail />} />
-                  <Route path="/heatmap" element={<Indexes />} />
-                  <Route path="/indexes" element={<Indexes />} />
+                  {/* Admin-gated for now (per-set heatmap + index). */}
+                  <Route path="/heatmap" element={<AdminRouteGuard><Indexes /></AdminRouteGuard>} />
+                  <Route path="/indexes" element={<AdminRouteGuard><Indexes /></AdminRouteGuard>} />
                   <Route path="/onchain" element={<Onchain />} />
                   <Route path="/onchain/:tab" element={<Onchain />} />
                   <Route path="/lab/gacha" element={<GachaLab />} />

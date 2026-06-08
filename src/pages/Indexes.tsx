@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { ResponsiveContainer, LineChart, Line } from "recharts";
+import { Link, useNavigate } from "react-router-dom";
+import { ResponsiveContainer, LineChart, Line, Treemap } from "recharts";
 import { getSets, formatPrice, type PokemonSet } from "@/lib/pokemon-api";
 import { getSetIndexOverview, formatPct, type SetIndexRow } from "@/lib/price-snapshots";
 import { setPath } from "@/lib/slug";
@@ -61,8 +61,48 @@ function Pct({ pct }: { pct: number | null }) {
   return <span className={`tabular-nums ${f.className}`}>{f.text}</span>;
 }
 
+function truncate(s: string, n: number) {
+  return s.length > n ? `${s.slice(0, Math.max(1, n - 1))}…` : s;
+}
+
+// Solid fill colored by % move — green up / red down, darker = bigger move,
+// near-flat = neutral gray. The TradingView-style heatmap look.
+function heatFill(pct: number | null): string {
+  if (pct == null || !Number.isFinite(pct) || Math.abs(pct) < 0.4) return "hsl(220 9% 38%)";
+  const s = Math.min(Math.abs(pct), 8) / 8;
+  return `hsl(${pct >= 0 ? 142 : 0} 58% ${52 - s * 26}%)`;
+}
+
+// recharts Treemap tile: filled rect + set name + % (when the tile is big enough).
+function HeatTile(props: {
+  x?: number; y?: number; width?: number; height?: number; name?: string; pct?: number;
+}) {
+  const { x = 0, y = 0, width = 0, height = 0, name = "", pct } = props;
+  if (!(width > 0 && height > 0)) return null;
+  const fill = heatFill(typeof pct === "number" ? pct : null);
+  const mid = width > 40 && height > 22;
+  const big = width > 60 && height > 38;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} fill={fill} stroke="hsl(var(--background))" strokeWidth={2} rx={2} />
+      {mid && (
+        <text x={x + width / 2} y={y + height / 2 + (big ? -3 : 4)} textAnchor="middle" fill="#fff"
+          fontSize={big ? Math.min(13, width / 7) : 10} fontWeight={600} style={{ pointerEvents: "none" }}>
+          {truncate(String(name), Math.max(4, Math.floor(width / 8)))}
+        </text>
+      )}
+      {big && (
+        <text x={x + width / 2} y={y + height / 2 + 13} textAnchor="middle" fill="#fff" fontSize={11} fontWeight={700} style={{ pointerEvents: "none" }}>
+          {typeof pct === "number" ? `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%` : "—"}
+        </text>
+      )}
+    </g>
+  );
+}
+
 export default function Indexes() {
   const [windowKey, setWindowKey] = useState<HeatWindow>("7d");
+  const navigate = useNavigate();
 
   const { data: setsResult } = useQuery({
     queryKey: ["sets-meta"],
@@ -88,6 +128,22 @@ export default function Indexes() {
       return Math.abs(bp ?? -999) - Math.abs(ap ?? -999) || b.totalValue - a.totalValue;
     });
   }, [rows, windowKey]);
+
+  // Treemap tiles: top sets by value, sized by index value, colored by the
+  // selected window's % move.
+  const treemapData = useMemo(
+    () =>
+      [...(rows ?? [])]
+        .sort((a, b) => b.totalValue - a.totalValue)
+        .slice(0, 40)
+        .map((r) => ({
+          name: setMeta.get(r.setId)?.name || r.setId,
+          size: Math.max(r.totalValue, 1),
+          pct: pctFor(r, windowKey),
+          setId: r.setId,
+        })),
+    [rows, setMeta, windowKey],
+  );
 
   const summary = useMemo(() => {
     const current = rows ?? [];
@@ -199,6 +255,30 @@ export default function Indexes() {
             <p className={`text-xs font-semibold tabular-nums ${avg.className}`}>{avg.text} avg {windowKey}</p>
           </div>
         </div>
+
+        {!isLoading && treemapData.length > 0 && (
+          <div className="rounded-xl border border-border bg-card p-2 sm:p-3 mb-6">
+            <p className="text-xs text-muted-foreground px-1 pb-2">
+              Top {treemapData.length} sets by value — tile size = index value, color = {windowKey} move. Click a tile to open the set.
+            </p>
+            <div className="h-[380px] sm:h-[440px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                <Treemap
+                  data={treemapData}
+                  dataKey="size"
+                  stroke="hsl(var(--background))"
+                  isAnimationActive={false}
+                  content={<HeatTile /> as any}
+                  onClick={(node: any) => {
+                    const set = node?.setId ? setMeta.get(node.setId) : undefined;
+                    if (set) navigate(setPath(set));
+                  }}
+                />
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-2">

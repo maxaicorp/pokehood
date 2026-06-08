@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.marketing_content_signals (
   signal_date   DATE NOT NULL DEFAULT CURRENT_DATE,
   dedupe_key    TEXT NOT NULL,
   signal_type   TEXT NOT NULL,
-  window        TEXT,
+  "window"      TEXT,
   card_id       TEXT,
   card_name     TEXT NOT NULL DEFAULT '',
   set_id        TEXT,
@@ -103,7 +103,7 @@ BEGIN
   daily AS (
     SELECT
       'daily_mover'::TEXT AS signal_type,
-      '24h'::TEXT AS window,
+      '24h'::TEXT AS "window",
       p.card_id,
       p.base_card_id,
       p.card_name,
@@ -130,7 +130,7 @@ BEGIN
   weekly AS (
     SELECT
       'weekly_mover'::TEXT AS signal_type,
-      '7d'::TEXT AS window,
+      '7d'::TEXT AS "window",
       p.card_id,
       p.base_card_id,
       p.card_name,
@@ -157,7 +157,7 @@ BEGIN
   card_day AS (
     SELECT
       'card_of_day'::TEXT AS signal_type,
-      '30d'::TEXT AS window,
+      '30d'::TEXT AS "window",
       p.card_id,
       p.base_card_id,
       p.card_name,
@@ -183,7 +183,7 @@ BEGIN
   set_heat AS (
     SELECT
       'set_heat'::TEXT AS signal_type,
-      '7d'::TEXT AS window,
+      '7d'::TEXT AS "window",
       NULL::TEXT AS card_id,
       NULL::TEXT AS base_card_id,
       ''::TEXT AS card_name,
@@ -214,7 +214,7 @@ BEGIN
   ),
   upsert AS (
     INSERT INTO public.marketing_content_signals (
-      signal_date, dedupe_key, signal_type, window,
+      signal_date, dedupe_key, signal_type, "window",
       card_id, card_name, set_id, set_name,
       price, prior_price, pct_change, total_value, card_count,
       score, title, summary, caption, template_key, target_path, image_payload,
@@ -224,7 +224,7 @@ BEGIN
       p_signal_date,
       p_signal_date::TEXT || ':' || p.signal_type || ':' || coalesce(p.window, '') || ':' || coalesce(p.card_id, p.set_id, ''),
       p.signal_type,
-      p.window,
+      p."window",
       p.card_id,
       p.card_name,
       p.set_id,

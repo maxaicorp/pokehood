@@ -90,7 +90,6 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Dashboard</Link>
               <Link to="/explore" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "explore" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Explore</Link>
               <Link to="/sets" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "sets" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Sets</Link>
-              <Link to="/heatmap" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "heatmap" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Heatmap</Link>
               <Link to="/onchain/activity" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "onchain" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Onchain</Link>
               <Link to="/games" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "games" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Games</Link>
               {/* Giveaway hidden from public nav for now — system needs more
