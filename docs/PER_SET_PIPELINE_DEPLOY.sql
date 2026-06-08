@@ -11,7 +11,8 @@
 --   1. Run migration 20260607090000_latest_per_card_refresh.sql   (set-aware refresh)
 --   2. Run migration 20260607093000_set_snapshot_state.sql        (tracker + claim/stamp)
 --   3. Run migration 20260607100000_trends_deltas.sql             (deltas from Scrydex trends)
---   4. Deploy edge fn `snapshot-prices` (version 2026-06-07-crawl-batch-per-set-atomic)
+--   4. Run migration 20260607110000_chart_anchors.sql             (6 chart anchors + get_card_price_chart RPC)
+--   5. Deploy edge fn `snapshot-prices` (version 2026-06-07-crawl-batch-per-set-atomic)
 -- THEN run this file.
 -- ============================================================================
 
@@ -28,8 +29,10 @@ SELECT net.http_post(
 
 -- ── 2. Retire the OLD global page-chunk crawl + its chunk-based heal ─────────
 -- These ran the drift-prone global paging. The per-set crawl replaces them, and
--- it SELF-HEALS (a failed set stays pending and the next 5-min tick retries it),
--- so the old chunk-based verify-and-heal cron is now vestigial.
+-- it SELF-HEALS (a failed set stays pending, gets a few retries, then health
+-- views surface it without blocking healthy sets), so the old chunk-based
+-- verify-and-heal cron is now vestigial. The new job names are also unscheduled
+-- here so this runbook can be re-run cleanly after a failed deploy attempt.
 -- (prune-snapshots-weekly and refresh-latest-prices-daily stay — untouched.)
 DO $$
 DECLARE j record;
@@ -38,7 +41,13 @@ BEGIN
     SELECT jobname FROM cron.job
     WHERE jobname LIKE 'snapshot-chunk-%'
        OR jobname LIKE 'verify-and-heal%'
-       OR jobname IN ('daily-snapshot-prices','weekly-snapshot-prices-full')
+       OR jobname IN (
+         'daily-snapshot-prices',
+         'weekly-snapshot-prices-full',
+         'snapshot-crawl-batch-5m',
+         'seed-snapshot-sets-daily',
+         'refresh-latest-prices-intraday'
+       )
   LOOP
     PERFORM cron.unschedule(j.jobname);
     RAISE NOTICE 'unscheduled %', j.jobname;

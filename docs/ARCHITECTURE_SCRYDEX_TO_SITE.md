@@ -76,8 +76,8 @@ cache's existing contract); the frontend computes the %.
 
 ### Frontend read paths
 - **Market / Explore / Movers** — read `latest_card_prices` via RPCs. Deltas: 24h/7d everywhere, +30d toggle on Movers. ✅ (data path 🟡 until pipeline deploys)
-- **Card detail** — live `getScrydexCard` + `getScrydexNmAudit` (price + 6 trend anchors + graded). 🔵
-- **Chart** 🔵 — merges, by date: trend anchors (deep 6-month shape) UNDER daily snapshots (real, recent) + today's live price.
+- **Card detail** — reads the **DB only** (cache + `get_card_price_chart` RPC). **No live Scrydex** on public card-page load. 🔵
+- **Chart** 🔵 — one `get_card_price_chart` RPC (DB, `SECURITY DEFINER`, anon-granted) returns daily series + 6 cached trend anchors + current; PriceChart merges anchors (deep shape) UNDER daily snapshots. Works for anonymous users, **zero Scrydex credits per view**.
 
 ---
 
@@ -143,7 +143,7 @@ consumption.
 2. **Legacy global-paging modes still exist** (`daily`/`full`/`chunk`) and the **Master Refresh buttons** on `/admin/health` still call them — the drift-prone path. Inert unless someone clicks them. Could repoint the buttons to `crawl-batch`.
 
 **Not flaws — expected behavior / by design:**
-3. **Card page = exactly ONE live Scrydex fetch** (`getScrydexNmAudit`, for the chart's deep anchors), ~1 credit/view. Everything else on the page (base card, extras, pricing, graded tiles) reads the **DB**, not Scrydex. So no duplicate fetching. (The live fetch is the deliberate trade for instant 6-month charts.)
+3. **Card page = ZERO live Scrydex fetches** (fixed 2026-06-07). Chart anchors now come from the cache via `get_card_price_chart`; base card, extras, pricing, and graded tiles all read the DB. Scrydex is hit ONLY by backend jobs + the admin audit tool. Anonymous users get the full chart; no per-view credits.
 4. **Trend anchors are approximations** (market − price_change), shown under an "estimated from trends" note until daily snapshots densify. Intentional.
 5. **`priced/total` on the health panel is always < total** — energy commons and graded-only secret rares have no NM price, so they're correctly unpriced. Expected, not a gap.
 
