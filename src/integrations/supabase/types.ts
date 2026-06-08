@@ -932,6 +932,12 @@ export type Database = {
           card_name: string
           id: string
           price: number
+          price_14d: number | null
+          price_180d: number | null
+          price_1d: number | null
+          price_30d: number | null
+          price_7d: number | null
+          price_90d: number | null
           recorded_at: string
           set_name: string
         }
@@ -940,6 +946,12 @@ export type Database = {
           card_name?: string
           id?: string
           price: number
+          price_14d?: number | null
+          price_180d?: number | null
+          price_1d?: number | null
+          price_30d?: number | null
+          price_7d?: number | null
+          price_90d?: number | null
           recorded_at?: string
           set_name?: string
         }
@@ -948,6 +960,12 @@ export type Database = {
           card_name?: string
           id?: string
           price?: number
+          price_14d?: number | null
+          price_180d?: number | null
+          price_1d?: number | null
+          price_30d?: number | null
+          price_7d?: number | null
+          price_90d?: number | null
           recorded_at?: string
           set_name?: string
         }
@@ -1102,6 +1120,75 @@ export type Database = {
           slug?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      scrydex_set_snapshot_state: {
+        Row: {
+          attempts_on: string | null
+          attempts_today: number
+          card_total: number | null
+          enabled: boolean
+          is_online_only: boolean
+          language_code: string | null
+          last_attempt_at: string | null
+          last_cards_priced: number | null
+          last_cards_seen: number | null
+          last_error: string | null
+          last_pages: number | null
+          last_success_at: string | null
+          last_success_on: string | null
+          locked_until: string | null
+          run_id: string | null
+          series: string | null
+          set_id: string
+          set_name: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts_on?: string | null
+          attempts_today?: number
+          card_total?: number | null
+          enabled?: boolean
+          is_online_only?: boolean
+          language_code?: string | null
+          last_attempt_at?: string | null
+          last_cards_priced?: number | null
+          last_cards_seen?: number | null
+          last_error?: string | null
+          last_pages?: number | null
+          last_success_at?: string | null
+          last_success_on?: string | null
+          locked_until?: string | null
+          run_id?: string | null
+          series?: string | null
+          set_id: string
+          set_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts_on?: string | null
+          attempts_today?: number
+          card_total?: number | null
+          enabled?: boolean
+          is_online_only?: boolean
+          language_code?: string | null
+          last_attempt_at?: string | null
+          last_cards_priced?: number | null
+          last_cards_seen?: number | null
+          last_error?: string | null
+          last_pages?: number | null
+          last_success_at?: string | null
+          last_success_on?: string | null
+          locked_until?: string | null
+          run_id?: string | null
+          series?: string | null
+          set_id?: string
+          set_name?: string | null
+          status?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1376,7 +1463,20 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_snapshot_set_health: {
+        Row: {
+          cards_priced_fresh: number | null
+          cards_total_fresh: number | null
+          failing_repeatedly: number | null
+          fresh_today: number | null
+          in_error: number | null
+          newest_success_at: string | null
+          oldest_success_at: string | null
+          stale_today: number | null
+          total_sets: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_clear_card_price_override: {
@@ -1413,6 +1513,37 @@ export type Database = {
         }
         Returns: undefined
       }
+      claim_due_snapshot_sets: {
+        Args: { p_limit: number; p_lock_minutes?: number; p_run_id?: string }
+        Returns: {
+          attempts_on: string | null
+          attempts_today: number
+          card_total: number | null
+          enabled: boolean
+          is_online_only: boolean
+          language_code: string | null
+          last_attempt_at: string | null
+          last_cards_priced: number | null
+          last_cards_seen: number | null
+          last_error: string | null
+          last_pages: number | null
+          last_success_at: string | null
+          last_success_on: string | null
+          locked_until: string | null
+          run_id: string | null
+          series: string | null
+          set_id: string
+          set_name: string | null
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "scrydex_set_snapshot_state"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       current_week_start: { Args: never; Returns: string }
       get_all_latest_prices: {
         Args: { p_limit?: number; p_offset?: number }
@@ -1447,6 +1578,10 @@ export type Database = {
           set_name: string
           supertype: string
         }[]
+      }
+      get_card_price_chart: {
+        Args: { p_card_id: string; p_days?: number }
+        Returns: Json
       }
       get_catalog_coverage: { Args: { p_min_gap?: number }; Returns: Json }
       get_cc_discovery: {
@@ -1702,6 +1837,19 @@ export type Database = {
         Returns: undefined
       }
       is_merch_name: { Args: { p_name: string }; Returns: boolean }
+      mark_set_snapshot_error: {
+        Args: { p_error: string; p_set_id: string }
+        Returns: undefined
+      }
+      mark_set_snapshot_success: {
+        Args: {
+          p_cards_priced?: number
+          p_cards_seen?: number
+          p_pages?: number
+          p_set_id: string
+        }
+        Returns: undefined
+      }
       refresh_latest_card_prices: { Args: never; Returns: number }
       refresh_latest_graded_prices: { Args: never; Returns: number }
       search_catalog: {
