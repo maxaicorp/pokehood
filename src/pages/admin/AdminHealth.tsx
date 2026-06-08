@@ -43,6 +43,17 @@ interface SetHealthRow {
   last_error: string | null;
 }
 
+// Scrydex webhook delivery (observer mode → webhook_events_log).
+interface WebhookEvent {
+  id: string;
+  received_at: string;
+  source: string | null;
+  event_name: string | null;
+  expansion_count: number | null;
+  sig_valid: boolean | null;
+  sig_reason: string | null;
+}
+
 const CHECK_LABELS: Record<string, string> = {
   pipeline_completeness: "Pipeline complete (the contract)",
   onchain_health: "Onchain healthy (the contract)",
@@ -142,7 +153,7 @@ function HistoryRow({ day }: { day: SnapshotDayStat }) {
 }
 
 export default function AdminHealth() {
-  const [refreshMode, setRefreshMode] = useState<"daily" | "full" | null>(null);
+  const [crawling, setCrawling] = useState(false);
   const { data, isFetching, refetch, error } = useQuery<HealthReport>({
     queryKey: ["admin-health"],
     queryFn: async () => {
@@ -156,7 +167,7 @@ export default function AdminHealth() {
   // Per-set snapshot ledger — read straight from the tracker (admin RLS), so it
   // works even when the global health-check function is down. THIS is the check
   // that tells you which expansions are actually landing vs failing today.
-  const { data: setHealth, error: setHealthError } = useQuery<SetHealthRow[]>({
+  const { data: setHealth, error: setHealthError, refetch: refetchSetHealth } = useQuery<SetHealthRow[]>({
     queryKey: ["admin-set-health"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -167,38 +178,63 @@ export default function AdminHealth() {
       return (data ?? []) as SetHealthRow[];
     },
     staleTime: 60_000,
+    refetchInterval: crawling ? 20_000 : false, // live progress while a re-crawl runs
     retry: false,
   });
 
-  // Master refresh — re-runs the snapshot cron on demand and tells every open
-  // tab to invalidate its in-memory data. This is the "if the site ever shows
-  // stale prices again, click here" button.
-  const masterRefresh = async (mode: "daily" | "full") => {
-    setRefreshMode(mode);
-    const friendly = mode === "full" ? "Full snapshot (~17k+ priced cards, ~6 min)" : "Daily snapshot (~12k cards, ~2 min)";
-    toast.info(`${friendly} started in background.`);
-    try {
-      // force:true overrides snapshot-prices's per-day idempotency guard.
-      // Without it, clicking Daily after today's snapshot already ran returns
-      // success: true, skipped: true — the user sees a green toast and zero
-      // actual effect, which makes the button feel broken. With force the
-      // cron actually re-runs and the cache table really does refresh.
-      const body = mode === "full"
-        ? { mode: "full", force: true }
-        : { force: true };
-      const { error } = await supabase.functions.invoke("snapshot-prices", { body });
+  // Scrydex webhook deliveries (observer). Reads webhook_events_log (admin RLS).
+  const { data: webhookEvents, error: webhookError } = useQuery<WebhookEvent[]>({
+    queryKey: ["admin-webhook-events"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("webhook_events_log")
+        .select("id,received_at,source,event_name,expansion_count,sig_valid,sig_reason")
+        .order("received_at", { ascending: false })
+        .limit(50);
       if (error) throw error;
-      // Broadcast to every open tab to reload its prices on next visibility.
-      // Storage events fire in OTHER tabs/windows of the same origin.
-      try {
-        localStorage.setItem("collectiblez:force-refresh", String(Date.now()));
-      } catch { /* quota — ignore */ }
-      toast.success(`${friendly} accepted. Re-checking health in ~30s.`);
-      setTimeout(() => refetch(), 30_000);
+      return (data ?? []) as WebhookEvent[];
+    },
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  // Force a full per-set re-crawl — the button version of the manual reset:
+  // (1) mark every set due again, (2) kick the crawl immediately (don't wait for
+  // the 5-min cron), (3) poll the per-set panel live until the catalog is fresh,
+  // (4) refresh the read cache + broadcast a force-reload to open tabs.
+  // Uses the drift-free per-set pipeline — NOT the old global crawl.
+  const forceRecrawl = async () => {
+    setCrawling(true);
+    try {
+      const { data: n, error: rErr } = await supabase.rpc("request_full_resnapshot");
+      if (rErr) throw rErr;
+      toast.info(`Re-crawling ${n ?? "all"} sets in the background (~20 min). The panel below updates live.`);
+      // Kick off immediately: 5 calls × 40 sets (the cron would also pick it up).
+      await Promise.all(
+        Array.from({ length: 5 }, () =>
+          supabase.functions.invoke("snapshot-prices", { body: { mode: "crawl-batch", limit: 40 } }),
+        ),
+      );
+      // Poll the tracker until every set is fresh (or a 25-min safety cap).
+      const startedAt = Date.now();
+      const today = new Date().toISOString().slice(0, 10);
+      const poll = setInterval(async () => {
+        const { data: rows } = await refetchSetHealth();
+        const list = (rows ?? []) as SetHealthRow[];
+        const fresh = list.filter((s) => s.last_success_on === today).length;
+        const total = list.length;
+        if ((total > 0 && fresh >= total) || Date.now() - startedAt > 25 * 60_000) {
+          clearInterval(poll);
+          setCrawling(false);
+          await supabase.rpc("refresh_latest_card_prices");
+          try { localStorage.setItem("collectiblez:force-refresh", String(Date.now())); } catch { /* quota */ }
+          refetch();
+          toast.success(`Re-crawl complete — ${fresh}/${total} sets fresh, cache refreshed.`);
+        }
+      }, 20_000);
     } catch (e) {
-      toast.error(`Failed to start ${mode} snapshot: ${String(e)}`);
-    } finally {
-      setRefreshMode(null);
+      setCrawling(false);
+      toast.error(`Re-crawl failed: ${String(e)}`);
     }
   };
 
@@ -227,22 +263,13 @@ export default function AdminHealth() {
         </h1>
         <div className="flex gap-2">
           <Button
-            onClick={() => masterRefresh("daily")}
-            disabled={refreshMode !== null}
-            variant="outline"
-            size="sm"
-          >
-            <Zap className={`w-4 h-4 mr-2 ${refreshMode === "daily" ? "animate-pulse" : ""}`} />
-            Master refresh (daily)
-          </Button>
-          <Button
-            onClick={() => masterRefresh("full")}
-            disabled={refreshMode !== null}
+            onClick={forceRecrawl}
+            disabled={crawling}
             variant="default"
             size="sm"
           >
-            <Zap className={`w-4 h-4 mr-2 ${refreshMode === "full" ? "animate-pulse" : ""}`} />
-            Master refresh (full)
+            <Zap className={`w-4 h-4 mr-2 ${crawling ? "animate-pulse" : ""}`} />
+            {crawling ? "Re-crawling…" : "Re-crawl all sets now"}
           </Button>
           <Button onClick={() => refetch()} disabled={isFetching} variant="ghost" size="sm">
             <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
@@ -251,11 +278,11 @@ export default function AdminHealth() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-6 max-w-prose">
-        <strong>Master refresh</strong> kicks off a snapshot cron run immediately and broadcasts a
-        force-reload signal to every open Collectiblez tab so users see fresh prices on next focus.
-        Use <em>daily</em> for a quick newest+oldest pass (~120 Scrydex credits), or <em>full</em> to
-        refresh every card in the catalog (~235 credits). The health checks below auto-refresh ~30s
-        after a master refresh.
+        <strong>Re-crawl all sets now</strong> marks every set due and runs the drift-free per-set
+        crawl immediately (instead of waiting for the 00:00 UTC cycle). It re-fetches the whole
+        catalog from canonical Scrydex (~300 credits, ~20 min), then refreshes the read cache and
+        force-reloads open tabs. Watch the <em>Per-set snapshot health</em> panel below — it updates
+        live as sets land (fresh today climbs to {sets.length || "~181"}).
       </p>
 
       {error ? (
@@ -365,6 +392,72 @@ export default function AdminHealth() {
                             </tr>
                           );
                         })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+
+          <section>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Scrydex webhooks (observer)
+            </h2>
+            {webhookError ? (
+              <div className="rounded-lg border border-border/50 p-4 text-sm text-muted-foreground">
+                Webhook log not available. Run migration <code>20260606170000_webhook_events_log.sql</code>,
+                deploy <code>scrydex-webhook</code>, and add the endpoint in the Scrydex dashboard.
+              </div>
+            ) : !webhookEvents || webhookEvents.length === 0 ? (
+              <div className="rounded-lg border border-border/50 p-4 text-sm text-muted-foreground">
+                No webhook deliveries yet. Scrydex fires when an expansion's prices update — once it
+                does, events show here. This is the firing-pattern data we need to build the
+                real-time (webhook-triggered) pipeline.
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+                  <StatCard
+                    label="Last received"
+                    value={formatDistanceToNow(new Date(webhookEvents[0].received_at), { addSuffix: true })}
+                    ok={true}
+                  />
+                  <StatCard label="Events (recent)" value={webhookEvents.length} ok={true} />
+                  <StatCard
+                    label="Signature valid"
+                    value={`${webhookEvents.filter((w) => w.sig_valid).length}/${webhookEvents.length}`}
+                    ok={webhookEvents.every((w) => w.sig_valid)}
+                  />
+                </div>
+                <div className="rounded-lg border border-border/50 overflow-hidden">
+                  <div className="max-h-[24rem] overflow-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/30 sticky top-0">
+                        <tr className="text-xs uppercase tracking-wider text-muted-foreground">
+                          <th className="text-left font-medium py-2 px-3">Received</th>
+                          <th className="text-left font-medium py-2 px-3">Event</th>
+                          <th className="text-right font-medium py-2 px-3">Expansions</th>
+                          <th className="text-left font-medium py-2 px-3">Signature</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {webhookEvents.map((w) => (
+                          <tr key={w.id} className="border-b border-border/30 last:border-0">
+                            <td className="py-2 px-3 text-sm tabular-nums text-muted-foreground">
+                              {formatDistanceToNow(new Date(w.received_at), { addSuffix: true })}
+                            </td>
+                            <td className="py-2 px-3 text-sm font-mono">{w.event_name ?? "—"}</td>
+                            <td className="py-2 px-3 text-sm text-right tabular-nums">{w.expansion_count ?? "—"}</td>
+                            <td className="py-2 px-3">
+                              {w.sig_valid ? (
+                                <span className="text-xs px-2 py-0.5 rounded bg-green-500/15 text-green-400">valid</span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded bg-red-500/15 text-red-400">{w.sig_reason || "invalid"}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
