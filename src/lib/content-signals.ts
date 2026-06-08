@@ -94,12 +94,13 @@ export async function generateMarketingContentSignals(): Promise<number> {
 
 export async function updateMarketingContentSignal(
   id: string,
-  patch: Partial<Pick<MarketingContentSignal, "status" | "caption" | "scheduledAt" | "postedUrl">>,
+  patch: Partial<Pick<MarketingContentSignal, "status" | "caption" | "scheduledAt" | "postedAt" | "postedUrl">>,
 ): Promise<void> {
   const payload: Record<string, unknown> = {};
   if (patch.status) payload.status = patch.status;
   if (patch.caption != null) payload.caption = patch.caption;
   if (patch.scheduledAt !== undefined) payload.scheduled_at = patch.scheduledAt;
+  if (patch.postedAt !== undefined) payload.posted_at = patch.postedAt;
   if (patch.postedUrl !== undefined) payload.posted_url = patch.postedUrl;
   payload.updated_at = new Date().toISOString();
 

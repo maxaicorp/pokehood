@@ -65,6 +65,14 @@ function truncate(s: string, n: number) {
   return s.length > n ? `${s.slice(0, Math.max(1, n - 1))}…` : s;
 }
 
+function displaySetName(row: SetIndexRow, set?: PokemonSet): string {
+  return set?.name || row.setName || row.setId;
+}
+
+function setLogoUrl(setId: string, set?: PokemonSet): string {
+  return set?.images?.logo || `https://images.scrydex.com/pokemon/${setId}-logo/logo`;
+}
+
 // Solid fill colored by % move — green up / red down, darker = bigger move,
 // near-flat = neutral gray. The TradingView-style heatmap look.
 function heatFill(pct: number | null): string {
@@ -73,26 +81,50 @@ function heatFill(pct: number | null): string {
   return `hsl(${pct >= 0 ? 142 : 0} 58% ${52 - s * 26}%)`;
 }
 
-// recharts Treemap tile: filled rect + set name + % (when the tile is big enough).
+// recharts Treemap tile: filled rect + set logo/name + % (when the tile is big enough).
 function HeatTile(props: {
-  x?: number; y?: number; width?: number; height?: number; name?: string; pct?: number;
+  x?: number; y?: number; width?: number; height?: number; name?: string; pct?: number; logo?: string;
 }) {
-  const { x = 0, y = 0, width = 0, height = 0, name = "", pct } = props;
+  const { x = 0, y = 0, width = 0, height = 0, name = "", pct, logo = "" } = props;
   if (!(width > 0 && height > 0)) return null;
   const fill = heatFill(typeof pct === "number" ? pct : null);
-  const mid = width > 40 && height > 22;
-  const big = width > 60 && height > 38;
+  const mid = width > 46 && height > 28;
+  const big = width > 86 && height > 60;
+  const logoSize = Math.max(20, Math.min(58, width * 0.44, height * 0.34));
+  const labelY = big && logo ? y + height - 24 : y + height / 2 + 4;
   return (
     <g>
       <rect x={x} y={y} width={width} height={height} fill={fill} stroke="hsl(var(--background))" strokeWidth={2} rx={2} />
+      {big && logo && (
+        <>
+          <rect
+            x={x + width / 2 - logoSize / 2 - 8}
+            y={y + Math.max(8, height * 0.14) - 6}
+            width={logoSize + 16}
+            height={logoSize + 12}
+            rx={8}
+            fill="rgba(0,0,0,0.24)"
+            style={{ pointerEvents: "none" }}
+          />
+          <image
+            href={logo}
+            x={x + width / 2 - logoSize / 2}
+            y={y + Math.max(8, height * 0.14)}
+            width={logoSize}
+            height={logoSize}
+            preserveAspectRatio="xMidYMid meet"
+            style={{ pointerEvents: "none" }}
+          />
+        </>
+      )}
       {mid && (
-        <text x={x + width / 2} y={y + height / 2 + (big ? -3 : 4)} textAnchor="middle" fill="#fff"
+        <text x={x + width / 2} y={labelY} textAnchor="middle" fill="#fff"
           fontSize={big ? Math.min(13, width / 7) : 10} fontWeight={600} style={{ pointerEvents: "none" }}>
           {truncate(String(name), Math.max(4, Math.floor(width / 8)))}
         </text>
       )}
       {big && (
-        <text x={x + width / 2} y={y + height / 2 + 13} textAnchor="middle" fill="#fff" fontSize={11} fontWeight={700} style={{ pointerEvents: "none" }}>
+        <text x={x + width / 2} y={y + height - 9} textAnchor="middle" fill="#fff" fontSize={11} fontWeight={700} style={{ pointerEvents: "none" }}>
           {typeof pct === "number" ? `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%` : "—"}
         </text>
       )}
@@ -136,12 +168,16 @@ export default function Indexes() {
       [...(rows ?? [])]
         .sort((a, b) => b.totalValue - a.totalValue)
         .slice(0, 40)
-        .map((r) => ({
-          name: setMeta.get(r.setId)?.name || r.setId,
-          size: Math.max(r.totalValue, 1),
-          pct: pctFor(r, windowKey),
-          setId: r.setId,
-        })),
+        .map((r) => {
+          const set = setMeta.get(r.setId);
+          return {
+            name: displaySetName(r, set),
+            size: Math.max(r.totalValue, 1),
+            pct: pctFor(r, windowKey),
+            logo: setLogoUrl(r.setId, set),
+            setId: r.setId,
+          };
+        }),
     [rows, setMeta, windowKey],
   );
 
@@ -182,7 +218,7 @@ export default function Indexes() {
 
   const topRow = rankedRows[0] ?? null;
   const topMove = topRow ? pctFor(topRow, windowKey) : null;
-  const topSet = topRow ? setMeta.get(topRow.setId)?.name || topRow.setId : "No data";
+  const topSet = topRow ? displaySetName(topRow, setMeta.get(topRow.setId)) : "No data";
   const avg = formatPct(summary.avgMove);
   const top = formatPct(topMove);
 
@@ -259,7 +295,7 @@ export default function Indexes() {
         {!isLoading && treemapData.length > 0 && (
           <div className="rounded-xl border border-border bg-card p-2 sm:p-3 mb-6">
             <p className="text-xs text-muted-foreground px-1 pb-2">
-              Top {treemapData.length} sets by value — tile size = index value, color = {windowKey} move. Click a tile to open the set.
+              Top {treemapData.length} sets by value — tile size = index value, color = {windowKey} move, logo = set. Click a tile to open the set.
             </p>
             <div className="h-[380px] sm:h-[440px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -308,11 +344,12 @@ export default function Indexes() {
                   </div>
                   {group.items.map(({ row, set }) => {
                     const selectedPct = pctFor(row, windowKey);
+                    const name = displaySetName(row, set);
                     const inner = (
                       <div className={`grid ${GRID} gap-3 px-4 py-2.5 items-center`} style={heatStyle(selectedPct)}>
                         <SetLogo setId={row.setId} fallbackUrl={set?.images?.logo} className="h-8 w-auto max-w-[56px] object-contain" />
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">{set?.name || row.setId}</p>
+                          <p className="text-sm font-semibold text-foreground truncate">{name}</p>
                           <p className="text-xs text-muted-foreground">{row.cardCount} cards</p>
                         </div>
                         <MiniSpark data={row.sparkline} up={(selectedPct ?? 0) >= 0} />

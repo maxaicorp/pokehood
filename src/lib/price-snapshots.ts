@@ -137,6 +137,7 @@ export async function getCardPriceChart(cardId: string, days = 365): Promise<Car
 
 export interface SetIndexRow {
   setId: string;
+  setName: string;
   totalValue: number;
   cardCount: number;
   pct1d: number | null;
@@ -146,12 +147,18 @@ export interface SetIndexRow {
 }
 
 /** Every set's aggregate index value + 1d/7d/30d movement + a 90-day sparkline.
- *  Backed by get_set_index_overview (DB only, anon-readable). */
+ *  Backed by DB-only, anon-readable set-index RPCs. */
 export async function getSetIndexOverview(): Promise<SetIndexRow[]> {
-  const { data, error } = await (supabase.rpc as any)("get_set_index_overview");
+  let { data, error } = await (supabase.rpc as any)("get_set_index_overview_with_names");
+  if (error) {
+    const fallback = await (supabase.rpc as any)("get_set_index_overview");
+    data = fallback.data;
+    error = fallback.error;
+  }
   if (error || !data) return [];
   return (data as Array<Record<string, unknown>>).map((r) => ({
     setId: String(r.set_id),
+    setName: String(r.set_name ?? r.set_id),
     totalValue: Number(r.total_value ?? 0),
     cardCount: Number(r.card_count ?? 0),
     pct1d: r.pct_1d != null ? Number(r.pct_1d) : null,
