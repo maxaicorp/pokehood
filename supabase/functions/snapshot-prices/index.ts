@@ -30,7 +30,7 @@ const corsHeaders = {
 
 // Bump on every deploy so the health check / logs can confirm which code is
 // actually live (we've been bitten by old deployed functions still running).
-const FUNCTION_VERSION = "2026-06-07-crawl-batch-per-set-atomic";
+const FUNCTION_VERSION = "2026-06-08-trends-6window-anchors";
 
 const PAGE_SIZE = 100;
 const DAILY_PAGE_LIMIT = 60; // 60 pages newest + 60 pages oldest = 120 credits/day
