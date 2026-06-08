@@ -33,12 +33,29 @@ const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function normalize(s: string | null | undefined): string {
-  return (s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
+  return (s ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+}
+function words(s: string | null | undefined): string[] {
+  return (s ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 }
 function stripCardNumber(s: string | null | undefined): string {
   if (!s) return "";
-  const m = String(s).match(/^0*(\d+)/);
-  return m ? m[1] : String(s).trim();
+  const raw = String(s).trim().replace(/^#/, "").split("/")[0].split("_")[0].trim();
+  const m = raw.match(/^([A-Za-z]+)?0*(\d+)([A-Za-z]*)$/);
+  if (m) return `${(m[1] ?? "").toUpperCase()}${Number(m[2])}${(m[3] ?? "").toUpperCase()}`;
+  return raw.toUpperCase().replace(/\s+/g, "");
 }
 
 // Parse the card name out of a CC itemName like
@@ -48,20 +65,47 @@ function stripCardNumber(s: string | null | undefined): string {
 // prefixes ("Full Art/", "Reverse Holo/", ...).
 function parseCardName(itemName: string | null | undefined): string | null {
   if (!itemName) return null;
-  const m = itemName.match(/^\d{4}\s+#?\d+\s+(.+?)\s+(PSA|CGC|BGS|TAG|SGC|ACE)\b/i);
+  const m = itemName.match(/^\d{4}\s+#?\S+\s+(.+?)\s+(PSA|CGC|BGS|TAG|SGC|ACE)\b/i);
   if (!m) return null;
   // Strip printing/finish markers that aren't part of the card name, so the
   // match against Scrydex card_name succeeds. Validated to lift the match rate
   // ~34% (e.g. "Kabutops-Holo 1st Edition" → "Kabutops", "Blastoise-Holo" →
   // "Blastoise"). Keeps EX/V/VMAX/VSTAR — those ARE part of the name.
   const name = m[1]
-    .replace(/\b(reverse\s+holo|full\s+art|alt\s+art)\b/gi, " ")
-    .replace(/[-\s]+holo\b/gi, " ")
+    .replace(/\b(reverse\s+(holo|foil)|reverse\s+holo|full\s+art|alt\s+art)\b/gi, " ")
+    .replace(/[-\s]+(holo|foil)\b/gi, " ")
+    .replace(/[-\s]+gold\s+star\b/gi, " ")
+    .replace(/\b(trainer\s+gallery|rare\s+base\s+set)\b/gi, " ")
+    .replace(/\bSR\b/g, " ")
     .replace(/\b(1st\s+edition|first\s+edition|shadowless|unlimited(\s+edition)?|staff|promo)\b/gi, " ")
     .replace(/^[-\s/]+|[-\s/]+$/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
   return name || null;
+}
+
+function itemNumber(itemName: string | null | undefined, serial: string | null | undefined): string {
+  const fromTitle = String(itemName ?? "").match(/^\s*\d{4}\s+#?(\S+)\s+/)?.[1];
+  return stripCardNumber(serial || fromTitle || "");
+}
+
+function parseSetHint(itemName: string | null | undefined): string {
+  const m = String(itemName ?? "").match(/\s(?:PSA|CGC|BGS|TAG|SGC|ACE)\s+[0-9.]+\s+(.+?)(?:\s+Pokemon)?$/i);
+  if (!m) return "";
+  return m[1]
+    .replace(/\b(gem\s+mint|mint|pristine|authentic)\b/gi, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function isNonEnglishPokemonListing(itemName: string | null | undefined, set: string | null | undefined, language: string | null | undefined): boolean {
+  return /\b(japanese|chinese|korean|thai|indonesian|german|french|spanish|italian|portuguese|dutch)\b/i
+    .test(`${itemName ?? ""} ${set ?? ""} ${language ?? ""}`);
+}
+
+function isNonTcgProductListing(itemName: string | null | undefined, set: string | null | undefined): boolean {
+  return /\b(riftbound|league\s+of\s+legends|bicycle|playing\s+cards|topps|panini|bowman)\b/i
+    .test(`${itemName ?? ""} ${set ?? ""}`);
 }
 
 // set_id from a card_id ("base1-2" → "base1", "tcgp-PB-11" → "tcgp-PB").
@@ -71,10 +115,41 @@ function setIdOf(cardId: string): string {
 
 // Loose set-name match between CC's set label and a Scrydex set_name.
 function setNameMatches(setName: string, ccSet: string): boolean {
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const a = norm(setName), b = norm(ccSet);
+  const setTokens = (s: string) => words(s)
+    .filter((t) => !["pokemon", "en", "english", "edition", "1st", "first", "and", "the"].includes(t))
+    .flatMap((t) => {
+      if (t === "svp") return ["scarlet", "violet", "promo"];
+      if (t === "sv") return ["scarlet", "violet"];
+      if (t === "swsh") return ["sword", "shield"];
+      if (t === "hs") return ["heartgold", "soulsilver"];
+      if (t === "sm") return ["sun", "moon"];
+      if (t === "paf") return ["paldean", "fates"];
+      if (t === "wotc") return ["wizards"];
+      if (t === "game") return ["base"];
+      if (t === "promo" || t === "promos") return ["promo"];
+      return [t];
+    });
+  const aTokens = setTokens(setName);
+  const bTokens = setTokens(ccSet);
+  const a = aTokens.join(""), b = bTokens.join("");
   if (!a || !b) return false;
-  return a.includes(b) || b.includes(a);
+  if (a.includes(b) || b.includes(a)) return true;
+  const bSet = new Set(bTokens);
+  const overlap = aTokens.filter((t) => t.length > 2 && bSet.has(t)).length;
+  const required = Math.min(2, aTokens.length, bTokens.length);
+  return overlap >= required;
+}
+
+function cardNameKeys(name: string | null | undefined): string[] {
+  const out = new Set<string>();
+  const w = words(name);
+  for (let i = 0; i < w.length; i++) out.add(w.slice(i).join(""));
+  const full = normalize(name);
+  if (full) out.add(full);
+  // CC labels the classic promo as "Birthday Pikachu"; Scrydex stores the
+  // official blank-owner name "_____'s Pikachu".
+  if (full === "birthdaypikachu") out.add(normalize("_____'s Pikachu"));
+  return [...out].filter(Boolean);
 }
 
 // set_id → release year, from the app's published market-sets.json. Used to
@@ -142,7 +217,8 @@ async function fetchCCPokemon(maxPages: number, solUsd: number | null): Promise<
     if (items.length === 0) break;
     for (const it of items) {
       if (it.category !== "Pokemon") continue;                       // clean source filter
-      if (/japanese/i.test(`${it.set ?? ""}${it.language ?? ""}`)) continue; // EN catalog only
+      if (isNonEnglishPokemonListing(it.itemName, it.set, it.language)) continue; // EN catalog only
+      if (isNonTcgProductListing(it.itemName, it.set)) continue;
       const price = Number(it?.listing?.price);
       if (!(price > 0) || !it.gradeNum || !it.gradingCompany || !it.nftAddress) continue;
       const cardName = parseCardName(it.itemName);
@@ -154,12 +230,12 @@ async function fetchCCPokemon(maxPages: number, solUsd: number | null): Promise<
         mint: it.nftAddress,
         item_name: it.itemName,
         card_name: cardName,
-        number: stripCardNumber(it.serial),
+        number: itemNumber(it.itemName, it.serial),
         company: String(it.gradingCompany).toUpperCase(),
         grade: Number(it.gradeNum),
         price_usd: Math.round(usd * 100) / 100,
         image: it.frontImage ?? null,
-        set: String(it.set ?? "").trim(),
+        set: String(it.set ?? parseSetHint(it.itemName) ?? "").trim(),
         year: String(it.itemName ?? "").match(/^\s*(\d{4})/)?.[1] ?? "",
       });
     }
@@ -178,7 +254,7 @@ function buildNameIndex(rows: RawCard[]): Map<string, RawCard[]> {
     const key = normalize(r.card_name);
     if (!key) continue;
     const arr = m.get(key) ?? [];
-    arr.push({ ...r, card_id: base });
+    if (!arr.some((c) => c.card_id === base)) arr.push({ ...r, card_id: base });
     m.set(key, arr);
   }
   return m;
@@ -187,6 +263,46 @@ function cardNumberOf(cardId: string): string {
   const b = cardId.split("::")[0];
   const d = b.lastIndexOf("-");
   return stripCardNumber(d >= 0 ? b.slice(d + 1) : "");
+}
+
+function candidatesForListingName(nameIdx: Map<string, RawCard[]>, name: string): RawCard[] {
+  const seen = new Set<string>();
+  const out: RawCard[] = [];
+  for (const key of cardNameKeys(name)) {
+    for (const c of nameIdx.get(key) ?? []) {
+      if (seen.has(c.card_id)) continue;
+      seen.add(c.card_id);
+      out.push(c);
+    }
+  }
+  return out;
+}
+
+function chooseCandidate(cands: RawCard[], listing: CCListing, setYear: Map<string, string>): RawCard | undefined {
+  if (cands.length === 0) return undefined;
+
+  const setMatches = listing.set ? cands.filter((c) => setNameMatches(c.set_name, listing.set)) : [];
+  if (setMatches.length === 1) return setMatches[0];
+  if (setMatches.length > 1 && listing.year) {
+    const byYear = setMatches.find((c) => setYear.get(setIdOf(c.card_id)) === listing.year);
+    if (byYear) return byYear;
+  }
+
+  const yearMatches = listing.year ? cands.filter((c) => setYear.get(setIdOf(c.card_id)) === listing.year) : [];
+  if (yearMatches.length === 1 && !listing.set) return yearMatches[0];
+
+  if (cands.length === 1) {
+    const only = cands[0];
+    const cy = listing.year ? setYear.get(setIdOf(only.card_id)) : null;
+    // Title year is often copyright/slab label year, especially promos. Treat
+    // it as a weak signal when a CC set label exists; if no set label exists,
+    // keep the old wrong-era guard.
+    if (listing.set && !setNameMatches(only.set_name, listing.set)) return undefined;
+    if (!listing.set && cy && listing.year && cy !== listing.year) return undefined;
+    return only;
+  }
+
+  return undefined;
 }
 
 serve(async (req: Request) => {
@@ -255,30 +371,12 @@ serve(async (req: Request) => {
 
         // Match.
         const results = listings.map((l) => {
-          const cands = (nameIdx.get(normalize(l.card_name)) ?? []).filter((c) => cardNumberOf(c.card_id) === l.number);
+          const cands = candidatesForListingName(nameIdx, l.card_name)
+            .filter((c) => cardNumberOf(c.card_id) === l.number);
+          let card = chooseCandidate(cands, l, setYear);
 
-          // Pick the RIGHT candidate, not just the first (which was usually the
-          // priciest vintage printing — a $39 2021 Blastoise was matching the
-          // $12.5k 1999 Base Set Blastoise, a false -99.7% "deal"). The slab's
-          // year is authoritative: prefer the candidate whose set release year
-          // matches; then a set-name match; then a single candidate. If the
-          // year is known and NO candidate's set year agrees, refuse to match
-          // rather than emit a wrong-era false positive.
-          let card: RawCard | undefined;
-          if (cands.length === 1) {
-            card = cands[0];
-          } else if (cands.length > 1) {
-            card = (l.year && cands.find((c) => setYear.get(setIdOf(c.card_id)) === l.year))
-              || (l.set && cands.find((c) => setNameMatches(c.set_name, l.set)))
-              || undefined;
-            if (!card && !l.year && !l.set) card = cands[0]; // no signal at all → legacy behavior
-          }
-          // Year cross-check even for a single candidate: a known slab year that
-          // disagrees with the candidate's set year is a mismatch, not a deal.
-          if (card && l.year) {
-            const cy = setYear.get(setIdOf(card.card_id));
-            if (cy && cy !== l.year) card = undefined;
-          }
+          // Candidate selection prefers CC set labels, then year, then a safe
+          // single-candidate fallback. Title year is weak for promos.
 
           let matched_card_id: string | null = null, matched_set: string | null = null, market: number | null = null, delta: number | null = null, method = "none", conf = 0;
           if (card) {
@@ -286,7 +384,7 @@ serve(async (req: Request) => {
             const g = gradedMap.get(`${card.card_id}|${l.company}|${l.grade}`);
             if (g && g > 0) {
               market = g; delta = ((l.price_usd - g) / g) * 100;
-              method = "cc_api_graded"; conf = cands.length === 1 ? 0.9 : 0.7;
+              method = "cc_api_graded"; conf = cands.length === 1 ? 0.9 : 0.75;
             } else {
               method = "cc_api_nograde"; conf = 0.5; // matched the card but no graded price for that grade
             }

@@ -70,7 +70,7 @@ export default function GradedTab({ company, grade, setIds }: Props) {
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="bg-card overflow-hidden">
       <div className={`hidden sm:grid ${GRID} gap-3 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
         <span>#</span><span>Card</span><span>Set</span><span>Grade</span><span className="text-right">Price</span><span />
       </div>

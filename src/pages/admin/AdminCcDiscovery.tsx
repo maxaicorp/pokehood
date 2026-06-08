@@ -126,8 +126,8 @@ export default function AdminCcDiscovery() {
       if (error) throw new Error(error.message);
       return data;
     },
-    onSuccess: (data) => {
-      toast.success(`Discovery complete · matched ${data?.matched ?? "?"} of ${data?.total_active ?? "?"} · ${data?.undervalued ?? 0} undervalued`);
+    onSuccess: () => {
+      toast.success("Discovery started. Results will update as the background run finishes.");
       qc.invalidateQueries({ queryKey: ["cc-discovery-state"] });
       qc.invalidateQueries({ queryKey: ["cc-discovery-rows"] });
     },
