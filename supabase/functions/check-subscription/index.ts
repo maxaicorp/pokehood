@@ -31,9 +31,15 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Auth error: ${userError.message}`);
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated");
+    const user = userData?.user;
+    // Stale/expired token (e.g. the session lapsed between page load and this
+    // call) is NOT a crash. Default to "not subscribed" with a 200 so the client
+    // never logs a 500 and the UI never hinges on this call succeeding.
+    if (userError || !user?.email) {
+      return new Response(JSON.stringify({ subscribed: false, reason: "no_session" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
