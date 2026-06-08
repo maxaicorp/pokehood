@@ -120,12 +120,19 @@ chase cards included (per-set = no drift), and the per-set health panel on
 `/admin/health` shows ~180/180 fresh. The catalog stays correct all day; the
 crawl idles until tomorrow.
 
-### Credit budget
-- **Pipeline baseline:** crawl ~300 + seed ~5 + sealed ~modest ≈ **~325 credits/day**
-- **Refreshes/prune:** 0 (pure SQL)
-- **Card-page traffic:** ~1–2 credits per unique card view
-- **Plan:** ~48,000 credits/month ≈ **~1,600/day**. Pipeline uses ~20%; the rest
-  absorbs card-page traffic. Comfortable headroom.
+### Credit budget — USAGE vs CEILING (don't confuse them)
+**What we actually SPEND per day:**
+- Crawl (full per-set cycle): **~300**
+- Seed registry: **~5**
+- Refreshes + prune: **0** (pure SQL)
+- Sealed: ~modest (separate subsystem)
+- Card-page views: **~1–2 each** (only cost that scales with traffic)
+- → **Pipeline baseline ≈ ~325 credits/day** + traffic.
+
+**The CEILING (your Scrydex plan, NOT usage):** the plan is ~50,000 credits/month
+≈ **~1,600/day available**. We were at ~500/day before this work. So the pipeline
+spends **~325 of the ~1,600 ceiling** — roughly 20%. The 1,600 is headroom, not
+consumption.
 
 ---
 
