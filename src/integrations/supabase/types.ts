@@ -1240,6 +1240,27 @@ export type Database = {
         }
         Relationships: []
       }
+      set_index_snapshots: {
+        Row: {
+          card_count: number
+          recorded_at: string
+          set_id: string
+          total_value: number
+        }
+        Insert: {
+          card_count: number
+          recorded_at?: string
+          set_id: string
+          total_value: number
+        }
+        Update: {
+          card_count?: number
+          recorded_at?: string
+          set_id?: string
+          total_value?: number
+        }
+        Relationships: []
+      }
       set_sentiment_votes: {
         Row: {
           card_id: string
@@ -1775,6 +1796,26 @@ export type Database = {
         }[]
       }
       get_pipeline_completeness: { Args: never; Returns: Json }
+      get_set_index_history: {
+        Args: { p_days?: number; p_set_id: string }
+        Returns: {
+          card_count: number
+          recorded_at: string
+          total_value: number
+        }[]
+      }
+      get_set_index_overview: {
+        Args: never
+        Returns: {
+          card_count: number
+          pct_1d: number
+          pct_30d: number
+          pct_7d: number
+          set_id: string
+          sparkline: Json
+          total_value: number
+        }[]
+      }
       get_set_sentiment: {
         Args: { p_set_ids: string[] }
         Returns: {
@@ -1852,6 +1893,7 @@ export type Database = {
       }
       refresh_latest_card_prices: { Args: never; Returns: number }
       refresh_latest_graded_prices: { Args: never; Returns: number }
+      refresh_set_index: { Args: never; Returns: number }
       request_full_resnapshot: { Args: never; Returns: number }
       search_catalog: {
         Args: { p_limit?: number; p_query: string }
