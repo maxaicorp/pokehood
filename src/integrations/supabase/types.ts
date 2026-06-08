@@ -1852,6 +1852,7 @@ export type Database = {
       }
       refresh_latest_card_prices: { Args: never; Returns: number }
       refresh_latest_graded_prices: { Args: never; Returns: number }
+      request_full_resnapshot: { Args: never; Returns: number }
       search_catalog: {
         Args: { p_limit?: number; p_query: string }
         Returns: {
