@@ -167,7 +167,8 @@
     position: relative;
     overflow: hidden;
     border: 1px solid hsl(var(--border) / 0.78);
-    border-radius: 9999px;
+    /* Rounded rectangle — subtle corners, not a full pill. */
+    border-radius: 1rem;
     box-shadow: 0 14px 36px hsl(222 47% 6% / 0.08);
   }
 
