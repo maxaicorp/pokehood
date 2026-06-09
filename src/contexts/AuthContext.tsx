@@ -58,12 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session]);
 
   useEffect(() => {
+    // onAuthStateChange fires an INITIAL_SESSION event on subscribe, so it's
+    // sufficient as the sole source of truth. We intentionally do NOT also
+    // call getSession() here: when it resolves with `null` slightly before
+    // INITIAL_SESSION arrives with the real session, `loading` flips to false
+    // with `user=null`, and route guards like AdminRouteGuard fire a redirect
+    // to /auth before the real session lands — kicking real admins off pages
+    // like /vault even though has_role would have returned true. Verified
+    // 2026-06-09 from a /vault redirect report (Vault chunk was never fetched).
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
