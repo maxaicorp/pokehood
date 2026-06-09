@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Crown, LogOut, ExternalLink, QrCode, LayoutGrid, TrendingUp, Layers, Compass, Blocks, Gamepad2, BarChart3, Shield, Heart } from "lucide-react";
+import { Crown, LogOut, ExternalLink, QrCode, LayoutGrid, TrendingUp, Layers, Compass, Blocks, Gamepad2, BarChart3, Shield, Heart, User } from "lucide-react";
 import GlobalSearch from "@/components/GlobalSearch";
 import ThemeToggle from "@/components/ThemeToggle";
 import { toast } from "sonner";
@@ -165,8 +165,13 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link to="/auth" className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-xl bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-800">
-                Sign In
+              <Link
+                to="/auth"
+                aria-label="Sign in"
+                title="Sign in"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-white transition-colors hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <User className="w-[18px] h-[18px]" strokeWidth={2} />
               </Link>
             )}
           </div>
