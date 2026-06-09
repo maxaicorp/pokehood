@@ -94,10 +94,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setSubscription({ subscribed: false, productId: null, subscriptionEnd: null });
       setIsAdmin(false);
-      // No session means the admin question is settled (no, they're not).
-      setAdminChecked(true);
+      // Only mark the admin question "settled" once we definitively know there
+      // is no session (loading has resolved). On initial mount session is null
+      // by default; if we flipped adminChecked=true here, AdminRouteGuard
+      // would briefly see (user=truthy from incoming session) + adminChecked=true
+      // + isAdmin=false in the render between session arriving and this effect
+      // re-running, and would redirect real admins away. Verified 2026-06-09.
+      if (!loading) setAdminChecked(true);
     }
-  }, [session, checkSubscription]);
+  }, [session, checkSubscription, loading]);
 
   // Periodic refresh every 60s
   useEffect(() => {
