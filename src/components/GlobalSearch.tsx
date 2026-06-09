@@ -163,7 +163,7 @@ export default function GlobalSearch() {
         onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
         className={cn(
           "hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl border cursor-text transition-colors min-w-[220px] lg:min-w-[280px]",
-          open ? "ring-2 ring-primary/30 border-primary/50 bg-background" : "border-[hsl(var(--header-foreground)_/_0.18)] bg-[hsl(var(--header-foreground)_/_0.08)] hover:bg-[hsl(var(--header-foreground)_/_0.15)]"
+          open ? "ring-2 ring-primary/30 border-primary/50 bg-background" : "border-[hsl(var(--header-foreground)_/_0.18)] bg-transparent hover:bg-[hsl(var(--header-foreground)_/_0.08)]"
         )}
       >
         <Search className={cn("w-4 h-4 shrink-0", open ? "text-muted-foreground" : "text-[hsl(var(--header-foreground)_/_0.65)]")} />
