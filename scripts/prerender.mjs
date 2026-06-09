@@ -107,7 +107,11 @@ const SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const priceByCardId = new Map();
 
 async function fetchPrices() {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
+  const placeholderSupabase =
+    SUPABASE_URL === "https://example.supabase.co" ||
+    SUPABASE_KEY === "placeholder";
+
+  if (!SUPABASE_URL || !SUPABASE_KEY || placeholderSupabase) {
     console.log("(no SUPABASE env vars — skipping price enrichment)");
     return;
   }
