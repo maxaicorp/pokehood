@@ -28,10 +28,15 @@ import {
 } from "@/lib/content-signals";
 
 const STATUS_FILTERS: Array<ContentSignalStatus | "all"> = ["draft", "approved", "scheduled", "posted", "archived", "all"];
+// Authored at a small base size per format, then scaled UP uniformly to the
+// exact social export size (so content stays proportional and fits perfectly):
+//   square     base 360x360  x3 -> 1080x1080   (Instagram / square post)
+//   horizontal base 480x270  x4 -> 1920x1080   (X / YouTube / landscape)
+//   vertical   base 360x640  x3 -> 1080x1920   (Stories / Reels / TikTok)
 const GRAPHIC_FORMATS = [
-  { key: "square", label: "Square", ratio: "1:1", className: "h-[360px] w-[360px]", width: 360, height: 360, previewScale: 0.74 },
-  { key: "horizontal", label: "Horizontal", ratio: "16:9", className: "h-[236px] w-[420px]", width: 420, height: 236, previewScale: 0.84 },
-  { key: "vertical", label: "Vertical", ratio: "4:5", className: "h-[475px] w-[380px]", width: 380, height: 475, previewScale: 0.58 },
+  { key: "square", label: "Square", ratio: "1080×1080", className: "h-[360px] w-[360px]", width: 360, height: 360, exportScale: 3, targetW: 1080, targetH: 1080, previewScale: 0.78 },
+  { key: "horizontal", label: "Landscape", ratio: "1920×1080", className: "h-[270px] w-[480px]", width: 480, height: 270, exportScale: 4, targetW: 1920, targetH: 1080, previewScale: 0.66 },
+  { key: "vertical", label: "Portrait", ratio: "1080×1920", className: "h-[640px] w-[360px]", width: 360, height: 640, exportScale: 3, targetW: 1080, targetH: 1920, previewScale: 0.5 },
 ] as const;
 const GRAPHIC_STYLES = [
   { key: "market-glass", label: "Market Glass" },
@@ -99,8 +104,21 @@ async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   return response.blob();
 }
 
-async function renderGraphicNode(node: HTMLElement): Promise<string> {
-  return toPng(node, { cacheBust: true, pixelRatio: 2, backgroundColor: "#050505" });
+// Export at the EXACT social size: the base node (e.g. 360px) is scaled up by
+// exportScale into a targetW×targetH canvas, so output is precisely 1080×1080 /
+// 1920×1080 / 1080×1920 with everything proportional.
+async function renderGraphicNode(node: HTMLElement, format: GraphicFormat): Promise<string> {
+  return toPng(node, {
+    cacheBust: true,
+    backgroundColor: "#050505",
+    pixelRatio: 1,
+    width: format.targetW,
+    height: format.targetH,
+    style: {
+      transform: `scale(${format.exportScale})`,
+      transformOrigin: "top left",
+    },
+  });
 }
 
 async function copyPngDataUrl(dataUrl: string): Promise<void> {
@@ -385,7 +403,7 @@ function GraphicFormatCard({
 
   async function renderDataUrl() {
     if (!previewRef.current) throw new Error("No graphic preview selected");
-    return renderGraphicNode(previewRef.current);
+    return renderGraphicNode(previewRef.current, format);
   }
 
   async function downloadGraphic() {

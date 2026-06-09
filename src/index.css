@@ -184,28 +184,19 @@
     );
   }
 
-  /* Mirrored subtle rainbow on the top + bottom edges. */
-  .app-header-pill::before,
+  /* Subtle rainbow on the bottom edge only. */
   .app-header-pill::after {
     content: "";
     position: absolute;
     left: 8%;
     right: 8%;
+    bottom: 0;
     height: 2.5px;
     border-radius: 9999px;
     background: var(--header-rainbow);
+    box-shadow: 0 1px 10px hsl(var(--rainbow-5) / 0.28);
     opacity: 0.85;
     pointer-events: none;
-  }
-
-  .app-header-pill::before {
-    top: 0;
-    box-shadow: 0 -1px 10px hsl(var(--rainbow-5) / 0.28);
-  }
-
-  .app-header-pill::after {
-    bottom: 0;
-    box-shadow: 0 1px 10px hsl(var(--rainbow-5) / 0.28);
   }
 }
 
