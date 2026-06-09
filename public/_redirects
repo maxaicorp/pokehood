@@ -1,0 +1,12 @@
+# SPA fallback for static hosts (Cloudflare Pages / Netlify).
+#
+# IMPORTANT: on these hosts, real static files are served BEFORE this rule.
+# So a prerendered page like /sets/ascended-heroes/index.html is served at the
+# clean URL /sets/ascended-heroes, and only routes WITHOUT a prerendered file
+# (e.g. /dashboard, /card/:id, /u/:slug) fall through to the SPA shell here.
+#
+# This is the fix for "Discovered – currently not indexed": Lovable's built-in
+# hosting ignores nested prerendered HTML and serves index.html for every clean
+# URL (canonical=/ on all 20k pages). A static host that honors this file serves
+# the real per-page HTML instead.
+/*    /index.html   200
