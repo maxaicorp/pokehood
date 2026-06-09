@@ -531,9 +531,7 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
         description="Live activity feed for phygital NFC and QR-tagged Pokémon trading cards: trades, listings, and transfers."
         path="/onchain"
       />
-      <AppHeader activePage="onchain">
-        <div />
-      </AppHeader>
+      <AppHeader activePage="onchain" />
 
       <div className="container px-4 sm:px-8 py-6 max-w-5xl mx-auto">
         {/* Header */}
@@ -624,6 +622,47 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
                 </SelectContent>
               </Select>
             </div>
+          )}
+
+          {/* Marketplace Source + Sort live in the SAME filter row as View
+              (like Activity/Top-Sales), not a separate row below. */}
+          {activeTab === "marketplace" && (
+            <>
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Source
+                </label>
+                <Select value={activeMarketplaceSource} onValueChange={(v) => setMarketplaceSource(v as MarketplaceSource)}>
+                  <SelectTrigger className="mt-1 bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MARKETPLACE_SOURCES.map((source) => (
+                      <SelectItem key={source.value} value={source.value}>
+                        {source.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Sort
+                </label>
+                <Select value={activeMarketplaceSort} onValueChange={(v) => setMarketplaceSort(v as MarketplaceSort)}>
+                  <SelectTrigger className="mt-1 bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MARKETPLACE_SORTS.map((sort) => (
+                      <SelectItem key={sort.value} value={sort.value}>
+                        {sort.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
         </div>
 
@@ -905,47 +944,10 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
 
         {/* ─── Marketplace branch ─────────────────────────────────────────── */}
         {activeTab === "marketplace" && (<>
-          {/* Sort dropdown above the grid. Same three options Magic Eden's
-              own UI shows. Changing the selection resets the infinite scroll
-              (because marketplaceSort is in the query key). */}
-          <div className="grid gap-3 mb-4 sm:grid-cols-[1fr_220px_220px] sm:items-end">
-            <span className="text-sm text-muted-foreground tabular-nums sm:pb-2">
-              {listedCount != null ? `${listedCount.toLocaleString()} listed` : " "}
+          <div className="mb-4">
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {listedCount != null ? `${listedCount.toLocaleString()} listed` : " "}
             </span>
-            <div>
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Source
-              </label>
-              <Select value={activeMarketplaceSource} onValueChange={(v) => setMarketplaceSource(v as MarketplaceSource)}>
-                <SelectTrigger className="mt-1 bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MARKETPLACE_SOURCES.map((source) => (
-                    <SelectItem key={source.value} value={source.value}>
-                      {source.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Sort
-              </label>
-              <Select value={activeMarketplaceSort} onValueChange={(v) => setMarketplaceSort(v as MarketplaceSort)}>
-                <SelectTrigger className="mt-1 bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MARKETPLACE_SORTS.map((sort) => (
-                    <SelectItem key={sort.value} value={sort.value}>
-                      {sort.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           {listingsError && (
