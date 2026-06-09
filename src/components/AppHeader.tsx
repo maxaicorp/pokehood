@@ -86,9 +86,8 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
         <div className="app-header-pill backdrop-blur-xl">
         <div className="flex h-14 items-center justify-between gap-3 px-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <Link to="/" className="flex items-center gap-2 h-8">
-              <img src="/logo.png" alt="Collectiblez" className="w-8 h-8 object-contain" />
-              <span className="hidden min-[380px]:inline font-display font-bold text-base tracking-wide uppercase">Collectiblez</span>
+            <Link to="/" className="flex items-center h-9 shrink-0" aria-label="Collectiblez home">
+              <img src="/logo.png" alt="Collectiblez" className="w-9 h-9 object-contain" />
             </Link>
             <div className="hidden sm:flex items-center gap-0">
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Dashboard</Link>
@@ -166,7 +165,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link to="/auth" className="shrink-0 whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800 sm:px-4">
+              <Link to="/auth" className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-xl bg-neutral-900 px-4 text-sm font-medium text-white transition-colors hover:bg-neutral-800">
                 Sign In
               </Link>
             )}
