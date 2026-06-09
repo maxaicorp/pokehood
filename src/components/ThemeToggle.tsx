@@ -30,7 +30,7 @@ export default function ThemeToggle() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-9 w-9 shrink-0 rounded-full border border-border/70 bg-background/70 text-foreground shadow-sm hover:bg-accent"
+          className="h-9 w-9 shrink-0 rounded-full text-[hsl(var(--header-foreground))] hover:bg-[hsl(var(--header-foreground)_/_0.1)] hover:text-[hsl(var(--header-foreground))]"
           title={`Theme: ${activeOption.label}`}
         >
           <ActiveIcon className="h-4 w-4" />

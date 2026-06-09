@@ -167,8 +167,11 @@ export default function Dashboard() {
         path="/dashboard"
         noindex
       />
-      <AppHeader activePage="dashboard">
-        {/* Tabs */}
+      <AppHeader activePage="dashboard" />
+
+      {/* Tabs — attached to the page (scrolls with the content) rather than
+          floating in a full-width pill under the sticky header. */}
+      <div className="border-b border-border">
         <div className="container px-4 sm:px-8">
           <div className="flex gap-0 -mb-px">
             {tabs.map((tab) => (
@@ -177,18 +180,18 @@ export default function Dashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.id
-                    ? "border-primary text-foreground"
+                    ? "border-foreground text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
                 <span className="text-xs sm:text-sm">{tab.label}</span>
-                {tab.pro && !isPro && <Crown className="w-3 h-3 text-primary ml-1" />}
+                {tab.pro && !isPro && <Crown className="w-3 h-3 text-foreground ml-1" />}
               </button>
             ))}
           </div>
         </div>
-      </AppHeader>
+      </div>
 
       <div className="container py-6 sm:py-8 px-4 sm:px-8">
         {activeTab === "collection" && (
@@ -209,10 +212,10 @@ export default function Dashboard() {
                   // is never truncated between the two narrow stat cards.
                   className={`h-full ${stat.isCurrency ? "col-span-2 sm:col-span-1" : ""}`}
                 >
-                  <MagicCard className={`h-full p-3 sm:p-5 bg-card border-border/50 ${stat.glow ? "glow-primary" : ""}`}>
+                  <MagicCard className="h-full p-3 sm:p-5 bg-card border-border/50">
                     <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                        <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-foreground/10 flex items-center justify-center shrink-0">
+                        <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-[10px] sm:text-sm text-muted-foreground truncate">{stat.label}</p>
@@ -307,12 +310,12 @@ export default function Dashboard() {
           </DialogHeader>
           {importing ? (
             <div className="py-8 text-center space-y-4">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
+              <Loader2 className="w-8 h-8 animate-spin text-foreground mx-auto" />
               <p className="text-sm text-muted-foreground">
                 Importing {importProgress.done} / {importProgress.total} cards...
               </p>
               <div className="w-full bg-secondary rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
+                <div className="bg-foreground h-2 rounded-full transition-all" style={{ width: `${importProgress.total ? (importProgress.done / importProgress.total) * 100 : 0}%` }} />
               </div>
             </div>
           ) : (

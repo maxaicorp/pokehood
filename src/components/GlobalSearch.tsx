@@ -153,7 +153,7 @@ export default function GlobalSearch() {
       <button
         onClick={() => { setOpen(true); setTimeout(() => inputRef.current?.focus(), 50); }}
         className={cn(
-          "sm:hidden flex items-center justify-center w-9 h-9 rounded-full bg-[hsl(var(--header-foreground)_/_0.1)] hover:bg-[hsl(var(--header-foreground)_/_0.18)] transition-colors"
+          "sm:hidden flex items-center justify-center w-9 h-9 rounded-full text-[hsl(var(--header-foreground))] hover:bg-[hsl(var(--header-foreground)_/_0.1)] transition-colors"
         )}
       >
         <Search className="w-4 h-4" />

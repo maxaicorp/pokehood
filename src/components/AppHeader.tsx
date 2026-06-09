@@ -169,7 +169,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                 to="/auth"
                 aria-label="Sign in"
                 title="Sign in"
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-white transition-colors hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[hsl(var(--header-foreground))] transition-colors hover:bg-[hsl(var(--header-foreground)_/_0.1)] focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <User className="w-[18px] h-[18px]" strokeWidth={2} />
               </Link>

@@ -116,7 +116,7 @@ export default function Auth() {
               <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} className="mt-1" />
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={submitting}>
+          <Button type="submit" className="w-full bg-foreground text-background hover:bg-foreground/90" disabled={submitting}>
             {submitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
             {view === "login" ? "Sign In" : view === "signup" ? "Sign Up" : view === "forgot" ? "Send reset link" : "Update password"}
           </Button>
@@ -131,7 +131,7 @@ export default function Auth() {
         <Button
           type="button"
           variant="outline"
-          className="w-full"
+          className="w-full hover:bg-muted hover:text-foreground"
           onClick={async () => {
             const { error } = await lovable.auth.signInWithOAuth("google", {
               redirect_uri: window.location.origin,
