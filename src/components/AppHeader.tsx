@@ -78,13 +78,14 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50">
-        <div className="app-header-bar backdrop-blur-xl">
-        <div className="container flex items-center justify-between h-14 sm:h-16 px-4 sm:px-8">
-          <div className="flex items-center gap-2 sm:gap-3">
+      <header className="sticky top-0 z-50 px-3 pt-3 sm:px-6 sm:pt-4">
+        <div className="mx-auto w-full max-w-[1200px]">
+        <div className="app-header-pill backdrop-blur-xl">
+        <div className="flex h-14 items-center justify-between gap-3 px-3 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <Link to="/" className="flex items-center gap-2 h-8">
               <img src="/logo.png" alt="Collectiblez" className="w-8 h-8 object-contain" />
-              <span className="font-display font-bold text-base tracking-wide uppercase">Collectiblez</span>
+              <span className="hidden min-[380px]:inline font-display font-bold text-base tracking-wide uppercase">Collectiblez</span>
             </Link>
             <div className="hidden sm:flex items-center gap-0">
               <Link to="/dashboard" className={`px-4 py-1.5 text-sm font-medium transition-colors ${activePage === "dashboard" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}>Dashboard</Link>
@@ -96,7 +97,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                   review before exposure. Admins still manage it at /admin/giveaways. */}
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <GlobalSearch />
             {user ? (
               <DropdownMenu>
@@ -171,8 +172,9 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
         {/* Page-injected sub-nav (e.g. Dashboard tabs). Needs a solid bg +
             border so scrolling content doesn't bleed through the sticky header. */}
         {children && (
-          <div className="bg-background border-b border-border/50">{children}</div>
+          <div className="mt-2 overflow-hidden rounded-2xl border border-border/70 bg-background/95 shadow-sm backdrop-blur-xl">{children}</div>
         )}
+        </div>
       </header>
 
       <QRCodeModal open={qrOpen} onOpenChange={setQrOpen} url={profileUrl} title="Share Your Profile" />
