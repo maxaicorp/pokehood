@@ -50,12 +50,28 @@ interface DiscoveryRow {
   status: "matched" | "unmatched";
 }
 
+interface GradedComp {
+  card_id: string;
+  company: string;
+  grade: number;
+  market: number | null;
+  low: number | null;
+  mid: number | null;
+  high: number | null;
+}
+
 type Tab = "matched" | "unmatched";
 
 function formatUsd(n: number | null | undefined): string {
   if (n == null) return "—";
   return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: n >= 1000 ? 0 : 2 });
 }
+function formatCompactUsd(n: number | null | undefined): string {
+  if (n == null) return "â€”";
+  if (n >= 1000) return `$${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
+  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
 function formatPct(n: number | null | undefined): string {
   if (n == null) return "—";
   const sign = n >= 0 ? "+" : "";
@@ -161,6 +177,43 @@ export default function AdminCcDiscovery() {
       return true;
     });
   }, [rows, tab, companyFilter, minUnder]);
+
+  const gradedCardIds = useMemo(
+    () => [...new Set(displayRows.map((r) => r.matched_card_id).filter(Boolean) as string[])],
+    [displayRows],
+  );
+
+  const gradedCompsQ = useQuery({
+    queryKey: ["cc-discovery-graded-comps", gradedCardIds.join("|")],
+    queryFn: async (): Promise<GradedComp[]> => {
+      if (gradedCardIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("latest_graded_prices")
+        .select("card_id, company, grade, market, low, mid, high")
+        .in("card_id", gradedCardIds);
+      if (error) throw error;
+      return (data ?? []) as GradedComp[];
+    },
+    enabled: tab === "matched" && gradedCardIds.length > 0,
+  });
+
+  const gradedByCard = useMemo(() => {
+    const order = new Map([["PSA", 0], ["BGS", 1], ["CGC", 2], ["SGC", 3], ["TAG", 4], ["ACE", 5]]);
+    const m = new Map<string, GradedComp[]>();
+    for (const comp of gradedCompsQ.data ?? []) {
+      const arr = m.get(comp.card_id) ?? [];
+      arr.push(comp);
+      m.set(comp.card_id, arr);
+    }
+    for (const arr of m.values()) {
+      arr.sort((a, b) => {
+        const companyDelta = (order.get(a.company) ?? 99) - (order.get(b.company) ?? 99);
+        if (companyDelta !== 0) return companyDelta;
+        return Number(b.grade) - Number(a.grade);
+      });
+    }
+    return m;
+  }, [gradedCompsQ.data]);
 
   // Live coverage counter — how much of CC's ~52k Pokémon marketplace we've
   // imported into onchain_listings. cc-* rows come from ingest-cc-marketplace
@@ -328,7 +381,7 @@ export default function AdminCcDiscovery() {
               : "Click \"Run discovery\" to populate."}
           </div>
         ) : tab === "matched" ? (
-          <MatchedTable rows={displayRows} />
+          <MatchedTable rows={displayRows} gradedByCard={gradedByCard} />
         ) : (
           <UnmatchedTable rows={rows} />
         )}
@@ -351,7 +404,13 @@ function SummaryCard({
   );
 }
 
-function MatchedTable({ rows }: { rows: DiscoveryRow[] }) {
+function MatchedTable({
+  rows,
+  gradedByCard,
+}: {
+  rows: DiscoveryRow[];
+  gradedByCard: Map<string, GradedComp[]>;
+}) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -387,11 +446,24 @@ function MatchedTable({ rows }: { rows: DiscoveryRow[] }) {
                   <div className="text-xs">
                     <div className="font-medium">{r.matched_card_name}</div>
                     <div className="text-muted-foreground">
+                      {r.matched_card_id && (
+                        <><span className="font-mono">{r.matched_card_id}</span>{r.matched_set_name ? " · " : ""}</>
+                      )}
                       {r.matched_set_name}
                       {r.matched_company && r.matched_grade != null && (
                         <> · {r.matched_company} {r.matched_grade}</>
                       )}
                     </div>
+                    <GradedCompStrip
+                      comps={r.matched_card_id ? gradedByCard.get(r.matched_card_id) ?? [] : []}
+                      selectedCompany={r.matched_company}
+                      selectedGrade={r.matched_grade}
+                    />
+                    {r.market_price_usd == null && (
+                      <div className="mt-1 text-[10px] text-amber-600">
+                        Card match only; no exact same-grade comp.
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{formatUsd(r.listing_price_usd)}</td>
@@ -414,6 +486,49 @@ function MatchedTable({ rows }: { rows: DiscoveryRow[] }) {
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function GradedCompStrip({
+  comps,
+  selectedCompany,
+  selectedGrade,
+}: {
+  comps: GradedComp[];
+  selectedCompany: string | null;
+  selectedGrade: number | null;
+}) {
+  if (comps.length === 0) {
+    return <div className="mt-1 text-[10px] text-muted-foreground">No graded comps cached.</div>;
+  }
+
+  const visible = comps.slice(0, 12);
+  return (
+    <div className="mt-1 flex max-w-[360px] flex-wrap gap-1">
+      {visible.map((comp) => {
+        const selected =
+          selectedCompany?.toUpperCase() === comp.company.toUpperCase() &&
+          Number(selectedGrade) === Number(comp.grade);
+        return (
+          <span
+            key={`${comp.card_id}-${comp.company}-${comp.grade}`}
+            className={`rounded border px-1.5 py-0.5 text-[10px] tabular-nums ${
+              selected
+                ? "border-primary/70 bg-primary/10 text-primary"
+                : "border-border/60 bg-muted/30 text-muted-foreground"
+            }`}
+            title={`${comp.company} ${comp.grade}: ${formatUsd(comp.market)}`}
+          >
+            {comp.company} {comp.grade}: {formatCompactUsd(comp.market)}
+          </span>
+        );
+      })}
+      {comps.length > visible.length && (
+        <span className="rounded border border-border/60 bg-muted/30 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          +{comps.length - visible.length}
+        </span>
+      )}
     </div>
   );
 }
@@ -464,12 +579,18 @@ function UnmatchedTable({ rows }: { rows: DiscoveryRow[] }) {
 
 function MethodBadge({ method, confidence }: { method: string; confidence: number | null }) {
   const tone =
-    method === "graded_attrs" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
-    : method === "raw_attrs"   ? "bg-amber-500/10 text-amber-500 border-amber-500/30"
+    method.includes("graded") ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+    : method.includes("loose") ? "bg-amber-500/10 text-amber-500 border-amber-500/30"
+    : method.includes("card") || method === "raw_attrs" ? "bg-sky-500/10 text-sky-500 border-sky-500/30"
     : method === "name_parse"  ? "bg-sky-500/10 text-sky-500 border-sky-500/30"
     : "bg-muted text-muted-foreground border-border";
   const label =
-    method === "graded_attrs" ? "graded"
+    method === "cc_api_graded" ? "graded"
+    : method === "cc_api_loose_graded" ? "loose graded"
+    : method === "cc_api_card" ? "card"
+    : method === "cc_api_loose_card" ? "loose card"
+    : method === "cc_api_nograde" ? "card"
+    : method === "graded_attrs" ? "graded"
     : method === "raw_attrs"   ? "raw"
     : method === "name_parse"  ? "name"
     : method;

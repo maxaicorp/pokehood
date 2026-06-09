@@ -152,6 +152,23 @@ function cardNameKeys(name: string | null | undefined): string[] {
   return [...out].filter(Boolean);
 }
 
+const GENERIC_CARD_WORDS = new Set([
+  "holo", "foil", "reverse", "rare", "base", "set", "edition", "first", "1st",
+  "unlimited", "shadowless", "promo", "pokemon", "card", "tcg",
+]);
+
+function significantWords(s: string | null | undefined): string[] {
+  return words(s).filter((w) => w.length > 1 && !GENERIC_CARD_WORDS.has(w));
+}
+
+function nameOverlapScore(cardName: string, listingName: string): number {
+  const cardWords = significantWords(cardName);
+  const listingWords = new Set(significantWords(listingName));
+  if (cardWords.length === 0 || listingWords.size === 0) return 0;
+  const overlap = cardWords.filter((w) => listingWords.has(w)).length;
+  return overlap / Math.max(1, Math.min(cardWords.length, listingWords.size));
+}
+
 // set_id → release year, from the app's published market-sets.json. Used to
 // disambiguate same name+number across sets (a 2021 Blastoise must NOT match
 // the 1999 Base Set Blastoise). Best-effort: if it can't load, year matching
@@ -246,6 +263,15 @@ async function fetchCCPokemon(maxPages: number, solUsd: number | null): Promise<
 }
 
 interface RawCard { card_id: string; card_name: string; set_name: string; }
+interface GradedMatch {
+  card_id: string;
+  card_name: string;
+  set_name: string;
+  company: string;
+  grade: number;
+  market: number;
+}
+
 // name(normalized) → cards; used to resolve a CC slab to a Scrydex card_id.
 function buildNameIndex(rows: RawCard[]): Map<string, RawCard[]> {
   const m = new Map<string, RawCard[]>();
@@ -259,6 +285,29 @@ function buildNameIndex(rows: RawCard[]): Map<string, RawCard[]> {
   }
   return m;
 }
+
+function buildCardInfoIndex(rows: RawCard[]): Map<string, RawCard> {
+  const m = new Map<string, RawCard>();
+  for (const r of rows) {
+    const base = r.card_id.split("::")[0];
+    if (!m.has(base)) m.set(base, { ...r, card_id: base });
+  }
+  return m;
+}
+
+function buildNumberIndex(rows: RawCard[]): Map<string, RawCard[]> {
+  const m = new Map<string, RawCard[]>();
+  for (const r of rows) {
+    const base = r.card_id.split("::")[0];
+    const n = cardNumberOf(base);
+    if (!n) continue;
+    const arr = m.get(n) ?? [];
+    if (!arr.some((c) => c.card_id === base)) arr.push({ ...r, card_id: base });
+    m.set(n, arr);
+  }
+  return m;
+}
+
 function cardNumberOf(cardId: string): string {
   const b = cardId.split("::")[0];
   const d = b.lastIndexOf("-");
@@ -303,6 +352,44 @@ function chooseCandidate(cands: RawCard[], listing: CCListing, setYear: Map<stri
   }
 
   return undefined;
+}
+
+function looseCandidateScore(c: RawCard, listing: CCListing, setYear: Map<string, string>): number {
+  const overlap = nameOverlapScore(c.card_name, listing.card_name);
+  if (overlap <= 0) return 0;
+
+  const exactName = normalize(c.card_name) === normalize(listing.card_name);
+  const setMatch = Boolean(listing.set && setNameMatches(c.set_name, listing.set));
+  const yearMatch = Boolean(listing.year && setYear.get(setIdOf(c.card_id)) === listing.year);
+
+  let score = overlap * 3;
+  if (exactName) score += 3;
+  if (setMatch) score += 4;
+  if (yearMatch) score += 2;
+  if (listing.set && !setMatch) score -= 2;
+  if (!listing.set && listing.year && !yearMatch) score -= 1;
+  return score;
+}
+
+function chooseLooseCandidate(
+  numberIdx: Map<string, RawCard[]>,
+  listing: CCListing,
+  setYear: Map<string, string>,
+): { card: RawCard; confidence: number } | undefined {
+  if (!listing.number) return undefined;
+  const numbered = numberIdx.get(listing.number) ?? [];
+  if (numbered.length === 0) return undefined;
+
+  const scored = numbered
+    .map((card) => ({ card, score: looseCandidateScore(card, listing, setYear) }))
+    .filter((x) => x.score >= 4)
+    .sort((a, b) => b.score - a.score);
+
+  if (scored.length === 0) return undefined;
+  const [top, second] = scored;
+  if (second && top.score - second.score < 1.25) return undefined;
+
+  return { card: top.card, confidence: Math.max(0.55, Math.min(0.72, top.score / 12)) };
 }
 
 serve(async (req: Request) => {
@@ -356,16 +443,34 @@ serve(async (req: Request) => {
             if (rows.length < P) break; from += P;
           } }
         const nameIdx = buildNameIndex(cards);
+        const cardInfoIdx = buildCardInfoIndex(cards);
+        const numberIdx = buildNumberIndex(cards);
         const setYear = await fetchSetYearMap();   // set_id → release year
 
-        // Graded index: `${card_id}|${company}|${grade}` → market.
-        const gradedMap = new Map<string, number>();
+        // Graded index: `${card_id}|${company}|${grade}` → canonical graded
+        // market row. The name/set displayed in Admin must come from the DB
+        // card identity we matched, not from CC's messy listing title, while
+        // the price comes from latest_graded_prices (never the raw card cache).
+        const gradedMap = new Map<string, GradedMatch>();
         { let from = 0; const P = 1000;
           while (true) {
             const { data, error } = await supabase.from("latest_graded_prices").select("card_id, company, grade, market").range(from, from + P - 1);
             if (error) throw new Error(`latest_graded_prices: ${error.message}`);
             const rows = (data ?? []) as { card_id: string; company: string; grade: number; market: number }[];
-            for (const r of rows) if (r.market > 0) gradedMap.set(`${r.card_id}|${r.company}|${r.grade}`, Number(r.market));
+            for (const r of rows) {
+              const market = Number(r.market);
+              if (!(market > 0)) continue;
+              const company = String(r.company).toUpperCase();
+              const info = cardInfoIdx.get(r.card_id);
+              gradedMap.set(`${r.card_id}|${company}|${Number(r.grade)}`, {
+                card_id: r.card_id,
+                card_name: info?.card_name || r.card_id,
+                set_name: info?.set_name || "",
+                company,
+                grade: Number(r.grade),
+                market,
+              });
+            }
             if (rows.length < P) break; from += P;
           } }
 
@@ -374,30 +479,53 @@ serve(async (req: Request) => {
           const cands = candidatesForListingName(nameIdx, l.card_name)
             .filter((c) => cardNumberOf(c.card_id) === l.number);
           let card = chooseCandidate(cands, l, setYear);
+          let cardConfidence = cands.length === 1 ? 0.9 : 0.75;
+          let usedLooseCardMatch = false;
+          if (!card) {
+            const loose = chooseLooseCandidate(numberIdx, l, setYear);
+            if (loose) {
+              card = loose.card;
+              cardConfidence = loose.confidence;
+              usedLooseCardMatch = true;
+            }
+          }
 
           // Candidate selection prefers CC set labels, then year, then a safe
           // single-candidate fallback. Title year is weak for promos.
 
           let matched_card_id: string | null = null, matched_set: string | null = null, market: number | null = null, delta: number | null = null, method = "none", conf = 0;
+          let matched_card_name: string | null = null;
+          let matched_company: string | null = l.company;
+          let matched_grade: number | null = l.grade;
           if (card) {
             matched_card_id = card.card_id; matched_set = card.set_name;
             const g = gradedMap.get(`${card.card_id}|${l.company}|${l.grade}`);
-            if (g && g > 0) {
-              market = g; delta = ((l.price_usd - g) / g) * 100;
-              method = "cc_api_graded"; conf = cands.length === 1 ? 0.9 : 0.75;
+            if (g) {
+              matched_card_id = g.card_id;
+              matched_card_name = g.card_name;
+              matched_set = g.set_name;
+              matched_company = g.company;
+              matched_grade = g.grade;
+              market = g.market; delta = ((l.price_usd - g.market) / g.market) * 100;
+              method = usedLooseCardMatch ? "cc_api_loose_graded" : "cc_api_graded";
+              conf = cardConfidence;
             } else {
-              method = "cc_api_nograde"; conf = 0.5; // matched the card but no graded price for that grade
+              // Keep the canonical raw-card identity on the unmatched row so
+              // admins can see "card matched, grade comp missing" diagnostics.
+              matched_card_name = card.card_name;
+              method = usedLooseCardMatch ? "cc_api_loose_card" : "cc_api_card";
+              conf = Math.min(cardConfidence, 0.65); // matched the card but no graded price for that grade
             }
           }
           return {
             pda_address: l.mint, token_mint: l.mint,
             listing_name: l.item_name, listing_image: l.image, listing_price_usd: l.price_usd,
             marketplace_url: `https://collectorcrypt.com/nft/${l.mint}`,
-            matched_card_id, matched_card_name: matched_card_id ? l.card_name : null, matched_set_name: matched_set,
-            matched_company: l.company, matched_grade: l.grade,
+            matched_card_id, matched_card_name, matched_set_name: matched_set,
+            matched_company, matched_grade,
             market_price_usd: market, delta_pct: delta,
             match_method: method, match_confidence: conf,
-            status: matched_card_id != null && market != null ? "matched" : "unmatched",
+            status: matched_card_id != null ? "matched" : "unmatched",
           };
         });
 

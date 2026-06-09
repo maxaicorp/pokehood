@@ -10,7 +10,6 @@ import {
   ExternalLink,
   RefreshCw,
   Send,
-  Share2,
   Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,19 +29,23 @@ import {
 
 const STATUS_FILTERS: Array<ContentSignalStatus | "all"> = ["draft", "approved", "scheduled", "posted", "archived", "all"];
 const GRAPHIC_FORMATS = [
-  { key: "square", label: "Square", ratio: "1:1", className: "h-[360px] w-[360px]" },
-  { key: "horizontal", label: "Horizontal", ratio: "16:9", className: "h-[236px] w-[420px]" },
-  { key: "vertical", label: "Vertical", ratio: "4:5", className: "h-[475px] w-[380px]" },
+  { key: "square", label: "Square", ratio: "1:1", className: "h-[360px] w-[360px]", width: 360, height: 360, previewScale: 0.74 },
+  { key: "horizontal", label: "Horizontal", ratio: "16:9", className: "h-[236px] w-[420px]", width: 420, height: 236, previewScale: 0.84 },
+  { key: "vertical", label: "Vertical", ratio: "4:5", className: "h-[475px] w-[380px]", width: 380, height: 475, previewScale: 0.58 },
 ] as const;
 const GRAPHIC_STYLES = [
   { key: "market-glass", label: "Market Glass" },
   { key: "card-shadow", label: "Card Shadow" },
+  { key: "holo-vault", label: "Holo Vault" },
+  { key: "prism-slab", label: "Prism Slab" },
+  { key: "vault-poster", label: "Vault Poster" },
   { key: "liquid-wave", label: "Liquid Wave" },
   { key: "data-terminal", label: "Data Terminal" },
 ] as const;
 
 type GraphicFormatKey = (typeof GRAPHIC_FORMATS)[number]["key"];
 type GraphicStyleKey = (typeof GRAPHIC_STYLES)[number]["key"];
+type GraphicFormat = (typeof GRAPHIC_FORMATS)[number];
 
 function formatPctValue(value: number | null): string {
   if (value == null || !Number.isFinite(value)) return "--";
@@ -91,10 +94,24 @@ function absoluteTargetUrl(signal: MarketingContentSignal): string {
   }
 }
 
-async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
+async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   const response = await fetch(dataUrl);
-  const blob = await response.blob();
-  return new File([blob], fileName, { type: blob.type || "image/png" });
+  return response.blob();
+}
+
+async function renderGraphicNode(node: HTMLElement): Promise<string> {
+  return toPng(node, { cacheBust: true, pixelRatio: 2, backgroundColor: "#050505" });
+}
+
+async function copyPngDataUrl(dataUrl: string): Promise<void> {
+  const blob = await dataUrlToBlob(dataUrl);
+  const ClipboardItemCtor = window.ClipboardItem;
+  if (!ClipboardItemCtor || !navigator.clipboard?.write) {
+    throw new Error("Image clipboard is not supported in this browser");
+  }
+  await navigator.clipboard.write([
+    new ClipboardItemCtor({ [blob.type || "image/png"]: blob }),
+  ]);
 }
 
 function GraphicPreview({ signal, format, style }: { signal: MarketingContentSignal; format: GraphicFormatKey; style: GraphicStyleKey }) {
@@ -106,9 +123,26 @@ function GraphicPreview({ signal, format, style }: { signal: MarketingContentSig
   const accent = pctUp ? "#22c55e" : "#ef4444";
   const formatInfo = GRAPHIC_FORMATS.find((item) => item.key === format) ?? GRAPHIC_FORMATS[0];
   const isCardShadow = style === "card-shadow";
+  const isHoloVault = style === "holo-vault";
+  const isPrismSlab = style === "prism-slab";
+  const isVaultPoster = style === "vault-poster";
   const isLiquid = style === "liquid-wave";
   const isTerminal = style === "data-terminal";
-  const bgClass = isLiquid
+  const usesCardBackdrop = image && !isTerminal && (isCardShadow || isHoloVault || isPrismSlab || isVaultPoster);
+  const backdropClass = isHoloVault
+    ? "absolute inset-0 h-full w-full scale-150 object-cover opacity-[0.30] blur-xl saturate-[1.55]"
+    : isPrismSlab
+    ? "absolute inset-0 h-full w-full scale-125 object-cover opacity-[0.20] blur-md grayscale"
+    : isVaultPoster
+    ? "absolute inset-0 h-full w-full scale-150 object-cover opacity-[0.26] blur-2xl saturate-[1.35]"
+    : "absolute inset-0 h-full w-full scale-125 object-cover opacity-[0.24] blur-md";
+  const bgClass = isHoloVault
+    ? "bg-[radial-gradient(circle_at_50%_20%,rgba(255,255,255,0.18),transparent_26%),radial-gradient(circle_at_15%_80%,rgba(34,197,94,0.22),transparent_32%),radial-gradient(circle_at_92%_72%,rgba(59,130,246,0.24),transparent_30%),linear-gradient(145deg,#020305_0%,#071118_52%,#010101_100%)]"
+    : isPrismSlab
+    ? "bg-[linear-gradient(135deg,rgba(34,197,94,0.18),transparent_18%,rgba(59,130,246,0.14)_44%,rgba(236,72,153,0.16)_72%,transparent_100%),linear-gradient(150deg,#030303_0%,#101114_52%,#030303_100%)]"
+    : isVaultPoster
+    ? "bg-[radial-gradient(circle_at_50%_12%,rgba(255,255,255,0.20),transparent_20%),linear-gradient(180deg,rgba(3,7,18,0.80)_0%,rgba(0,0,0,0.92)_54%,#020202_100%)]"
+    : isLiquid
     ? "bg-[radial-gradient(circle_at_20%_20%,rgba(45,212,191,0.42),transparent_30%),radial-gradient(circle_at_86%_18%,rgba(59,130,246,0.35),transparent_25%),radial-gradient(circle_at_58%_82%,rgba(236,72,153,0.28),transparent_32%),linear-gradient(145deg,#030303_0%,#08111c_48%,#020202_100%)]"
     : isTerminal
     ? "bg-[linear-gradient(rgba(34,197,94,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.05)_1px,transparent_1px),linear-gradient(145deg,#020402_0%,#061109_56%,#000_100%)] bg-[size:18px_18px,18px_18px,auto]"
@@ -117,11 +151,23 @@ function GraphicPreview({ signal, format, style }: { signal: MarketingContentSig
     : "bg-[radial-gradient(circle_at_82%_7%,rgba(255,255,255,0.22),transparent_24%),linear-gradient(150deg,#050505_0%,#101010_52%,#000_100%)]";
   const panelClass = isTerminal
     ? "border-emerald-400/25 bg-black/55"
+    : isPrismSlab
+    ? "border-white/18 bg-black/62"
+    : isVaultPoster
+    ? "border-white/16 bg-black/70"
+    : isHoloVault
+    ? "border-white/18 bg-white/[0.08]"
     : isLiquid
     ? "border-white/14 bg-white/[0.075]"
     : "border-white/12 bg-white/[0.06]";
   const frameClass = isTerminal
     ? "border-emerald-400/20 bg-black/45"
+    : isPrismSlab
+    ? "border-white/18 bg-black/55"
+    : isVaultPoster
+    ? "border-white/16 bg-black/64"
+    : isHoloVault
+    ? "border-white/18 bg-white/[0.08]"
     : isLiquid
     ? "border-white/14 bg-white/[0.09]"
     : "border-white/12 bg-white/[0.06]";
@@ -148,17 +194,25 @@ function GraphicPreview({ signal, format, style }: { signal: MarketingContentSig
         className={`relative overflow-hidden rounded-xl border border-white/15 bg-black text-white shadow-2xl ${formatInfo.className}`}
         style={{ fontFamily: typeface }}
       >
-        {image && !isSet && (
+        {image && usesCardBackdrop && (
           <img
             src={image}
             alt=""
             crossOrigin="anonymous"
-            className={isCardShadow
-              ? "absolute inset-0 h-full w-full scale-125 object-cover opacity-[0.24] blur-md"
-              : "absolute -right-6 top-0 h-[250px] w-[190px] rotate-6 object-contain opacity-[0.18] blur-[1px]"}
+            className={backdropClass}
+          />
+        )}
+        {image && !usesCardBackdrop && !isSet && (
+          <img
+            src={image}
+            alt=""
+            crossOrigin="anonymous"
+            className="absolute -right-6 top-0 h-[250px] w-[190px] rotate-6 object-contain opacity-[0.18] blur-[1px]"
           />
         )}
         <div className={`absolute inset-0 ${bgClass}`} />
+        {isPrismSlab && <div className="absolute inset-3 rounded-xl border border-white/12 shadow-[inset_0_0_0_1px_rgba(34,197,94,0.22),0_0_34px_rgba(59,130,246,0.16)]" />}
+        {isVaultPoster && <div className="absolute inset-x-10 top-7 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />}
         <div className="absolute inset-y-0 left-0 w-[5px]" style={{ backgroundColor: accent }} />
         {isLiquid && <div className="absolute inset-x-8 top-1/2 h-16 -translate-y-1/2 rounded-full bg-white/10 blur-2xl" />}
         <div className="absolute -bottom-14 -left-10 h-36 w-36 rounded-full opacity-25 blur-3xl" style={{ backgroundColor: accent }} />
@@ -214,17 +268,25 @@ function GraphicPreview({ signal, format, style }: { signal: MarketingContentSig
         className={`relative overflow-hidden rounded-xl border border-white/15 bg-black text-white shadow-2xl ${formatInfo.className}`}
         style={{ fontFamily: typeface }}
       >
-      {image && !isSet && (
+      {image && usesCardBackdrop && (
         <img
           src={image}
           alt=""
           crossOrigin="anonymous"
-          className={isCardShadow
-            ? "absolute inset-0 h-full w-full scale-125 object-cover opacity-[0.26] blur-md"
-            : "absolute -right-10 top-8 h-[310px] w-[240px] rotate-6 object-contain opacity-25 blur-[2px]"}
+          className={backdropClass}
+        />
+      )}
+      {image && !usesCardBackdrop && !isSet && (
+        <img
+          src={image}
+          alt=""
+          crossOrigin="anonymous"
+          className="absolute -right-10 top-8 h-[310px] w-[240px] rotate-6 object-contain opacity-25 blur-[2px]"
         />
       )}
       <div className={`absolute inset-0 ${bgClass}`} />
+      {isPrismSlab && <div className="absolute inset-3 rounded-xl border border-white/12 shadow-[inset_0_0_0_1px_rgba(34,197,94,0.22),0_0_34px_rgba(59,130,246,0.16)]" />}
+      {isVaultPoster && <div className="absolute inset-x-10 top-7 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />}
       <div className="absolute inset-x-0 top-0 h-[5px]" style={{ backgroundColor: accent }} />
       {isLiquid && <div className="absolute inset-x-8 top-[35%] h-20 rounded-full bg-white/10 blur-2xl" />}
       <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full opacity-25 blur-3xl" style={{ backgroundColor: accent }} />
@@ -308,13 +370,95 @@ function GraphicPreview({ signal, format, style }: { signal: MarketingContentSig
   );
 }
 
+function GraphicFormatCard({
+  signal,
+  format,
+  style,
+}: {
+  signal: MarketingContentSignal;
+  format: GraphicFormat;
+  style: GraphicStyleKey;
+}) {
+  const previewRef = useRef<HTMLDivElement>(null);
+  const scaledWidth = format.width * format.previewScale;
+  const scaledHeight = format.height * format.previewScale;
+
+  async function renderDataUrl() {
+    if (!previewRef.current) throw new Error("No graphic preview selected");
+    return renderGraphicNode(previewRef.current);
+  }
+
+  async function downloadGraphic() {
+    try {
+      const dataUrl = await renderDataUrl();
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = fileNameFor(signal, format.key, style);
+      link.click();
+      toast.success(`${format.label} PNG exported`);
+    } catch {
+      toast.error("Could not export graphic");
+    }
+  }
+
+  async function copyGraphic() {
+    try {
+      const dataUrl = await renderDataUrl();
+      await copyPngDataUrl(dataUrl);
+      toast.success(`${format.label} image copied`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not copy image");
+    }
+  }
+
+  return (
+    <section className="group rounded-lg border border-border bg-background/70 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold">{format.label}</p>
+          <p className="text-[11px] text-muted-foreground">{format.ratio}</p>
+        </div>
+        <div className="flex translate-y-1 items-center gap-1 opacity-0 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+          <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={copyGraphic} title={`Copy ${format.label} image`}>
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={downloadGraphic} title={`Download ${format.label} PNG`}>
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex min-h-[164px] items-center justify-center overflow-hidden rounded-md bg-muted/35 p-3">
+        <div
+          className="relative"
+          style={{
+            width: `${scaledWidth}px`,
+            height: `${scaledHeight}px`,
+          }}
+        >
+          <div
+            style={{
+              transform: `scale(${format.previewScale})`,
+              transformOrigin: "top left",
+              width: `${format.width}px`,
+              height: `${format.height}px`,
+            }}
+          >
+            <div ref={previewRef}>
+              <GraphicPreview signal={signal} format={format.key} style={style} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function AdminContentSignals() {
   const queryClient = useQueryClient();
-  const previewRef = useRef<HTMLDivElement>(null);
   const [statusFilter, setStatusFilter] = useState<ContentSignalStatus | "all">("draft");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
-  const [previewFormat, setPreviewFormat] = useState<GraphicFormatKey>("square");
   const [previewStyle, setPreviewStyle] = useState<GraphicStyleKey>("market-glass");
 
   const signalsQuery = useQuery({
@@ -374,51 +518,6 @@ export default function AdminContentSignals() {
       toast.success("Caption copied");
     } catch {
       toast.error("Could not copy caption");
-    }
-  }
-
-  async function renderGraphicDataUrl(): Promise<string> {
-    if (!selected || !previewRef.current) throw new Error("No graphic preview selected");
-    return toPng(previewRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: "#050505" });
-  }
-
-  async function downloadGraphic() {
-    if (!selected || !previewRef.current) return;
-    try {
-      const dataUrl = await renderGraphicDataUrl();
-      const link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = fileNameFor(selected, previewFormat, previewStyle);
-      link.click();
-      toast.success("Graphic exported");
-    } catch {
-      toast.error("Could not export graphic");
-    }
-  }
-
-  async function shareGraphic() {
-    if (!selected || !previewRef.current) return;
-    const targetUrl = absoluteTargetUrl(selected);
-    try {
-      const dataUrl = await renderGraphicDataUrl();
-      const file = await dataUrlToFile(dataUrl, fileNameFor(selected, previewFormat, previewStyle));
-      const shareData = {
-        title: selected.title,
-        text: caption,
-        url: targetUrl,
-        files: [file],
-      };
-
-      if (navigator.canShare?.({ files: [file] }) && navigator.share) {
-        await navigator.share(shareData);
-        toast.success("Share sheet opened");
-        return;
-      }
-
-      await navigator.clipboard.writeText(`${caption}\n\n${targetUrl}`);
-      toast.success("Caption and link copied");
-    } catch {
-      toast.error("Could not open share sheet");
     }
   }
 
@@ -483,7 +582,7 @@ export default function AdminContentSignals() {
         </Button>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(340px,0.8fr)_minmax(620px,1.2fr)]">
         <section className="rounded-lg border border-border bg-card overflow-hidden">
           <div className="grid grid-cols-[1fr_86px_86px_92px] gap-3 px-4 py-2.5 border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground">
             <span>Signal</span>
@@ -546,21 +645,6 @@ export default function AdminContentSignals() {
                 </div>
 
                 <div className="mb-3 flex flex-wrap gap-2">
-                  {GRAPHIC_FORMATS.map((format) => (
-                    <Button
-                      key={format.key}
-                      type="button"
-                      size="sm"
-                      variant={previewFormat === format.key ? "default" : "outline"}
-                      className="h-8 gap-1.5"
-                      onClick={() => setPreviewFormat(format.key)}
-                    >
-                      {format.label}
-                      <span className="text-[10px] opacity-70">{format.ratio}</span>
-                    </Button>
-                  ))}
-                </div>
-                <div className="mb-3 flex flex-wrap gap-2">
                   {GRAPHIC_STYLES.map((style) => (
                     <Button
                       key={style.key}
@@ -575,26 +659,21 @@ export default function AdminContentSignals() {
                   ))}
                 </div>
 
-                <div className="flex justify-center overflow-auto rounded-lg bg-muted/40 p-3">
-                  <div ref={previewRef}>
-                    <GraphicPreview signal={{ ...selected, caption }} format={previewFormat} style={previewStyle} />
-                  </div>
+                <div className="grid gap-3">
+                  {GRAPHIC_FORMATS.map((format) => (
+                    <GraphicFormatCard
+                      key={format.key}
+                      signal={{ ...selected, caption }}
+                      format={format}
+                      style={previewStyle}
+                    />
+                  ))}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  <Button onClick={downloadGraphic} className="gap-2">
-                    <Download className="w-4 h-4" />
-                    Export PNG
-                  </Button>
                   <Button variant="outline" onClick={copyCaption} className="gap-2">
                     <Copy className="w-4 h-4" />
                     Copy caption
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <Button variant="outline" onClick={shareGraphic} className="gap-2">
-                    <Share2 className="w-4 h-4" />
-                    Share image
                   </Button>
                   <Button variant="outline" onClick={openXComposer} className="gap-2">
                     <Send className="w-4 h-4" />

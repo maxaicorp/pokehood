@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Select,
   SelectContent,
@@ -17,6 +17,9 @@ import SEO from "@/components/SEO";
 import { CC_REFERRAL_URL } from "@/components/CollectorCryptPromoItem";
 import { formatTradePrice, useSolPrice, type PriceInfo } from "@/lib/onchain-price";
 import { useUrlState } from "@/lib/use-url-state";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface Activity {
   signature: string;
@@ -69,6 +72,31 @@ const typeLabel = (type: string) => {
 const shortenAddress = (addr: string) =>
   addr ? `${addr.slice(0, 4)}...${addr.slice(-4)}` : "—";
 
+const formatUsd = (n: number | null | undefined) => {
+  if (n == null) return "N/A";
+  return n.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: n >= 1000 ? 0 : 2,
+  });
+};
+
+const formatCompactUsd = (n: number | null | undefined) => {
+  if (n == null) return "N/A";
+  if (n >= 1000) return `$${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k`;
+  return n.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+};
+
+const formatPct = (n: number | null | undefined) => {
+  if (n == null) return "N/A";
+  const sign = n >= 0 ? "+" : "";
+  return `${sign}${n.toFixed(1)}%`;
+};
+
 const timeAgo = (ts: number) => {
   const diff = Math.floor(Date.now() / 1000 - ts);
   if (diff < 60) return `${diff}s ago`;
@@ -88,6 +116,41 @@ interface Listing {
   image?: string;
   rarityRank?: number | null;
   marketplaceUrl: string;
+}
+
+interface PriceCheckComp {
+  card_id: string;
+  company: string;
+  grade: number;
+  market: number | null;
+  low: number | null;
+  mid: number | null;
+  high: number | null;
+  currency?: string | null;
+  isExact?: boolean;
+  deltaPct?: number | null;
+}
+
+interface PriceCheckResult {
+  listing: unknown;
+  parsed: {
+    itemName: string;
+    cardName: string;
+    number: string;
+    company: string | null;
+    grade: number | null;
+    set: string;
+    priceUsd: number | null;
+  };
+  match: null | {
+    card_id: string;
+    card_name: string;
+    set_name: string;
+    method: string;
+    confidence: number;
+  };
+  exactComp: PriceCheckComp | null;
+  gradedComps: PriceCheckComp[];
 }
 
 type OnchainTab = "activity" | "marketplace" | "top-sales";
@@ -162,6 +225,7 @@ export default function OnchainPage() {
 
 function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   // Sub-filters are URL-driven (useUrlState) too — same reason as the tabs: a
   // click is a deterministic navigation, and the filtered view is shareable.
   const [typeFilter, setTypeFilter] = useUrlState<string>("type", "");
@@ -218,6 +282,35 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
   // null if both Jupiter and CoinGecko are down — the UI just hides the USD
   // line in that case instead of blocking the page.
   const { solUsd } = useSolPrice();
+  const [priceChecks, setPriceChecks] = useState<Record<string, PriceCheckResult>>({});
+  const [checkingListingId, setCheckingListingId] = useState<string | null>(null);
+
+  const checkValueMutation = useMutation({
+    mutationFn: async (listing: Listing) => {
+      const { data, error } = await supabase.functions.invoke("cc-price-check", {
+        body: { pdaAddress: listing.pdaAddress },
+      });
+      if (error) throw new Error(error.message);
+      const result = data as PriceCheckResult & { error?: string };
+      if (result?.error) throw new Error(result.error);
+      return { pdaAddress: listing.pdaAddress, result: result as PriceCheckResult };
+    },
+    onMutate: (listing) => {
+      setCheckingListingId(listing.pdaAddress);
+    },
+    onSuccess: ({ pdaAddress, result }) => {
+      setPriceChecks((prev) => ({ ...prev, [pdaAddress]: result }));
+      if (!result.match) {
+        toast.warning("No database card match found for that listing.");
+      }
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Value check failed");
+    },
+    onSettled: () => {
+      setCheckingListingId(null);
+    },
+  });
 
   // Activity feed — infinite scroll, 1000-event cap. Magic Eden returns events
   // newest-first by default, so each page=N gives the next 20 older events.
@@ -879,12 +972,9 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
               ))
             ) : listings && listings.length > 0 ? (
               listings.map((l) => (
-                <a
+                <div
                   key={l.pdaAddress}
-                  href={l.marketplaceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-card border border-border/50 p-3 hover:border-primary/30 hover:bg-card/80 transition-colors group block"
+                  className="bg-card border border-border/50 p-3 hover:border-primary/30 hover:bg-card/80 transition-colors group"
                 >
                   {/* 3:4 portrait aspect — physical TCG cards are taller than
                       they are wide. Square was leaving large empty bands on
@@ -938,7 +1028,29 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
                   <p className="text-[11px] text-muted-foreground mt-1 font-mono truncate">
                     by {shortenAddress(l.seller)}
                   </p>
-                </a>
+                  <div className="mt-3 flex items-center gap-2">
+                    {isAdmin && activeMarketplaceSource === "cc" && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 min-w-0 flex-1 text-xs"
+                        disabled={checkValueMutation.isPending && checkingListingId === l.pdaAddress}
+                        onClick={() => checkValueMutation.mutate(l)}
+                      >
+                        {checkValueMutation.isPending && checkingListingId === l.pdaAddress ? "Checking..." : "Check value"}
+                      </Button>
+                    )}
+                    <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
+                      <a href={l.marketplaceUrl} target="_blank" rel="noopener noreferrer">
+                        View <ExternalLink className="ml-1 h-3 w-3" />
+                      </a>
+                    </Button>
+                  </div>
+                  {isAdmin && priceChecks[l.pdaAddress] && (
+                    <PriceCheckPanel result={priceChecks[l.pdaAddress]} />
+                  )}
+                </div>
               ))
             ) : (
               <div className="col-span-full text-center py-12 text-muted-foreground">
@@ -963,6 +1075,89 @@ function Onchain({ activeTab }: { activeTab: OnchainTab }) {
           )}
         </>)}
       </div>
+    </div>
+  );
+}
+
+function PriceCheckPanel({ result }: { result: PriceCheckResult }) {
+  const exactDelta = result.exactComp?.deltaPct ?? null;
+  const exactIsUndervalued = exactDelta != null && exactDelta < 0;
+  const comps = [...result.gradedComps].sort((a, b) => {
+    if (a.isExact && !b.isExact) return -1;
+    if (!a.isExact && b.isExact) return 1;
+    if (a.company !== b.company) return a.company.localeCompare(b.company);
+    return b.grade - a.grade;
+  });
+
+  if (!result.match) {
+    return (
+      <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-xs">
+        <div className="font-semibold text-amber-600">No database match</div>
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          Parsed {result.parsed.cardName || "unknown"} #{result.parsed.number || "?"}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-md border border-border/60 bg-background/70 p-2 text-xs">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate font-semibold text-foreground" title={result.match.card_name}>
+            {result.match.card_name}
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            <span className="font-mono">{result.match.card_id}</span>
+            {result.match.set_name ? ` | ${result.match.set_name}` : ""}
+          </div>
+        </div>
+        <Badge variant="outline" className="shrink-0 text-[10px]">
+          {Math.round(result.match.confidence * 100)}%
+        </Badge>
+      </div>
+
+      <div className="mt-2 rounded bg-muted/30 px-2 py-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {result.parsed.company && result.parsed.grade != null
+              ? `${result.parsed.company} ${result.parsed.grade}`
+              : "Grade unknown"}
+          </span>
+          <span className="tabular-nums text-muted-foreground">
+            List {formatUsd(result.parsed.priceUsd)}
+          </span>
+        </div>
+        {result.exactComp ? (
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <span className="tabular-nums">Market {formatUsd(result.exactComp.market)}</span>
+            <span className={`font-semibold tabular-nums ${exactIsUndervalued ? "text-emerald-500" : "text-rose-500"}`}>
+              {formatPct(exactDelta)}
+            </span>
+          </div>
+        ) : (
+          <div className="mt-1 text-[10px] text-amber-600">
+            Card matched; no exact same-grade comp.
+          </div>
+        )}
+      </div>
+
+      {comps.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {comps.slice(0, 12).map((comp, i) => (
+            <span
+              key={`${comp.company}-${comp.grade}-${i}`}
+              className={`rounded border px-1.5 py-0.5 text-[10px] tabular-nums ${
+                comp.isExact
+                  ? "border-primary/70 bg-primary/10 text-primary"
+                  : "border-border/60 bg-muted/30 text-muted-foreground"
+              }`}
+            >
+              {comp.company} {comp.grade}: {formatCompactUsd(comp.market)}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
