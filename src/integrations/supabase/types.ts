@@ -734,6 +734,96 @@ export type Database = {
           },
         ]
       }
+      marketing_content_signals: {
+        Row: {
+          caption: string
+          card_count: number | null
+          card_id: string | null
+          card_name: string
+          created_at: string
+          dedupe_key: string
+          id: string
+          image_payload: Json
+          pct_change: number | null
+          posted_at: string | null
+          posted_url: string | null
+          price: number | null
+          prior_price: number | null
+          scheduled_at: string | null
+          score: number
+          set_id: string | null
+          set_name: string
+          signal_date: string
+          signal_type: string
+          status: string
+          summary: string
+          target_path: string
+          template_key: string
+          title: string
+          total_value: number | null
+          updated_at: string
+          window: string | null
+        }
+        Insert: {
+          caption: string
+          card_count?: number | null
+          card_id?: string | null
+          card_name?: string
+          created_at?: string
+          dedupe_key: string
+          id?: string
+          image_payload?: Json
+          pct_change?: number | null
+          posted_at?: string | null
+          posted_url?: string | null
+          price?: number | null
+          prior_price?: number | null
+          scheduled_at?: string | null
+          score?: number
+          set_id?: string | null
+          set_name?: string
+          signal_date?: string
+          signal_type: string
+          status?: string
+          summary: string
+          target_path?: string
+          template_key?: string
+          title: string
+          total_value?: number | null
+          updated_at?: string
+          window?: string | null
+        }
+        Update: {
+          caption?: string
+          card_count?: number | null
+          card_id?: string | null
+          card_name?: string
+          created_at?: string
+          dedupe_key?: string
+          id?: string
+          image_payload?: Json
+          pct_change?: number | null
+          posted_at?: string | null
+          posted_url?: string | null
+          price?: number | null
+          prior_price?: number | null
+          scheduled_at?: string | null
+          score?: number
+          set_id?: string | null
+          set_name?: string
+          signal_date?: string
+          signal_type?: string
+          status?: string
+          summary?: string
+          target_path?: string
+          template_key?: string
+          title?: string
+          total_value?: number | null
+          updated_at?: string
+          window?: string | null
+        }
+        Relationships: []
+      }
       nft_names: {
         Row: {
           attributes: Json | null
@@ -1566,6 +1656,10 @@ export type Database = {
         }
       }
       current_week_start: { Args: never; Returns: string }
+      generate_marketing_content_signals: {
+        Args: { p_signal_date?: string }
+        Returns: number
+      }
       get_all_latest_prices: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: {
