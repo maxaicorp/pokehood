@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import AdminRouteGuard from "@/components/AdminRouteGuard";
-import BackgroundLayer from "@/components/BackgroundLayer";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ScrollToTop from "@/components/ScrollToTop";
 import SentimentIntroDialog from "@/components/SentimentIntroDialog";
@@ -61,7 +60,6 @@ const App = () => (
         <BrowserRouter>
           <ScrollToTop />
           <AuthProvider>
-            <BackgroundLayer />
             <main className="relative z-[1]">
               <ErrorBoundary>
               <Suspense fallback={<PageLoader />}>

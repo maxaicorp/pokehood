@@ -790,7 +790,7 @@ export default function Market() {
         </div>
 
         {/* Table */}
-        <div className="market-data-panel rounded-xl border border-border overflow-hidden">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
           {/* Table header — hidden when Sealed/Graded/Most Visited tab is active or grid mode */}
           {activeTab !== "sealed" && activeTab !== "most-visited" && activeTab !== "graded" && viewMode === "list" && (
             <div className={`hidden sm:grid ${gridClasses} gap-3 px-4 py-2.5 bg-muted/50 border-b border-border text-xs font-medium text-muted-foreground items-center`}>
