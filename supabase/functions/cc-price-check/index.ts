@@ -303,20 +303,41 @@ serve(async (req: Request) => {
 
     const parsed = parseListing(listing);
 
+    // Narrow query — full table scan was timing out. Fetch only candidates
+    // that could plausibly match by name token or card number suffix.
     const cards: RawCard[] = [];
-    { let from = 0; const pageSize = 1000;
-      while (true) {
-        const { data, error } = await supabase
-          .from("latest_card_prices")
-          .select("card_id, card_name, set_name")
-          .not("card_id", "like", "sealed-%")
-          .range(from, from + pageSize - 1);
-        if (error) throw new Error(`latest_card_prices: ${error.message}`);
-        const rows = (data ?? []) as RawCard[];
-        cards.push(...rows);
-        if (rows.length < pageSize) break;
-        from += pageSize;
+    const seenIds = new Set<string>();
+    const pushRows = (rows: RawCard[] | null) => {
+      for (const r of rows ?? []) {
+        if (seenIds.has(r.card_id)) continue;
+        seenIds.add(r.card_id);
+        cards.push(r);
       }
+    };
+
+    const nameTokens = significantWords(parsed.cardName);
+    const primaryToken = nameTokens[0] ?? "";
+
+    if (primaryToken) {
+      const { data, error } = await supabase
+        .from("latest_card_prices")
+        .select("card_id, card_name, set_name")
+        .not("card_id", "like", "sealed-%")
+        .ilike("card_name", `%${primaryToken}%`)
+        .limit(5000);
+      if (error) throw new Error(`latest_card_prices: ${error.message}`);
+      pushRows(data as RawCard[] | null);
+    }
+
+    if (parsed.number) {
+      const { data, error } = await supabase
+        .from("latest_card_prices")
+        .select("card_id, card_name, set_name")
+        .not("card_id", "like", "sealed-%")
+        .ilike("card_id", `%-${parsed.number.toLowerCase()}`)
+        .limit(5000);
+      if (error) throw new Error(`latest_card_prices: ${error.message}`);
+      pushRows(data as RawCard[] | null);
     }
 
     const nameIdx = buildNameIndex(cards);
