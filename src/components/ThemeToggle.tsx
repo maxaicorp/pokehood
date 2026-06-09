@@ -5,7 +5,7 @@ import { Check, Sparkles, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 const THEME_OPTIONS = [
-  { id: "light", label: "Utility", icon: Sun },
+  { id: "light", label: "Light", icon: Sun },
   { id: "dark", label: "Dark", icon: Sparkles },
 ] as const;
 

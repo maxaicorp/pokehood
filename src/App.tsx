@@ -55,7 +55,7 @@ const PageLoader = () => (
 const App = () => (
   <ThemeProvider
     attribute="class"
-    defaultTheme="dark"
+    defaultTheme="light"
     enableSystem={false}
     storageKey="collectiblez-theme"
     themes={["light", "dark"]}
