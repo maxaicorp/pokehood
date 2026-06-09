@@ -7,6 +7,7 @@ import QRCodeModal from "@/components/QRCodeModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Crown, LogOut, ExternalLink, QrCode, LayoutGrid, TrendingUp, Layers, Compass, Blocks, Gamepad2, BarChart3, Shield, Heart } from "lucide-react";
 import GlobalSearch from "@/components/GlobalSearch";
+import ThemeToggle from "@/components/ThemeToggle";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -101,6 +102,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
           </div>
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <GlobalSearch />
+            <ThemeToggle />
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -164,7 +166,7 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link to="/auth" className="px-4 py-1.5 text-sm font-medium rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 transition-colors">
+              <Link to="/auth" className="shrink-0 whitespace-nowrap rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-neutral-800 sm:px-4">
                 Sign In
               </Link>
             )}

@@ -52,7 +52,14 @@ const PageLoader = () => (
 );
 
 const App = () => (
-  <ThemeProvider attribute="class" forcedTheme="light" disableTransitionOnChange>
+  <ThemeProvider
+    attribute="class"
+    defaultTheme="dark"
+    enableSystem={false}
+    storageKey="collectiblez-theme"
+    themes={["light", "dark"]}
+    disableTransitionOnChange
+  >
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />

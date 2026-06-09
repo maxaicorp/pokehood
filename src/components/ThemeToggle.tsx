@@ -1,35 +1,60 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Check, Sparkles, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+
+const THEME_OPTIONS = [
+  { id: "light", label: "Utility", icon: Sun },
+  { id: "dark", label: "Dark", icon: Sparkles },
+] as const;
 
 export default function ThemeToggle() {
-  const [dark, setDark] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("pokevault-theme") === "dark" ||
-        (!localStorage.getItem("pokevault-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    }
-    return false;
-  });
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (dark) {
-      root.classList.add("dark");
-      localStorage.setItem("pokevault-theme", "dark");
-    } else {
-      root.classList.remove("dark");
-      localStorage.setItem("pokevault-theme", "light");
-    }
-  }, [dark]);
+    setMounted(true);
+  }, []);
+
+  const activeTheme = mounted ? theme : "light";
+  const activeOption = useMemo(
+    () => THEME_OPTIONS.find((option) => option.id === activeTheme) ?? THEME_OPTIONS[0],
+    [activeTheme],
+  );
+  const ActiveIcon = activeOption.icon;
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={() => setDark((d) => !d)}
-      title={dark ? "Switch to light mode" : "Switch to dark mode"}
-    >
-      {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 shrink-0 rounded-full border border-border/70 bg-background/70 text-foreground shadow-sm hover:bg-accent"
+          title={`Theme: ${activeOption.label}`}
+        >
+          <ActiveIcon className="h-4 w-4" />
+          <span className="sr-only">Change theme</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-44">
+        {THEME_OPTIONS.map((option) => {
+          const OptionIcon = option.icon;
+          const selected = activeOption.id === option.id;
+
+          return (
+            <DropdownMenuItem
+              key={option.id}
+              onClick={() => setTheme(option.id)}
+              className="flex cursor-pointer items-center gap-2"
+            >
+              <OptionIcon className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1">{option.label}</span>
+              {selected && <Check className="h-4 w-4 text-primary" />}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
