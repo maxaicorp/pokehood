@@ -45,7 +45,7 @@ interface SetHealthRow {
 
 // Scrydex webhook delivery (observer mode → webhook_events_log).
 interface WebhookEvent {
-  id: string;
+  id: number;
   received_at: string;
   source: string | null;
   event_name: string | null;

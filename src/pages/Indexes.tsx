@@ -227,7 +227,7 @@ export default function Indexes() {
       <SEO
         title="Pokemon Card Market Heatmap"
         description="Track Pokemon TCG set movement by 24h, 7d, and 30d aggregate market value."
-        url="https://collectiblez.app/heatmap"
+        canonical="https://collectiblez.app/heatmap"
       />
       <div className="container max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-5">
