@@ -170,17 +170,8 @@
     /* Rounded rectangle — subtle corners, not a full pill. */
     border-radius: 1rem;
     box-shadow: 0 14px 36px hsl(222 47% 6% / 0.08);
-  }
-
-  .app-header-pill::after {
-    content: "";
-    position: absolute;
-    left: 8%;
-    right: 8%;
-    bottom: 0;
-    height: 2.5px;
-    border-radius: 9999px;
-    background: linear-gradient(
+    /* Shared rainbow used by both the top + bottom edges below. */
+    --header-rainbow: linear-gradient(
       90deg,
       transparent 0%,
       hsl(var(--rainbow-1) / 0.65) 12%,
@@ -191,10 +182,30 @@
       hsl(var(--rainbow-7) / 0.62) 92%,
       transparent 100%
     );
-    /* Soft halo so it reads as a subtle glow, not a hard line. */
-    box-shadow: 0 1px 10px hsl(var(--rainbow-5) / 0.28);
+  }
+
+  /* Mirrored subtle rainbow on the top + bottom edges. */
+  .app-header-pill::before,
+  .app-header-pill::after {
+    content: "";
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    height: 2.5px;
+    border-radius: 9999px;
+    background: var(--header-rainbow);
     opacity: 0.85;
     pointer-events: none;
+  }
+
+  .app-header-pill::before {
+    top: 0;
+    box-shadow: 0 -1px 10px hsl(var(--rainbow-5) / 0.28);
+  }
+
+  .app-header-pill::after {
+    bottom: 0;
+    box-shadow: 0 1px 10px hsl(var(--rainbow-5) / 0.28);
   }
 }
 
