@@ -26,6 +26,7 @@ const CardMatch = lazy(() => import("./pages/CardMatch"));
 const Stats = lazy(() => import("./pages/Stats"));
 const Market = lazy(() => import("./pages/Market"));
 const Indexes = lazy(() => import("./pages/Indexes"));
+const Vault = lazy(() => import("./pages/Vault"));
 const BrandLab = lazy(() => import("./pages/BrandLab"));
 const Sets = lazy(() => import("./pages/Sets"));
 const SetDetail = lazy(() => import("./pages/SetDetail"));
@@ -93,6 +94,9 @@ const App = () => (
                   {/* Admin-gated for now (per-set heatmap + index). */}
                   <Route path="/heatmap" element={<AdminRouteGuard><Indexes /></AdminRouteGuard>} />
                   <Route path="/indexes" element={<AdminRouteGuard><Indexes /></AdminRouteGuard>} />
+                  {/* Vault marketplace (tokenized sealed product) — admin-gated prototype.
+                      Maps to gacha.collectiblez.app later at the hosting layer. */}
+                  <Route path="/vault" element={<AdminRouteGuard><Vault /></AdminRouteGuard>} />
                   <Route path="/onchain" element={<Onchain />} />
                   <Route path="/onchain/:tab" element={<Onchain />} />
                   <Route path="/lab/gacha" element={<GachaLab />} />

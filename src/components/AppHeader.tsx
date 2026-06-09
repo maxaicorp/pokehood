@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 
 interface AppHeaderProps {
-  activePage: "dashboard" | "explore" | "market" | "sets" | "heatmap" | "onchain" | "games";
+  activePage: "dashboard" | "explore" | "market" | "sets" | "heatmap" | "onchain" | "games" | "vault";
   children?: React.ReactNode;
 }
 
