@@ -78,8 +78,10 @@ export default function AppHeader({ activePage, children }: AppHeaderProps) {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-50 px-3 pt-3 sm:px-6 sm:pt-4">
-        <div className="mx-auto w-full max-w-[1200px]">
+      <header className="sticky top-0 z-50 pt-3 sm:pt-4">
+        {/* Same container + padding as page content (e.g. Market's
+            `container px-4 sm:px-8`) so the pill aligns to the exact width below. */}
+        <div className="container px-4 sm:px-8">
         <div className="app-header-pill backdrop-blur-xl">
         <div className="flex h-14 items-center justify-between gap-3 px-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
