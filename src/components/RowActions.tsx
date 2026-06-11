@@ -29,10 +29,12 @@ interface RowActionsProps {
   onAddInventory: () => void | Promise<void>;
   /** Omit to hide the wishlist option (e.g. sealed, which has no wishlist yet). */
   onAddWishlist?: () => void | Promise<void>;
+  wishlistActionLabel?: string;
+  wishlistActive?: boolean;
 }
 
 export default function RowActions({
-  open, onOpenChange, name, buyQuery, onAddInventory, onAddWishlist,
+  open, onOpenChange, name, buyQuery, onAddInventory, onAddWishlist, wishlistActionLabel = "Add to wishlist", wishlistActive = false,
 }: RowActionsProps) {
   const isMobile = useIsMobile();
 
@@ -61,7 +63,7 @@ export default function RowActions({
           <Row icon={<PackagePlus className="w-[18px] h-[18px]" />} label="Add to inventory"
             onClick={() => run(onAddInventory)} />
           {onAddWishlist && (
-            <Row icon={<Heart className="w-[18px] h-[18px]" />} label="Add to wishlist"
+            <Row icon={<Heart className={`w-[18px] h-[18px] ${wishlistActive ? "fill-current text-destructive" : ""}`} />} label={wishlistActionLabel}
               onClick={() => run(onAddWishlist)} />
           )}
 

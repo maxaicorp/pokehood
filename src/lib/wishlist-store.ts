@@ -142,9 +142,39 @@ export async function addCardToDefaultWishlist(
   return addCardToWishlist(target.id, userId, card);
 }
 
-export async function removeCardFromWishlist(cardId: string): Promise<void> {
-  const { error } = await supabase.from("wishlist_cards").delete().eq("id", cardId);
+export async function removeCardFromWishlist(cardIdOrRowId: string, userId?: string): Promise<void> {
+  let query = supabase
+    .from("wishlist_cards")
+    .delete()
+    .or(`id.eq.${cardIdOrRowId},tcg_api_id.eq.${cardIdOrRowId}`);
+  if (userId) query = query.eq("user_id", userId);
+  const { error } = await query;
   if (error) throw error;
+}
+
+export async function toggleCardInDefaultWishlist(
+  userId: string,
+  card: Parameters<typeof addCardToWishlist>[2],
+): Promise<"added" | "removed"> {
+  const { data: existingRows, error: lookupError } = await supabase
+    .from("wishlist_cards")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("tcg_api_id", card.id)
+    .limit(1);
+  if (lookupError) throw lookupError;
+
+  if (existingRows?.length) {
+    await removeCardFromWishlist(card.id, userId);
+    return "removed";
+  }
+
+  const added = await addCardToDefaultWishlist(userId, card);
+  if (!added) {
+    await removeCardFromWishlist(card.id, userId);
+    return "removed";
+  }
+  return "added";
 }
 
 export async function getWishlistCardCount(wishlistId: string): Promise<number> {

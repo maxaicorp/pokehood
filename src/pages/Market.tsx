@@ -48,7 +48,7 @@ import {
   buyQueryForCard,
 } from "@/lib/pokemon-api";
 import { addToCollection } from "@/lib/collection-store";
-import { addCardToDefaultWishlist } from "@/lib/wishlist-store";
+import { getAllWishlistCardIds, toggleCardInDefaultWishlist } from "@/lib/wishlist-store";
 import RowActions from "@/components/RowActions";
 import { cardPath, cardPathFromApiId } from "@/lib/slug";
 import { formatPct, getLatestSnapshotPage, getLatestSnapshotAll, getLatestPricesByIds, getTopMovers } from "@/lib/price-snapshots";
@@ -166,6 +166,11 @@ export default function Market() {
   const [moversWindow, setMoversWindow] = useState<"24h" | "7d" | "30d">("24h");
   const [gradedCompany, setGradedCompany] = useState("PSA");
   const [gradedGrade, setGradedGrade] = useState("10");
+  const { data: wishlistedIds = new Set<string>() } = useQuery({
+    queryKey: ["wishlisted-ids", user?.id],
+    queryFn: () => getAllWishlistCardIds(user!.id),
+    enabled: !!user,
+  });
 
   // Sentiment voting state
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
@@ -434,7 +439,7 @@ export default function Market() {
     if (result) {
       toastAddedToInventory(card.name, navigate);
       recordCollectionAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
-      queryClient.invalidateQueries({ queryKey: ["collection"] });
+      queryClient.invalidateQueries({ queryKey: ["my-collection"] });
     } else {
       toast.error("Failed to add card.");
     }
@@ -443,15 +448,17 @@ export default function Market() {
   const addWishlist = async (card: PokemonCard) => {
     if (!user) { navigate("/auth"); return; }
     try {
-      const ok = await addCardToDefaultWishlist(user.id, card);
-      if (ok) {
+      const result = await toggleCardInDefaultWishlist(user.id, card);
+      if (result === "added") {
         toast.success(`Added ${card.name} to wishlist`);
         recordWishlistAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
       } else {
-        toast.error("Failed to add to wishlist.");
+        toast.success(`Removed ${card.name} from wishlist`);
       }
+      queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
+      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
     } catch {
-      toast.error("Failed to add to wishlist.");
+      toast.error("Failed to update wishlist.");
     }
   };
 
@@ -599,6 +606,8 @@ export default function Market() {
         buyQuery={actionCard ? buyQueryForCard(actionCard) : ""}
         onAddInventory={() => actionCard && addInventory(actionCard)}
         onAddWishlist={() => actionCard && addWishlist(actionCard)}
+        wishlistActionLabel={actionCard && wishlistedIds.has(actionCard.id) ? "Remove from wishlist" : "Add to wishlist"}
+        wishlistActive={!!actionCard && wishlistedIds.has(actionCard.id)}
       />
       <SEO
         title="Pokémon TCG Market Prices & Trends — Collectiblez"

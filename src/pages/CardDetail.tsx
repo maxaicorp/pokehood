@@ -16,10 +16,8 @@ import { findSetBySlug, cardSlug, cardPath, setPath } from "@/lib/slug";
 import { addToCollection } from "@/lib/collection-store";
 import { recordCardView, recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
 import {
-  getWishlists,
-  createWishlist,
-  addCardToWishlist,
   getAllWishlistCardIds,
+  toggleCardInDefaultWishlist,
 } from "@/lib/wishlist-store";
 import { getSetSentiment, castVote, applyVote, type SetSentiment, type VoteType } from "@/lib/sentiment-store";
 import CardSentimentWidget from "@/components/CardSentimentWidget";
@@ -198,12 +196,6 @@ export default function CardDetail() {
     staleTime: Infinity,
   });
 
-  const { data: wishlists = [] } = useQuery({
-    queryKey: ["wishlists", user?.id],
-    queryFn: getWishlists,
-    enabled: !!user,
-  });
-
   const { data: wishlistedIds = new Set<string>() } = useQuery({
     queryKey: ["wishlisted-ids", user?.id],
     queryFn: () => getAllWishlistCardIds(user!.id),
@@ -250,27 +242,18 @@ export default function CardDetail() {
   const handleWishlist = async () => {
     if (!enrichedCard) return;
     if (!user) { toast.info("Sign in to add to your wishlist"); navigate("/auth"); return; }
-    let target = wishlists[0];
-    if (!target) {
-      try {
-        target = await createWishlist(user.id, "My Wishlist");
-        queryClient.invalidateQueries({ queryKey: ["wishlists"] });
-      } catch {
-        toast.error("Failed to create wishlist.");
-        return;
-      }
-    }
     try {
-      const ok = await addCardToWishlist(target.id, user.id, enrichedCard);
-      if (ok) {
+      const result = await toggleCardInDefaultWishlist(user.id, enrichedCard);
+      if (result === "added") {
         toast.success(`${enrichedCard.name} added to wishlist!`);
         recordWishlistAdd({ id: enrichedCard.id, name: enrichedCard.name, setName: enrichedCard.set.name, imageSmall: enrichedCard.images.small });
-        queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
       } else {
-        toast.info("Already in wishlist.");
+        toast.success(`${enrichedCard.name} removed from wishlist.`);
       }
+      queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
+      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
     } catch {
-      toast.error("Failed to add to wishlist.");
+      toast.error("Failed to update wishlist.");
     }
   };
 
@@ -674,7 +657,7 @@ export default function CardDetail() {
               onClick={handleWishlist}
               className={`w-full h-12 text-base ${isWishlisted ? "text-destructive border-destructive/50" : ""}`}
             >
-              {isWishlisted ? "Wishlisted" : "Wishlist"}
+              {isWishlisted ? "Remove from Wishlist" : "Wishlist"}
             </Button>
 
             {/* Sentiment */}

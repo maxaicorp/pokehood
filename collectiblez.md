@@ -1,9 +1,9 @@
 # Collectiblez — Project Documentation
 
 ## Overview
-Collectiblez is a Pokémon TCG collection tracker and market analytics platform. Users can search cards, build collections, track market prices, manage wishlists, and share public profile pages. The site is built with React 18, Vite, Tailwind CSS, and Lovable Cloud (Supabase) for backend services.
+Collectiblez is a Pokémon TCG collection tracker and market analytics platform. Users can search cards, build collections, track market prices, manage wishlists, and share public profile pages. The site is built with React 18, Vite, Tailwind CSS, and Supabase for backend services.
 
-**Live URL:** https://collectiblez.lovable.app  
+**Live URL:** https://collectiblez.app
 **Default theme:** Light mode (new visitors; users keep any stored choice) — changed from dark 2026-06-01  
 
 ---
@@ -12,7 +12,7 @@ Collectiblez is a Pokémon TCG collection tracker and market analytics platform.
 - **Frontend:** React 18, TypeScript, Vite 5, Tailwind CSS 3
 - **UI Library:** shadcn/ui (Radix primitives), Framer Motion animations
 - **State/Data:** TanStack React Query, Supabase JS client
-- **Backend:** Lovable Cloud (Supabase) — PostgreSQL, Auth, Storage, Edge Functions
+- **Backend:** Supabase — PostgreSQL, Auth, Storage, Edge Functions
 - **Payments:** Stripe (Pro subscription — $20/year)
 - **Charts:** Recharts (price history)
 

@@ -228,7 +228,7 @@ serve(async (req: Request) => {
   // Build confirmation URL from SITE_URL env var. We deliberately do NOT use
   // the request `origin` header — an attacker could send `origin: https://attacker.com`
   // to make the confirmation link point at their phishing domain.
-  const siteUrl = Deno.env.get("SITE_URL") ?? "https://collectiblez.lovable.app";
+  const siteUrl = Deno.env.get("SITE_URL") ?? "https://collectiblez.app";
   const confirmUrl = `${siteUrl.replace(/\/$/, "")}/giveaway/confirm?token=${token}`;
 
   const apiKey = Deno.env.get("RESEND_API_KEY") ?? "";

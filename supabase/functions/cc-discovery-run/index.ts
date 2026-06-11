@@ -176,7 +176,7 @@ function nameOverlapScore(cardName: string, listingName: string): number {
 async function fetchSetYearMap(): Promise<Map<string, string>> {
   const m = new Map<string, string>();
   try {
-    const r = await fetch("https://collectiblez.lovable.app/data/market-sets.json");
+    const r = await fetch("https://collectiblez.app/data/market-sets.json");
     if (!r.ok) return m;
     const j = await r.json();
     for (const s of (j?.sets ?? [])) {

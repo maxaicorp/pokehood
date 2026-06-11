@@ -13,7 +13,7 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   getMarketSets,
@@ -26,7 +26,7 @@ import {
 } from "@/lib/pokemon-api";
 import { findSetBySlug, cardPath, setSlug } from "@/lib/slug";
 import { getCollection, addToCollection } from "@/lib/collection-store";
-import { addCardToDefaultWishlist } from "@/lib/wishlist-store";
+import { getAllWishlistCardIds, toggleCardInDefaultWishlist } from "@/lib/wishlist-store";
 import RowActions from "@/components/RowActions";
 import { buyQueryForCard } from "@/lib/pokemon-api";
 import { recordCollectionAdd, recordWishlistAdd } from "@/lib/card-stats-store";
@@ -61,6 +61,7 @@ const SORTS: { value: SortKey; label: string }[] = [
 export default function SetDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   // Default to highest card number first — the chase cards (SIRs / secret rares)
@@ -70,6 +71,11 @@ export default function SetDetail() {
   // up/down sentiment votes.
   const [addingCards, setAddingCards] = useState<Set<string>>(new Set());
   const [sentimentMap, setSentimentMap] = useState<Map<string, SetSentiment>>(new Map());
+  const { data: wishlistedIds = new Set<string>() } = useQuery({
+    queryKey: ["wishlisted-ids", user?.id],
+    queryFn: () => getAllWishlistCardIds(user!.id),
+    enabled: !!user,
+  });
 
   // Resolve slug → set object. Lightweight set list (84KB) instead of the
   // 10MB monolith — this is an SEO landing page, first paint matters.
@@ -181,15 +187,17 @@ export default function SetDetail() {
   const addWishlist = async (card: PokemonCard) => {
     if (!user) { navigate("/auth"); return; }
     try {
-      const ok = await addCardToDefaultWishlist(user.id, card);
-      if (ok) {
+      const result = await toggleCardInDefaultWishlist(user.id, card);
+      if (result === "added") {
         toast.success(`Added ${card.name} to wishlist`);
         recordWishlistAdd({ id: card.id, name: card.name, setName: card.set.name, imageSmall: card.images.small });
       } else {
-        toast.error("Failed to add to wishlist.");
+        toast.success(`Removed ${card.name} from wishlist`);
       }
+      queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
+      queryClient.invalidateQueries({ queryKey: ["wishlists"] });
     } catch {
-      toast.error("Failed to add to wishlist.");
+      toast.error("Failed to update wishlist.");
     }
   };
 
@@ -314,6 +322,8 @@ export default function SetDetail() {
         buyQuery={actionCard ? buyQueryForCard(actionCard) : ""}
         onAddInventory={() => actionCard && addInventory(actionCard)}
         onAddWishlist={() => actionCard && addWishlist(actionCard)}
+        wishlistActionLabel={actionCard && wishlistedIds.has(actionCard.id) ? "Remove from wishlist" : "Add to wishlist"}
+        wishlistActive={!!actionCard && wishlistedIds.has(actionCard.id)}
       />
       {set && (
         <SEO

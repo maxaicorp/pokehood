@@ -215,7 +215,7 @@ export default function ProfilePageEditor() {
     return () => clearTimeout(timer);
   }, [displayName, bio, slug, isPublished, doSave, initialized, profile, slugStatus]);
 
-  const publishedDomain = "https://collectiblez.lovable.app";
+  const publishedDomain = "https://collectiblez.app";
   const profileUrl = `${publishedDomain}/u/${slug || profile?.slug || ""}`;
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -342,7 +342,7 @@ export default function ProfilePageEditor() {
           </div>
           <div className="flex items-center gap-0 rounded-md border border-input overflow-hidden">
             <span className="px-3 py-2 text-sm text-muted-foreground bg-muted border-r border-input whitespace-nowrap">
-              collectiblez.lovable.app/u/
+              collectiblez.app/u/
             </span>
             <Input
               id="slug"

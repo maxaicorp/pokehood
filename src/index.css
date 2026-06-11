@@ -175,7 +175,8 @@
     background: hsl(var(--background) / 0.94);
     color: hsl(var(--header-foreground));
     position: relative;
-    overflow: hidden;
+    /* Search/dropdown surfaces inside the header need to escape the nav shell. */
+    overflow: visible;
     border: 1px solid hsl(var(--border) / 0.78);
     /* Rounded rectangle — subtle corners, not a full pill. */
     border-radius: 1rem;

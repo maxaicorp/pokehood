@@ -22,7 +22,7 @@ Goal: make the Market data tables trustworthy. Replace the reverse-engineering m
 - `PriceChart`'s synthetic history scales by `currentPrice/trend` (now always 1.0 → more accurate).
 - `sealed-store.getSealedTrends` computes pct from raw prior prices.
 
-**Variant collapse** (commits `a0b858a`, `f304f1d`, plus Lovable's `ba6cdfd`)
+**Variant collapse** (commits `a0b858a`, `f304f1d`, plus `ba6cdfd`)
 - `extractAllVariantPrices` (edge function) collapses modern cards to one bare-id row when no vintage marker (`1stEdition*`, `unlimitedHolofoil`, `shadowless*`) is present in Scrydex's variants array.
 - Client `expandVariants`:
   - Auto-discovers suffixes from the pricing cache (no hardcoded list).
@@ -92,7 +92,7 @@ Goal: public `/giveaway` page → email submission → double-opt-in confirmatio
 | Task | Why it's pending | Effort |
 |---|---|---|
 | **Configure Resend** | Need API key + verified sender domain. Without it, entries stay `pending` until manually confirmed in admin. | Sign up at resend.com (free tier), verify a domain (DNS records, ~10 min on registrar), drop `RESEND_API_KEY` + `GIVEAWAY_FROM_ADDRESS` in Supabase secrets. |
-| **Set `SITE_URL` Supabase secret** | Confirmation URL falls back to `https://collectiblez.lovable.app` if `Origin` header missing. After Vercel migration this needs updating. | One env var. |
+| **Set `SITE_URL` Supabase secret** | Confirmation URL falls back to `https://collectiblez.app` if `Origin` header missing. | One env var. |
 | **Grant admin role** | New admin code uses `user_roles` table + `has_role()` RPC. Confirm your account has `role='admin'` row. | One SQL insert (see Q&A below). |
 | **Booster pack hero graphic** | Slot is ready (`prize_image_url` field + upload UI in admin). | User generates and uploads. |
 | **Winner notification email** | Currently `drawWinner` only flips status + sets `winner_entry_id`. Should also email the winner. | Small addition to admin draw flow once Resend is live. |
@@ -115,24 +115,24 @@ Goal: public `/giveaway` page → email submission → double-opt-in confirmatio
 
 ## 3. Vercel migration — TODO
 
-Decided to move off Lovable hosting. Lovable will keep being useful as a code-editing surface (it just commits to GitHub like any other client), but Vercel will serve the production site.
+Decided to serve the production site from Vercel.
 
 ### What needs to happen
 
 1. **Vercel project setup**
    - Import the GitHub repo `maxaicorp/pokevault` into Vercel.
    - Build command: `npm run build`. Output directory: `dist`. Install: `npm install`. Framework preset: Vite.
-   - Set environment variables (anything `VITE_*` from current Lovable env). Likely just `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` — confirm by checking `src/integrations/supabase/client.ts`.
+   - Set environment variables. Likely just `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` — confirm by checking `src/integrations/supabase/client.ts`.
 
 2. **Domain**
    - Move `collectiblez.com` (or whichever production domain you'll use) to Vercel.
-   - Update any DNS pointing at Lovable. If using `collectiblez.lovable.app` for Resend sender, set up the email subdomain on the new domain instead.
+   - Update DNS to the production host. Set up the Resend email subdomain on the production domain.
 
 3. **Update edge function references to site URL**
    - `SITE_URL` Supabase secret → new domain.
    - `giveaway-submit` confirmation email href → uses `Origin` header (auto) or `SITE_URL` fallback.
 
-4. **Delete Lovable-specific guards**
+4. **Delete legacy host-specific guards**
    - `import.meta.env.VITE_PUBLISHED_DOMAIN` is no longer present anywhere (we already use `window.location.origin`). Clean.
    - `gpt-engineer-app[bot]` commits in git history will continue but become irrelevant after the move.
 
@@ -144,7 +144,7 @@ Decided to move off Lovable hosting. Lovable will keep being useful as a code-ed
 
 ### Caveats
 
-- **Lovable's edge-function deploy is a Supabase deploy, not a Vercel deploy.** Edge functions are decoupled from where the web app is hosted, so the Vercel migration doesn't affect them. Just make sure changes to `supabase/functions/` are still deployed to Supabase after the migration (manual via `supabase functions deploy <name>` or whatever script you set up).
+- **Edge-function deploy is a Supabase deploy, not a Vercel deploy.** Edge functions are decoupled from where the web app is hosted, so the Vercel migration doesn't affect them. Just make sure changes to `supabase/functions/` are still deployed to Supabase after the migration (manual via `supabase functions deploy <name>` or whatever script you set up).
 - **CORS on edge functions** — current functions return `Access-Control-Allow-Origin: *`, so they'll work from any domain. No changes needed.
 - **Build-time secrets** — Vite only inlines `VITE_*` vars. Anything sensitive (API keys, etc.) must remain in Supabase or server-side; do NOT add to Vercel env as `VITE_*`.
 
@@ -169,12 +169,12 @@ In order:
 ec30863 feat(giveaway): phase 2 + 3 — public page, entry form, admin dashboard
 f197d00 feat(giveaway): phase 1 — db schema + submit/confirm edge functions
 fef6927 fix(health-banner): require BOTH scrydex + freshness to fail before "down"
-ba6cdfd Fixed Base Set pricing & health   ← Lovable
+ba6cdfd Fixed Base Set pricing & health
 f304f1d fix(variants): drop bare row when a holo-specific variant is present
 a0b858a fix(variants): only split rows for vintage cards
 e4822ef feat(market): show top 300 cards per view (up from 200)
 8230497 (rebased into e4822ef)
-2cd7bce Redeployed & resumed snapshot      ← Lovable
+2cd7bce Redeployed & resumed snapshot
 e2fc77b perf(market): instant-paint via localStorage SWR cache
 36c1ba9 fix(card-match): track input-lock timer and honor partial matches
 7b8c8be fix(pricing): stop reverse-engineering prior prices from stored percents

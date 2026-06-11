@@ -259,7 +259,7 @@ export default function Explore() {
     // Toggle: if already wishlisted, remove it (the heart un-fills).
     if (wishlistedIds.has(card.id)) {
       try {
-        await removeCardFromWishlist(card.id);
+        await removeCardFromWishlist(card.id, user.id);
         toast.success(`${card.name} removed from wishlist`);
         queryClient.invalidateQueries({ queryKey: ["wishlisted-ids"] });
       } catch { toast.error("Failed to remove from wishlist."); }

@@ -10,7 +10,7 @@ export function toastAddedToInventory(name: string, navigate: NavigateFunction) 
   toast.success(`${name} added to your inventory`, {
     action: {
       label: "View inventory",
-      onClick: () => navigate("/dashboard"),
+      onClick: () => navigate("/dashboard?tab=collection"),
     },
     duration: 5000,
   });

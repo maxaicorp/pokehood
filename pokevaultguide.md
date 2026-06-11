@@ -39,10 +39,9 @@ src/
 │   └── AuthContext.tsx         # Supabase auth + Stripe subscription context
 ├── hooks/           # Custom React hooks (use-mobile, use-toast)
 ├── integrations/
-│   ├── supabase/
-│   │   ├── client.ts           # Supabase client instance
-│   │   └── types.ts            # Generated DB types
-│   └── lovable/                # Lovable integration metadata
+│   └── supabase/
+│       ├── client.ts           # Supabase client instance
+│       └── types.ts            # Generated DB types
 ├── lib/             # Core business logic
 │   ├── pokemon-api.ts          # Local TCGdex data layer (card/set search)
 │   ├── collection-store.ts     # Supabase-backed collection CRUD

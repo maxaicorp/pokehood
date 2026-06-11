@@ -30,17 +30,31 @@ import SEO from "@/components/SEO";
 
 type Tab = "collection" | "wishlists" | "mypage" | "analytics";
 
+function dashboardTabFromParam(tab: string | null): Tab {
+  return tab === "wishlists" || tab === "mypage" || tab === "analytics" ? tab : "collection";
+}
+
 export default function Dashboard() {
   const { user, loading, isPro, limits } = useAuth();
   const queryClient = useQueryClient();
   // Honor ?tab= so external links (e.g. the account-menu "Wishlist"
   // shortcut) can deep-link straight to a Dashboard tab.
-  const [searchParams] = useSearchParams();
-  const initialTab = ((): Tab => {
-    const t = searchParams.get("tab");
-    return t === "wishlists" || t === "mypage" || t === "analytics" ? t : "collection";
-  })();
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = dashboardTabFromParam(searchParams.get("tab"));
+  const setDashboardTab = useCallback(
+    (tab: Tab) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (tab === "collection") next.delete("tab");
+          else next.set("tab", tab);
+          return next;
+        },
+        { replace: false },
+      );
+    },
+    [setSearchParams],
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [importOpen, setImportOpen] = useState(false);
   const [importParsed, setImportParsed] = useState<CsvRow[]>([]);
@@ -52,6 +66,7 @@ export default function Dashboard() {
     queryKey: ["my-collection", user?.id],
     queryFn: () => getCollection(),
     enabled: !!user,
+    refetchOnMount: "always",
     staleTime: 30_000,
   });
 
@@ -177,7 +192,7 @@ export default function Dashboard() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setDashboardTab(tab.id)}
                 className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.id
                     ? "border-foreground text-foreground"
