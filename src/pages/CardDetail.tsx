@@ -397,21 +397,26 @@ export default function CardDetail() {
             {cardLoading ? (
               <Skeleton className="aspect-[2.5/3.5] w-full max-w-[320px]" />
             ) : card ? (
-              <motion.img
-                src={card.images.large}
-                alt={card.name}
-                className="w-full max-w-[320px] shadow-2xl"
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                onError={(e) => {
-                  // Fall back to the small image if the large one 404s, then to
-                  // a neutral placeholder so the hero never shows a broken glyph.
-                  const img = e.currentTarget as HTMLImageElement;
-                  if (img.src !== card.images.small && card.images.small) img.src = card.images.small;
-                  else img.style.visibility = "hidden";
-                }}
-              />
+              <motion.div
+                className="detail-card-display w-full max-w-[320px]"
+                initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                whileHover={{ y: -4, rotateX: 1.5, rotateY: -1.5 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+              >
+                <img
+                  src={card.images.large}
+                  alt={card.name}
+                  className="w-full"
+                  onError={(e) => {
+                    // Fall back to the small image if the large one 404s, then to
+                    // a neutral placeholder so the hero never shows a broken glyph.
+                    const img = e.currentTarget as HTMLImageElement;
+                    if (img.src !== card.images.small && card.images.small) img.src = card.images.small;
+                    else img.style.visibility = "hidden";
+                  }}
+                />
+              </motion.div>
             ) : null}
           </div>
 

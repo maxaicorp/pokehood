@@ -348,6 +348,72 @@
   }
 
   /* ─── Marquee / Card Slider ─── */
+  .detail-card-display {
+    position: relative;
+    display: block;
+    border-radius: 4.75%;
+    isolation: isolate;
+    overflow: hidden;
+    filter:
+      drop-shadow(0 28px 34px hsl(0 0% 0% / 0.18))
+      drop-shadow(0 10px 12px hsl(0 0% 0% / 0.10));
+    transform-style: preserve-3d;
+  }
+
+  .detail-card-display img {
+    display: block;
+    border-radius: inherit;
+  }
+
+  .detail-card-display::before,
+  .detail-card-display::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .detail-card-display::before {
+    z-index: 1;
+    background:
+      radial-gradient(circle at 22% 18%, hsl(0 0% 100% / 0.20), transparent 18%),
+      linear-gradient(
+        125deg,
+        hsl(190 95% 72% / 0.00) 22%,
+        hsl(190 95% 72% / 0.16) 36%,
+        hsl(305 90% 74% / 0.14) 45%,
+        hsl(52 100% 62% / 0.12) 53%,
+        hsl(190 95% 72% / 0.00) 68%
+      );
+    background-size: 180% 180%;
+    mix-blend-mode: screen;
+    opacity: 0.42;
+    animation: detail-card-holo 8s ease-in-out infinite alternate;
+  }
+
+  .detail-card-display::after {
+    z-index: 2;
+    width: 46%;
+    background: linear-gradient(
+      105deg,
+      transparent 0%,
+      hsl(0 0% 100% / 0.00) 18%,
+      hsl(0 0% 100% / 0.30) 48%,
+      hsl(190 95% 76% / 0.18) 55%,
+      hsl(0 0% 100% / 0.00) 82%,
+      transparent 100%
+    );
+    mix-blend-mode: screen;
+    opacity: 0.44;
+    transform: translateX(-150%) skewX(-16deg);
+    animation: detail-card-shine 6.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  .detail-card-display:hover::before {
+    opacity: 0.56;
+  }
+
   .marquee-fade {
     mask-image: linear-gradient(
       to right,
@@ -370,6 +436,14 @@
   0%, 100% { transform: translateY(0) rotate(0deg); }
   33% { transform: translateY(-8px) rotate(2deg); }
   66% { transform: translateY(4px) rotate(-1deg); }
+}
+@keyframes detail-card-holo {
+  0% { background-position: 16% 18%; }
+  100% { background-position: 84% 74%; }
+}
+@keyframes detail-card-shine {
+  0%, 18% { transform: translateX(-155%) skewX(-16deg); }
+  52%, 100% { transform: translateX(255%) skewX(-16deg); }
 }
 @keyframes aurora-shift {
   0% { transform: translateX(0) translateY(0) rotate(0deg); }
@@ -400,7 +474,11 @@
   100% { background-position: -80% 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .holo-sheen { animation: none; }
+  .holo-sheen,
+  .detail-card-display::before,
+  .detail-card-display::after {
+    animation: none;
+  }
 }
 
 /* Hide scrollbar for tab bars */
