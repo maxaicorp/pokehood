@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import AdminRouteGuard from "@/components/AdminRouteGuard";
-import { Gift, Trophy, LayoutDashboard, Activity, Code, Search, Tag, Newspaper, Grid2X2 } from "lucide-react";
+import { Gift, Trophy, LayoutDashboard, Activity, Code, Search, Tag, Newspaper, Grid2X2, Video } from "lucide-react";
 
 const NAV = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, end: true },
@@ -12,6 +12,7 @@ const NAV = [
   { to: "/admin/prices", label: "Price overrides", icon: Tag },
   { to: "/admin/content-signals", label: "Content signals", icon: Newspaper },
   { to: "/admin/cc-discovery", label: "CC Discovery", icon: Search },
+  { to: "/admin/video-studio", label: "Video Studio", icon: Video },
   { to: "/admin/giveaways", label: "Giveaways", icon: Gift },
   { to: "/admin/prizes", label: "Game Prizes", icon: Trophy },
 ];

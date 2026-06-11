@@ -39,6 +39,7 @@ const AdminGiveawayForm = lazy(() => import("./pages/admin/AdminGiveawayForm"));
 const AdminPrizes = lazy(() => import("./pages/admin/AdminPrizes"));
 const AdminHealth = lazy(() => import("./pages/admin/AdminHealth"));
 const AdminFunctions = lazy(() => import("./pages/admin/AdminFunctions"));
+const AdminVideoStudio = lazy(() => import("./pages/admin/AdminVideoStudio"));
 const AdminCcDiscovery = lazy(() => import("./pages/admin/AdminCcDiscovery"));
 const AdminPrices = lazy(() => import("./pages/admin/AdminPrices"));
 const AdminContentSignals = lazy(() => import("./pages/admin/AdminContentSignals"));
@@ -116,6 +117,7 @@ const App = () => (
                   <Route path="/admin/prizes" element={<AdminPrizes />} />
                   <Route path="/admin/health" element={<AdminHealth />} />
                   <Route path="/admin/functions" element={<AdminFunctions />} />
+                  <Route path="/admin/video-studio" element={<AdminVideoStudio />} />
                   <Route path="/admin/cc-discovery" element={<AdminCcDiscovery />} />
                   <Route path="/admin/prices" element={<AdminPrices />} />
                   <Route path="/admin/content-signals" element={<AdminContentSignals />} />
