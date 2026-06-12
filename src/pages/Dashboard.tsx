@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { STRIPE_CONFIG } from "@/lib/stripe-config";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCollection, getTotalValue, getCollectionBySet, addToCollection } from "@/lib/collection-store";
+import ScanCardButton from "@/components/ScanCardButton";
 import { formatPrice } from "@/lib/pokemon-api";
 import { parseCsv, resolveImport, CsvRow } from "@/lib/csv-import";
 import CollectionList from "@/components/CollectionList";
@@ -277,6 +278,8 @@ export default function Dashboard() {
               <Button variant="outline" size="sm" asChild>
                 <Link to="/explore"><Plus className="w-4 h-4 mr-1" /> Add Cards</Link>
               </Button>
+              {/* Vision scan — admin-only while testing (component self-hides) */}
+              <ScanCardButton onAdded={refresh} />
             </div>
 
             {/* Search */}

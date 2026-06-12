@@ -1,6 +1,94 @@
 project_id = "cmthndfrvnlyfxgxqjkm"
 
-# scrydex-webhook is called by Scrydex (no Supabase JWT) — it must be public.
-# Security is handled inside the function via HMAC signature verification.
+[functions.backfill-price-history]
+verify_jwt = false
+
+[functions.cc-discovery-run]
+verify_jwt = false
+
+[functions.cc-price-check]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
+
+[functions.game-card-match-flip]
+verify_jwt = false
+
+[functions.game-card-match-start]
+verify_jwt = false
+
+[functions.generate-content-signals]
+verify_jwt = false
+
+[functions.giveaway-confirm]
+verify_jwt = false
+
+[functions.giveaway-submit]
+verify_jwt = false
+
+[functions.gacha-create-pull]
+verify_jwt = false
+
+[functions.gacha-confirm-pull]
+verify_jwt = false
+
+[functions.heal-onchain]
+verify_jwt = false
+
+[functions.health-check]
+verify_jwt = false
+
+[functions.ingest-cc-marketplace]
+verify_jwt = false
+
+[functions.ingest-cc-native]
+verify_jwt = false
+
+[functions.ingest-onchain-activity]
+verify_jwt = false
+
+[functions.ingest-onchain-listings]
+verify_jwt = false
+
+[functions.onchain-activity]
+verify_jwt = false
+
+[functions.onchain-listings]
+verify_jwt = false
+
+[functions.onchain-top-sales]
+verify_jwt = false
+
+[functions.scrydex-new-sets-check]
+verify_jwt = false
+
+[functions.scrydex-proxy]
+verify_jwt = false
+
 [functions.scrydex-webhook]
+verify_jwt = false
+
+[functions.snapshot-prices]
+verify_jwt = false
+
+[functions.snapshot-sealed]
+verify_jwt = false
+
+[functions.sol-price]
+verify_jwt = false
+
+[functions.sync-cards-catalog]
+verify_jwt = false
+
+[functions.verify-and-heal]
+verify_jwt = false
+
+[functions.vision-identify]
 verify_jwt = false
