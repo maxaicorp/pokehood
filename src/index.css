@@ -15,7 +15,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 7%;
 
-    --primary: 222 100% 58%;
+    /* Inverse-of-theme — near-black in light mode (no blue). */
+    --primary: 0 0% 9%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 214 32% 95%;
@@ -32,17 +33,38 @@
 
     --border: 214 28% 88%;
     --input: 214 28% 88%;
-    --ring: 222 100% 58%;
+    --ring: 0 0% 9%;
 
     --radius: 0.75rem;
 
-    /* Brand palette (absolute — cascades to all themes) */
+    /* Brand palette (absolute — cascades to all themes).
+       The 5 marketing accent colors + supporting navy. */
     --brand-navy: 227 49% 21%;
-    --brand-blue: 222 100% 58%;
-    --brand-violet: 255 94% 49%;
-    --brand-azure: 209 84% 52%;
-    --brand-sky: 212 93% 72%;
-    --brand-yellow: 52 100% 66%;
+    --brand-green: 127 99% 44%;   /* #01e015 */
+    --brand-yellow: 49 100% 50%;  /* #ffd301 */
+    --brand-blue: 216 98% 49%;    /* #0268fa */
+    --brand-red: 0 72% 48%;       /* #d32121 */
+    --brand-purple: 293 100% 46%; /* #d200ed */
+
+    /* Active accent hue — overridden by [data-accent] on <html> (see the
+       accent-theme block below). Single-color themes point the nav-pill +
+       footer strips at this; the default (rainbow) ignores it. */
+    --accent-brand: var(--brand-blue);
+
+    /* The gradient painted into the nav-pill + footer accent strips.
+       Default = the multi-stop rainbow. A [data-accent="<color>"] selection
+       overrides this with a soft single-hue version (see below). */
+    --accent-strip: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--rainbow-1) / 0.7) 5%,
+      hsl(var(--rainbow-3) / 0.68) 26%,
+      hsl(var(--rainbow-4) / 0.7) 44%,
+      hsl(var(--rainbow-5) / 0.72) 62%,
+      hsl(var(--rainbow-6) / 0.66) 80%,
+      hsl(var(--rainbow-7) / 0.7) 95%,
+      transparent 100%
+    );
 
     /* Branded top bar */
     --header: 227 49% 21%;
@@ -82,7 +104,8 @@
     --popover: 226 44% 9%;
     --popover-foreground: 204 45% 96%;
 
-    --primary: 184 93% 55%;
+    /* Inverse-of-theme — near-white in dark mode (no blue/cyan buttons). */
+    --primary: 204 45% 96%;
     --primary-foreground: 226 54% 6%;
 
     --secondary: 222 36% 15%;
@@ -99,7 +122,7 @@
 
     --border: 214 36% 22%;
     --input: 214 36% 22%;
-    --ring: 184 93% 55%;
+    --ring: 204 45% 96%;
 
     --header: 226 48% 8%;
     --header-foreground: 204 45% 98%;
@@ -136,7 +159,8 @@
     --popover: 230 40% 12%;
     --popover-foreground: 213 40% 96%;
 
-    --primary: 250 95% 68%;
+    /* Inverse-of-theme — near-white (no blue/violet buttons). */
+    --primary: 213 40% 96%;
     --primary-foreground: 230 45% 8%;
 
     --secondary: 230 35% 16%;
@@ -153,7 +177,7 @@
 
     --border: 230 30% 20%;
     --input: 230 30% 20%;
-    --ring: 250 95% 68%;
+    --ring: 213 40% 96%;
 
     --sidebar-background: 230 45% 8%;
     --sidebar-foreground: 213 40% 96%;
@@ -171,6 +195,35 @@
     --header-foreground: 0 0% 98%;
   }
 
+  /* ─── Accent themes ───
+     Set on <html> via data-accent (independent of light/dark). Each single
+     color repoints --accent-brand and paints a soft single-hue strip
+     (transparent → full → transparent). "rainbow" (or unset) keeps the
+     multi-stop default defined in :root. */
+  [data-accent="green"]  { --accent-brand: var(--brand-green); }
+  [data-accent="yellow"] { --accent-brand: var(--brand-yellow); }
+  [data-accent="blue"]   { --accent-brand: var(--brand-blue); }
+  [data-accent="red"]    { --accent-brand: var(--brand-red); }
+  [data-accent="purple"] { --accent-brand: var(--brand-purple); }
+
+  [data-accent="green"],
+  [data-accent="yellow"],
+  [data-accent="blue"],
+  [data-accent="red"],
+  [data-accent="purple"] {
+    /* Soft fade at the tips only — the hue holds near-full strength across
+       ~80% of the bar so it reads as a full-width streak, not a center glow. */
+    --accent-strip: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--accent-brand) / 0.55) 6%,
+      hsl(var(--accent-brand) / 0.9) 14%,
+      hsl(var(--accent-brand) / 0.9) 86%,
+      hsl(var(--accent-brand) / 0.55) 94%,
+      transparent 100%
+    );
+  }
+
   .app-header-pill {
     background: hsl(var(--background) / 0.94);
     color: hsl(var(--header-foreground));
@@ -181,31 +234,23 @@
     /* Rounded rectangle — subtle corners, not a full pill. */
     border-radius: 1rem;
     box-shadow: 0 14px 36px hsl(222 47% 6% / 0.08);
-    /* Shared rainbow used by both the top + bottom edges below. */
-    --header-rainbow: linear-gradient(
-      90deg,
-      transparent 0%,
-      hsl(var(--rainbow-1) / 0.65) 12%,
-      hsl(var(--rainbow-3) / 0.6) 30%,
-      hsl(var(--rainbow-4) / 0.62) 46%,
-      hsl(var(--rainbow-5) / 0.66) 62%,
-      hsl(var(--rainbow-6) / 0.58) 80%,
-      hsl(var(--rainbow-7) / 0.62) 92%,
-      transparent 100%
-    );
+    /* Accent strip shared by the top + bottom edges. Driven by the active
+       accent theme (--accent-strip): rainbow by default, single hue when a
+       data-accent color is selected. */
+    --header-rainbow: var(--accent-strip);
   }
 
   /* Subtle rainbow on the bottom edge only. */
   .app-header-pill::after {
     content: "";
     position: absolute;
-    left: 8%;
-    right: 8%;
+    left: 7.5%;
+    right: 7.5%;
     bottom: 0;
     height: 2.5px;
     border-radius: 9999px;
     background: var(--header-rainbow);
-    box-shadow: 0 1px 10px hsl(var(--rainbow-5) / 0.28);
+    box-shadow: 0 1px 10px hsl(var(--accent-brand) / 0.28);
     opacity: 0.85;
     pointer-events: none;
   }
@@ -221,12 +266,12 @@
   }
 
   .dark .app-header-pill::after {
-    left: 5%;
-    right: 5%;
+    left: 7%;
+    right: 7%;
     height: 3px;
     box-shadow:
-      0 0 14px hsl(184 93% 55% / 0.44),
-      0 0 24px hsl(324 91% 66% / 0.2);
+      0 0 14px hsl(var(--accent-brand) / 0.44),
+      0 0 24px hsl(var(--accent-brand) / 0.2);
     opacity: 1;
   }
 }

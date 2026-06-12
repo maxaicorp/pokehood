@@ -353,6 +353,15 @@ export default function ProfilePageEditor() {
               disabled={!isPro && !limits.customSlug}
               maxLength={30}
             />
+            <button
+              type="button"
+              onClick={() => setQrOpen(true)}
+              title="Share profile"
+              aria-label="Share profile"
+              className="self-stretch flex items-center px-3 text-muted-foreground hover:text-foreground hover:bg-muted border-l border-input shrink-0"
+            >
+              <QrCode className="w-4 h-4" />
+            </button>
           </div>
           {slugStatus === "checking" && (
             <p className="text-xs text-muted-foreground flex items-center gap-1">

@@ -95,13 +95,9 @@ interface Props {
 
 export default function AnalyticsDashboard({ collection }: Props) {
   const { user, isPro } = useAuth();
-  const [themeId, setThemeId] = useState<AnalyticsThemeId>(getAnalyticsTheme);
-  const theme = ANALYTICS_THEMES[themeId];
-
-  const handleThemeChange = (id: AnalyticsThemeId) => {
-    setThemeId(id);
-    setAnalyticsTheme(id);
-  };
+  // Theme locked to the blue "Minimal Mono" look — the per-page theme switcher
+  // was removed (site-wide accent lives in user Settings instead).
+  const theme = ANALYTICS_THEMES["minimal-mono"];
 
   const [valueRange, setValueRange] = useState<TimeRange>("all");
   const [viewsRange, setViewsRange] = useState<TimeRange>("30d");
@@ -331,19 +327,14 @@ export default function AnalyticsDashboard({ collection }: Props) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Theme selector */}
-      <div className="flex justify-end">
-        <ThemeSelector current={themeId} onChange={handleThemeChange} />
-      </div>
-
+    <div className="space-y-6 pt-4 sm:pt-6">
       {/* Quick stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { icon: Eye, label: `Profile Views${viewsRangeLabel}`, value: totalViews.toLocaleString() },
           { icon: MousePointerClick, label: `Link Clicks${clicksRangeLabel}`, value: totalClicks.toLocaleString() },
           { icon: Wallet, label: "Avg Card Value", value: formatPrice(avgCardValue) },
-          { icon: TrendingUp, label: "Listed For Sale", value: formatPrice(forSaleValue) },
+          { icon: TrendingUp, label: "Total Value", value: formatPrice(totalValue) },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}

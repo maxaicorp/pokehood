@@ -1,6 +1,6 @@
 export default function PhoneMockup({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative mx-auto w-[280px] md:w-[300px]">
+    <div className="relative mx-auto w-[300px] md:w-[360px]">
       {/* Outer shell — iPhone 15-style */}
       <div
         className="relative rounded-[44px] bg-[#1a1a1a] p-[10px] shadow-2xl"
@@ -21,7 +21,7 @@ export default function PhoneMockup({ children }: { children: React.ReactNode })
           <div className="absolute top-[10px] left-1/2 -translate-x-1/2 w-[90px] h-[24px] bg-[#1a1a1a] rounded-full z-20" />
 
           {/* Screen content */}
-          <div className="relative h-[520px] overflow-hidden">
+          <div className="relative h-[620px] overflow-hidden">
             {children}
           </div>
 

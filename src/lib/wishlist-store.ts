@@ -143,10 +143,15 @@ export async function addCardToDefaultWishlist(
 }
 
 export async function removeCardFromWishlist(cardIdOrRowId: string, userId?: string): Promise<void> {
+  // `id` is a uuid column; `tcg_api_id` is the Scrydex card id (e.g. "me2pt5-284").
+  // Mixing them in one .or() makes Postgres reject the non-uuid value with a
+  // uuid-syntax error and the whole delete fails — so detect which we were handed
+  // and filter the matching column.
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cardIdOrRowId);
   let query = supabase
     .from("wishlist_cards")
     .delete()
-    .or(`id.eq.${cardIdOrRowId},tcg_api_id.eq.${cardIdOrRowId}`);
+    .eq(isUuid ? "id" : "tcg_api_id", cardIdOrRowId);
   if (userId) query = query.eq("user_id", userId);
   const { error } = await query;
   if (error) throw error;

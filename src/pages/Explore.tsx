@@ -42,7 +42,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search, Plus, X, Grid3X3, LayoutList,
-  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2, Heart, Check,
+  ChevronDown, Filter, TrendingUp, TrendingDown, CheckCircle2, Heart, Check, ArrowUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { toastAddedToInventory } from "@/lib/inventory-toast";
@@ -431,7 +431,11 @@ export default function Explore() {
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground hidden md:inline">Sort by:</span>
               <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1); }}>
-                <SelectTrigger className="w-[130px] sm:w-[160px] bg-background text-xs sm:text-sm h-9">
+                <SelectTrigger
+                  className="w-[200px] sm:w-[200px] bg-background text-sm h-9 gap-2"
+                  aria-label="Sort cards"
+                >
+                  <ArrowUpDown className="w-4 h-4 shrink-0 text-muted-foreground md:hidden" />
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -455,15 +459,15 @@ export default function Explore() {
         <div className="flex gap-6">
           {/* Sidebar Filters — slide-over on mobile */}
           {showFilters && (
-            <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setShowFilters(false)}>
-              <div className="absolute inset-0 bg-black/50" />
+            <div className="fixed inset-0 z-[60] lg:hidden" onClick={() => setShowFilters(false)}>
+              <div className="absolute inset-0 bg-black/60" />
               <aside
-                className="absolute left-0 top-0 bottom-0 w-72 bg-background border-r border-border p-6 space-y-6 overflow-y-auto"
+                className="absolute left-0 top-0 bottom-0 w-[82%] max-w-sm bg-background border-r border-border p-6 space-y-6 overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+24px)] shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between mb-2">
+                <div className="sticky top-0 z-10 -mx-6 -mt-6 mb-2 flex items-center justify-between border-b border-border bg-background px-6 py-4">
                   <h3 className="font-display font-bold text-foreground">Filters</h3>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowFilters(false)}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full border border-border" onClick={() => setShowFilters(false)} aria-label="Close filters">
                     <X className="w-4 h-4" />
                   </Button>
                 </div>

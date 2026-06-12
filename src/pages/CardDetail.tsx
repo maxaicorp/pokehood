@@ -646,21 +646,21 @@ export default function CardDetail() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Add to collection */}
+            {/* Add to collection — no-fill (transparent + border) */}
             <Button
               onClick={handleAddToCollection}
               disabled={addingToCollection}
-              variant="outline"
-              className="w-full h-12 text-base"
+              variant="ghost"
+              className="w-full h-12 text-base border border-border bg-transparent hover:bg-muted/50"
             >
               Add to Collection
             </Button>
 
-            {/* Wishlist */}
+            {/* Wishlist — no-fill (transparent + border), neutral in both states */}
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={handleWishlist}
-              className={`w-full h-12 text-base ${isWishlisted ? "text-destructive border-destructive/50" : ""}`}
+              className="w-full h-12 text-base border border-border bg-transparent text-foreground hover:bg-muted/50"
             >
               {isWishlisted ? "Remove from Wishlist" : "Wishlist"}
             </Button>
